@@ -66,14 +66,26 @@ class MainActivity : Activity() {
             setOnClickListener { Prefs.setCities(this@MainActivity, cities.text.toString()) }
         })
 
-        col.addView(Button(this).apply {
-            text = "שלח התראת בדיקה"
-            setOnClickListener {
-                Prefs.setEnabled(this@MainActivity, true)
-                AlertService.start(this@MainActivity, test = true)
-                refresh()
-            }
+        col.addView(TextView(this).apply {
+            text = "בדיקה:"
+            setPadding(0, 32, 0, 8)
         })
+        val tests = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        listOf(
+            "ירי" to "ירי רקטות וטילים",
+            "מקדימה" to "בדקות הקרובות צפויות להתקבל התרעות באזורך",
+            "סיום" to "האירוע הסתיים"
+        ).forEach { (label, title) ->
+            tests.addView(Button(this).apply {
+                text = label
+                setOnClickListener {
+                    Prefs.setEnabled(this@MainActivity, true)
+                    AlertService.start(this@MainActivity, testTitle = title)
+                    refresh()
+                }
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        col.addView(tests)
 
         col.addView(TextView(this).apply {
             text = "התראה אחרונה:"

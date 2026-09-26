@@ -12,10 +12,16 @@ import android.widget.TextView
 class AlertActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val level = intent.getIntExtra("level", AlertService.LEVEL_ALERT)
+        val (bg, note) = when (level) {
+            AlertService.LEVEL_PRE -> "#E65100" to "היו בקרבת מרחב מוגן"
+            AlertService.LEVEL_END -> "#2E7D32" to "ניתן לצאת מהמרחב המוגן"
+            else -> "#D50000" to "היכנסו למרחב המוגן"
+        }
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setBackgroundColor(Color.parseColor("#D50000"))
+            setBackgroundColor(Color.parseColor(bg))
             setPadding(48, 48, 48, 48)
             setOnClickListener { finish() }
         }
@@ -33,7 +39,7 @@ class AlertActivity : Activity() {
             setPadding(0, 40, 0, 40)
         })
         root.addView(TextView(this).apply {
-            text = "היכנסו למרחב המוגן\n(לחיצה לסגירה)"
+            text = "$note\n(לחיצה לסגירה)"
             textSize = 18f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER

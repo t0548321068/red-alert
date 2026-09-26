@@ -31,9 +31,26 @@ class AlertService : Service() {
         private const val ID_ALERT = 2
         const val ACTION_TEST = "test"
 
-        fun start(c: Context, test: Boolean = false) {
+        private const val CH_INFO = "info"
+
+        const val LEVEL_ALERT = 0
+        const val LEVEL_PRE = 1
+        const val LEVEL_END = 2
+
+        /** סיווג לפי נוסח ההודעה של פיקוד העורף */
+        fun levelOf(title: String): Int = when {
+            title.contains("הסתיים") -> LEVEL_END
+            title.contains("בדקות הקרובות") || title.contains("צפויות") ||
+                title.contains("מקדימה") -> LEVEL_PRE
+            else -> LEVEL_ALERT
+        }
+
+        fun start(c: Context, testTitle: String? = null) {
             val i = Intent(c, AlertService::class.java)
-            if (test) i.action = ACTION_TEST
+            if (testTitle != null) {
+                i.action = ACTION_TEST
+                i.putExtra("title", testTitle)
+            }
             c.startForegroundService(i)
         }
 
@@ -71,7 +88,8 @@ class AlertService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_TEST) {
-            fire("בדיקה - ירי רקטות וטילים", listOf("התראת בדיקה"))
+            val title = intent.getStringExtra("title") ?: "ירי רקטות וטילים"
+            fire(title, listOf("התראת בדיקה"))
         }
         return START_STICKY
     }
@@ -140,13 +158,14 @@ class AlertService : Service() {
             .format(java.util.Date())
         Prefs.setLastAlert(this, "$time  $title\n$body")
 
+        val level = levelOf(title)
         val full = Intent(this, AlertActivity::class.java)
-            .putExtra("title", title).putExtra("body", body)
+            .putExtra("title", title).putExtra("body", body).putExtra("level", level)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val fullPi = PendingIntent.getActivity(
             this, 1, full, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
-        val n = Notification.Builder(this, CH_ALERT)
+        val n = Notification.Builder(this, if (level == LEVEL_END) CH_INFO else CH_ALERT)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentTitle(title)
             .setContentText(body)
@@ -158,14 +177,18 @@ class AlertService : Service() {
             .build()
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n)
 
-        playAlarm()
+        when (level) {
+            LEVEL_ALERT -> playAlarm(RingtoneManager.TYPE_ALARM, 15000)
+            LEVEL_PRE -> playAlarm(RingtoneManager.TYPE_NOTIFICATION, 3000)
+            else -> main.post { ringtone?.stop() }
+        }
     }
 
-    /** צליל אזעקה בערוץ "שעון מעורר" - נשמע גם במצב שקט */
-    private fun playAlarm() {
+    /** צליל בערוץ "שעון מעורר" - נשמע גם במצב שקט */
+    private fun playAlarm(type: Int, durationMs: Long) {
         main.post {
             ringtone?.stop()
-            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            val uri = RingtoneManager.getDefaultUri(type)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
             ringtone = RingtoneManager.getRingtone(this, uri)?.apply {
                 audioAttributes = AudioAttributes.Builder()
@@ -174,7 +197,7 @@ class AlertService : Service() {
                     .build()
                 play()
             }
-            main.postDelayed({ ringtone?.stop() }, 15000)
+            main.postDelayed({ ringtone?.stop() }, durationMs)
         }
     }
 
@@ -191,6 +214,12 @@ class AlertService : Service() {
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 800, 300, 800, 300, 800)
                 setBypassDnd(true)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            })
+        nm.createNotificationChannel(
+            NotificationChannel(CH_INFO, "סיום אירוע", NotificationManager.IMPORTANCE_HIGH).apply {
+                setSound(null, null)
+                enableVibration(false)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             })
     }
