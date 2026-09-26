@@ -4,25 +4,30 @@ import android.text.Html
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** מקור 4: ערוץ הטלגרם הרשמי של פיקוד העורף (תצוגה ציבורית, בלי בוט) */
+/**
+ * קורא ערוץ טלגרם ציבורי (בלי בוט) דרך t.me/s/<channel>.
+ * מבין גם את הפורמט של פיקוד העורף וגם את הפורמט של צופר.
+ */
 class TelegramSource(
+    private val channel: String,
     private val onAlert: (title: String, areas: List<String>) -> Unit
 ) {
     companion object {
-        private const val URL_CHANNEL = "https://t.me/s/PikudHaOref_all"
         private const val POLL_MS = 5000L
-        private val POST_RE = Regex("data-post=\"PikudHaOref_all/(\\d+)\"")
         private val TEXT_RE = Regex("js-message_text[^>]*>(.*?)</div>", RegexOption.DOT_MATCHES_ALL)
         private val SECONDS_RE = Regex("\\(\\s*[\\d\\s]*(שניות|דקות|מיידי)[^)]*\\)")
         private val DATE_RE = Regex("\\(\\d{1,2}/\\d{1,2}/\\d{4}\\).*$")
+        private val ENDED_IN_RE = Regex("הסתיים ב(.+)")
     }
+
+    private val postRe = Regex("data-post=\"" + Regex.escape(channel) + "/(\\d+)\"", RegexOption.IGNORE_CASE)
 
     @Volatile private var running = false
     private var lastPost = -1L
 
     fun start() {
         running = true
-        Thread(::loop, "telegram-poll").start()
+        Thread(::loop, "tg-$channel").start()
     }
 
     fun stop() { running = false }
@@ -35,7 +40,7 @@ class TelegramSource(
     }
 
     private fun check() {
-        val conn = URL(URL_CHANNEL).openConnection() as HttpURLConnection
+        val conn = URL("https://t.me/s/$channel").openConnection() as HttpURLConnection
         conn.connectTimeout = 5000
         conn.readTimeout = 5000
         conn.useCaches = false
@@ -46,13 +51,11 @@ class TelegramSource(
             conn.disconnect()
         }
 
-        // מפרקים לפי הודעות: כל קטע מתחיל ב-data-post
-        val posts = POST_RE.findAll(html).toList()
+        val posts = postRe.findAll(html).toList()
         val parsed = posts.mapIndexedNotNull { i, m ->
             val id = m.groupValues[1].toLong()
             val end = if (i + 1 < posts.size) posts[i + 1].range.first else html.length
-            val chunk = html.substring(m.range.last, end)
-            TEXT_RE.find(chunk)?.let { id to it.groupValues[1] }
+            TEXT_RE.find(html.substring(m.range.last, end))?.let { id to it.groupValues[1] }
         }
         if (parsed.isEmpty()) return
 
@@ -74,6 +77,9 @@ class TelegramSource(
         val title = when {
             text.contains("הסתיים") -> "האירוע הסתיים"
             text.contains("בדקות הקרובות") -> "בדקות הקרובות צפויות להתקבל התרעות באזורך"
+            text.contains("כלי טיס") -> "חדירת כלי טיס עוין"
+            text.contains("מחבלים") -> "חדירת מחבלים"
+            text.contains("צבע אדום") || text.contains("רקטות") -> "ירי רקטות וטילים"
             else -> lines[0]
                 .replace(DATE_RE, "")
                 .filter { it.isLetterOrDigit() || it == ' ' || it == '\'' || it == '"' || it == '-' }
@@ -81,16 +87,26 @@ class TelegramSource(
         }
         if (title.isEmpty()) return
 
-        val areas = lines.drop(1)
-            .filterNot { l ->
-                l.startsWith("אזור") || l.contains("מרחב המוגן") || l.contains("השוהים") ||
-                    l.contains("הסתיים") || l.contains("בדקות הקרובות") || l.contains(".") ||
-                    l.startsWith("עדכון") || l.startsWith("על תושבי")
+        val areas = lines.flatMapIndexed { i, l ->
+            val ended = ENDED_IN_RE.find(l)
+            when {
+                // צופר: "האירוע הסתיים בכפר יובל, דפנה"
+                ended != null -> ended.groupValues[1].split(",")
+                // צופר: "05:23: • עוטף עזה: כיסופים (15 שניות)"
+                l.contains("•") -> l.substringAfter("•").substringAfterLast(":").split(",")
+                // פיקוד העורף: שורת יישובים רגילה
+                i > 0 && !skip(l) -> l.split(",")
+                else -> emptyList()
             }
-            .flatMap { l -> l.replace(SECONDS_RE, "").split(",") }
-            .map { it.trim() }
+        }
+            .map { it.replace(SECONDS_RE, "").trim().trimEnd('.') }
             .filter { it.isNotEmpty() && it.length <= 40 }
 
         if (areas.isNotEmpty()) onAlert(title, areas)
     }
+
+    private fun skip(l: String) =
+        l.startsWith("אזור") || l.contains("מרחב המוגן") || l.contains("השוהים") ||
+            l.contains("הסתיים") || l.contains("בדקות הקרובות") || l.contains(".") ||
+            l.startsWith("עדכון") || l.startsWith("על תושבי")
 }
