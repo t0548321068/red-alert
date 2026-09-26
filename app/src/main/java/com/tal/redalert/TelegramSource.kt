@@ -79,7 +79,7 @@ class TelegramSource(
             text.contains("בדקות הקרובות") -> "בדקות הקרובות צפויות להתקבל התרעות באזורך"
             text.contains("כלי טיס") -> "חדירת כלי טיס עוין"
             text.contains("מחבלים") -> "חדירת מחבלים"
-            text.contains("צבע אדום") || text.contains("רקטות") -> "ירי רקטות וטילים"
+            text.contains("צבע אדום") || text.contains("רקטות") || text.contains("אזעקה") -> "ירי רקטות וטילים"
             else -> lines[0]
                 .replace(DATE_RE, "")
                 .filter { it.isLetterOrDigit() || it == ' ' || it == '\'' || it == '"' || it == '-' }
@@ -87,15 +87,19 @@ class TelegramSource(
         }
         if (title.isEmpty()) return
 
+        // אם יש שורות עם "•" (צופר / כומתה) - משתמשים רק בהן
+        val hasBullets = lines.any { it.contains("•") }
         val areas = lines.flatMapIndexed { i, l ->
             val ended = ENDED_IN_RE.find(l)
             when {
                 // צופר: "האירוע הסתיים בכפר יובל, דפנה"
                 ended != null -> ended.groupValues[1].split(",")
+                // כומתה: "• עוטף עזה 231 - נירים, עין השלושה"
+                l.contains("•") && l.contains(" - ") -> l.substringAfter(" - ").split(",")
                 // צופר: "05:23: • עוטף עזה: כיסופים (15 שניות)"
                 l.contains("•") -> l.substringAfter("•").substringAfterLast(":").split(",")
                 // פיקוד העורף: שורת יישובים רגילה
-                i > 0 && !skip(l) -> l.split(",")
+                !hasBullets && i > 0 && !skip(l) -> l.split(",")
                 else -> emptyList()
             }
         }
