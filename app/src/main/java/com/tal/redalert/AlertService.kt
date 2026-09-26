@@ -63,6 +63,7 @@ class AlertService : Service() {
     @Volatile private var running = false
     private var lastId = ""
     private var tzofar: TzofarSource? = null
+    private var telegram: TelegramSource? = null
 
     /** אזור -> (סוג, זמן) - למניעת כפילות בין מקורות */
     private val seen = HashMap<String, Pair<Int, Long>>()
@@ -94,6 +95,7 @@ class AlertService : Service() {
         Thread(::loop, "oref-poll").start()
         Thread(::historyLoop, "oref-history").start()
         tzofar = TzofarSource(this) { title, areas -> handle(title, areas) }.also { it.start() }
+        telegram = TelegramSource { title, areas -> handle(title, areas) }.also { it.start() }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -107,6 +109,7 @@ class AlertService : Service() {
     override fun onDestroy() {
         running = false
         tzofar?.stop()
+        telegram?.stop()
         ringtone?.stop()
         wakeLock?.let { if (it.isHeld) it.release() }
         super.onDestroy()
