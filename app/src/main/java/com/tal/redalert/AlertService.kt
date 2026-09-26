@@ -24,7 +24,10 @@ class AlertService : Service() {
 
     companion object {
         private const val URL_ALERTS = "https://www.oref.org.il/WarningMessages/alert/alerts.json"
+        private const val URL_HISTORY = "https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json"
         private const val POLL_MS = 2000L
+        private const val HISTORY_POLL_MS = 10000L
+        private const val HISTORY_WINDOW_MS = 90000L
         private const val CH_SERVICE = "service"
         private const val CH_ALERT = "alerts"
         private const val ID_SERVICE = 1
@@ -59,6 +62,11 @@ class AlertService : Service() {
 
     @Volatile private var running = false
     private var lastId = ""
+    private var tzofar: TzofarSource? = null
+
+    /** אזור -> (סוג, זמן) - למניעת כפילות בין מקורות */
+    private val seen = HashMap<String, Pair<Int, Long>>()
+    private val DEDUP_MS = 3 * 60 * 1000L
     private var wakeLock: PowerManager.WakeLock? = null
     private var ringtone: Ringtone? = null
     private val main = Handler(Looper.getMainLooper())
@@ -84,6 +92,8 @@ class AlertService : Service() {
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "redalert:poll").apply { acquire() }
         running = true
         Thread(::loop, "oref-poll").start()
+        Thread(::historyLoop, "oref-history").start()
+        tzofar = TzofarSource(this) { title, areas -> handle(title, areas) }.also { it.start() }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -96,6 +106,7 @@ class AlertService : Service() {
 
     override fun onDestroy() {
         running = false
+        tzofar?.stop()
         ringtone?.stop()
         wakeLock?.let { if (it.isHeld) it.release() }
         super.onDestroy()
@@ -112,8 +123,8 @@ class AlertService : Service() {
         }
     }
 
-    private fun check() {
-        val conn = URL(URL_ALERTS + "?t=" + System.currentTimeMillis()).openConnection() as HttpURLConnection
+    private fun fetchOref(url: String): String {
+        val conn = URL(url + "?t=" + System.currentTimeMillis()).openConnection() as HttpURLConnection
         conn.connectTimeout = 4000
         conn.readTimeout = 4000
         conn.useCaches = false
@@ -125,7 +136,12 @@ class AlertService : Service() {
         } finally {
             conn.disconnect()
         }
-        val text = decode(bytes).trim()
+        return decode(bytes).trim()
+    }
+
+    /** מקור 1: הקובץ החי של פיקוד העורף */
+    private fun check() {
+        val text = fetchOref(URL_ALERTS)
         if (text.isEmpty()) return
 
         val json = JSONObject(text)
@@ -135,12 +151,50 @@ class AlertService : Service() {
 
         val title = json.optString("title", "התראה")
         val arr = json.optJSONArray("data") ?: return
-        val areas = (0 until arr.length()).map { arr.getString(it) }
+        handle(title, (0 until arr.length()).map { arr.getString(it) })
+    }
 
+    /** מקור 2: היסטוריית פיקוד העורף - גיבוי להתראות שנפלו בין בדיקות */
+    private fun historyLoop() {
+        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("Asia/Jerusalem")
+        }
+        while (running) {
+            try {
+                val text = fetchOref(URL_HISTORY)
+                if (text.startsWith("[")) {
+                    val arr = org.json.JSONArray(text)
+                    val now = System.currentTimeMillis()
+                    val byTitle = LinkedHashMap<String, MutableList<String>>()
+                    for (i in 0 until arr.length()) {
+                        val o = arr.getJSONObject(i)
+                        val t = fmt.parse(o.optString("alertDate"))?.time ?: continue
+                        if (now - t > HISTORY_WINDOW_MS) continue
+                        byTitle.getOrPut(o.optString("title", "התראה")) { mutableListOf() }
+                            .add(o.optString("data"))
+                    }
+                    byTitle.forEach { (title, areas) -> handle(title, areas) }
+                }
+            } catch (_: Exception) { }
+            Thread.sleep(HISTORY_POLL_MS)
+        }
+    }
+
+    /** נקודת כניסה משותפת לכל המקורות: סינון ערים + מניעת כפילות */
+    @Synchronized
+    fun handle(title: String, areas: List<String>) {
+        val level = levelOf(title)
+        val now = System.currentTimeMillis()
         val filter = Prefs.cities(this)
-        val hits = if (filter.isEmpty()) areas
-                   else areas.filter { a -> filter.any { f -> a.contains(f) } }
-        if (hits.isNotEmpty()) fire(title, hits)
+        val fresh = areas.filter { a -> a.isNotBlank() }
+            .filter { a -> filter.isEmpty() || filter.any { f -> a.contains(f) } }
+            .filter { a ->
+                val prev = seen[a]
+                prev == null || prev.first != level || now - prev.second > DEDUP_MS
+            }
+        if (fresh.isEmpty()) return
+        fresh.forEach { seen[it] = level to now }
+        fire(title, fresh)
     }
 
     /** השרת מחזיר לפעמים UTF-8 עם BOM ולפעמים UTF-16 */
