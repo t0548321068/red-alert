@@ -97,7 +97,7 @@ class AlertService : Service() {
         Thread(::historyLoop, "oref-history").start()
         tzofar = TzofarSource(this) { title, areas -> handle(title, areas) }.also { it.start() }
         tzevadom = TzevadomSource(this) { title, areas -> handle(title, areas) }.also { it.start() }
-        telegram = listOf("PikudHaOref_all", "tzevaadomm", "CumtaAlertsChannel").map { ch ->
+        telegram = listOf("PikudHaOref_all", "tzevaadomm", "CumtaAlertsChannel", "Radar_Alerts").map { ch ->
             TelegramSource(ch) { title, areas -> handle(title, areas) }.also { it.start() }
         }
     }
