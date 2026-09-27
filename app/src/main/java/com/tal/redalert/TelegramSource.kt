@@ -87,19 +87,24 @@ class TelegramSource(
         }
         if (title.isEmpty()) return
 
-        // אם יש שורות עם "•" (צופר / כומתה) - משתמשים רק בהן
+        // אם יש שורות עם "•" (צופר / כומתה / רדאר) - היישובים צמודים אליהן
         val hasBullets = lines.any { it.contains("•") }
+        var underRegion = false   // רדאר: שורת "• אזור" ואחריה שורות יישובים
         val areas = lines.flatMapIndexed { i, l ->
             val ended = ENDED_IN_RE.find(l)
+            val bullet = l.contains("•")
+            val afterColon = l.substringAfter("•").substringAfterLast(":", "").trim()
             when {
                 // צופר: "האירוע הסתיים בכפר יובל, דפנה"
                 ended != null -> ended.groupValues[1].split(",")
                 // כומתה: "• עוטף עזה 231 - נירים, עין השלושה"
-                l.contains("•") && l.contains(" - ") -> l.substringAfter(" - ").split(",")
+                bullet && l.contains(" - ") -> { underRegion = false; l.substringAfter(" - ").split(",") }
                 // צופר: "05:23: • עוטף עזה: כיסופים (15 שניות)"
-                l.contains("•") -> l.substringAfter("•").substringAfterLast(":").split(",")
-                // פיקוד העורף: שורת יישובים רגילה
-                !hasBullets && i > 0 && !skip(l) -> l.split(",")
+                bullet && afterColon.isNotEmpty() -> { underRegion = false; afterColon.split(",") }
+                // רדאר: "• קו העימות" - היישובים בשורות הבאות
+                bullet -> { underRegion = true; emptyList() }
+                // שורת יישובים (פיקוד העורף / רדאר)
+                i > 0 && (!hasBullets || underRegion) && !skip(l) -> l.split(",")
                 else -> emptyList()
             }
         }
@@ -112,5 +117,7 @@ class TelegramSource(
     private fun skip(l: String) =
         l.startsWith("אזור") || l.contains("מרחב המוגן") || l.contains("השוהים") ||
             l.contains("הסתיים") || l.contains("בדקות הקרובות") || l.contains(".") ||
-            l.startsWith("עדכון") || l.startsWith("על תושבי")
+            l.startsWith("עדכון") || l.startsWith("על תושבי") ||
+            l.contains("היכנסו") || l.contains("בהמשך ל") || l.contains("נעלו") ||
+            l.contains("הישארו") || l.contains("|")
 }
