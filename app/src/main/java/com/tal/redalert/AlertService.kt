@@ -64,6 +64,7 @@ class AlertService : Service() {
     private var lastId = ""
     private var tzofar: TzofarSource? = null
     private var telegram: List<TelegramSource> = emptyList()
+    private var tzevadom: TzevadomSource? = null
 
     /** אזור -> (סוג, זמן) - למניעת כפילות בין מקורות */
     private val seen = HashMap<String, Pair<Int, Long>>()
@@ -95,6 +96,7 @@ class AlertService : Service() {
         Thread(::loop, "oref-poll").start()
         Thread(::historyLoop, "oref-history").start()
         tzofar = TzofarSource(this) { title, areas -> handle(title, areas) }.also { it.start() }
+        tzevadom = TzevadomSource(this) { title, areas -> handle(title, areas) }.also { it.start() }
         telegram = listOf("PikudHaOref_all", "tzevaadomm", "CumtaAlertsChannel").map { ch ->
             TelegramSource(ch) { title, areas -> handle(title, areas) }.also { it.start() }
         }
@@ -112,6 +114,7 @@ class AlertService : Service() {
         running = false
         tzofar?.stop()
         telegram.forEach { it.stop() }
+        tzevadom?.stop()
         ringtone?.stop()
         wakeLock?.let { if (it.isHeld) it.release() }
         super.onDestroy()
