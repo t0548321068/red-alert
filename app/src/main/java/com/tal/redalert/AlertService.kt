@@ -25,6 +25,7 @@ class AlertService : Service() {
     companion object {
         private const val URL_ALERTS = "https://www.oref.org.il/WarningMessages/alert/alerts.json"
         private const val URL_HISTORY = "https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json"
+        private const val URL_ARCHIVE = "https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=1"
         private const val POLL_MS = 2000L
         private const val HISTORY_POLL_MS = 10000L
         private const val HISTORY_WINDOW_MS = 90000L
@@ -132,7 +133,8 @@ class AlertService : Service() {
     }
 
     private fun fetchOref(url: String): String {
-        val conn = URL(url + "?t=" + System.currentTimeMillis()).openConnection() as HttpURLConnection
+        val sep = if (url.contains("?")) "&" else "?"
+        val conn = URL(url + sep + "t=" + System.currentTimeMillis()).openConnection() as HttpURLConnection
         conn.connectTimeout = 4000
         conn.readTimeout = 4000
         conn.useCaches = false
@@ -162,28 +164,34 @@ class AlertService : Service() {
         handle(title, (0 until arr.length()).map { arr.getString(it) })
     }
 
-    /** מקור 2: היסטוריית פיקוד העורף - גיבוי להתראות שנפלו בין בדיקות */
+    /**
+     * מקור 2: היסטוריית פיקוד העורף (title / alertDate)
+     * מקור 3: ארכיון פיקוד העורף (category_desc / alertDate עם T)
+     * שניהם גיבוי להתראות שנפלו בין בדיקות.
+     */
     private fun historyLoop() {
         val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
             timeZone = java.util.TimeZone.getTimeZone("Asia/Jerusalem")
         }
         while (running) {
-            try {
-                val text = fetchOref(URL_HISTORY)
-                if (text.startsWith("[")) {
+            for (url in listOf(URL_HISTORY, URL_ARCHIVE)) {
+                try {
+                    val text = fetchOref(url)
+                    if (!text.startsWith("[")) continue
                     val arr = org.json.JSONArray(text)
                     val now = System.currentTimeMillis()
                     val byTitle = LinkedHashMap<String, MutableList<String>>()
                     for (i in 0 until arr.length()) {
                         val o = arr.getJSONObject(i)
-                        val t = fmt.parse(o.optString("alertDate"))?.time ?: continue
+                        val date = o.optString("alertDate").replace('T', ' ').take(19)
+                        val t = fmt.parse(date)?.time ?: continue
                         if (now - t > HISTORY_WINDOW_MS) continue
-                        byTitle.getOrPut(o.optString("title", "התראה")) { mutableListOf() }
-                            .add(o.optString("data"))
+                        val title = o.optString("title").ifEmpty { o.optString("category_desc", "התראה") }
+                        byTitle.getOrPut(title) { mutableListOf() }.add(o.optString("data"))
                     }
                     byTitle.forEach { (title, areas) -> handle(title, areas) }
-                }
-            } catch (_: Exception) { }
+                } catch (_: Exception) { }
+            }
             Thread.sleep(HISTORY_POLL_MS)
         }
     }
