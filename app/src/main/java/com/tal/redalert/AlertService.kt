@@ -36,7 +36,7 @@ class AlertService : Service() {
         const val ACTION_TEST = "test"
 
         private const val CH_INFO = "info"
-        private const val CH_UPDATE = "updates"
+        private const val CH_UPDATE = "updates_v2"  // ערוץ חדש כדי שההתראה תקפוץ עם צליל
         private const val ID_UPDATE = 3
 
         const val LEVEL_ALERT = 0
@@ -167,7 +167,7 @@ class AlertService : Service() {
         handle(title, (0 until arr.length()).map { arr.getString(it) })
     }
 
-    /** בדיקת גרסה חדשה כל 3 שעות - התראה אחת לכל גרסה, לחיצה פותחת את הפופ-אפ */
+    /** בדיקת גרסה חדשה כל 30 דקות - התראה אחת לכל גרסה, לחיצה פותחת את הפופ-אפ */
     private fun updateLoop() {
         Thread.sleep(60_000)
         while (running) {
@@ -178,12 +178,13 @@ class AlertService : Service() {
                     .setSmallIcon(android.R.drawable.stat_sys_download_done)
                     .setContentTitle("🆕 גרסה חדשה זמינה – $v")
                     .setContentText("לחץ כדי להתקין")
+                    .setCategory(Notification.CATEGORY_RECOMMENDATION)
                     .setContentIntent(openApp())
                     .setAutoCancel(true)
                     .build()
                 (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_UPDATE, n)
             }
-            Thread.sleep(3 * 60 * 60 * 1000L)
+            Thread.sleep(30 * 60 * 1000L)
         }
     }
 
@@ -316,7 +317,8 @@ class AlertService : Service() {
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             })
         nm.createNotificationChannel(
-            NotificationChannel(CH_UPDATE, "עדכוני גרסה", NotificationManager.IMPORTANCE_DEFAULT))
+            NotificationChannel(CH_UPDATE, "עדכוני גרסה", NotificationManager.IMPORTANCE_HIGH))
+        nm.deleteNotificationChannel("updates")
         nm.createNotificationChannel(
             NotificationChannel(CH_INFO, "סיום אירוע", NotificationManager.IMPORTANCE_HIGH).apply {
                 setSound(null, null)
