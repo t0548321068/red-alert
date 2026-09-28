@@ -24,7 +24,10 @@ object Updater {
     fun currentVersion(c: Context): String =
         c.packageManager.getPackageInfo(c.packageName, 0).versionName ?: "0"
 
-    /** silent = בלי הודעה כשאין עדכון (לבדיקה אוטומטית בפתיחה) */
+    /**
+     * silent = בדיקה אוטומטית: בלי הודעה כשאין עדכון,
+     * ובלי פופ-אפ לגרסה שכבר נבחר עבורה "מאוחר יותר" (אז רק דרך ההגדרות)
+     */
     fun check(a: Activity, silent: Boolean) {
         Thread {
             val latest = try { fetchLatest() } catch (_: Exception) { null }
@@ -33,11 +36,20 @@ object Updater {
                 when {
                     latest == null ->
                         if (!silent) toast(a, "לא ניתן לבדוק עדכונים כרגע")
-                    isNewer(latest.first, currentVersion(a)) -> offer(a, latest.first, latest.second)
+                    isNewer(latest.first, currentVersion(a)) ->
+                        if (!silent || Prefs.skippedVersion(a) != latest.first) offer(a, latest.first, latest.second)
                     !silent -> toast(a, "יש לך את הגרסה האחרונה (${currentVersion(a)})")
                 }
             }
         }.start()
+    }
+
+    /** לשירות ברקע: מחזיר גרסה חדשה אם יש ולא נדחתה, אחרת null */
+    fun pendingVersion(c: Context): String? {
+        val latest = try { fetchLatest() } catch (_: Exception) { null } ?: return null
+        if (!isNewer(latest.first, currentVersion(c))) return null
+        if (Prefs.skippedVersion(c) == latest.first) return null
+        return latest.first
     }
 
     private fun fetchLatest(): Pair<String, String>? {
@@ -72,10 +84,11 @@ object Updater {
 
     private fun offer(a: Activity, version: String, url: String) {
         AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("גרסה $version זמינה")
-            .setMessage("הגרסה שלך: ${currentVersion(a)}\nלהוריד ולהתקין עכשיו?")
-            .setPositiveButton("הורד") { _, _ -> download(a, version, url) }
-            .setNegativeButton("לא עכשיו", null)
+            .setTitle("🆕 גרסה חדשה זמינה – $version")
+            .setMessage("הגרסה שלך: ${currentVersion(a)}\nלהתקין עכשיו?\n\n\"מאוחר יותר\" – אפשר לעדכן בכל זמן דרך ⚙ ← בדיקת עדכונים")
+            .setPositiveButton("התקן עכשיו") { _, _ -> download(a, version, url) }
+            .setNegativeButton("מאוחר יותר") { _, _ -> Prefs.setSkippedVersion(a, version) }
+            .setCancelable(false)
             .show()
     }
 

@@ -36,6 +36,13 @@ object Prefs {
     fun showWeather(c: Context) = sp(c).getBoolean("weather", true)
     fun setShowWeather(c: Context, v: Boolean) = sp(c).edit().putBoolean("weather", v).apply()
 
+    /** גרסה שנבחר עבורה "מאוחר יותר" - לא מקפיצים עליה שוב */
+    fun skippedVersion(c: Context) = sp(c).getString("skipVer", "") ?: ""
+    fun setSkippedVersion(c: Context, v: String) = sp(c).edit().putString("skipVer", v).apply()
+    /** גרסה שכבר נשלחה עליה התראה ברקע */
+    fun notifiedVersion(c: Context) = sp(c).getString("notifVer", "") ?: ""
+    fun setNotifiedVersion(c: Context, v: String) = sp(c).edit().putString("notifVer", v).apply()
+
     data class Entry(val time: String, val title: String, val body: String, val level: Int, val ts: Long = 0)
 
     /** היסטוריית התראות, החדשה ראשונה */

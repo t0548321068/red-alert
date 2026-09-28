@@ -199,8 +199,8 @@ class MainActivity : Activity() {
         // כפתורי בדיקה
         val tests = LinearLayout(this)
         listOf(
-            Triple("בדיקת ירי", C.RED, "ירי רקטות וטילים"),
             Triple("מקדימה", C.ORANGE, "בדקות הקרובות צפויות להתקבל התרעות באזורך"),
+            Triple("בדיקת ירי", C.RED, "ירי רקטות וטילים"),
             Triple("סיום", C.GREEN, "האירוע הסתיים")
         ).forEachIndexed { i, (label, color, title) ->
             tests.addView(text(label, 13f, color).apply {
@@ -228,12 +228,18 @@ class MainActivity : Activity() {
         }
         setContentView(scroll)
         askPermissions()
-        Updater.check(this, silent = true)
     }
+
+    private var updateCheckedAt = 0L
 
     override fun onResume() {
         super.onResume()
         ui.post(tick)
+        // בכל חזרה לאפליקציה (כולל לחיצה על התראת "גרסה חדשה"), לכל היותר פעם ב-10 דקות
+        if (System.currentTimeMillis() - updateCheckedAt > 10 * 60 * 1000) {
+            updateCheckedAt = System.currentTimeMillis()
+            Updater.check(this, silent = true)
+        }
     }
 
     override fun onPause() {
