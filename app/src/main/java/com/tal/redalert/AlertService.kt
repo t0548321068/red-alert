@@ -106,7 +106,7 @@ class AlertService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_TEST) {
             val title = intent.getStringExtra("title") ?: "ירי רקטות וטילים"
-            fire(title, listOf("התראת בדיקה"))
+            fire(title, listOf("התראת בדיקה"), forceScreen = true)
         }
         return START_STICKY
     }
@@ -222,7 +222,7 @@ class AlertService : Service() {
         else -> String(b, Charsets.UTF_8)
     }
 
-    private fun fire(title: String, areas: List<String>) {
+    private fun fire(title: String, areas: List<String>, forceScreen: Boolean = false) {
         val body = areas.joinToString(", ")
         val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
             .format(java.util.Date())
@@ -246,6 +246,12 @@ class AlertService : Service() {
             .setAutoCancel(true)
             .build()
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n)
+
+        // מסך מלא גם כשהטלפון פתוח ובשימוש:
+        // בבדיקה (האפליקציה בחזית) או עם הרשאת "הצגה מעל אפליקציות אחרות"
+        if (forceScreen || android.provider.Settings.canDrawOverlays(this)) {
+            try { startActivity(full) } catch (_: Exception) { }
+        }
 
         when (level) {
             LEVEL_ALERT -> playAlarm(RingtoneManager.TYPE_ALARM, 15000)
