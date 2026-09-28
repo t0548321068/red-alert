@@ -33,6 +33,8 @@ object Prefs {
     fun setShowSeconds(c: Context, v: Boolean) = sp(c).edit().putBoolean("seconds", v).apply()
     fun showDate(c: Context) = sp(c).getBoolean("date", true)
     fun setShowDate(c: Context, v: Boolean) = sp(c).edit().putBoolean("date", v).apply()
+    fun showWeather(c: Context) = sp(c).getBoolean("weather", true)
+    fun setShowWeather(c: Context, v: Boolean) = sp(c).edit().putBoolean("weather", v).apply()
 
     data class Entry(val time: String, val title: String, val body: String, val level: Int, val ts: Long = 0)
 

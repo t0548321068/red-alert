@@ -2,7 +2,7 @@ name: Build APK
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
   workflow_dispatch:
 
 permissions:
@@ -37,6 +37,7 @@ jobs:
 
       # פרסום כ-Release - ממנו האפליקציה מורידה עדכונים
       - uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
         with:
           tag_name: v${{ steps.ver.outputs.name }}
           name: גרסה ${{ steps.ver.outputs.name }}
