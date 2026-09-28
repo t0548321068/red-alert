@@ -52,12 +52,59 @@ class MainActivity : Activity() {
     private lateinit var historyBox: LinearLayout
     private lateinit var clockTime: TextView
     private lateinit var clockDay: TextView
+    private lateinit var weatherLine: TextView
+    private var weatherAt = 0L
     private var lastHistoryKey = ""
+
+    private fun hasLocationPerm() =
+        checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    /** מתעדכן כל 15 דקות, או מיד כשמכריחים */
+    private fun updateWeather(force: Boolean = false) {
+        if (!Prefs.showWeather(this)) { weatherLine.visibility = View.GONE; return }
+        weatherLine.visibility = View.VISIBLE
+        if (!hasLocationPerm()) {
+            weatherLine.text = "📍 הצג מזג אוויר לפי מיקום"
+            weatherLine.setTextColor(C.BLUE)
+            return
+        }
+        if (!force && System.currentTimeMillis() - weatherAt < 15 * 60 * 1000) return
+        weatherAt = System.currentTimeMillis()
+        val loc = Weather.lastLocation(this)
+        if (loc == null) {
+            weatherLine.text = "📍 מחפש מיקום…"
+            weatherLine.setTextColor(C.MUTED)
+            weatherAt = 0L   // ננסה שוב בסבב הבא
+            return
+        }
+        Thread {
+            val w = try { Weather.fetch(this, loc) } catch (_: Exception) { null }
+            runOnUiThread {
+                if (w == null) { weatherAt = 0L; return@runOnUiThread }
+                val (icon, desc) = Weather.describe(w.code, w.isDay)
+                weatherLine.text = listOf("$icon ${w.temp}°", desc, w.place)
+                    .filter { it.isNotBlank() }.joinToString(" · ")
+                weatherLine.setTextColor(C.TEXT)
+            }
+        }.start()
+    }
+
+    private fun onWeatherClick() {
+        if (hasLocationPerm()) updateWeather(force = true)
+        else requestPermissions(arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION), 2)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 2) updateWeather(force = true)
+    }
 
     private val ui = Handler(Looper.getMainLooper())
     private val tick = object : Runnable {
         override fun run() {
             updateClock()
+            updateWeather()
             // שאר המסך מתעדכן רק כשמשהו השתנה
             val key = "${Prefs.enabled(this@MainActivity)}|${Prefs.history(this@MainActivity).firstOrNull()?.ts}"
             if (key != lastHistoryKey) { lastHistoryKey = key; refresh() }
@@ -107,6 +154,11 @@ class MainActivity : Activity() {
         }
         col.addView(clockTime, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
         col.addView(clockDay)
+        weatherLine = text("", 14f, C.TEXT).apply {
+            gravity = Gravity.CENTER
+            setOnClickListener { onWeatherClick() }
+        }
+        col.addView(weatherLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
 
         // עיגול הפעלה/כיבוי
         circleIcon = text("✓", 40f, C.GREEN).apply { gravity = Gravity.CENTER }
@@ -290,7 +342,7 @@ class MainActivity : Activity() {
     }
 
     private fun showSettings() {
-        val options = arrayOf("שעה ותאריך", "בדיקת עדכונים", "הצגה במסך מלא", "חיסכון בסוללה", "הגדרות התראות")
+        val options = arrayOf("תצוגה", "בדיקת עדכונים", "הצגה במסך מלא", "חיסכון בסוללה", "הגדרות התראות")
         AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setTitle("הגדרות · גרסה ${Updater.currentVersion(this)}")
             .setItems(options) { _, which ->
@@ -310,10 +362,11 @@ class MainActivity : Activity() {
         val items = arrayOf(
             "סגנון יום: ${TimeFormat.DAY_OPTIONS[Prefs.dayStyle(this)]}",
             "שניות: " + if (Prefs.showSeconds(this)) "מוצג" else "מוסתר",
-            "תאריך: " + if (Prefs.showDate(this)) "מוצג" else "מוסתר"
+            "תאריך: " + if (Prefs.showDate(this)) "מוצג" else "מוסתר",
+            "מזג אוויר: " + if (Prefs.showWeather(this)) "מוצג" else "מוסתר"
         )
         AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("שעה ותאריך")
+            .setTitle("תצוגה")
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
@@ -325,6 +378,7 @@ class MainActivity : Activity() {
                         .show()
                     1 -> { Prefs.setShowSeconds(this, !Prefs.showSeconds(this)); updateClock(); refresh(); showClockSettings() }
                     2 -> { Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); showClockSettings() }
+                    3 -> { Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); showClockSettings() }
                 }
             }
             .setPositiveButton("סגור", null)
