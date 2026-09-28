@@ -28,20 +28,28 @@ import android.widget.TextView
 
 class MainActivity : Activity() {
 
+    /** צבעים לפי ערכת הנושא (כהה / בהירה) */
     private object C {
-        val BG = Color.parseColor("#0E0E10")
-        val CARD = Color.parseColor("#1C1C1E")
-        val CHIP = Color.parseColor("#2C2C2E")
-        val TEXT = Color.parseColor("#F2F2F2")
-        val MUTED = Color.parseColor("#8E8E93")
-        val GREEN = Color.parseColor("#30D158")
-        val GREEN_BG = Color.parseColor("#0F2A17")
-        val OFF = Color.parseColor("#636366")
-        val OFF_BG = Color.parseColor("#1C1C1E")
-        val BLUE = Color.parseColor("#0A84FF")
-        val RED = Color.parseColor("#FF3B30")
-        val ORANGE = Color.parseColor("#FF9F0A")
-        val END = Color.parseColor("#2E7D32")
+        var BG = 0; var CARD = 0; var CHIP = 0; var TEXT = 0; var MUTED = 0
+        var GREEN = 0; var GREEN_BG = 0; var OFF = 0; var OFF_BG = 0
+        var BLUE = 0; var RED = 0; var ORANGE = 0; var END = 0
+
+        fun apply(dark: Boolean) {
+            fun c(d: String, l: String) = Color.parseColor(if (dark) d else l)
+            BG = c("#0E0E10", "#F2F2F7")
+            CARD = c("#1C1C1E", "#FFFFFF")
+            CHIP = c("#2C2C2E", "#E5E5EA")
+            TEXT = c("#F2F2F2", "#1C1C1E")
+            MUTED = c("#8E8E93", "#6E6E73")
+            GREEN = c("#30D158", "#248A3D")
+            GREEN_BG = c("#0F2A17", "#E3F5E8")
+            OFF = c("#636366", "#8E8E93")
+            OFF_BG = c("#1C1C1E", "#FFFFFF")
+            BLUE = c("#0A84FF", "#007AFF")
+            RED = c("#FF3B30", "#E0352B")
+            ORANGE = c("#FF9F0A", "#E08600")
+            END = c("#2E7D32", "#2E7D32")
+        }
     }
 
     private lateinit var circle: LinearLayout
@@ -119,13 +127,26 @@ class MainActivity : Activity() {
     }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+    private fun dlg() = Prefs.dialogTheme(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val dark = Prefs.darkTheme(this)
+        setTheme(if (dark) android.R.style.Theme_DeviceDefault_NoActionBar
+                 else android.R.style.Theme_DeviceDefault_Light_NoActionBar)
+        C.apply(dark)
         super.onCreate(savedInstanceState)
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_RTL
         window.decorView.setBackgroundColor(C.BG)
         @Suppress("DEPRECATION")
         window.statusBarColor = C.BG
+        @Suppress("DEPRECATION")
+        window.navigationBarColor = C.BG
+        // אייקונים כהים בשורת המצב כשהרקע בהיר
+        if (Build.VERSION.SDK_INT >= 30) {
+            val light = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            window.insetsController?.setSystemBarsAppearance(if (dark) 0 else light, light)
+        }
 
         val col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -333,7 +354,7 @@ class MainActivity : Activity() {
             setPadding(dp(20), dp(8), dp(20), 0)
             addView(input)
         }
-        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        AlertDialog.Builder(this, dlg())
             .setTitle("הוספת אזור")
             .setView(wrap)
             .setPositiveButton("הוסף") { _, _ ->
@@ -352,7 +373,7 @@ class MainActivity : Activity() {
         val options = arrayOf("תצוגה", "בדיקת עדכונים",
             "מסך מלא בהתראה: " + if (fullOk) "פעיל ✓" else "לא פעיל – לחץ להפעלה",
             "חיסכון בסוללה", "הגדרות התראות")
-        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        AlertDialog.Builder(this, dlg())
             .setTitle("הגדרות · גרסה ${Updater.currentVersion(this)}")
             .setItems(options) { _, which ->
                 when (which) {
@@ -369,25 +390,37 @@ class MainActivity : Activity() {
     /** הגדרות שעה ותאריך - כל שינוי נראה מיד בשעון */
     private fun showClockSettings() {
         val items = arrayOf(
+            "ערכת צבעים: " + if (Prefs.darkTheme(this)) "כהה" else "בהירה",
             "סגנון יום: ${TimeFormat.DAY_OPTIONS[Prefs.dayStyle(this)]}",
             "שניות: " + if (Prefs.showSeconds(this)) "מוצג" else "מוסתר",
             "תאריך: " + if (Prefs.showDate(this)) "מוצג" else "מוסתר",
             "מזג אוויר: " + if (Prefs.showWeather(this)) "מוצג" else "מוסתר"
         )
-        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        AlertDialog.Builder(this, dlg())
             .setTitle("תצוגה")
             .setItems(items) { _, which ->
                 when (which) {
-                    0 -> AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                    0 -> AlertDialog.Builder(this, dlg())
+                        .setTitle("ערכת צבעים")
+                        .setSingleChoiceItems(arrayOf("כהה", "בהירה"), if (Prefs.darkTheme(this)) 0 else 1) { d, i ->
+                            d.dismiss()
+                            val dark = i == 0
+                            if (dark != Prefs.darkTheme(this)) {
+                                Prefs.setDarkTheme(this, dark)
+                                recreate()   // בונה את המסך מחדש בצבעים החדשים
+                            }
+                        }
+                        .show()
+                    1 -> AlertDialog.Builder(this, dlg())
                         .setTitle("סגנון יום")
                         .setSingleChoiceItems(TimeFormat.DAY_OPTIONS, Prefs.dayStyle(this)) { d, i ->
                             Prefs.setDayStyle(this, i)
                             updateClock(); refresh(); d.dismiss(); showClockSettings()
                         }
                         .show()
-                    1 -> { Prefs.setShowSeconds(this, !Prefs.showSeconds(this)); updateClock(); refresh(); showClockSettings() }
-                    2 -> { Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); showClockSettings() }
-                    3 -> { Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); showClockSettings() }
+                    2 -> { Prefs.setShowSeconds(this, !Prefs.showSeconds(this)); updateClock(); refresh(); showClockSettings() }
+                    3 -> { Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); showClockSettings() }
+                    4 -> { Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); showClockSettings() }
                 }
             }
             .setPositiveButton("סגור", null)
