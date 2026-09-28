@@ -36,6 +36,13 @@ object Prefs {
     fun showWeather(c: Context) = sp(c).getBoolean("weather", true)
     fun setShowWeather(c: Context, v: Boolean) = sp(c).edit().putBoolean("weather", v).apply()
 
+    /** ערכת נושא: true = כהה (ברירת מחדל), false = בהירה */
+    fun darkTheme(c: Context) = sp(c).getBoolean("dark", true)
+    fun setDarkTheme(c: Context, v: Boolean) = sp(c).edit().putBoolean("dark", v).apply()
+    fun dialogTheme(c: Context) =
+        if (darkTheme(c)) android.R.style.Theme_DeviceDefault_Dialog_Alert
+        else android.R.style.Theme_DeviceDefault_Light_Dialog_Alert
+
     /** גרסה שנבחר עבורה "מאוחר יותר" - לא מקפיצים עליה שוב */
     fun skippedVersion(c: Context) = sp(c).getString("skipVer", "") ?: ""
     fun setSkippedVersion(c: Context, v: String) = sp(c).edit().putString("skipVer", v).apply()

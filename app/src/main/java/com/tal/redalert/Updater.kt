@@ -83,7 +83,7 @@ object Updater {
     }
 
     private fun offer(a: Activity, version: String, url: String) {
-        AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        AlertDialog.Builder(a, Prefs.dialogTheme(a))
             .setTitle("🆕 גרסה חדשה זמינה – $version")
             .setMessage("הגרסה שלך: ${currentVersion(a)}\nלהתקין עכשיו?\n\n\"מאוחר יותר\" – אפשר לעדכן בכל זמן דרך ⚙ ← בדיקת עדכונים")
             .setPositiveButton("התקן עכשיו") { _, _ -> download(a, version, url) }
