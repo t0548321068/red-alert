@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- מוקטן כדי להישאר בתוך האזור הבטוח של אייקון אדפטיבי -->
+    <group android:pivotX="54" android:pivotY="56" android:scaleX="0.78" android:scaleY="0.78">
+        <!-- קרן אור שמאל -->
+        <path android:pathData="M54,52 L4,30 L4,70 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="linear" android:startX="4" android:startY="52" android:endX="54" android:endY="52">
+                    <item android:offset="0" android:color="#00FF3B30"/>
+                    <item android:offset="1" android:color="#B3FF3B30"/>
+                </gradient>
+            </aapt:attr>
+        </path>
+        <!-- קרן אור ימין -->
+        <path android:pathData="M54,52 L104,30 L104,70 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="linear" android:startX="104" android:startY="52" android:endX="54" android:endY="52">
+                    <item android:offset="0" android:color="#00FF3B30"/>
+                    <item android:offset="1" android:color="#B3FF3B30"/>
+                </gradient>
+            </aapt:attr>
+        </path>
+        <!-- כיפת הצופר -->
+        <path android:pathData="M38,74 V54 A16,16 0 0,1 70,54 V74 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="radial" android:centerX="50.8" android:centerY="49" android:gradientRadius="30">
+                    <item android:offset="0" android:color="#FFFFB3AB"/>
+                    <item android:offset="0.5" android:color="#FFFF2A1A"/>
+                    <item android:offset="1" android:color="#FF990000"/>
+                </gradient>
+            </aapt:attr>
+        </path>
+        <!-- בסיס -->
+        <path android:fillColor="#FFBDBDBD"
+            android:pathData="M35,74 H73 A3,3 0 0,1 76,77 V81 A3,3 0 0,1 73,84 H35 A3,3 0 0,1 32,81 V77 A3,3 0 0,1 35,74 Z"/>
+    </group>
+</vector>
