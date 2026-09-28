@@ -342,7 +342,10 @@ class MainActivity : Activity() {
     }
 
     private fun showSettings() {
-        val options = arrayOf("תצוגה", "בדיקת עדכונים", "הצגה במסך מלא", "חיסכון בסוללה", "הגדרות התראות")
+        val fullOk = Settings.canDrawOverlays(this)
+        val options = arrayOf("תצוגה", "בדיקת עדכונים",
+            "מסך מלא בהתראה: " + if (fullOk) "פעיל ✓" else "לא פעיל – לחץ להפעלה",
+            "חיסכון בסוללה", "הגדרות התראות")
         AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setTitle("הגדרות · גרסה ${Updater.currentVersion(this)}")
             .setItems(options) { _, which ->
@@ -431,6 +434,12 @@ class MainActivity : Activity() {
     }
 
     private fun openFullScreenSettings() {
+        // "הצגה מעל אפליקציות אחרות" - מאפשר לקפוץ במסך מלא גם כשהטלפון בשימוש
+        if (!Settings.canDrawOverlays(this)) {
+            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+                .setData(Uri.parse("package:$packageName")))
+            return
+        }
         if (Build.VERSION.SDK_INT >= 34) {
             val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             if (!nm.canUseFullScreenIntent()) {
