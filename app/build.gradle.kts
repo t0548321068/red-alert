@@ -11,14 +11,27 @@ android {
         applicationId = "com.tal.redalert"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
+    }
+
+    // מפתח קבוע - כדי שכל גרסה חדשה תותקן מעל הקודמת
+    signingConfigs {
+        create("fixed") {
+            storeFile = file("redalert.keystore")
+            storePassword = "redalert123"
+            keyAlias = "redalert"
+            keyPassword = "redalert123"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("fixed")
+        }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("fixed")
         }
     }
 

@@ -148,6 +148,7 @@ class MainActivity : Activity() {
         }
         setContentView(scroll)
         askPermissions()
+        Updater.check(this, silent = true)
     }
 
     override fun onResume() {
@@ -261,14 +262,15 @@ class MainActivity : Activity() {
     }
 
     private fun showSettings() {
-        val options = arrayOf("הצגה במסך מלא", "חיסכון בסוללה", "הגדרות התראות")
+        val options = arrayOf("בדיקת עדכונים", "הצגה במסך מלא", "חיסכון בסוללה", "הגדרות התראות")
         AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("הגדרות")
+            .setTitle("הגדרות · גרסה ${Updater.currentVersion(this)}")
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> openFullScreenSettings()
-                    1 -> openBatterySettings()
-                    2 -> openNotificationSettings()
+                    0 -> Updater.check(this, silent = false)
+                    1 -> openFullScreenSettings()
+                    2 -> openBatterySettings()
+                    3 -> openNotificationSettings()
                 }
             }
             .show()
