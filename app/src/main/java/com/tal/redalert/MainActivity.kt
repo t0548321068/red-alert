@@ -155,8 +155,10 @@ class MainActivity : Activity() {
 
         // כותרת + גלגל שיניים
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        header.addView(text("צבע אדום", 22f, C.TEXT, bold = true),
-            LinearLayout.LayoutParams(0, -2, 1f))
+        header.addView(text("צבע אדום", 22f, C.TEXT, bold = true))
+        header.addView(text("v${Updater.currentVersion(this)}", 13f, C.MUTED).apply {
+            setPadding(dp(8), dp(6), 0, 0)
+        }, LinearLayout.LayoutParams(0, -2, 1f))
         header.addView(text("⚙", 22f, C.MUTED).apply {
             setPadding(dp(8), dp(4), dp(8), dp(4))
             setOnClickListener { showSettings() }
