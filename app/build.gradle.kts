@@ -11,8 +11,8 @@ android {
         applicationId = "com.tal.redalert"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 4
+        versionName = "1.3"
     }
 
     // מפתח קבוע - כדי שכל גרסה חדשה תותקן מעל הקודמת

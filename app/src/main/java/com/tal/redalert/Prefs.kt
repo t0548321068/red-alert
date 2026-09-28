@@ -21,14 +21,28 @@ object Prefs {
     fun enabled(c: Context) = sp(c).getBoolean("enabled", false)
     fun setEnabled(c: Context, v: Boolean) = sp(c).edit().putBoolean("enabled", v).apply()
 
-    data class Entry(val time: String, val title: String, val body: String, val level: Int)
+    // ---- תצוגת שעה ותאריך ----
+    const val DAY_FULL = 0      // יום שני
+    const val DAY_NAME = 1      // שני
+    const val DAY_LETTER = 2    // יום ב'
+    const val DAY_SHORT = 3     // ב'
+
+    fun dayStyle(c: Context) = sp(c).getInt("dayStyle", DAY_FULL)
+    fun setDayStyle(c: Context, v: Int) = sp(c).edit().putInt("dayStyle", v).apply()
+    fun showSeconds(c: Context) = sp(c).getBoolean("seconds", true)
+    fun setShowSeconds(c: Context, v: Boolean) = sp(c).edit().putBoolean("seconds", v).apply()
+    fun showDate(c: Context) = sp(c).getBoolean("date", true)
+    fun setShowDate(c: Context, v: Boolean) = sp(c).edit().putBoolean("date", v).apply()
+
+    data class Entry(val time: String, val title: String, val body: String, val level: Int, val ts: Long = 0)
 
     /** היסטוריית התראות, החדשה ראשונה */
     fun history(c: Context): List<Entry> {
         val arr = try { JSONArray(sp(c).getString("history", "[]")) } catch (_: Exception) { JSONArray() }
         return (0 until arr.length()).map {
             val o = arr.getJSONObject(it)
-            Entry(o.optString("time"), o.optString("title"), o.optString("body"), o.optInt("level"))
+            Entry(o.optString("time"), o.optString("title"), o.optString("body"),
+                o.optInt("level"), o.optLong("ts"))
         }
     }
 
@@ -38,7 +52,7 @@ object Prefs {
         val arr = JSONArray()
         list.forEach {
             arr.put(JSONObject().put("time", it.time).put("title", it.title)
-                .put("body", it.body).put("level", it.level))
+                .put("body", it.body).put("level", it.level).put("ts", it.ts))
         }
         sp(c).edit().putString("history", arr.toString()).apply()
     }

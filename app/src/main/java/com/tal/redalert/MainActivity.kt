@@ -50,10 +50,25 @@ class MainActivity : Activity() {
     private lateinit var circleHint: TextView
     private lateinit var chips: FlowLayout
     private lateinit var historyBox: LinearLayout
+    private lateinit var clockTime: TextView
+    private lateinit var clockDay: TextView
+    private var lastHistoryKey = ""
 
     private val ui = Handler(Looper.getMainLooper())
     private val tick = object : Runnable {
-        override fun run() { refresh(); ui.postDelayed(this, 2000) }
+        override fun run() {
+            updateClock()
+            // שאר המסך מתעדכן רק כשמשהו השתנה
+            val key = "${Prefs.enabled(this@MainActivity)}|${Prefs.history(this@MainActivity).firstOrNull()?.ts}"
+            if (key != lastHistoryKey) { lastHistoryKey = key; refresh() }
+            ui.postDelayed(this, 1000 - System.currentTimeMillis() % 1000)
+        }
+    }
+
+    private fun updateClock() {
+        val now = System.currentTimeMillis()
+        clockTime.text = TimeFormat.time(this, now)
+        clockDay.text = TimeFormat.dayLine(this, now)
     }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
@@ -79,6 +94,19 @@ class MainActivity : Activity() {
             setOnClickListener { showSettings() }
         })
         col.addView(header)
+
+        // שעון
+        clockTime = text("", 44f, C.TEXT).apply {
+            gravity = Gravity.CENTER
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            setOnClickListener { showClockSettings() }
+        }
+        clockDay = text("", 14f, C.MUTED).apply {
+            gravity = Gravity.CENTER
+            setOnClickListener { showClockSettings() }
+        }
+        col.addView(clockTime, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        col.addView(clockDay)
 
         // עיגול הפעלה/כיבוי
         circleIcon = text("✓", 40f, C.GREEN).apply { gravity = Gravity.CENTER }
@@ -229,7 +257,7 @@ class MainActivity : Activity() {
                 maxLines = 2; ellipsize = TextUtils.TruncateAt.END
             })
             row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
-            row.addView(text(e.time.take(5), 12f, C.MUTED))
+            row.addView(text(if (e.ts > 0) TimeFormat.stamp(this, e.ts) else e.time.take(5), 12f, C.MUTED))
             historyBox.addView(row)
             if (i < items.size - 1) {
                 historyBox.addView(View(this).apply { setBackgroundColor(C.CHIP) },
@@ -262,19 +290,47 @@ class MainActivity : Activity() {
     }
 
     private fun showSettings() {
-        val options = arrayOf("בדיקת עדכונים", "הצגה במסך מלא", "חיסכון בסוללה", "הגדרות התראות")
+        val options = arrayOf("שעה ותאריך", "בדיקת עדכונים", "הצגה במסך מלא", "חיסכון בסוללה", "הגדרות התראות")
         AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
             .setTitle("הגדרות · גרסה ${Updater.currentVersion(this)}")
             .setItems(options) { _, which ->
                 when (which) {
-                    0 -> Updater.check(this, silent = false)
-                    1 -> openFullScreenSettings()
-                    2 -> openBatterySettings()
-                    3 -> openNotificationSettings()
+                    0 -> showClockSettings()
+                    1 -> Updater.check(this, silent = false)
+                    2 -> openFullScreenSettings()
+                    3 -> openBatterySettings()
+                    4 -> openNotificationSettings()
                 }
             }
             .show()
     }
+
+    /** הגדרות שעה ותאריך - כל שינוי נראה מיד בשעון */
+    private fun showClockSettings() {
+        val items = arrayOf(
+            "סגנון יום: ${TimeFormat.DAY_OPTIONS[Prefs.dayStyle(this)]}",
+            "שניות: " + if (Prefs.showSeconds(this)) "מוצג" else "מוסתר",
+            "תאריך: " + if (Prefs.showDate(this)) "מוצג" else "מוסתר"
+        )
+        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("שעה ותאריך")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                        .setTitle("סגנון יום")
+                        .setSingleChoiceItems(TimeFormat.DAY_OPTIONS, Prefs.dayStyle(this)) { d, i ->
+                            Prefs.setDayStyle(this, i)
+                            updateClock(); refresh(); d.dismiss(); showClockSettings()
+                        }
+                        .show()
+                    1 -> { Prefs.setShowSeconds(this, !Prefs.showSeconds(this)); updateClock(); refresh(); showClockSettings() }
+                    2 -> { Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); showClockSettings() }
+                }
+            }
+            .setPositiveButton("סגור", null)
+            .show()
+    }
+
 
     // ---- רכיבים ----
 
