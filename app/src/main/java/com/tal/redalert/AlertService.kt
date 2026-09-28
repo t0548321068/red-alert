@@ -226,7 +226,7 @@ class AlertService : Service() {
         val body = areas.joinToString(", ")
         val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
             .format(java.util.Date())
-        Prefs.setLastAlert(this, "$time  $title\n$body")
+        Prefs.addHistory(this, Prefs.Entry(time, title, body, levelOf(title)))
 
         val level = levelOf(title)
         val full = Intent(this, AlertActivity::class.java)
