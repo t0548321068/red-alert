@@ -18,7 +18,7 @@ import java.util.Locale
 /** מזג אוויר לפי מיקום - Open-Meteo (חינמי, בלי מפתח) */
 object Weather {
 
-    data class Now(val temp: Int, val code: Int, val isDay: Boolean, val place: String)
+    data class Now(val temp: Int, val code: Int, val isDay: Boolean, val place: String, val accuracy: Int = 0)
 
     /** מיקום אחרון שידוע למכשיר - גיבוי אם אין מיקום עדכני */
     @SuppressLint("MissingPermission")
@@ -45,10 +45,10 @@ object Weather {
             done(l ?: lastLocation(c))
         }
 
-        // מיקום אחרון שנמדד בדקות האחרונות ובדיוק טוב - מספיק, בלי לחכות
+        // מיקום אחרון שנמדד בדקה האחרונה בדיוק גבוה (GPS) - מספיק, בלי לחכות
         lastLocation(c)?.let {
             val ageMs = System.currentTimeMillis() - it.time
-            if (ageMs < 5 * 60 * 1000 && it.accuracy in 1f..300f) { finish(it); return }
+            if (ageMs < 60 * 1000 && it.accuracy in 0.1f..40f) { finish(it); return }
         }
 
         val providers = buildList {
@@ -62,15 +62,21 @@ object Weather {
         val listeners = mutableListOf<LocationListener>()
         fun stopAll() = listeners.forEach { try { lm.removeUpdates(it) } catch (_: Exception) { } }
 
+        // אוספים מיקומים מכל המקורות ולוקחים את המדויק ביותר.
+        // מיקום רשת (לא מדויק) מגיע בדרך כלל ראשון - לכן לא עוצרים עליו.
+        var best: Location? = null
         for (p in providers) {
             val l = LocationListener { loc ->
-                stopAll()
-                main.post { finish(loc) }
+                if (best == null || loc.accuracy < best!!.accuracy) best = loc
+                if (loc.accuracy in 0.1f..40f) {   // מדויק מספיק - מסיימים מיד
+                    stopAll()
+                    main.post { finish(best) }
+                }
             }
             listeners += l
             try { lm.requestLocationUpdates(p, 0L, 0f, l, Looper.getMainLooper()) } catch (_: Exception) { }
         }
-        main.postDelayed({ stopAll(); finish(null) }, 15_000)
+        main.postDelayed({ stopAll(); finish(best) }, 12_000)
     }
 
     /** קריאת רשת - להריץ מחוץ ל-UI thread */
@@ -83,7 +89,8 @@ object Weather {
             Math.round(cur.getDouble("temperature_2m")).toInt(),
             cur.optInt("weather_code"),
             cur.optInt("is_day", 1) == 1,
-            placeName(c, loc)
+            placeName(c, loc),
+            Math.round(loc.accuracy)
         )
     }
 
@@ -99,27 +106,31 @@ object Weather {
         }
     }
 
-    /** "שכונה, עיר" - קודם מהטלפון, ואם אין תשובה - מ-OpenStreetMap */
+    /**
+     * "שכונה, עיר" - קודם מ-OpenStreetMap (מחזיר שכונות בארץ באופן עקבי),
+     * ואם אין תשובה - מהטלפון
+     */
     @Suppress("DEPRECATION")
     private fun placeName(c: Context, loc: Location): String {
         try {
-            val a = Geocoder(c, Locale("he")).getFromLocation(loc.latitude, loc.longitude, 1)?.firstOrNull()
-            if (a != null) {
-                val city = a.locality ?: a.subAdminArea
-                val hood = a.subLocality?.takeIf { it != city }
+            val url = "https://nominatim.openstreetmap.org/reverse?format=json&zoom=17" +
+                "&lat=%.5f&lon=%.5f".format(Locale.US, loc.latitude, loc.longitude) +
+                "&accept-language=" + URLEncoder.encode("he", "UTF-8")
+            val addr = getJson(url).optJSONObject("address")
+            if (addr != null) {
+                val city = listOf("city", "town", "village", "municipality")
+                    .map { addr.optString(it) }.firstOrNull { it.isNotBlank() }
+                val hood = listOf("neighbourhood", "suburb", "quarter", "residential")
+                    .map { addr.optString(it) }.firstOrNull { it.isNotBlank() && it != city }
                 val name = listOfNotNull(hood, city).joinToString(", ")
                 if (name.isNotBlank()) return name
             }
         } catch (_: Exception) { }
         return try {
-            val url = "https://nominatim.openstreetmap.org/reverse?format=json&zoom=16" +
-                "&lat=%.5f&lon=%.5f".format(Locale.US, loc.latitude, loc.longitude) +
-                "&accept-language=" + URLEncoder.encode("he", "UTF-8")
-            val addr = getJson(url).optJSONObject("address") ?: return ""
-            val city = listOf("city", "town", "village", "municipality")
-                .map { addr.optString(it) }.firstOrNull { it.isNotBlank() }
-            val hood = listOf("suburb", "neighbourhood", "quarter")
-                .map { addr.optString(it) }.firstOrNull { it.isNotBlank() && it != city }
+            val a = Geocoder(c, Locale("he")).getFromLocation(loc.latitude, loc.longitude, 1)?.firstOrNull()
+                ?: return ""
+            val city = a.locality ?: a.subAdminArea
+            val hood = (a.subLocality ?: a.thoroughfare)?.takeIf { it != city }
             listOfNotNull(hood, city).joinToString(", ")
         } catch (_: Exception) { "" }
     }

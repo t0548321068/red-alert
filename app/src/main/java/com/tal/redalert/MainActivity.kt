@@ -62,6 +62,7 @@ class MainActivity : Activity() {
     private lateinit var clockDay: TextView
     private lateinit var weatherLine: TextView
     private var weatherAt = 0L
+    private var weatherAccuracy = -1
     private var lastHistoryKey = ""
 
     private fun granted(p: String) =
@@ -102,6 +103,7 @@ class MainActivity : Activity() {
                     weatherLine.text = listOf("$icon ${w.temp}°", desc, w.place)
                         .filter { it.isNotBlank() }.joinToString(" · ") + hint
                     weatherLine.setTextColor(C.TEXT)
+                    weatherAccuracy = w.accuracy
                 }
             }.start()
         }
@@ -191,6 +193,13 @@ class MainActivity : Activity() {
         weatherLine = text("", 14f, C.TEXT).apply {
             gravity = Gravity.CENTER
             setOnClickListener { onWeatherClick() }
+            // לחיצה ארוכה: כמה מדויק המיקום שנמדד
+            setOnLongClickListener {
+                val msg = if (weatherAccuracy < 0) "עוד לא נמדד מיקום"
+                    else "דיוק המיקום: כ-$weatherAccuracy מטר" + if (hasPrecise()) "" else " (הרשאה משוערת בלבד)"
+                android.widget.Toast.makeText(this@MainActivity, msg, android.widget.Toast.LENGTH_LONG).show()
+                true
+            }
         }
         col.addView(weatherLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
 
