@@ -64,11 +64,14 @@ class MainActivity : Activity() {
     private var weatherAt = 0L
     private var lastHistoryKey = ""
 
+    private fun granted(p: String) =
+        checkSelfPermission(p) == android.content.pm.PackageManager.PERMISSION_GRANTED
     private fun hasLocationPerm() =
-        checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) ==
-            android.content.pm.PackageManager.PERMISSION_GRANTED
+        granted(android.Manifest.permission.ACCESS_COARSE_LOCATION) ||
+            granted(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    private fun hasPrecise() = granted(android.Manifest.permission.ACCESS_FINE_LOCATION)
 
-    /** מתעדכן כל 15 דקות, או מיד כשמכריחים */
+    /** מתעדכן כל 15 דקות, או מיד כשמכריחים (לחיצה על השורה) */
     private fun updateWeather(force: Boolean = false) {
         if (!Prefs.showWeather(this)) { weatherLine.visibility = View.GONE; return }
         weatherLine.visibility = View.VISIBLE
@@ -79,28 +82,36 @@ class MainActivity : Activity() {
         }
         if (!force && System.currentTimeMillis() - weatherAt < 15 * 60 * 1000) return
         weatherAt = System.currentTimeMillis()
-        val loc = Weather.lastLocation(this)
-        if (loc == null) {
-            weatherLine.text = "📍 מחפש מיקום…"
+        if (force || weatherLine.text.isNullOrBlank()) {
+            weatherLine.text = "📍 מאתר מיקום…"
             weatherLine.setTextColor(C.MUTED)
-            weatherAt = 0L   // ננסה שוב בסבב הבא
-            return
         }
-        Thread {
-            val w = try { Weather.fetch(this, loc) } catch (_: Exception) { null }
-            runOnUiThread {
-                if (w == null) { weatherAt = 0L; return@runOnUiThread }
-                val (icon, desc) = Weather.describe(w.code, w.isDay)
-                weatherLine.text = listOf("$icon ${w.temp}°", desc, w.place)
-                    .filter { it.isNotBlank() }.joinToString(" · ")
-                weatherLine.setTextColor(C.TEXT)
+        Weather.freshLocation(this) { loc ->
+            if (loc == null) {
+                weatherLine.text = "📍 לא נמצא מיקום – לחץ לנסות שוב"
+                weatherLine.setTextColor(C.MUTED)
+                weatherAt = 0L
+                return@freshLocation
             }
-        }.start()
+            Thread {
+                val w = try { Weather.fetch(this, loc) } catch (_: Exception) { null }
+                runOnUiThread {
+                    if (w == null) { weatherAt = 0L; return@runOnUiThread }
+                    val (icon, desc) = Weather.describe(w.code, w.isDay)
+                    val hint = if (hasPrecise()) "" else " (לחץ למיקום מדויק)"
+                    weatherLine.text = listOf("$icon ${w.temp}°", desc, w.place)
+                        .filter { it.isNotBlank() }.joinToString(" · ") + hint
+                    weatherLine.setTextColor(C.TEXT)
+                }
+            }.start()
+        }
     }
 
     private fun onWeatherClick() {
-        if (hasLocationPerm()) updateWeather(force = true)
-        else requestPermissions(arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION), 2)
+        if (hasPrecise()) updateWeather(force = true)
+        else requestPermissions(arrayOf(
+            android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION), 2)
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
