@@ -36,6 +36,8 @@ class AlertService : Service() {
         const val ACTION_TEST = "test"
 
         private const val CH_INFO = "info"
+        private const val CH_UPDATE = "updates"
+        private const val ID_UPDATE = 3
 
         const val LEVEL_ALERT = 0
         const val LEVEL_PRE = 1
@@ -96,6 +98,7 @@ class AlertService : Service() {
         running = true
         Thread(::loop, "oref-poll").start()
         Thread(::historyLoop, "oref-history").start()
+        Thread(::updateLoop, "update-check").start()
         tzofar = TzofarSource(this) { title, areas -> handle(title, areas) }.also { it.start() }
         tzevadom = TzevadomSource(this) { title, areas -> handle(title, areas) }.also { it.start() }
         telegram = listOf("PikudHaOref_all", "tzevaadomm", "CumtaAlertsChannel", "Radar_Alerts").map { ch ->
@@ -162,6 +165,26 @@ class AlertService : Service() {
         val title = json.optString("title", "התראה")
         val arr = json.optJSONArray("data") ?: return
         handle(title, (0 until arr.length()).map { arr.getString(it) })
+    }
+
+    /** בדיקת גרסה חדשה כל 3 שעות - התראה אחת לכל גרסה, לחיצה פותחת את הפופ-אפ */
+    private fun updateLoop() {
+        Thread.sleep(60_000)
+        while (running) {
+            val v = Updater.pendingVersion(this)
+            if (v != null && Prefs.notifiedVersion(this) != v) {
+                Prefs.setNotifiedVersion(this, v)
+                val n = Notification.Builder(this, CH_UPDATE)
+                    .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                    .setContentTitle("🆕 גרסה חדשה זמינה – $v")
+                    .setContentText("לחץ כדי להתקין")
+                    .setContentIntent(openApp())
+                    .setAutoCancel(true)
+                    .build()
+                (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_UPDATE, n)
+            }
+            Thread.sleep(3 * 60 * 60 * 1000L)
+        }
     }
 
     /**
@@ -292,6 +315,8 @@ class AlertService : Service() {
                 setBypassDnd(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             })
+        nm.createNotificationChannel(
+            NotificationChannel(CH_UPDATE, "עדכוני גרסה", NotificationManager.IMPORTANCE_DEFAULT))
         nm.createNotificationChannel(
             NotificationChannel(CH_INFO, "סיום אירוע", NotificationManager.IMPORTANCE_HIGH).apply {
                 setSound(null, null)
