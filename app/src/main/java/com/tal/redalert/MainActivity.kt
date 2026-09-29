@@ -194,7 +194,7 @@ class MainActivity : Activity() {
         // כותרת + גלגל שיניים
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         header.addView(text("צבע אדום", 22f, C.TEXT, bold = true))
-        header.addView(text("v${Updater.currentVersion(this)}", 13f, C.MUTED).apply {
+        header.addView(text("v${Updater.currentVersion(this)}" + if (Updater.isBetaBuild(this)) "β" else "", 13f, C.MUTED).apply {
             setPadding(dp(8), dp(6), 0, 0)
         }, LinearLayout.LayoutParams(0, -2, 1f))
         header.addView(text("🕰", 20f, C.MUTED).apply {
@@ -493,9 +493,11 @@ class MainActivity : Activity() {
             "צלילים", "רטט", "🗣 הקראה: " + if (Prefs.speakAlerts(this)) "פעיל" else "כבוי",
             "🔕 עקיפת נא לא להפריע: " + dndState(),
             "שעות שקט: $quiet",
-            "חיסכון בסוללה", "הגדרות התראות", "ℹ️ אודות")
+            "חיסכון בסוללה", "הגדרות התראות",
+            "🧪 גרסאות בטא: " + if (Prefs.betaUpdates(this)) "מקבל ✓" else "כבוי",
+            "ℹ️ אודות")
         AlertDialog.Builder(this, dlg())
-            .setTitle("הגדרות · גרסה ${Updater.currentVersion(this)}")
+            .setTitle("הגדרות · גרסה ${Updater.versionLabel(this)}")
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> showClockSettings()
@@ -510,7 +512,8 @@ class MainActivity : Activity() {
                     9 -> showQuietHours()
                     10 -> openBatterySettings()
                     11 -> openNotificationSettings()
-                    12 -> showAbout()
+                    12 -> showBeta()
+                    13 -> showAbout()
                 }
             }
             .show()
@@ -808,9 +811,25 @@ class MainActivity : Activity() {
             .show()
     }
 
+    private fun showBeta() {
+        val on = Prefs.betaUpdates(this)
+        AlertDialog.Builder(this, dlg())
+            .setTitle("🧪 גרסאות בטא")
+            .setMessage("קבלת גרסאות ניסיון לפני שהן משוחררות לכולם.\n" +
+                "יכולות להיות בהן תקלות. כשיוצאת גרסה רגילה חדשה – היא מותקנת כרגיל.\n\n" +
+                "מצב: " + if (on) "מקבל גרסאות בטא ✓" else "כבוי")
+            .setPositiveButton(if (on) "כבה" else "הפעל") { _, _ ->
+                Prefs.setBetaUpdates(this, !on)
+                Prefs.setSkippedVersion(this, "")
+                if (!on) Updater.check(this, silent = false)
+            }
+            .setNegativeButton("סגור", null)
+            .show()
+    }
+
     private fun showAbout() {
         val msg = """
-            |צבע אדום · גרסה ${Updater.currentVersion(this)}
+            |צבע אדום · גרסה ${Updater.versionLabel(this)}
             |התראות פיקוד העורף בזמן אמת, גם כשהאפליקציה סגורה והמסך כבוי.
             |
             |📡 מקורות (${SourceHealth.total()}):

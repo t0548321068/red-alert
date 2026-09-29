@@ -21,8 +21,32 @@ object Updater {
     private const val API = "https://api.github.com/repos/t0548321068/red-alert/releases/latest"
     private const val MIME = "application/vnd.android.package-archive"
 
+    private const val BETA_API = "https://api.github.com/repos/t0548321068/red-alert/releases/tags/beta"
+
     fun currentVersion(c: Context): String =
         c.packageManager.getPackageInfo(c.packageName, 0).versionName ?: "0"
+
+    fun buildNumber(c: Context): Int = c.getString(R.string.build_number).toIntOrNull() ?: 0
+    fun isBetaBuild(c: Context): Boolean = c.resources.getBoolean(R.bool.is_beta)
+
+    /** לתצוגה: "1.20" או "1.20 בטא 153" */
+    fun versionLabel(c: Context): String =
+        currentVersion(c) + if (isBetaBuild(c)) " בטא ${buildNumber(c)}" else ""
+
+    /** עדכון זמין: label לתצוגה, key לזיכרון "מאוחר יותר", url להורדה */
+    data class Update(val label: String, val key: String, val url: String)
+
+    /** הגרסה הכי מתאימה להתקנה: יציבה חדשה, או (אם ביקשו) בטא חדשה */
+    private fun best(c: Context): Update? {
+        val cur = currentVersion(c)
+        fetch(API)?.let { (ver, url, _) ->
+            if (isNewer(ver, cur)) return Update(ver, ver, url)
+        }
+        if (Prefs.betaUpdates(c)) fetch(BETA_API)?.let { (ver, url, build) ->
+            if (build > buildNumber(c) && !isNewer(cur, ver)) return Update("$ver בטא $build", "beta-$build", url)
+        }
+        return null
+    }
 
     /**
      * silent = בדיקה אוטומטית: בלי הודעה כשאין עדכון,
@@ -30,43 +54,47 @@ object Updater {
      */
     fun check(a: Activity, silent: Boolean) {
         Thread {
-            val latest = try { fetchLatest() } catch (_: Exception) { null }
+            var failed = false
+            val u = try { best(a) } catch (_: Exception) { failed = true; null }
             a.runOnUiThread {
                 if (a.isFinishing) return@runOnUiThread
                 when {
-                    latest == null ->
-                        if (!silent) toast(a, "לא ניתן לבדוק עדכונים כרגע")
-                    isNewer(latest.first, currentVersion(a)) ->
-                        if (!silent || Prefs.skippedVersion(a) != latest.first) offer(a, latest.first, latest.second)
-                    !silent -> toast(a, "יש לך את הגרסה האחרונה (${currentVersion(a)})")
+                    u != null ->
+                        if (!silent || Prefs.skippedVersion(a) != u.key) offer(a, u)
+                    failed -> if (!silent) toast(a, "לא ניתן לבדוק עדכונים כרגע")
+                    !silent -> toast(a, "יש לך את הגרסה האחרונה (${versionLabel(a)})")
                 }
             }
         }.start()
     }
 
-    /** לשירות ברקע: מחזיר גרסה חדשה אם יש ולא נדחתה, אחרת null */
+    /** לשירות ברקע: מחזיר גרסה חדשה (label) אם יש ולא נדחתה, אחרת null */
     fun pendingVersion(c: Context): String? {
-        val latest = try { fetchLatest() } catch (_: Exception) { null } ?: return null
-        if (!isNewer(latest.first, currentVersion(c))) return null
-        if (Prefs.skippedVersion(c) == latest.first) return null
-        return latest.first
+        val u = try { best(c) } catch (_: Exception) { null } ?: return null
+        if (Prefs.skippedVersion(c) == u.key) return null
+        return u.label
     }
 
-    private fun fetchLatest(): Pair<String, String>? {
-        val conn = URL(API).openConnection() as HttpURLConnection
+    /** (גרסה, קישור ל-APK, מספר בנייה) */
+    private fun fetch(api: String): Triple<String, String, Int>? {
+        val conn = URL(api).openConnection() as HttpURLConnection
         conn.connectTimeout = 8000
         conn.readTimeout = 8000
         conn.setRequestProperty("Accept", "application/vnd.github+json")
         val json = try {
+            if (conn.responseCode != 200) return null
             JSONObject(conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) })
         } finally {
             conn.disconnect()
         }
-        val version = json.optString("tag_name").removePrefix("v")
+        val body = json.optString("body")
+        fun field(k: String) = Regex("$k=([\\w.]+)").find(body)?.groupValues?.get(1)
+        val version = field("version") ?: json.optString("tag_name").removePrefix("v")
+        val build = field("build")?.toIntOrNull() ?: 0
         val assets = json.optJSONArray("assets") ?: return null
         for (i in 0 until assets.length()) {
             val url = assets.getJSONObject(i).optString("browser_download_url")
-            if (url.endsWith(".apk")) return version to url
+            if (url.endsWith(".apk")) return Triple(version, url, build)
         }
         return null
     }
@@ -82,12 +110,15 @@ object Updater {
         return false
     }
 
-    private fun offer(a: Activity, version: String, url: String) {
+    private fun offer(a: Activity, u: Update) {
+        val beta = u.key.startsWith("beta")
         AlertDialog.Builder(a, Prefs.dialogTheme(a))
-            .setTitle("🆕 גרסה חדשה זמינה – $version")
-            .setMessage("הגרסה שלך: ${currentVersion(a)}\nלהתקין עכשיו?\n\n\"מאוחר יותר\" – אפשר לעדכן בכל זמן דרך ⚙ ← בדיקת עדכונים")
-            .setPositiveButton("התקן עכשיו") { _, _ -> download(a, version, url) }
-            .setNegativeButton("מאוחר יותר") { _, _ -> Prefs.setSkippedVersion(a, version) }
+            .setTitle((if (beta) "🧪 גרסת בטא זמינה – " else "🆕 גרסה חדשה זמינה – ") + u.label)
+            .setMessage("הגרסה שלך: ${versionLabel(a)}\nלהתקין עכשיו?" +
+                (if (beta) "\n\nגרסת בטא – לפני שחרור לכולם, יכולות להיות בה תקלות." else "") +
+                "\n\n\"מאוחר יותר\" – אפשר לעדכן בכל זמן דרך ⚙ ← בדיקת עדכונים")
+            .setPositiveButton("התקן עכשיו") { _, _ -> download(a, u.label.replace(" ", "-"), u.url) }
+            .setNegativeButton("מאוחר יותר") { _, _ -> Prefs.setSkippedVersion(a, u.key) }
             .setCancelable(false)
             .show()
     }

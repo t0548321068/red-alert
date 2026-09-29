@@ -13,6 +13,11 @@ android {
         targetSdk = 35
         versionCode = 21
         versionName = "1.20"
+        // מספר בנייה (עולה בכל בנייה) + האם זו גרסת בטא (כל ענף שאינו main)
+        val runNum = System.getenv("GITHUB_RUN_NUMBER") ?: "0"
+        val branch = System.getenv("GITHUB_REF_NAME") ?: "main"
+        resValue("string", "build_number", runNum)
+        resValue("bool", "is_beta", (branch != "main").toString())
     }
 
     // מפתח קבוע - כדי שכל גרסה חדשה תותקן מעל הקודמת
