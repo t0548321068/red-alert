@@ -6,7 +6,7 @@ import org.json.JSONObject
 
 object Prefs {
     private const val FILE = "prefs"
-    private const val MAX_HISTORY = 20
+    private const val MAX_HISTORY = 300   // מספיק לשבוע אחורה במפה
 
     private fun sp(c: Context) = c.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 

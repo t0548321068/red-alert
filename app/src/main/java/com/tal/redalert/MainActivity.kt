@@ -234,7 +234,12 @@ class MainActivity : Activity() {
 
         // התראות אחרונות
         val histCard = card()
-        histCard.addView(text("התראות אחרונות", 13f, C.MUTED))
+        val histHead = LinearLayout(this)
+        histHead.addView(text("התראות אחרונות", 13f, C.MUTED), LinearLayout.LayoutParams(0, -2, 1f))
+        histHead.addView(text("🗺 מפה", 13f, C.BLUE).apply {
+            setOnClickListener { startActivity(Intent(this@MainActivity, MapActivity::class.java)) }
+        })
+        histCard.addView(histHead)
         historyBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         histCard.addView(historyBox, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
         col.addView(histCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
