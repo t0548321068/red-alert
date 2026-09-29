@@ -226,7 +226,7 @@ class MainActivity : Activity() {
             typeface = Typeface.create("sans-serif", Typeface.BOLD)
             setOnClickListener { showClockSettings() }
         }
-        clockDay = text("", 14f, C.MUTED).apply {
+        clockDay = text("", 14f, C.TEXT).apply {
             gravity = Gravity.CENTER
             setOnClickListener { showClockSettings() }
         }
