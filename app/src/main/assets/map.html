@@ -68,9 +68,10 @@
     var land = css('--land'), edge = css('--edge');
     Object.keys(ALL_AREAS).forEach(function (name) {
       var a = ALL_AREAS[name];
-      if (a.p) L.polygon(a.p, { color: edge, weight: .6, fillColor: land, fillOpacity: 1, interactive: false }).addTo(baseLayer);
+      if (a.p) L.polygon(a.p, { color: edge, weight: .6, fillColor: land, fillOpacity: 1 })
+        .bindPopup(info(name)).addTo(baseLayer);
       L.tooltip({ permanent: true, direction: 'center', className: 'lbl' })
-        .setLatLng(a.c).setContent(name.split(' - ')[0]).addTo(labelLayer);
+        .setLatLng(a.c).setContent(name).addTo(labelLayer);
     });
     // מרכז כל עיר גדולה = ממוצע מרכזי האזורים שלה
     cityLayer.clearLayers();
@@ -91,6 +92,14 @@
   }
   map.on('zoomend', syncLabels);
 
+  function shelter(t) {
+    if (t === undefined) return '';
+    return t <= 0 ? 'מיידי' : t < 60 ? t + ' שניות' : t === 60 ? 'דקה' : t === 90 ? 'דקה וחצי' : Math.round(t / 60) + ' דקות';
+  }
+  function info(name) {
+    var t = ALL_AREAS[name] && ALL_AREAS[name].t;
+    return '<b>' + name + '</b>' + (t !== undefined ? '<br>⏱ זמן להגעה: ' + shelter(t) : '');
+  }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function fmt(ts) {
     var d = new Date(ts);
@@ -110,10 +119,13 @@
       var e = latest[name], color = COLORS[e.level] || COLORS[0];
       var shape = a.p ? L.polygon(a.p, { color: color, weight: 2, fillColor: color, fillOpacity: .55 })
                       : L.circleMarker(a.c, { radius: 8, color: color, fillOpacity: .8 });
-      shape.bindPopup('<b>' + name + '</b><br>' + e.title + '<br>' + fmt(e.ts)).addTo(alertLayer);
+      shape.bindPopup(info(name) + '<br>' + e.title + '<br>' + fmt(e.ts)).addTo(alertLayer);
       bounds.push(a.c);
     });
-    document.getElementById('empty').style.display = bounds.length ? 'none' : 'block';
+    var empty = document.getElementById('empty');
+    empty.style.display = bounds.length ? 'none' : 'block';
+    clearTimeout(window._emptyT);
+    if (!bounds.length) window._emptyT = setTimeout(function () { empty.style.display = 'none'; }, 3500);
     HAS_BOUNDS = bounds.length > 0;
     if (HAS_BOUNDS) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
     else if (ME) map.setView(ME, 12);
