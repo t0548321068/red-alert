@@ -131,10 +131,6 @@ object Prefs {
     fun stayUntil(c: Context) = sp(c).getLong("stayUntil", 0L)
     fun setStayUntil(c: Context, v: Long) = sp(c).edit().putLong("stayUntil", v).commit()
 
-    // ---- צליל חזק: עוצמת "שעון מעורר" למקסימום בזמן ירי והתראה מקדימה ----
-    fun loudAlarm(c: Context) = sp(c).getBoolean("loud", true)
-    fun setLoudAlarm(c: Context, v: Boolean) = sp(c).edit().putBoolean("loud", v).commit()
-
     // ---- עקיפת "נא לא להפריע" בזמן התראה ----
     fun dndOverride(c: Context) = sp(c).getBoolean("dndOverride", true)
     fun setDndOverride(c: Context, v: Boolean) = sp(c).edit().putBoolean("dndOverride", v).commit()
