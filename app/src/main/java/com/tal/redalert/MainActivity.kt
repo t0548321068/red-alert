@@ -681,10 +681,14 @@ class MainActivity : Activity() {
     private val SOUND_NAMES = arrayOf("ירי / חדירה", "התראה מקדימה", "האירוע הסתיים")
 
     private fun showSounds() {
-        val items = Array(3) { "${SOUND_NAMES[it]}: ${Sounds.label(this, it)}" }
+        val items = Array(3) { "${SOUND_NAMES[it]}: ${Sounds.label(this, it)}" } +
+            ("📢 צליל חזק (עוצמה מקסימלית בהתראה): " + if (Prefs.loudAlarm(this)) "פעיל ✓" else "כבוי")
         AlertDialog.Builder(this, dlg())
             .setTitle("🔊 צלילים")
-            .setItems(items) { _, level -> chooseSound(level) }
+            .setItems(items) { _, i ->
+                if (i < 3) chooseSound(i)
+                else { Prefs.setLoudAlarm(this, !Prefs.loudAlarm(this)); showSounds() }
+            }
             .setPositiveButton("סגור", null)
             .show()
     }

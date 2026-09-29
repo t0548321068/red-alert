@@ -438,7 +438,7 @@ class AlertService : Service() {
             .setAutoCancel(true)
         if (!quiet) nb.setFullScreenIntent(fullPi, true)
         val n = nb.build()
-        if (!quiet && level != LEVEL_END) overrideDnd()
+        if (!quiet && level != LEVEL_END) { overrideDnd(); boostVolume() }
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n)
 
         // מסך מלא גם כשהטלפון פתוח ובשימוש:
@@ -529,6 +529,25 @@ class AlertService : Service() {
         if (dndSaved != -1 && nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_ALL)
             try { nm.setInterruptionFilter(dndSaved) } catch (_: Exception) { }
         dndSaved = -1
+    }
+
+    /** צליל חזק: עוצמת "שעון מעורר" למקסימום לחצי דקה (הקראה + צופר), ואז חוזרת למה שהיה */
+    private var savedVolume = -1
+    private fun boostVolume() {
+        if (!Prefs.loudAlarm(this)) return
+        val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+        val s = android.media.AudioManager.STREAM_ALARM
+        if (savedVolume == -1) savedVolume = am.getStreamVolume(s)
+        try { am.setStreamVolume(s, am.getStreamMaxVolume(s), 0) } catch (_: Exception) { }
+        main.removeCallbacks(restoreVolume)
+        main.postDelayed(restoreVolume, 30_000)
+    }
+    private val restoreVolume = Runnable {
+        if (savedVolume != -1) try {
+            (getSystemService(AUDIO_SERVICE) as android.media.AudioManager)
+                .setStreamVolume(android.media.AudioManager.STREAM_ALARM, savedVolume, 0)
+        } catch (_: Exception) { }
+        savedVolume = -1
     }
 
     /** מדליק את המסך כשהוא כבוי - שההתראה תופיע מיד גם על מסך הנעילה */
