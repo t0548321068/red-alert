@@ -535,7 +535,7 @@ class MainActivity : Activity() {
 
     private fun showNetworkInfo() {
         val net = network()
-        val type = when (net?.first) { "wifi" -> " (וויפי)"; "cell" -> " (נתונים)"; else -> "" }
+        val type = when (net?.first) { "wifi" -> " (Wi-Fi)"; "cell" -> " (נתונים ניידים)"; else -> "" }
         val msg = when {
             net == null -> "לא מחובר לרשת – התראות לא יגיעו"
             !net.second -> "מחובר לרשת$type, אבל אין אינטרנט"
