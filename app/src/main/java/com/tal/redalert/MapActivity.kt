@@ -21,8 +21,6 @@ class MapActivity : Activity() {
         val web = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
-            // זיהוי האפליקציה מול שרתי המפות (חלקם חוסמים WebView אנונימי)
-            settings.userAgentString = settings.userAgentString + " RedAlert-Android (github.com/t0548321068/red-alert)"
             setBackgroundColor(Color.TRANSPARENT)
         }
         setContentView(web)
@@ -34,9 +32,9 @@ class MapActivity : Activity() {
         web.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView, url: String) {
                 Thread {
-                    val (data, areas) = buildData(dark)
+                    val data = buildData(dark)
                     runOnUiThread {
-                        view.evaluateJavascript("render($data, $areas);", null)
+                        view.evaluateJavascript("render($data);", null)
                         locate(view)
                     }
                 }.start()
@@ -59,18 +57,13 @@ class MapActivity : Activity() {
     }
 
     /** ממיר את היסטוריית ההתראות לנתונים למפה + רק האזורים שצריך */
-    private fun buildData(dark: Boolean): Pair<String, String> {
-        val all = AreaData.areas(this)
-        val needed = JSONObject()
+    private fun buildData(dark: Boolean): String {
         val events = JSONArray()
 
         Prefs.history(this).filter { it.ts > 0 }.forEach { e ->
             val names = JSONArray()
             e.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach { raw ->
-                AreaData.match(this, raw).forEach { name ->
-                    names.put(name)
-                    if (!needed.has(name)) needed.put(name, all.getJSONObject(name))
-                }
+                AreaData.match(this, raw).forEach { name -> names.put(name) }
             }
             if (names.length() > 0) {
                 events.put(JSONObject()
@@ -86,6 +79,6 @@ class MapActivity : Activity() {
                 data.put("me", JSONArray().put(it.latitude).put(it.longitude))
             }
         }
-        return data.toString() to needed.toString()
+        return data.toString()
     }
 }

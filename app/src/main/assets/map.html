@@ -5,26 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <link rel="stylesheet" href="leaflet/leaflet.css">
 <script src="leaflet/leaflet.js"></script>
+<!-- כל אזורי ההתרעה בארץ (גבולות + מרכז) - המפה מצוירת מהם, בלי שום שרת חיצוני -->
+<script src="areas.js"></script>
 <style>
+  :root { --sea: #0f1720; --land: #4a505b; --edge: #626976; --label: #d6d9de; --panel: rgba(28,28,30,.92); --text: #eee; }
+  body.light { --sea: #cfe3f3; --land: #ffffff; --edge: #bdb6a8; --label: #33363b; --panel: rgba(255,255,255,.95); --text: #1C1C1E; }
   html, body, #map { margin: 0; height: 100%; }
-  .leaflet-container { background: #1b1d22; }
-  body.light .leaflet-container { background: #e9e9ee; }
-  body { font-family: sans-serif; background: #0E0E10; }
+  body { font-family: sans-serif; }
+  #map { background: var(--sea); }
   .bar { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000;
-         display: flex; gap: 6px; background: rgba(28,28,30,.92); padding: 5px; border-radius: 18px; }
-  .bar button { white-space: nowrap; border: 0; background: transparent; color: #ccc; padding: 7px 13px; border-radius: 14px; font-size: 14px; }
+         display: flex; gap: 6px; background: var(--panel); padding: 5px; border-radius: 18px; }
+  .bar button { white-space: nowrap; border: 0; background: transparent; color: var(--text); padding: 7px 13px; border-radius: 14px; font-size: 14px; }
   .bar button.on { background: #FF3B30; color: #fff; }
-  .legend { position: absolute; bottom: 18px; right: 10px; z-index: 1000; background: rgba(28,28,30,.92);
-            color: #eee; padding: 8px 10px; border-radius: 10px; font-size: 12px; line-height: 1.8; }
+  .legend { position: absolute; bottom: 18px; right: 10px; z-index: 1000; background: var(--panel);
+            color: var(--text); padding: 8px 10px; border-radius: 10px; font-size: 12px; line-height: 1.8; }
   .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-left: 6px; }
-  .empty { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); z-index: 1000;
-           background: rgba(28,28,30,.92); color: #eee; padding: 8px 14px; border-radius: 10px; font-size: 14px; display: none; }
-  body.light .bar, body.light .legend, body.light .empty { background: rgba(255,255,255,.95); color: #1C1C1E; }
-  body.light .bar button { color: #555; }
-  .leaflet-popup-content { direction: rtl; text-align: right; }
+  .empty { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); z-index: 1000; white-space: nowrap;
+           background: var(--panel); color: var(--text); padding: 8px 14px; border-radius: 10px; font-size: 14px; display: none; }
   .me-btn { position: absolute; bottom: 18px; left: 10px; z-index: 1000; width: 46px; height: 46px;
-            border-radius: 50%; border: 0; font-size: 22px; background: rgba(28,28,30,.92); }
-  body.light .me-btn { background: rgba(255,255,255,.95); box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+            border-radius: 50%; border: 0; font-size: 22px; background: var(--panel); }
+  .lbl { background: transparent; border: 0; box-shadow: none; color: var(--label); font-size: 11px; padding: 0; }
+  .lbl::before { display: none; }
+  .city { background: transparent; border: 0; box-shadow: none; color: var(--text); font-size: 13px; font-weight: bold;
+          padding: 0; text-shadow: 0 0 3px var(--sea), 0 0 3px var(--sea); }
+  .city::before { display: none; }
+  .leaflet-popup-content { direction: rtl; text-align: right; }
 </style>
 </head>
 <body>
@@ -34,7 +39,6 @@
   <button data-h="24" class="on">24 שעות</button>
   <button data-h="168">שבוע</button>
 </div>
-<button class="me-btn" id="meBtn" title="המיקום שלי">📍</button>
 <div class="empty" id="empty">אין התראות בטווח הזה</div>
 <div class="legend">
   <div><span class="dot" style="background:#FF3B30"></span>ירי / חדירה</div>
@@ -42,26 +46,50 @@
   <div><span class="dot" style="background:#30D158"></span>האירוע הסתיים</div>
   <div><span class="dot" style="background:#0A84FF"></span>המיקום שלי</div>
 </div>
+<button class="me-btn" id="meBtn" title="המיקום שלי">📍</button>
 <script>
   var COLORS = ['#FF3B30', '#FF9F0A', '#30D158'];
-  var map = L.map('map', { zoomControl: false, attributionControl: true }).setView([31.6, 34.9], 8);
-  var layer = L.layerGroup().addTo(map);
-  var DATA = null, AREAS = null, HOURS = 24;
-  var ME = null, meLayer = L.layerGroup().addTo(map), HAS_BOUNDS = false;
+  function css(v) { return getComputedStyle(document.body).getPropertyValue(v).trim(); }
 
-  // נקרא מהאפליקציה כשיש מיקום עדכני
-  function setMe(lat, lon, acc) {
-    ME = [lat, lon];
-    meLayer.clearLayers();
-    if (acc > 0) L.circle(ME, { radius: acc, color: '#0A84FF', weight: 1, fillOpacity: .12 }).addTo(meLayer);
-    L.circleMarker(ME, { radius: 8, color: '#fff', weight: 3, fillColor: '#0A84FF', fillOpacity: 1 })
-      .bindPopup('המיקום שלי' + (acc > 0 ? ' (±' + Math.round(acc) + ' מ\')' : '')).addTo(meLayer);
-    if (!HAS_BOUNDS) map.setView(ME, 14);
+  var map = L.map('map', { zoomControl: false, attributionControl: false, preferCanvas: true, minZoom: 7, maxZoom: 16 })
+    .setView([31.6, 34.9], 8);
+
+  var baseLayer = L.layerGroup().addTo(map);     // כל האזורים = המפה
+  var labelLayer = L.layerGroup();               // שמות - רק כשמתקרבים
+  var cityLayer = L.layerGroup();                // ערים גדולות - להתמצאות כשרחוקים
+  var CITIES = ['ירושלים', 'תל אביב', 'חיפה', 'באר שבע', 'אשדוד', 'אשקלון', 'נתניה', 'אילת',
+                'טבריה', 'קריית שמונה', 'נהריה', 'שדרות', 'עפולה', 'דימונה', 'הרצליה', 'מודיעין'];
+  var alertLayer = L.layerGroup().addTo(map);    // אזורים עם התראה
+  var meLayer = L.layerGroup().addTo(map);
+  var DATA = { dark: true, events: [] }, HOURS = 24, ME = null, HAS_BOUNDS = false;
+
+  function drawBase() {
+    baseLayer.clearLayers(); labelLayer.clearLayers();
+    var land = css('--land'), edge = css('--edge');
+    Object.keys(ALL_AREAS).forEach(function (name) {
+      var a = ALL_AREAS[name];
+      if (a.p) L.polygon(a.p, { color: edge, weight: .6, fillColor: land, fillOpacity: 1, interactive: false }).addTo(baseLayer);
+      L.tooltip({ permanent: true, direction: 'center', className: 'lbl' })
+        .setLatLng(a.c).setContent(name.split(' - ')[0]).addTo(labelLayer);
+    });
+    // מרכז כל עיר גדולה = ממוצע מרכזי האזורים שלה
+    cityLayer.clearLayers();
+    CITIES.forEach(function (city) {
+      var pts = Object.keys(ALL_AREAS).filter(function (n) { return n === city || n.indexOf(city + ' - ') === 0; })
+                  .map(function (n) { return ALL_AREAS[n].c; });
+      if (!pts.length) return;
+      var lat = 0, lon = 0; pts.forEach(function (c) { lat += c[0]; lon += c[1]; });
+      L.tooltip({ permanent: true, direction: 'center', className: 'city' })
+        .setLatLng([lat / pts.length, lon / pts.length]).setContent(city).addTo(cityLayer);
+    });
   }
-  document.getElementById('meBtn').onclick = function () {
-    if (ME) map.setView(ME, 15);
-    else if (window.App) App.locate();
-  };
+  // שמות היישובים רק מזום 12 - אחרת צפוף מדי
+  function syncLabels() {
+    var near = map.getZoom() >= 12;
+    if (near) { if (!map.hasLayer(labelLayer)) labelLayer.addTo(map); if (map.hasLayer(cityLayer)) map.removeLayer(cityLayer); }
+    else { if (map.hasLayer(labelLayer)) map.removeLayer(labelLayer); if (!map.hasLayer(cityLayer)) cityLayer.addTo(map); }
+  }
+  map.on('zoomend', syncLabels);
 
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function fmt(ts) {
@@ -69,67 +97,55 @@
     return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
 
-  function draw() {
-    layer.clearLayers();
-    if (!DATA) return;
-    var since = Date.now() - HOURS * 3600 * 1000;
-    // לכל אזור - האירוע האחרון בטווח הזמן קובע את הצבע
-    var latest = {};
+  function drawAlerts() {
+    alertLayer.clearLayers();
+    var since = Date.now() - HOURS * 3600 * 1000, latest = {};
     DATA.events.forEach(function (e) {
       if (e.ts < since) return;
-      e.areas.forEach(function (a) {
-        if (!latest[a] || latest[a].ts < e.ts) latest[a] = e;
-      });
+      e.areas.forEach(function (a) { if (!latest[a] || latest[a].ts < e.ts) latest[a] = e; });
     });
     var bounds = [];
     Object.keys(latest).forEach(function (name) {
-      var info = AREAS[name];
-      if (!info) return;
+      var a = ALL_AREAS[name]; if (!a) return;
       var e = latest[name], color = COLORS[e.level] || COLORS[0];
-      var popup = '<b>' + name + '</b><br>' + e.title + '<br>' + fmt(e.ts);
-      var shape = info.p
-        ? L.polygon(info.p, { color: color, weight: 1.5, fillOpacity: .45 })
-        : L.circleMarker(info.c, { radius: 7, color: color, fillOpacity: .7 });
-      shape.bindPopup(popup).addTo(layer);
-      bounds.push(info.c);
+      var shape = a.p ? L.polygon(a.p, { color: color, weight: 2, fillColor: color, fillOpacity: .55 })
+                      : L.circleMarker(a.c, { radius: 8, color: color, fillOpacity: .8 });
+      shape.bindPopup('<b>' + name + '</b><br>' + e.title + '<br>' + fmt(e.ts)).addTo(alertLayer);
+      bounds.push(a.c);
     });
     document.getElementById('empty').style.display = bounds.length ? 'none' : 'block';
-    if (bounds.length) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
-    else if (ME) map.setView(ME, 13);
     HAS_BOUNDS = bounds.length > 0;
+    if (HAS_BOUNDS) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
+    else if (ME) map.setView(ME, 12);
   }
 
-  // נקרא מהאפליקציה
-  function render(data, areas) {
-    DATA = data; AREAS = areas;
-    if (!data.dark) document.body.classList.add('light');
-    // CARTO בשני המצבים - שרתי OpenStreetMap חוסמים אפליקציות בלי אישור
-    var url = 'https://{s}.basemaps.cartocdn.com/' + (data.dark ? 'dark_all' : 'rastertiles/voyager') + '/{z}/{x}/{y}{r}.png';
-    var tiles = L.tileLayer(url, {
-      maxZoom: 18, subdomains: 'abcd',
-      attribution: '&copy; OpenStreetMap &copy; CARTO'
-    }).addTo(map);
-    // גיבוי: אם השרת הראשי לא מחזיר אריחים - עוברים ל-Esri
-    var fails = 0, switched = false;
-    tiles.on('tileerror', function () {
-      if (switched || ++fails < 4) return;
-      switched = true;
-      map.removeLayer(tiles);
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' +
-        (data.dark ? 'Canvas/World_Dark_Gray_Base' : 'World_Street_Map') + '/MapServer/tile/{z}/{y}/{x}',
-        { maxZoom: 16, attribution: '&copy; Esri' }).addTo(map);
-    });
-    draw();
+  // ---- נקרא מהאפליקציה ----
+  function render(data) {
+    DATA = data;
+    document.body.classList.toggle('light', !data.dark);
+    drawBase(); drawAlerts(); syncLabels();
+  }
+  function setMe(lat, lon, acc) {
+    ME = [lat, lon];
+    meLayer.clearLayers();
+    if (acc > 0) L.circle(ME, { radius: acc, color: '#0A84FF', weight: 1, fillOpacity: .15, interactive: false }).addTo(meLayer);
+    L.circleMarker(ME, { radius: 8, color: '#fff', weight: 3, fillColor: '#0A84FF', fillOpacity: 1 })
+      .bindPopup('המיקום שלי' + (acc > 0 ? ' (±' + Math.round(acc) + ' מ\')' : '')).addTo(meLayer);
+    if (!HAS_BOUNDS) map.setView(ME, 12);
   }
 
+  document.getElementById('meBtn').onclick = function () {
+    if (ME) map.setView(ME, 14);
+    else if (window.App) App.locate();
+  };
   document.querySelectorAll('.bar button').forEach(function (b) {
     b.onclick = function () {
       document.querySelectorAll('.bar button').forEach(function (x) { x.classList.remove('on'); });
-      b.classList.add('on');
-      HOURS = +b.dataset.h;
-      draw();
+      b.classList.add('on'); HOURS = +b.dataset.h; drawAlerts();
     };
   });
+  // מצויר מיד, עוד לפני שהאפליקציה שולחת נתונים
+  drawBase(); syncLabels();
 </script>
 </body>
 </html>
