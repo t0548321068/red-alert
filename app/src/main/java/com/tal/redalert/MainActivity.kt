@@ -389,7 +389,7 @@ class MainActivity : Activity() {
     private fun toggle() {
         val on = !Prefs.enabled(this)
         Prefs.setEnabled(this, on)
-        if (on) AlertService.start(this) else AlertService.stop(this)
+        if (on) AlertService.start(this, manual = true) else AlertService.stop(this)
         AlertWidget.updateAll(this)
         refresh()
     }
@@ -711,7 +711,7 @@ class MainActivity : Activity() {
                 }.start()
             }
             // השירות צריך לעלות מחדש כדי לקבל גישה למיקום ברקע
-            if (Prefs.enabled(this)) { AlertService.stop(this); AlertService.start(this) }
+            if (Prefs.enabled(this)) { AlertService.stop(this); AlertService.start(this, manual = true) }
         }
         refresh()
     }
