@@ -190,6 +190,10 @@ object Prefs {
         if (darkTheme(c)) android.R.style.Theme_DeviceDefault_Dialog_Alert
         else android.R.style.Theme_DeviceDefault_Light_Dialog_Alert
 
+    /** אפשרות הבטא נפתחה (7 לחיצות על מספר הגרסה) */
+    fun betaUnlocked(c: Context) = sp(c).getBoolean("betaUnlocked", false)
+    fun setBetaUnlocked(c: Context, v: Boolean) = sp(c).edit().putBoolean("betaUnlocked", v).commit()
+
     /** קבלת גרסאות בטא (לפני שהן משוחררות לכולם) */
     fun betaUpdates(c: Context) = sp(c).getBoolean("beta", false)
     fun setBetaUpdates(c: Context, v: Boolean) = sp(c).edit().putBoolean("beta", v).commit()

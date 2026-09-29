@@ -36,6 +36,12 @@ class AlertService : Service() {
         const val ACTION_TEST = "test"
         const val ACTION_SILENCE = "silence"
         const val ACTION_VOICE = "voice"
+        const val ACTION_PUSH = "push"
+
+        /** בטא הופעלה/כובתה - התחברות מחדש להתראות העדכון */
+        fun reloadPush(c: Context) {
+            c.startService(Intent(c, AlertService::class.java).setAction(ACTION_PUSH))
+        }
 
         /** החלפת קול ההקראה בשירות שכבר רץ */
         fun reloadVoice(c: Context) {
@@ -139,7 +145,7 @@ class AlertService : Service() {
         Thread(::historyLoop, "oref-history").start()
         Thread(::updateLoop, "update-check").start()
         Thread(::watchdogLoop, "watchdog").start()
-        updatePush = UpdatePush { onUpdatePing() }.also { it.start() }
+        updatePush = UpdatePush({ Prefs.betaUpdates(this) }) { onUpdatePing() }.also { it.start() }
         Thread(::nearLoop, "near-me").start()
         tzofar = TzofarSource(this) { title, areas -> handle(title, areas, source = "tzofar") }.also { it.start() }
         telegram = listOf("PikudHaOref_all", "tzevaadomm", "CumtaAlertsChannel", "Radar_Alerts").map { ch ->
@@ -154,6 +160,10 @@ class AlertService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // מנגינה רק כשההאזנה חזרה לבד (הדלקת הטלפון / עדכון) - לא בלחיצה ידנית
         if (intent?.getBooleanExtra("chime", false) == true) playAppChime()
+        if (intent?.action == ACTION_PUSH) {
+            updatePush?.reconnect()
+            return START_STICKY
+        }
         if (intent?.action == ACTION_VOICE) {
             speaker?.applyVoice()
             return START_STICKY

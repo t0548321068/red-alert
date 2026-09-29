@@ -196,6 +196,18 @@ class MainActivity : Activity() {
         header.addView(text("צבע אדום", 22f, C.TEXT, bold = true))
         header.addView(text("v${Updater.currentVersion(this)}" + if (Updater.isBetaBuild(this)) "β" else "", 13f, C.MUTED).apply {
             setPadding(dp(8), dp(6), 0, 0)
+            // 7 לחיצות מהירות - פותח את אפשרות הבטא (מוסתרת משאר המשתמשים)
+            var taps = 0; var lastTap = 0L
+            setOnClickListener {
+                val now = System.currentTimeMillis()
+                taps = if (now - lastTap < 1500) taps + 1 else 1
+                lastTap = now
+                if (taps >= 7 && !Prefs.betaUnlocked(this@MainActivity)) {
+                    Prefs.setBetaUnlocked(this@MainActivity, true)
+                    android.widget.Toast.makeText(this@MainActivity, "🧪 גרסאות בטא נפתחו (⚙)",
+                        android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
         }, LinearLayout.LayoutParams(0, -2, 1f))
         header.addView(text("🕰", 20f, C.MUTED).apply {
             setPadding(dp(8), dp(4), dp(8), dp(4))
@@ -487,6 +499,7 @@ class MainActivity : Activity() {
         val fullOk = Settings.canDrawOverlays(this)
         val quiet = if (Prefs.quietOn(this))
             "${hhmm(Prefs.quietFrom(this))}–${hhmm(Prefs.quietTo(this))}" else "כבוי"
+        val betaVisible = Prefs.betaUnlocked(this) || Prefs.betaUpdates(this)
         val options = arrayOf("תצוגה", "בדיקת עדכונים", "מה חדש",
             "מסך מלא בהתראה: " + if (fullOk) "פעיל ✓" else "לא פעיל – לחץ להפעלה",
             "קרוב אליי (לפי מיקום): " + if (Prefs.nearMe(this)) "פעיל" else "כבוי",
@@ -494,8 +507,9 @@ class MainActivity : Activity() {
             "🔕 עקיפת נא לא להפריע: " + dndState(),
             "שעות שקט: $quiet",
             "חיסכון בסוללה", "הגדרות התראות",
-            "🧪 גרסאות בטא: " + if (Prefs.betaUpdates(this)) "מקבל ✓" else "כבוי",
-            "ℹ️ אודות")
+            "ℹ️ אודות") +
+            (if (betaVisible) arrayOf("🧪 גרסאות בטא: " + if (Prefs.betaUpdates(this)) "מקבל ✓" else "כבוי")
+             else emptyArray())
         AlertDialog.Builder(this, dlg())
             .setTitle("הגדרות · גרסה ${Updater.versionLabel(this)}")
             .setItems(options) { _, which ->
@@ -512,8 +526,8 @@ class MainActivity : Activity() {
                     9 -> showQuietHours()
                     10 -> openBatterySettings()
                     11 -> openNotificationSettings()
-                    12 -> showBeta()
-                    13 -> showAbout()
+                    12 -> showAbout()
+                    13 -> showBeta()
                 }
             }
             .show()
@@ -821,6 +835,9 @@ class MainActivity : Activity() {
             .setPositiveButton(if (on) "כבה" else "הפעל") { _, _ ->
                 Prefs.setBetaUpdates(this, !on)
                 Prefs.setSkippedVersion(this, "")
+                if (Prefs.enabled(this)) AlertService.reloadPush(this)
+                // כיבוי - האפשרות חוזרת להיות מוסתרת
+                if (on) Prefs.setBetaUnlocked(this, false)
                 if (!on) Updater.check(this, silent = false)
             }
             .setNegativeButton("סגור", null)
