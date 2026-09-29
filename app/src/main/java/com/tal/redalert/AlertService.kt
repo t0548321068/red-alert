@@ -37,6 +37,9 @@ class AlertService : Service() {
 
         private const val CH_INFO = "info"
         private const val CH_QUIET = "quiet"
+        private const val CH_WATCH = "watchdog"
+        private const val ID_WATCH = 4
+        private const val UNPROTECTED_AFTER_MS = 2 * 60 * 1000L
         private const val CH_UPDATE = "updates_v2"  // ערוץ חדש כדי שההתראה תקפוץ עם צליל
         private const val ID_UPDATE = 3
 
@@ -107,6 +110,7 @@ class AlertService : Service() {
         Thread(::loop, "oref-poll").start()
         Thread(::historyLoop, "oref-history").start()
         Thread(::updateLoop, "update-check").start()
+        Thread(::watchdogLoop, "watchdog").start()
         updatePush = UpdatePush { onUpdatePing() }.also { it.start() }
         Thread(::nearLoop, "near-me").start()
         tzofar = TzofarSource(this) { title, areas -> handle(title, areas) }.also { it.start() }
@@ -177,6 +181,60 @@ class AlertService : Service() {
         val title = json.optString("title", "התראה")
         val arr = json.optJSONArray("data") ?: return
         handle(title, (0 until arr.length()).map { arr.getString(it) })
+    }
+
+    /**
+     * שומר: אם אין אינטרנט או שאף מקור התרעות לא מחובר יותר מ-2 דקות -
+     * התראה "לא מוגן". כשהחיבור חוזר - ההתראה מתחלפת ב"חזר לפעול".
+     */
+    private fun watchdogLoop() {
+        var badSince = 0L
+        var alerted = false
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        Thread.sleep(30_000)
+        while (running) {
+            val reason = unprotectedReason()
+            val now = System.currentTimeMillis()
+            if (reason != null) {
+                if (badSince == 0L) badSince = now
+                if (!alerted && now - badSince >= UNPROTECTED_AFTER_MS) {
+                    alerted = true
+                    nm.notify(ID_WATCH, Notification.Builder(this, CH_WATCH)
+                        .setSmallIcon(android.R.drawable.stat_notify_error)
+                        .setContentTitle("⚠️ צבע אדום לא מוגן")
+                        .setContentText("$reason – התראות לא יגיעו כרגע")
+                        .setContentIntent(openApp())
+                        .setOngoing(true)
+                        .build())
+                }
+            } else {
+                if (alerted) {
+                    nm.notify(ID_WATCH, Notification.Builder(this, CH_WATCH)
+                        .setSmallIcon(android.R.drawable.ic_dialog_info)
+                        .setContentTitle("✅ צבע אדום חזר לפעול")
+                        .setContentText("${SourceHealth.upCount()}/${SourceHealth.total()} מקורות מחוברים")
+                        .setContentIntent(openApp())
+                        .setAutoCancel(true)
+                        .setTimeoutAfter(60_000)
+                        .build())
+                }
+                badSince = 0L
+                alerted = false
+            }
+            Thread.sleep(15_000)
+        }
+        nm.cancel(ID_WATCH)
+    }
+
+    private fun unprotectedReason(): String? {
+        val cm = getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }
+        return when {
+            caps == null -> "אין חיבור לרשת"
+            !caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED) -> "אין אינטרנט"
+            SourceHealth.upCount() == 0 -> "אין חיבור לשרתי ההתרעות"
+            else -> null
+        }
     }
 
     /**
@@ -391,6 +449,11 @@ class AlertService : Service() {
         nm.deleteNotificationChannel("updates")
         nm.createNotificationChannel(
             NotificationChannel(CH_QUIET, "שעות שקט", NotificationManager.IMPORTANCE_LOW))
+        nm.createNotificationChannel(
+            NotificationChannel(CH_WATCH, "האפליקציה לא מוגנת", NotificationManager.IMPORTANCE_HIGH).apply {
+                enableVibration(true)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            })
         nm.createNotificationChannel(
             NotificationChannel(CH_INFO, "סיום אירוע", NotificationManager.IMPORTANCE_HIGH).apply {
                 setSound(null, null)
