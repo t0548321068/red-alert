@@ -158,7 +158,7 @@ object Prefs {
             val o = arr.getJSONObject(it)
             Entry(o.optString("time"), o.optString("title"), o.optString("body"),
                 o.optInt("level"), o.optLong("ts"))
-        }
+        }.filter { it.body != "התראת בדיקה" }   // בדיקות מגרסאות קודמות לא מוצגות
     }
 
     @Synchronized
