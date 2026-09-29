@@ -42,7 +42,13 @@ class MapActivity : Activity() {
                 }.start()
             }
         }
-        web.loadUrl("file:///android_asset/map.html")
+        // הדף נטען עם כתובת https (ולא file://) - שרתי OpenStreetMap חוסמים בקשות בלי Referer.
+        // לכן ספריית המפה מוטמעת בתוך הדף עצמו.
+        fun asset(n: String) = assets.open(n).bufferedReader(Charsets.UTF_8).use { it.readText() }
+        val html = asset("map.html")
+            .replace("<link rel=\"stylesheet\" href=\"leaflet/leaflet.css\">", "<style>" + asset("leaflet/leaflet.css") + "</style>")
+            .replace("<script src=\"leaflet/leaflet.js\"></script>", "<script>" + asset("leaflet/leaflet.js") + "</script>")
+        web.loadDataWithBaseURL("https://github.com/t0548321068/red-alert/", html, "text/html", "utf-8", null)
     }
 
     /** מיקום עדכני ומדויק (לא רק האחרון שהטלפון זוכר) - מסומן על המפה עם עיגול דיוק */

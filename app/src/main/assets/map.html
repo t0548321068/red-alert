@@ -22,6 +22,10 @@
   body.light .bar, body.light .legend, body.light .empty { background: rgba(255,255,255,.95); color: #1C1C1E; }
   body.light .bar button { color: #555; }
   .leaflet-popup-content { direction: rtl; text-align: right; }
+  .tiles-dark { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9); }
+  .base-btn { position: absolute; bottom: 74px; left: 10px; z-index: 1000; height: 34px; padding: 0 12px;
+              border-radius: 17px; border: 0; font-size: 13px; color: #eee; background: rgba(28,28,30,.92); }
+  body.light .base-btn { color: #1C1C1E; background: rgba(255,255,255,.95); box-shadow: 0 1px 4px rgba(0,0,0,.25); }
   .me-btn { position: absolute; bottom: 18px; left: 10px; z-index: 1000; width: 46px; height: 46px;
             border-radius: 50%; border: 0; font-size: 22px; background: rgba(28,28,30,.92); }
   body.light .me-btn { background: rgba(255,255,255,.95); box-shadow: 0 1px 4px rgba(0,0,0,.25); }
@@ -35,6 +39,7 @@
   <button data-h="168">שבוע</button>
 </div>
 <button class="me-btn" id="meBtn" title="המיקום שלי">📍</button>
+<button class="base-btn" id="baseBtn">🗺 OSM</button>
 <div class="empty" id="empty">אין התראות בטווח הזה</div>
 <div class="legend">
   <div><span class="dot" style="background:#FF3B30"></span>ירי / חדירה</div>
@@ -58,6 +63,7 @@
       .bindPopup('המיקום שלי' + (acc > 0 ? ' (±' + Math.round(acc) + ' מ\')' : '')).addTo(meLayer);
     if (!HAS_BOUNDS) map.setView(ME, 14);
   }
+  document.getElementById('baseBtn').onclick = function () { setBase(baseKey === 'osm' ? 'esri' : 'osm'); };
   document.getElementById('meBtn').onclick = function () {
     if (ME) map.setView(ME, 15);
     else if (window.App) App.locate();
@@ -99,26 +105,48 @@
     HAS_BOUNDS = bounds.length > 0;
   }
 
+  // ---- רקע המפה: שני ספקים בלי מפתח, עם החלפה ידנית ומעבר אוטומטי כשיש שגיאות ----
+  var BASES = {
+    osm: { name: 'OSM', make: function () {
+      // שמות בעברית. במצב כהה - היפוך צבעים של אותה מפה
+      return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, className: DATA && DATA.dark ? 'tiles-dark' : '',
+        attribution: '&copy; OpenStreetMap' });
+    }},
+    esri: { name: 'Esri', make: function () {
+      var dark = DATA && DATA.dark;
+      var g = L.layerGroup();
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' +
+        (dark ? 'Canvas/World_Dark_Gray_Base' : 'World_Street_Map') + '/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 16, attribution: '&copy; Esri' }).addTo(g);
+      if (dark) L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' +
+        'Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(g);
+      return g;
+    }}
+  };
+  var base = null, baseKey = null, fails = 0;
+
+  function loadBase() { try { return localStorage.getItem('base') || 'osm'; } catch (e) { return 'osm'; } }
+  function setBase(key) {
+    if (base) map.removeLayer(base);
+    baseKey = key; fails = 0;
+    base = BASES[key].make().addTo(map);
+    // שגיאות רבות באריחים - עוברים אוטומטית לספק השני
+    base.eachLayer ? base.eachLayer(watch) : watch(base);
+    try { localStorage.setItem('base', key); } catch (e) {}
+    document.getElementById('baseBtn').textContent = '🗺 ' + BASES[key].name;
+  }
+  function watch(layer) {
+    layer.on('tileerror', function () {
+      if (++fails === 6) setBase(baseKey === 'osm' ? 'esri' : 'osm');
+    });
+  }
+
   // נקרא מהאפליקציה
   function render(data, areas) {
     DATA = data; AREAS = areas;
     if (!data.dark) document.body.classList.add('light');
-    // CARTO בשני המצבים - שרתי OpenStreetMap חוסמים אפליקציות בלי אישור
-    var url = 'https://{s}.basemaps.cartocdn.com/' + (data.dark ? 'dark_all' : 'rastertiles/voyager') + '/{z}/{x}/{y}{r}.png';
-    var tiles = L.tileLayer(url, {
-      maxZoom: 18, subdomains: 'abcd',
-      attribution: '&copy; OpenStreetMap &copy; CARTO'
-    }).addTo(map);
-    // גיבוי: אם השרת הראשי לא מחזיר אריחים - עוברים ל-Esri
-    var fails = 0, switched = false;
-    tiles.on('tileerror', function () {
-      if (switched || ++fails < 4) return;
-      switched = true;
-      map.removeLayer(tiles);
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' +
-        (data.dark ? 'Canvas/World_Dark_Gray_Base' : 'World_Street_Map') + '/MapServer/tile/{z}/{y}/{x}',
-        { maxZoom: 16, attribution: '&copy; Esri' }).addTo(map);
-    });
+    setBase(loadBase());
     draw();
   }
 
