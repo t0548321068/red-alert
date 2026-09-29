@@ -60,6 +60,7 @@ class AlertService : Service() {
         private const val UNPROTECTED_AFTER_MS = 2 * 60 * 1000L
         private const val CH_STAY = "stay"
         private const val ID_STAY = 6
+        private const val ID_LISTEN = 7
         private const val CH_UPDATE = "updates_v3"  // ערוץ חדש כדי שההתראה תקפוץ עם צליל
         private const val ID_UPDATE = 3
 
@@ -75,9 +76,12 @@ class AlertService : Service() {
             else -> LEVEL_ALERT
         }
 
-        /** chime = מנגינה שההאזנה חזרה לפעול (רק אחרי הדלקת הטלפון / עדכון, לא בלחיצה על "מוגן") */
-        fun start(c: Context, testTitle: String? = null, chime: Boolean = false) {
-            val i = Intent(c, AlertService::class.java).putExtra("chime", chime)
+        /**
+         * manual = הופעל בלחיצה (על "מוגן", בדיקה, שינוי הגדרה) - בלי התראת "מאזין".
+         * בכל הפעלה אחרת (הדלקת הטלפון, אחרי עדכון, חזרה אחרי שנסגר) - התראה עם המנגינה.
+         */
+        fun start(c: Context, testTitle: String? = null, manual: Boolean = false) {
+            val i = Intent(c, AlertService::class.java).putExtra("manual", manual || testTitle != null)
             if (testTitle != null) {
                 i.action = ACTION_TEST
                 i.putExtra("title", testTitle)
@@ -89,6 +93,8 @@ class AlertService : Service() {
     }
 
     @Volatile private var running = false
+    /** השירות עלה זה עתה (עוד לא טופלה הפקודה הראשונה) */
+    private var fresh = true
     private var lastId = ""
     private var tzofar: TzofarSource? = null
     private var telegram: List<TelegramSource> = emptyList()
@@ -159,7 +165,11 @@ class AlertService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // מנגינה רק כשההאזנה חזרה לבד (הדלקת הטלפון / עדכון) - לא בלחיצה ידנית
-        if (intent?.getBooleanExtra("chime", false) == true) playAppChime()
+        // השירות רק עכשיו עלה, ולא בלחיצה ידנית - התראה "מאזין" עם המנגינה
+        if (fresh) {
+            fresh = false
+            if (intent?.getBooleanExtra("manual", false) != true) announceListening()
+        }
         if (intent?.action == ACTION_PUSH) {
             updatePush?.reconnect()
             return START_STICKY
@@ -628,6 +638,20 @@ class AlertService : Service() {
             pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
                 "redalert:screen").acquire(20_000)
         } catch (_: Exception) { }
+    }
+
+    /** התראה "צבע אדום פעיל – מאזין" עם מנגינת האפליקציה (נעלמת לבד אחרי 15 שניות) */
+    private fun announceListening() {
+        val n = Notification.Builder(this, CH_WATCH)
+            .setSmallIcon(R.drawable.ic_stat_siren)
+            .setColor(0xFF2E7D32.toInt())
+            .setContentTitle("✅ צבע אדום פעיל")
+            .setContentText("מאזין להתראות פיקוד העורף")
+            .setContentIntent(openApp())
+            .setAutoCancel(true)
+            .setTimeoutAfter(15_000)
+            .build()
+        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_LISTEN, n)
     }
 
     /** מנגינת האפליקציה (צליל 56) - נשמעת כשההאזנה חוזרת לבד (אחרי עדכון, אחרי הדלקת הטלפון) */
