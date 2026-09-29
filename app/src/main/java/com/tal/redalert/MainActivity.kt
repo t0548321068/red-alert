@@ -668,23 +668,38 @@ class MainActivity : Activity() {
 
     private val SOUND_NAMES = arrayOf("ירי / חדירה", "התראה מקדימה", "האירוע הסתיים")
 
-    private fun soundLabel(level: Int): String {
-        val v = Prefs.sound(this, level)
-        return when {
-            v == "silent" -> "ללא צליל"
-            v.isEmpty() -> if (level == AlertService.LEVEL_END) "ללא צליל (ברירת מחדל)" else "ברירת מחדל"
-            else -> try {
-                android.media.RingtoneManager.getRingtone(this, Uri.parse(v))?.getTitle(this) ?: "מותאם"
-            } catch (_: Exception) { "מותאם" }
-        }
+    private fun showSounds() {
+        val items = Array(3) { "${SOUND_NAMES[it]}: ${Sounds.label(this, it)}" }
+        AlertDialog.Builder(this, dlg())
+            .setTitle("🔊 צלילים")
+            .setItems(items) { _, level -> chooseSound(level) }
+            .setPositiveButton("סגור", null)
+            .show()
     }
 
-    private fun showSounds() {
-        val items = Array(3) { "${SOUND_NAMES[it]}: ${soundLabel(it)}" }
+    private var preview: android.media.Ringtone? = null
+
+    /** השמעת דוגמה של 4 שניות */
+    private fun previewSound(level: Int, value: String) {
+        preview?.stop()
+        val uri = Sounds.uri(this, value, level) ?: return
+        preview = android.media.RingtoneManager.getRingtone(this, uri)?.apply { play() }
+        ui.postDelayed({ preview?.stop() }, 4000)
+    }
+
+    private fun chooseSound(level: Int) {
+        val values = arrayOf(Sounds.APP_SIREN, Sounds.APP_BEEP, Sounds.DEVICE, "pick", Sounds.SILENT)
+        val names = arrayOf("🚨 צופר האפליקציה", "🔔 צפצוף האפליקציה", "📱 צליל הטלפון",
+            "🎵 בחירה מצלילי הטלפון…", "🔇 ללא צליל")
+        val cur = values.indexOf(Sounds.effective(this, level)).let { if (it < 0) 3 else it }
         AlertDialog.Builder(this, dlg())
-            .setTitle("צלילים")
-            .setItems(items) { _, level -> pickSound(level) }
-            .setPositiveButton("סגור", null)
+            .setTitle("צליל – ${SOUND_NAMES[level]}")
+            .setSingleChoiceItems(names, cur) { d, i ->
+                if (values[i] == "pick") { d.dismiss(); preview?.stop(); pickSound(level); return@setSingleChoiceItems }
+                Prefs.setSound(this, level, values[i])
+                previewSound(level, values[i])
+            }
+            .setPositiveButton("שמור") { _, _ -> preview?.stop(); showSounds() }
             .show()
     }
 
@@ -720,8 +735,8 @@ class MainActivity : Activity() {
                 if (level == AlertService.LEVEL_ALERT) android.media.RingtoneManager.TYPE_ALARM
                 else android.media.RingtoneManager.TYPE_NOTIFICATION)
             Prefs.setSound(this, level, when {
-                uri == null -> "silent"
-                uri == default && level != AlertService.LEVEL_END -> ""
+                uri == null -> Sounds.SILENT
+                uri == default -> Sounds.DEVICE
                 else -> uri.toString()
             })
             showSounds()

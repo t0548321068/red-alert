@@ -413,7 +413,7 @@ class AlertService : Service() {
             quiet -> main.post { ringtone?.stop() }
             level == LEVEL_ALERT -> playAlarm(level, RingtoneManager.TYPE_ALARM, 15000)
             level == LEVEL_PRE -> playAlarm(level, RingtoneManager.TYPE_NOTIFICATION, 3000)
-            Prefs.sound(this, level).let { it.isNotEmpty() && it != "silent" } ->
+            Sounds.effective(this, level) != Sounds.SILENT ->
                 playAlarm(level, RingtoneManager.TYPE_NOTIFICATION, 3000)   // סיום - רק אם נבחר צליל
             else -> main.post { ringtone?.stop() }
         }
@@ -427,13 +427,9 @@ class AlertService : Service() {
 
     /** צליל בערוץ "שעון מעורר" - נשמע גם במצב שקט */
     private fun playAlarm(level: Int, type: Int, durationMs: Long) {
-        val chosen = Prefs.sound(this, level)
-        if (chosen == "silent") return
+        val uri = Sounds.uri(this, Sounds.effective(this, level), level) ?: return
         main.post {
             ringtone?.stop()
-            val uri = chosen.takeIf { it.isNotEmpty() }?.let { android.net.Uri.parse(it) }
-                ?: RingtoneManager.getDefaultUri(type)
-                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
             ringtone = RingtoneManager.getRingtone(this, uri)?.apply {
                 audioAttributes = AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_ALARM)
