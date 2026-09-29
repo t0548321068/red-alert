@@ -36,6 +36,19 @@ object Prefs {
     fun showWeather(c: Context) = sp(c).getBoolean("weather", true)
     fun setShowWeather(c: Context, v: Boolean) = sp(c).edit().putBoolean("weather", v).apply()
 
+    // ---- דיוק מיקום: נלמד לכל מכשיר ----
+    /** הדיוק הטוב ביותר (במטרים) שהמכשיר הזה הגיע אליו אי פעם. 0 = עוד לא נמדד */
+    fun bestAccuracy(c: Context) = sp(c).getFloat("bestAcc", 0f)
+    fun recordAccuracy(c: Context, acc: Float) {
+        if (acc <= 0f) return
+        val cur = bestAccuracy(c)
+        if (cur == 0f || acc < cur) sp(c).edit().putFloat("bestAcc", acc).apply()
+    }
+    fun dualFrequency(c: Context) = sp(c).getBoolean("dualFreq", false)
+    fun setDualFrequency(c: Context, v: Boolean) {
+        if (dualFrequency(c) != v) sp(c).edit().putBoolean("dualFreq", v).apply()
+    }
+
     // ---- קרוב אליי: התראה גם לפי המיקום הנוכחי ----
     fun nearMe(c: Context) = sp(c).getBoolean("nearMe", false)
     fun setNearMe(c: Context, v: Boolean) = sp(c).edit().putBoolean("nearMe", v).apply()
