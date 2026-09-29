@@ -11,7 +11,7 @@ import java.util.Locale
  * הקראה בקול של ההתראה (סוג, אזורים, זמן להגעה) בקול העברי של הטלפון.
  * מושמע בערוץ "שעון מעורר" - נשמע גם כשהטלפון על שקט.
  */
-class Speaker(c: Context) {
+class Speaker(private val c: Context) {
 
     private var ready = false
     /** null = עוד לא ידוע, false = אין קול עברי במכשיר */
@@ -28,6 +28,7 @@ class Speaker(c: Context) {
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                 .build())
             tts.setSpeechRate(0.95f)
+            applyVoice()
             ready = true
         } else hebrewOk = false
     }
@@ -39,6 +40,23 @@ class Speaker(c: Context) {
             @Deprecated("Deprecated in Java")
             override fun onError(id: String?) { finish() }
         })
+    }
+
+    /**
+     * קול גבר / אישה. אם במכשיר יש קול עברי גברי - בוחרים בו.
+     * אם אין (לרוב יש רק קול נשי) - מנמיכים את גובה הקול כדי שיישמע גברי.
+     */
+    fun applyVoice() {
+        val male = Prefs.maleVoice(c)
+        val hebrew = try {
+            tts.voices?.filter { it.locale.language == "he" || it.locale.language == "iw" }.orEmpty()
+        } catch (_: Exception) { emptyList() }
+        fun isMale(v: android.speech.tts.Voice) =
+            v.name.contains("male", true) && !v.name.contains("female", true)
+        val chosen = if (male) hebrew.firstOrNull { isMale(it) } else hebrew.firstOrNull { !isMale(it) }
+        if (chosen != null) try { tts.voice = chosen } catch (_: Exception) { }
+        // אין קול גברי אמיתי - מנמיכים את הקול
+        tts.setPitch(if (male && (chosen == null || !isMale(chosen))) 0.72f else 1.0f)
     }
 
     private fun finish() {

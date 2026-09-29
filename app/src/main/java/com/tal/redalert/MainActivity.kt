@@ -759,6 +759,7 @@ class MainActivity : Activity() {
         val on = Prefs.speakAlerts(this)
         val items = arrayOf(
             if (on) "✅ פעיל – לחץ לכיבוי" else "⬜ כבוי – לחץ להפעלה",
+            "🗣 קול: " + if (Prefs.maleVoice(this)) "גבר" else "אישה",
             "🔊 השמע דוגמה",
             "ℹ️ מקריא סוג, אזורים וזמן להגעה – ואז הצליל"
         )
@@ -768,6 +769,13 @@ class MainActivity : Activity() {
                 when (which) {
                     0 -> { Prefs.setSpeakAlerts(this, !on); showSpeech() }
                     1 -> {
+                        Prefs.setMaleVoice(this, !Prefs.maleVoice(this))
+                        testSpeaker?.applyVoice()
+                        // השירות יטען את הקול החדש בהתראה הבאה
+                        if (Prefs.enabled(this)) AlertService.reloadVoice(this)
+                        showSpeech()
+                    }
+                    2 -> {
                         val sp = testSpeaker ?: Speaker(this).also { testSpeaker = it }
                         // המנוע עולה תוך רגע - מחכים לו
                         ui.postDelayed({
