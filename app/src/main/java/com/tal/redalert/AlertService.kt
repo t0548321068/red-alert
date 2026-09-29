@@ -88,10 +88,16 @@ class AlertService : Service() {
     private var updatePush: UpdatePush? = null
     private var speaker: Speaker? = null
 
-    /** אזור -> (סוג, זמן) - למניעת כפילות בין מקורות */
-    private val seen = HashMap<String, Pair<Int, Long>>()
-    private val seenFeed = HashMap<String, Pair<Int, Long>>()
+    /** "יישוב|סוג" -> זמן האירוע - למניעת כפילות בין מקורות */
+    private val seen = HashMap<String, Long>()
+    private val seenFeed = HashMap<String, Long>()
     private val DEDUP_MS = 3 * 60 * 1000L
+    /** התראות מאותו סוג בתוך דקה וחצי = אותו אירוע -> שורה אחת ברשימה */
+    private val MERGE_MS = 90 * 1000L
+
+    /** מפתח ליישוב - אותו יישוב בכל המקורות ("תל אביב - מרכז העיר" = "תל אביב" = "תל-אביב") */
+    private fun key(area: String, level: Int) =
+        area.split(" - ")[0].filter { it.isLetterOrDigit() } + "|" + level
     private var wakeLock: PowerManager.WakeLock? = null
     private var ringtone: Ringtone? = null
     private val main = Handler(Looper.getMainLooper())
@@ -330,16 +336,17 @@ class AlertService : Service() {
                     if (!text.startsWith("[")) continue
                     val arr = org.json.JSONArray(text)
                     val now = System.currentTimeMillis()
-                    val byTitle = LinkedHashMap<String, MutableList<String>>()
+                    // לפי סוג + זמן ההתראה המקורי (כדי שהתראה ישנה לא תיחשב חדשה)
+                    val byTitle = LinkedHashMap<Pair<String, Long>, MutableList<String>>()
                     for (i in 0 until arr.length()) {
                         val o = arr.getJSONObject(i)
                         val date = o.optString("alertDate").replace('T', ' ').take(19)
                         val t = fmt.parse(date)?.time ?: continue
                         if (now - t > HISTORY_WINDOW_MS) continue
                         val title = o.optString("title").ifEmpty { o.optString("category_desc", "התראה") }
-                        byTitle.getOrPut(title) { mutableListOf() }.add(o.optString("data"))
+                        byTitle.getOrPut(title to t) { mutableListOf() }.add(o.optString("data"))
                     }
-                    byTitle.forEach { (title, areas) -> handle(title, areas) }
+                    byTitle.forEach { (k, areas) -> handle(k.first, areas, k.second) }
                 } catch (_: Exception) { }
             }
             Thread.sleep(HISTORY_POLL_MS)
@@ -348,35 +355,46 @@ class AlertService : Service() {
 
     /** נקודת כניסה משותפת לכל המקורות: סינון ערים + מניעת כפילות */
     @Synchronized
-    fun handle(title: String, areas: List<String>) {
+    fun handle(title: String, rawAreas: List<String>, eventTime: Long = System.currentTimeMillis()) {
         val level = levelOf(title)
         val now = System.currentTimeMillis()
+        // בלי כפילויות בתוך ההודעה עצמה
+        val areas = rawAreas.map { it.trim() }.filter { it.isNotBlank() }.distinctBy { key(it, level) }
 
         // פיד ארצי: כל ההתראות, לפני הסינון לפי אזורים (בלי צליל)
-        val feedNew = areas.filter { it.isNotBlank() }.filter { a ->
-            val prev = seenFeed[a]
-            prev == null || prev.first != level || now - prev.second > DEDUP_MS
+        val feedNew = areas.filter { a ->
+            val prev = seenFeed[key(a, level)]
+            prev == null || eventTime - prev > DEDUP_MS
         }
         if (feedNew.isNotEmpty()) {
-            feedNew.forEach { seenFeed[it] = level to now }
-            Prefs.addFeed(this, Prefs.Entry("", title, feedNew.joinToString(", "), level, now))
+            feedNew.forEach { seenFeed[key(it, level)] = eventTime }
+            Prefs.addFeed(this, Prefs.Entry("", title, feedNew.joinToString(", "), level, now), MERGE_MS)
         }
 
         val manual = Prefs.cities(this)
         val near = if (Prefs.nearMe(this)) Prefs.nearbyAreas(this) else emptyList()
         // בלי ערים ובלי מיקום ידוע - כל הארץ (עדיף התראה מיותרת מאשר לפספס)
         val allCountry = manual.isEmpty() && near.isEmpty()
-        val fresh = areas.filter { a -> a.isNotBlank() }
+        val fresh = areas
             .filter { a ->
                 allCountry || manual.any { f -> a.contains(f) } ||
                     near.any { n -> n == a || n.startsWith("$a -") || a.startsWith("$n -") }
             }
             .filter { a ->
-                val prev = seen[a]
-                prev == null || prev.first != level || now - prev.second > DEDUP_MS
+                val prev = seen[key(a, level)]
+                prev == null || eventTime - prev > DEDUP_MS
             }
         if (fresh.isEmpty()) return
-        fresh.forEach { seen[it] = level to now }
+        fresh.forEach { seen[key(it, level)] = eventTime }
+
+        // המקור הכי מהיר כבר התריע על האירוע הזה (לפני פחות מדקה וחצי) -
+        // היישובים הנוספים מצטרפים לאותה שורה, בלי צליל ומסך נוספים
+        val last = Prefs.history(this).firstOrNull()
+        if (last != null && last.level == level && now - last.ts < MERGE_MS) {
+            Prefs.mergeFirstHistory(this, fresh)
+            AlertWidget.updateAll(this)
+            return
+        }
         fire(title, fresh)
     }
 
