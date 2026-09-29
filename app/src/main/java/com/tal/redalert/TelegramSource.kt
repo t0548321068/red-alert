@@ -51,6 +51,7 @@ class TelegramSource(
             conn.disconnect()
         }
 
+        SourceHealth.ok("tg:$channel")
         val posts = postRe.findAll(html).toList()
         val parsed = posts.mapIndexedNotNull { i, m ->
             val id = m.groupValues[1].toLong()

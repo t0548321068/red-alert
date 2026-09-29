@@ -71,11 +71,17 @@ class TzofarSource(
             .header("User-Agent", "Mozilla/5.0 (Linux; Android) RedAlert")
             .build()
         ws = client.newWebSocket(req, object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) = SourceHealth.setOpen("tzofar", true)
             override fun onMessage(webSocket: WebSocket, text: String) {
+                SourceHealth.ok("tzofar")
                 try { parse(JSONObject(text)) } catch (_: Exception) { }
             }
-            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) = retry()
-            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) = retry()
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                SourceHealth.setOpen("tzofar", false); retry()
+            }
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                SourceHealth.setOpen("tzofar", false); retry()
+            }
         })
     }
 
