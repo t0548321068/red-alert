@@ -10,7 +10,7 @@ class BootReceiver : BroadcastReceiver() {
         val restart = intent.action == Intent.ACTION_BOOT_COMPLETED ||
             intent.action == Intent.ACTION_MY_PACKAGE_REPLACED
         if (restart && Prefs.enabled(context)) {
-            AlertService.start(context, chime = true)
+            AlertService.start(context)
         }
     }
 }
