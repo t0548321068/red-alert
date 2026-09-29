@@ -26,6 +26,10 @@ class MapActivity : Activity() {
             setBackgroundColor(Color.TRANSPARENT)
         }
         setContentView(web)
+        web.addJavascriptInterface(object {
+            @android.webkit.JavascriptInterface
+            fun locate() = runOnUiThread { locate(web) }
+        }, "App")
 
         web.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView, url: String) {
@@ -33,11 +37,25 @@ class MapActivity : Activity() {
                     val (data, areas) = buildData(dark)
                     runOnUiThread {
                         view.evaluateJavascript("render($data, $areas);", null)
+                        locate(view)
                     }
                 }.start()
             }
         }
         web.loadUrl("file:///android_asset/map.html")
+    }
+
+    /** מיקום עדכני ומדויק (לא רק האחרון שהטלפון זוכר) - מסומן על המפה עם עיגול דיוק */
+    private fun locate(view: WebView) {
+        if (checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED) return
+        // קודם המיקום האחרון (מיידי), ואז מיקום עדכני
+        Weather.lastLocation(this)?.let { show(view, it) }
+        Weather.freshLocation(this) { loc -> if (loc != null && !isFinishing) show(view, loc) }
+    }
+
+    private fun show(view: WebView, l: android.location.Location) {
+        view.evaluateJavascript("setMe(${l.latitude}, ${l.longitude}, ${l.accuracy});", null)
     }
 
     /** ממיר את היסטוריית ההתראות לנתונים למפה + רק האזורים שצריך */
