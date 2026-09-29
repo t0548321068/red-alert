@@ -156,6 +156,8 @@ class HistoryActivity : Activity() {
         val title = if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title
         texts.addView(TextView(this).apply { text = title; textSize = 15f; setTextColor(TEXT) })
         texts.addView(TextView(this).apply { text = e.body; textSize = 13f; setTextColor(MUTED) })
+        if (e.src.isNotEmpty())
+            texts.addView(TextView(this).apply { text = "📡 ${e.src}"; textSize = 11f; setTextColor(MUTED) })
         card.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
 
         val stamp = if (e.ts > 0) {

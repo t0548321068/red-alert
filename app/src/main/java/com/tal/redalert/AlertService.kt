@@ -141,9 +141,9 @@ class AlertService : Service() {
         Thread(::watchdogLoop, "watchdog").start()
         updatePush = UpdatePush { onUpdatePing() }.also { it.start() }
         Thread(::nearLoop, "near-me").start()
-        tzofar = TzofarSource(this) { title, areas -> handle(title, areas) }.also { it.start() }
+        tzofar = TzofarSource(this) { title, areas -> handle(title, areas, source = "tzofar") }.also { it.start() }
         telegram = listOf("PikudHaOref_all", "tzevaadomm", "CumtaAlertsChannel", "Radar_Alerts").map { ch ->
-            TelegramSource(ch) { title, areas -> handle(title, areas) }.also { it.start() }
+            TelegramSource(ch) { title, areas -> handle(title, areas, source = "tg:$ch") }.also { it.start() }
         }
     }
 
@@ -175,6 +175,7 @@ class AlertService : Service() {
         updatePush?.stop()
         ringtone?.stop()
         main.removeCallbacks(stayDone)
+        main.removeCallbacks(stayNotif)
         wakeLock?.let { if (it.isHeld) it.release() }
         super.onDestroy()
     }
@@ -220,7 +221,7 @@ class AlertService : Service() {
 
         val title = json.optString("title", "התראה")
         val arr = json.optJSONArray("data") ?: return
-        handle(title, (0 until arr.length()).map { arr.getString(it) })
+        handle(title, (0 until arr.length()).map { arr.getString(it) }, source = "oref")
     }
 
     /**
@@ -346,7 +347,8 @@ class AlertService : Service() {
                         val title = o.optString("title").ifEmpty { o.optString("category_desc", "התראה") }
                         byTitle.getOrPut(title to t) { mutableListOf() }.add(o.optString("data"))
                     }
-                    byTitle.forEach { (k, areas) -> handle(k.first, areas, k.second) }
+                    val src = if (url == URL_HISTORY) "history" else "archive"
+                    byTitle.forEach { (k, areas) -> handle(k.first, areas, k.second, src) }
                 } catch (_: Exception) { }
             }
             Thread.sleep(HISTORY_POLL_MS)
@@ -355,7 +357,8 @@ class AlertService : Service() {
 
     /** נקודת כניסה משותפת לכל המקורות: סינון ערים + מניעת כפילות */
     @Synchronized
-    fun handle(title: String, rawAreas: List<String>, eventTime: Long = System.currentTimeMillis()) {
+    fun handle(title: String, rawAreas: List<String>, eventTime: Long = System.currentTimeMillis(),
+               source: String = "") {
         val level = levelOf(title)
         val now = System.currentTimeMillis()
         // בלי כפילויות בתוך ההודעה עצמה
@@ -395,7 +398,7 @@ class AlertService : Service() {
             AlertWidget.updateAll(this)
             return
         }
-        fire(title, fresh)
+        fire(title, fresh, source = source)
     }
 
     /** השרת מחזיר לפעמים UTF-8 עם BOM ולפעמים UTF-16 */
@@ -423,12 +426,13 @@ class AlertService : Service() {
     }
 
     private fun fire(title: String, areas: List<String>, forceScreen: Boolean = false, shelter: Int? = null,
-                     test: Boolean = false) {
+                     test: Boolean = false, source: String = "") {
+        val srcName = if (test) "בדיקה" else if (source.isEmpty()) "" else SourceHealth.name(source)
         val body = areas.joinToString(", ")
         val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
             .format(java.util.Date())
         // בדיקה - לא נשמרת בהיסטוריה, במפה ובווידג'ט
-        if (!test) Prefs.addHistory(this, Prefs.Entry(time, title, body, levelOf(title), System.currentTimeMillis()))
+        if (!test) Prefs.addHistory(this, Prefs.Entry(time, title, body, levelOf(title), System.currentTimeMillis(), srcName))
 
         val level = levelOf(title)
         val quiet = level != LEVEL_ALERT && Prefs.isQuietNow(this)
@@ -436,6 +440,7 @@ class AlertService : Service() {
         val full = Intent(this, AlertActivity::class.java)
             .putExtra("title", title).putExtra("body", body).putExtra("level", level)
             .putExtra("shelter", shelterSec ?: -1).putExtra("firedAt", System.currentTimeMillis())
+            .putExtra("source", srcName)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val fullPi = PendingIntent.getActivity(
             this, 1, full, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
@@ -457,6 +462,12 @@ class AlertService : Service() {
             .setContentIntent(fullPi)
             .setAutoCancel(true)
         if (!quiet) nb.setFullScreenIntent(fullPi, true)
+        // ספירה לאחור ישר בשורת ההתראות
+        if (level == LEVEL_ALERT && shelterSec != null && shelterSec > 0) {
+            nb.setWhen(System.currentTimeMillis() + shelterSec * 1000L)
+                .setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(true)
+                .setSubText("זמן להגעה למרחב המוגן")
+        }
         val n = nb.build()
         if (!quiet && level != LEVEL_END) overrideDnd()
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n)
@@ -470,6 +481,13 @@ class AlertService : Service() {
         }
 
         // ספירה לאחור בווידג'ט הגדול
+        // אחרי שנגמר הזמן להגעה - ההתראה עוברת לספירת השהייה (10 דקות)
+        if (level == LEVEL_ALERT && !test) {
+            main.removeCallbacks(stayNotif)
+            stayNotifPi = fullPi; stayTitle = title; stayBody = body; stayEnd = System.currentTimeMillis() + Prefs.STAY_MS
+            main.postDelayed(stayNotif, ((shelterSec ?: 0).coerceAtLeast(0) * 1000L) + 500)
+        } else if (level == LEVEL_END) main.removeCallbacks(stayNotif)
+
         if (test) { /* בלי ספירה וטיימר בווידג'ט */ }
         else if (level == LEVEL_ALERT && shelterSec != null && shelterSec > 0) {
             Prefs.setCountdown(this, System.currentTimeMillis() + shelterSec * 1000L, title)
@@ -512,6 +530,26 @@ class AlertService : Service() {
 
         if (!quiet) vibrate(level)
         AlertWidget.updateAll(this)
+    }
+
+    /** ההתראה בשורת ההתראות: ספירת שהייה במרחב המוגן, לחיצה פותחת את מסך הספירה */
+    private var stayNotifPi: PendingIntent? = null
+    private var stayTitle = ""; private var stayBody = ""; private var stayEnd = 0L
+    private val stayNotif = Runnable {
+        if (System.currentTimeMillis() >= stayEnd) return@Runnable
+        val n = Notification.Builder(this, CH_ALERT)
+            .setSmallIcon(R.drawable.ic_stat_siren)
+            .setColor(0xFFB45309.toInt())
+            .setContentTitle("⏳ נשארים במרחב המוגן")
+            .setContentText("$stayTitle · $stayBody")
+            .setSubText("עד שאפשר לצאת")
+            .setWhen(stayEnd).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(true)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(stayNotifPi)
+            .setAutoCancel(true)
+            .setTimeoutAfter(stayEnd - System.currentTimeMillis())
+            .build()
+        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n)
     }
 
     /** עברו 10 דקות מהירי - מודיעים שאפשר לצאת */

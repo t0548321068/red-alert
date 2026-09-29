@@ -167,7 +167,8 @@ object Prefs {
     fun notifiedVersion(c: Context) = sp(c).getString("notifVer", "") ?: ""
     fun setNotifiedVersion(c: Context, v: String) = sp(c).edit().putString("notifVer", v).commit()
 
-    data class Entry(val time: String, val title: String, val body: String, val level: Int, val ts: Long = 0)
+    data class Entry(val time: String, val title: String, val body: String, val level: Int, val ts: Long = 0,
+                     val src: String = "")
 
     /** היסטוריית התראות, החדשה ראשונה */
     fun history(c: Context): List<Entry> {
@@ -175,7 +176,7 @@ object Prefs {
         return (0 until arr.length()).map {
             val o = arr.getJSONObject(it)
             Entry(o.optString("time"), o.optString("title"), o.optString("body"),
-                o.optInt("level"), o.optLong("ts"))
+                o.optInt("level"), o.optLong("ts"), o.optString("src"))
         }.filter { it.body != "התראת בדיקה" }   // בדיקות מגרסאות קודמות לא מוצגות
             .let { collapse(it) }
     }
@@ -204,7 +205,7 @@ object Prefs {
         val arr = JSONArray()
         list.forEach {
             arr.put(JSONObject().put("time", it.time).put("title", it.title)
-                .put("body", it.body).put("level", it.level).put("ts", it.ts))
+                .put("body", it.body).put("level", it.level).put("ts", it.ts).put("src", it.src))
         }
         sp(c).edit().putString("history", arr.toString()).apply()
     }

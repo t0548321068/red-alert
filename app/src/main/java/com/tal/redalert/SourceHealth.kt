@@ -31,6 +31,11 @@ object SourceHealth {
     fun isUp(key: String): Boolean =
         open[key] == true || System.currentTimeMillis() - (lastOk[key] ?: 0L) < 90_000
 
+    /** מתי התקבלה תשובה אחרונה מכל מקור שהוא */
+    fun lastAny(): Long = (NAMES.keys.map { k -> if (open[k] == true) System.currentTimeMillis() else lastOk[k] ?: 0L }.maxOrNull() ?: 0L)
+
+    fun name(key: String) = NAMES[key] ?: key
+
     fun upCount() = NAMES.keys.count { isUp(it) }
     fun total() = NAMES.size
 

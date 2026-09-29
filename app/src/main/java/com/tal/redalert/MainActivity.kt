@@ -135,11 +135,26 @@ class MainActivity : Activity() {
             updateClock()
             updateIndicators()
             updateWeather()
+            updateStatusLine()
             // שאר המסך מתעדכן רק כשמשהו השתנה
             val key = "${Prefs.enabled(this@MainActivity)}|${Prefs.history(this@MainActivity).firstOrNull()?.ts}"
             if (key != lastHistoryKey) { lastHistoryKey = key; refresh() }
             ui.postDelayed(this, 1000 - System.currentTimeMillis() % 1000)
         }
+    }
+
+    /** "מוגן · 8/8 מקורות · עדכון אחרון לפני 2 שניות" */
+    private fun updateStatusLine() {
+        if (!Prefs.enabled(this)) { circleHint.text = "לחיצה להפעלה"; return }
+        val last = SourceHealth.lastAny()
+        val age = if (last == 0L) -1L else (System.currentTimeMillis() - last) / 1000
+        val ago = when {
+            age < 0 -> "מתחבר…"
+            age <= 1 -> "עדכון אחרון עכשיו"
+            age < 60 -> "עדכון אחרון לפני $age שניות"
+            else -> "עדכון אחרון לפני ${age / 60} דק׳"
+        }
+        circleHint.text = "מוגן · ${SourceHealth.upCount()}/${SourceHealth.total()} מקורות · $ago\nלחיצה לכיבוי"
     }
 
     private fun updateClock() {
@@ -377,7 +392,7 @@ class MainActivity : Activity() {
         circleIcon.setTextColor(color)
         circleLabel.text = if (on) "מוגן" else "כבוי"
         circleLabel.setTextColor(color)
-        circleHint.text = if (on) "${SourceHealth.total()} מקורות · לחיצה לכיבוי" else "לחיצה להפעלה"
+        updateStatusLine()
 
         renderChips()
         renderHistory()
@@ -476,7 +491,7 @@ class MainActivity : Activity() {
             "צלילים", "רטט", "🗣 הקראה: " + if (Prefs.speakAlerts(this)) "פעיל" else "כבוי",
             "🔕 עקיפת נא לא להפריע: " + dndState(),
             "שעות שקט: $quiet",
-            "חיסכון בסוללה", "הגדרות התראות")
+            "חיסכון בסוללה", "הגדרות התראות", "ℹ️ אודות")
         AlertDialog.Builder(this, dlg())
             .setTitle("הגדרות · גרסה ${Updater.currentVersion(this)}")
             .setItems(options) { _, which ->
@@ -493,6 +508,7 @@ class MainActivity : Activity() {
                     9 -> showQuietHours()
                     10 -> openBatterySettings()
                     11 -> openNotificationSettings()
+                    12 -> showAbout()
                 }
             }
             .show()
@@ -784,6 +800,35 @@ class MainActivity : Activity() {
                 }
             }
             .setPositiveButton("סגור", null)
+            .show()
+    }
+
+    private fun showAbout() {
+        val msg = """
+            |צבע אדום · גרסה ${Updater.currentVersion(this)}
+            |התראות פיקוד העורף בזמן אמת, גם כשהאפליקציה סגורה והמסך כבוי.
+            |
+            |📡 מקורות (${SourceHealth.total()}):
+            |${SourceHealth.NAMES.values.joinToString("\n") { "• $it" }}
+            |ההתראה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד.
+            |
+            |📜 רישיונות:
+            |• מפה: Leaflet (BSD-2)
+            |• גבולות אזורים וזמני הגעה: oref_alert (MIT)
+            |• רשת: OkHttp (Apache 2.0)
+            |• מזג אוויר: Open-Meteo · שמות מקומות: OpenStreetMap
+            |
+            |⚠️ האפליקציה משלימה ואינה מחליפה את האפליקציה הרשמית של פיקוד העורף.
+            |
+            |🔗 github.com/t0548321068/red-alert
+        """.trimMargin()
+        AlertDialog.Builder(this, dlg())
+            .setTitle("ℹ️ אודות")
+            .setMessage(msg)
+            .setPositiveButton("סגור", null)
+            .setNeutralButton("GitHub") { _, _ ->
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/t0548321068/red-alert")))
+            }
             .show()
     }
 
