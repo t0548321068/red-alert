@@ -49,9 +49,9 @@ jobs:
           files: red-alert.apk
           make_latest: true
 
-      # גרסת בטא: כל בנייה מענף שאינו main - מחליפה את הבטא הקודמת
+      # גרסת בטא: רק מענף beta (כשמבקשים "תעדכן") - מחליפה את הבטא הקודמת
       - name: Beta release
-        if: github.ref != 'refs/heads/main'
+        if: github.ref == 'refs/heads/beta'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
