@@ -26,8 +26,10 @@ object AreaData {
     }
 
     fun areas(c: Context): JSONObject = areasCache ?: synchronized(this) {
+        // אותו קובץ משמש גם את המפה (var ALL_AREAS={...};) - מורידים את העטיפה
         areasCache ?: JSONObject(
-            c.assets.open("areas.json").bufferedReader(Charsets.UTF_8).use { it.readText() }
+            c.assets.open("areas.js").bufferedReader(Charsets.UTF_8).use { it.readText() }
+                .removePrefix("var ALL_AREAS=").trimEnd().removeSuffix(";")
         ).also { areasCache = it }
     }
 
