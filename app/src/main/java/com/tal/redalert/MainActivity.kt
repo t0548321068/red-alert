@@ -88,7 +88,7 @@ class MainActivity : Activity() {
             weatherLine.setTextColor(C.BLUE)
             return
         }
-        if (!force && System.currentTimeMillis() - weatherAt < 15 * 60 * 1000) return
+        if (!force && System.currentTimeMillis() - weatherAt < Prefs.weatherMinutes(this) * 60 * 1000L) return
         weatherAt = System.currentTimeMillis()
         if (force || weatherLine.text.isNullOrBlank()) {
             weatherLine.text = "📍 מאתר מיקום מדויק…"
@@ -804,6 +804,12 @@ class MainActivity : Activity() {
             cur / 60, cur % 60, true).show()
     }
 
+    private fun weatherLabel(min: Int) = when (min) {
+        1 -> "כל דקה"
+        60 -> "כל שעה"
+        else -> "כל $min דקות"
+    }
+
     /** הגדרות שעה ותאריך - כל שינוי נראה מיד בשעון */
     private fun showClockSettings() {
         val items = arrayOf(
@@ -811,7 +817,8 @@ class MainActivity : Activity() {
             "סגנון יום: ${TimeFormat.DAY_OPTIONS[Prefs.dayStyle(this)]}",
             "שניות: " + if (Prefs.showSeconds(this)) "מוצג" else "מוסתר",
             "תאריך: " + if (Prefs.showDate(this)) "מוצג" else "מוסתר",
-            "מזג אוויר: " + if (Prefs.showWeather(this)) "מוצג" else "מוסתר"
+            "מזג אוויר: " + if (Prefs.showWeather(this)) "מוצג" else "מוסתר",
+            "עדכון מזג אוויר: " + weatherLabel(Prefs.weatherMinutes(this))
         )
         AlertDialog.Builder(this, dlg())
             .setTitle("תצוגה")
@@ -838,6 +845,17 @@ class MainActivity : Activity() {
                     2 -> { Prefs.setShowSeconds(this, !Prefs.showSeconds(this)); updateClock(); refresh(); showClockSettings() }
                     3 -> { Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); showClockSettings() }
                     4 -> { Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); showClockSettings() }
+                    5 -> {
+                        val opts = intArrayOf(1, 2, 5, 10, 15, 30, 60)
+                        AlertDialog.Builder(this, dlg())
+                            .setTitle("עדכון מזג אוויר")
+                            .setSingleChoiceItems(opts.map { weatherLabel(it) }.toTypedArray(),
+                                opts.indexOf(Prefs.weatherMinutes(this))) { d, i ->
+                                Prefs.setWeatherMinutes(this, opts[i])
+                                d.dismiss(); showClockSettings()
+                            }
+                            .show()
+                    }
                 }
             }
             .setPositiveButton("סגור", null)
