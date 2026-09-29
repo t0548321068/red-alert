@@ -50,7 +50,7 @@ class AlertActivity : Activity() {
             gravity = Gravity.CENTER
             setBackgroundColor(Color.parseColor(bg))
             setPadding(48, 48, 48, 48)
-            setOnClickListener { finish() }
+            // בכוונה בלי סגירה בלחיצה על המסך - כדי שלא ייסגר בטעות
         }
         root.addView(TextView(this).apply {
             text = intent.getStringExtra("title") ?: "צבע אדום"
@@ -85,12 +85,56 @@ class AlertActivity : Activity() {
         }
 
         root.addView(TextView(this).apply {
-            text = "$note\n(לחיצה לסגירה)"
-            textSize = 18f
+            text = note
+            textSize = 20f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
         })
+
+        // כפתורים: השתקה (צליל ורטט בלבד) · סגירה בלחיצה ארוכה
+        val buttons = LinearLayout(this).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, 60, 0, 0)
+        }
+        fun btn(label: String) = TextView(this).apply {
+            text = label
+            textSize = 18f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            setPadding(44, 26, 44, 26)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = 60f
+                setStroke(3, Color.WHITE)
+                setColor(Color.parseColor("#33FFFFFF"))
+            }
+        }
+        val mute = btn("🔇 השתק").apply {
+            setOnClickListener {
+                AlertService.silence(this@AlertActivity)
+                text = "🔇 הושתק"
+                alpha = 0.6f
+            }
+        }
+        val close = btn("✕ סגור").apply {
+            setOnClickListener {
+                android.widget.Toast.makeText(this@AlertActivity, "לחיצה ארוכה לסגירה",
+                    android.widget.Toast.LENGTH_SHORT).show()
+            }
+            setOnLongClickListener {
+                AlertService.silence(this@AlertActivity)
+                finish()
+                true
+            }
+        }
+        buttons.addView(mute)
+        buttons.addView(close, LinearLayout.LayoutParams(-2, -2).apply { marginStart = 40 })
+        root.addView(buttons)
         setContentView(root, ViewGroup.LayoutParams(-1, -1))
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        android.widget.Toast.makeText(this, "לסגירה: לחיצה ארוכה על ✕ סגור", android.widget.Toast.LENGTH_SHORT).show()
     }
 
     override fun onResume() {

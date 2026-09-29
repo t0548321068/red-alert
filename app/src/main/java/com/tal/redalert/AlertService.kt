@@ -34,6 +34,12 @@ class AlertService : Service() {
         private const val ID_SERVICE = 1
         private const val ID_ALERT = 2
         const val ACTION_TEST = "test"
+        const val ACTION_SILENCE = "silence"
+
+        /** עוצר צליל ורטט של ההתראה הנוכחית (ההתראה עצמה נשארת) */
+        fun silence(c: Context) {
+            c.startService(Intent(c, AlertService::class.java).setAction(ACTION_SILENCE))
+        }
 
         private const val CH_INFO = "info"
         private const val CH_QUIET = "quiet"
@@ -121,6 +127,11 @@ class AlertService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_SILENCE) {
+            main.post { ringtone?.stop() }
+            Vibes.stop(this)
+            return START_STICKY
+        }
         if (intent?.action == ACTION_TEST) {
             val title = intent.getStringExtra("title") ?: "ירי רקטות וטילים"
             val mine = Prefs.cities(this) + Prefs.nearbyAreas(this)
