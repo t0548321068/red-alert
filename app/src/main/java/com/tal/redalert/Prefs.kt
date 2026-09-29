@@ -8,6 +8,7 @@ object Prefs {
     private const val FILE = "prefs"
     private const val MAX_HISTORY = 300   // מספיק לשבוע אחורה במפה
 
+    // הגדרות נשמרות מיד לדיסק (commit) - שלא ילכו לאיבוד אם האפליקציה נסגרת לעדכון
     private fun sp(c: Context) = c.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
     /** ערים לסינון. ריק = כל הארץ */
@@ -16,10 +17,10 @@ object Prefs {
             .split(",").map { it.trim() }.filter { it.isNotEmpty() }
 
     fun setCities(c: Context, list: List<String>) =
-        sp(c).edit().putString("cities", list.joinToString(",")).apply()
+        sp(c).edit().putString("cities", list.joinToString(",")).commit()
 
     fun enabled(c: Context) = sp(c).getBoolean("enabled", false)
-    fun setEnabled(c: Context, v: Boolean) = sp(c).edit().putBoolean("enabled", v).apply()
+    fun setEnabled(c: Context, v: Boolean) = sp(c).edit().putBoolean("enabled", v).commit()
 
     // ---- תצוגת שעה ותאריך ----
     const val DAY_FULL = 0      // יום שני
@@ -28,20 +29,20 @@ object Prefs {
     const val DAY_SHORT = 3     // ב'
 
     fun dayStyle(c: Context) = sp(c).getInt("dayStyle", DAY_FULL)
-    fun setDayStyle(c: Context, v: Int) = sp(c).edit().putInt("dayStyle", v).apply()
+    fun setDayStyle(c: Context, v: Int) = sp(c).edit().putInt("dayStyle", v).commit()
     fun showSeconds(c: Context) = sp(c).getBoolean("seconds", true)
-    fun setShowSeconds(c: Context, v: Boolean) = sp(c).edit().putBoolean("seconds", v).apply()
+    fun setShowSeconds(c: Context, v: Boolean) = sp(c).edit().putBoolean("seconds", v).commit()
     fun showDate(c: Context) = sp(c).getBoolean("date", true)
-    fun setShowDate(c: Context, v: Boolean) = sp(c).edit().putBoolean("date", v).apply()
+    fun setShowDate(c: Context, v: Boolean) = sp(c).edit().putBoolean("date", v).commit()
     fun showWeather(c: Context) = sp(c).getBoolean("weather", true)
     /** כל כמה דקות לרענן את מזג האוויר והמיקום שלו */
     fun weatherMinutes(c: Context) = sp(c).getInt("weatherMin", 2)
-    fun setWeatherMinutes(c: Context, v: Int) = sp(c).edit().putInt("weatherMin", v).apply()
-    fun setShowWeather(c: Context, v: Boolean) = sp(c).edit().putBoolean("weather", v).apply()
+    fun setWeatherMinutes(c: Context, v: Int) = sp(c).edit().putInt("weatherMin", v).commit()
+    fun setShowWeather(c: Context, v: Boolean) = sp(c).edit().putBoolean("weather", v).commit()
 
     /** הגרסה האחרונה שהמשתמש ראה עליה "מה חדש" */
     fun seenVersion(c: Context) = sp(c).getString("seenVer", "") ?: ""
-    fun setSeenVersion(c: Context, v: String) = sp(c).edit().putString("seenVer", v).apply()
+    fun setSeenVersion(c: Context, v: String) = sp(c).edit().putString("seenVer", v).commit()
 
     // ---- פיד ארצי: כל ההתראות בארץ, בלי קשר לאזורים שלי ----
     private const val MAX_FEED = 150
@@ -71,45 +72,45 @@ object Prefs {
     fun recordAccuracy(c: Context, acc: Float) {
         if (acc <= 0f) return
         val cur = bestAccuracy(c)
-        if (cur == 0f || acc < cur) sp(c).edit().putFloat("bestAcc", acc).apply()
+        if (cur == 0f || acc < cur) sp(c).edit().putFloat("bestAcc", acc).commit()
     }
     fun dualFrequency(c: Context) = sp(c).getBoolean("dualFreq", false)
     fun setDualFrequency(c: Context, v: Boolean) {
-        if (dualFrequency(c) != v) sp(c).edit().putBoolean("dualFreq", v).apply()
+        if (dualFrequency(c) != v) sp(c).edit().putBoolean("dualFreq", v).commit()
     }
 
     // ---- קרוב אליי: התראה גם לפי המיקום הנוכחי ----
     fun nearMe(c: Context) = sp(c).getBoolean("nearMe", false)
-    fun setNearMe(c: Context, v: Boolean) = sp(c).edit().putBoolean("nearMe", v).apply()
+    fun setNearMe(c: Context, v: Boolean) = sp(c).edit().putBoolean("nearMe", v).commit()
     /** האזורים שזוהו לאחרונה סביב המיקום (לתצוגה ולסינון) */
     fun nearbyAreas(c: Context): List<String> =
         (sp(c).getString("nearby", "") ?: "").split("|").filter { it.isNotEmpty() }
     fun setNearbyAreas(c: Context, v: List<String>) =
-        sp(c).edit().putString("nearby", v.joinToString("|")).apply()
+        sp(c).edit().putString("nearby", v.joinToString("|")).commit()
 
     // ---- צליל לכל סוג התראה (ריק = ברירת מחדל, "silent" = בלי צליל) ----
     fun sound(c: Context, level: Int) = sp(c).getString("sound$level", "") ?: ""
-    fun setSound(c: Context, level: Int, uri: String) = sp(c).edit().putString("sound$level", uri).apply()
+    fun setSound(c: Context, level: Int, uri: String) = sp(c).edit().putString("sound$level", uri).commit()
 
     // ---- הקראה בקול ----
     fun speakAlerts(c: Context) = sp(c).getBoolean("speak", true)
-    fun setSpeakAlerts(c: Context, v: Boolean) = sp(c).edit().putBoolean("speak", v).apply()
+    fun setSpeakAlerts(c: Context, v: Boolean) = sp(c).edit().putBoolean("speak", v).commit()
     /** קול ההקראה: גבר (ברירת מחדל, כמו בצופר) או אישה */
     fun maleVoice(c: Context) = sp(c).getBoolean("maleVoice", true)
-    fun setMaleVoice(c: Context, v: Boolean) = sp(c).edit().putBoolean("maleVoice", v).apply()
+    fun setMaleVoice(c: Context, v: Boolean) = sp(c).edit().putBoolean("maleVoice", v).commit()
 
     // ---- סוג רטט לכל סוג התראה ----
     fun vibe(c: Context, level: Int) = sp(c).getInt("vibe$level", Vibes.default(level))
-    fun setVibe(c: Context, level: Int, v: Int) = sp(c).edit().putInt("vibe$level", v).apply()
+    fun setVibe(c: Context, level: Int, v: Int) = sp(c).edit().putInt("vibe$level", v).commit()
 
     // ---- שעות שקט: משתיק התראה מקדימה וסיום אירוע (ירי תמיד נשמע) ----
     fun quietOn(c: Context) = sp(c).getBoolean("quietOn", false)
-    fun setQuietOn(c: Context, v: Boolean) = sp(c).edit().putBoolean("quietOn", v).apply()
+    fun setQuietOn(c: Context, v: Boolean) = sp(c).edit().putBoolean("quietOn", v).commit()
     /** דקות מתחילת היום */
     fun quietFrom(c: Context) = sp(c).getInt("quietFrom", 23 * 60)
     fun quietTo(c: Context) = sp(c).getInt("quietTo", 7 * 60)
     fun setQuiet(c: Context, from: Int, to: Int) =
-        sp(c).edit().putInt("quietFrom", from).putInt("quietTo", to).apply()
+        sp(c).edit().putInt("quietFrom", from).putInt("quietTo", to).commit()
 
     fun isQuietNow(c: Context): Boolean {
         if (!quietOn(c)) return false
@@ -123,30 +124,30 @@ object Prefs {
     fun countdownUntil(c: Context) = sp(c).getLong("cdUntil", 0L)
     fun countdownTitle(c: Context) = sp(c).getString("cdTitle", "") ?: ""
     fun setCountdown(c: Context, until: Long, title: String) =
-        sp(c).edit().putLong("cdUntil", until).putString("cdTitle", title).apply()
+        sp(c).edit().putLong("cdUntil", until).putString("cdTitle", title).commit()
 
     // ---- טיימר שהייה במרחב המוגן (10 דקות אחרי ירי) ----
     const val STAY_MS = 10 * 60 * 1000L
     fun stayUntil(c: Context) = sp(c).getLong("stayUntil", 0L)
-    fun setStayUntil(c: Context, v: Long) = sp(c).edit().putLong("stayUntil", v).apply()
+    fun setStayUntil(c: Context, v: Long) = sp(c).edit().putLong("stayUntil", v).commit()
 
     // ---- עקיפת "נא לא להפריע" בזמן התראה ----
     fun dndOverride(c: Context) = sp(c).getBoolean("dndOverride", true)
-    fun setDndOverride(c: Context, v: Boolean) = sp(c).edit().putBoolean("dndOverride", v).apply()
+    fun setDndOverride(c: Context, v: Boolean) = sp(c).edit().putBoolean("dndOverride", v).commit()
 
     /** ערכת נושא: true = כהה (ברירת מחדל), false = בהירה */
     fun darkTheme(c: Context) = sp(c).getBoolean("dark", true)
-    fun setDarkTheme(c: Context, v: Boolean) = sp(c).edit().putBoolean("dark", v).apply()
+    fun setDarkTheme(c: Context, v: Boolean) = sp(c).edit().putBoolean("dark", v).commit()
     fun dialogTheme(c: Context) =
         if (darkTheme(c)) android.R.style.Theme_DeviceDefault_Dialog_Alert
         else android.R.style.Theme_DeviceDefault_Light_Dialog_Alert
 
     /** גרסה שנבחר עבורה "מאוחר יותר" - לא מקפיצים עליה שוב */
     fun skippedVersion(c: Context) = sp(c).getString("skipVer", "") ?: ""
-    fun setSkippedVersion(c: Context, v: String) = sp(c).edit().putString("skipVer", v).apply()
+    fun setSkippedVersion(c: Context, v: String) = sp(c).edit().putString("skipVer", v).commit()
     /** גרסה שכבר נשלחה עליה התראה ברקע */
     fun notifiedVersion(c: Context) = sp(c).getString("notifVer", "") ?: ""
-    fun setNotifiedVersion(c: Context, v: String) = sp(c).edit().putString("notifVer", v).apply()
+    fun setNotifiedVersion(c: Context, v: String) = sp(c).edit().putString("notifVer", v).commit()
 
     data class Entry(val time: String, val title: String, val body: String, val level: Int, val ts: Long = 0)
 
