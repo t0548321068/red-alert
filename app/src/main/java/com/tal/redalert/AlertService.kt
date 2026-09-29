@@ -69,8 +69,9 @@ class AlertService : Service() {
             else -> LEVEL_ALERT
         }
 
-        fun start(c: Context, testTitle: String? = null) {
-            val i = Intent(c, AlertService::class.java)
+        /** chime = מנגינה שההאזנה חזרה לפעול (רק אחרי הדלקת הטלפון / עדכון, לא בלחיצה על "מוגן") */
+        fun start(c: Context, testTitle: String? = null, chime: Boolean = false) {
+            val i = Intent(c, AlertService::class.java).putExtra("chime", chime)
             if (testTitle != null) {
                 i.action = ACTION_TEST
                 i.putExtra("title", testTitle)
@@ -126,7 +127,6 @@ class AlertService : Service() {
         } else {
             startForeground(ID_SERVICE, n)
         }
-        playAppChime()   // הצליל של האפליקציה - ההאזנה התחילה
         // טיימר שהייה שהיה פעיל לפני הפעלה מחדש של השירות
         val stayLeft = Prefs.stayUntil(this) - System.currentTimeMillis()
         if (stayLeft > 0) main.postDelayed(stayDone, stayLeft) else Prefs.setStayUntil(this, 0)
@@ -151,6 +151,8 @@ class AlertService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // מנגינה רק כשההאזנה חזרה לבד (הדלקת הטלפון / עדכון) - לא בלחיצה ידנית
+        if (intent?.getBooleanExtra("chime", false) == true) playAppChime()
         if (intent?.action == ACTION_VOICE) {
             speaker?.applyVoice()
             return START_STICKY
@@ -612,7 +614,7 @@ class AlertService : Service() {
         } catch (_: Exception) { }
     }
 
-    /** מנגינת האפליקציה (צליל 56) - נשמעת כשההאזנה מתחילה (הפעלה, אחרי עדכון, אחרי הדלקת הטלפון) */
+    /** מנגינת האפליקציה (צליל 56) - נשמעת כשההאזנה חוזרת לבד (אחרי עדכון, אחרי הדלקת הטלפון) */
     private fun playAppChime() {
         try {
             android.media.MediaPlayer().apply {
