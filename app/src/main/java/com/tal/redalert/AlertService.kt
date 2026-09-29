@@ -35,6 +35,12 @@ class AlertService : Service() {
         private const val ID_ALERT = 2
         const val ACTION_TEST = "test"
         const val ACTION_SILENCE = "silence"
+        const val ACTION_VOICE = "voice"
+
+        /** החלפת קול ההקראה בשירות שכבר רץ */
+        fun reloadVoice(c: Context) {
+            c.startService(Intent(c, AlertService::class.java).setAction(ACTION_VOICE))
+        }
 
         /** עוצר צליל ורטט של ההתראה הנוכחית (ההתראה עצמה נשארת) */
         fun silence(c: Context) {
@@ -131,6 +137,10 @@ class AlertService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_VOICE) {
+            speaker?.applyVoice()
+            return START_STICKY
+        }
         if (intent?.action == ACTION_SILENCE) {
             speaker?.stop()
             main.post { ringtone?.stop() }

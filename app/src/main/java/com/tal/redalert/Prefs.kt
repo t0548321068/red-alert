@@ -94,6 +94,9 @@ object Prefs {
     // ---- הקראה בקול ----
     fun speakAlerts(c: Context) = sp(c).getBoolean("speak", true)
     fun setSpeakAlerts(c: Context, v: Boolean) = sp(c).edit().putBoolean("speak", v).apply()
+    /** קול ההקראה: גבר (ברירת מחדל, כמו בצופר) או אישה */
+    fun maleVoice(c: Context) = sp(c).getBoolean("maleVoice", true)
+    fun setMaleVoice(c: Context, v: Boolean) = sp(c).edit().putBoolean("maleVoice", v).apply()
 
     // ---- סוג רטט לכל סוג התראה ----
     fun vibe(c: Context, level: Int) = sp(c).getInt("vibe$level", Vibes.default(level))
