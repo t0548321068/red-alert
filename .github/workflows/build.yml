@@ -43,3 +43,10 @@ jobs:
           name: גרסה ${{ steps.ver.outputs.name }}
           files: red-alert.apk
           make_latest: true
+
+      # התראה מיידית לאפליקציות המותקנות (הן מחוברות לנושא הזה ב-ntfy.sh)
+      - name: Notify installed apps
+        if: github.ref == 'refs/heads/main'
+        run: |
+          curl -s -H "Title: New version" -d "${{ steps.ver.outputs.name }}" \
+            https://ntfy.sh/redalert-tal-updates-7f3k9q
