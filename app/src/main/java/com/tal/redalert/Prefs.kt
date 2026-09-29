@@ -36,6 +36,28 @@ object Prefs {
     fun showWeather(c: Context) = sp(c).getBoolean("weather", true)
     fun setShowWeather(c: Context, v: Boolean) = sp(c).edit().putBoolean("weather", v).apply()
 
+    // ---- פיד ארצי: כל ההתראות בארץ, בלי קשר לאזורים שלי ----
+    private const val MAX_FEED = 150
+
+    fun feed(c: Context): List<Entry> {
+        val arr = try { JSONArray(sp(c).getString("feed", "[]")) } catch (_: Exception) { JSONArray() }
+        return (0 until arr.length()).map {
+            val o = arr.getJSONObject(it)
+            Entry("", o.optString("title"), o.optString("body"), o.optInt("level"), o.optLong("ts"))
+        }
+    }
+
+    @Synchronized
+    fun addFeed(c: Context, e: Entry) {
+        val list = listOf(e) + feed(c).take(MAX_FEED - 1)
+        val arr = JSONArray()
+        list.forEach {
+            arr.put(JSONObject().put("title", it.title).put("body", it.body)
+                .put("level", it.level).put("ts", it.ts))
+        }
+        sp(c).edit().putString("feed", arr.toString()).apply()
+    }
+
     // ---- דיוק מיקום: נלמד לכל מכשיר ----
     /** הדיוק הטוב ביותר (במטרים) שהמכשיר הזה הגיע אליו אי פעם. 0 = עוד לא נמדד */
     fun bestAccuracy(c: Context) = sp(c).getFloat("bestAcc", 0f)

@@ -75,6 +75,7 @@ class AlertService : Service() {
 
     /** אזור -> (סוג, זמן) - למניעת כפילות בין מקורות */
     private val seen = HashMap<String, Pair<Int, Long>>()
+    private val seenFeed = HashMap<String, Pair<Int, Long>>()
     private val DEDUP_MS = 3 * 60 * 1000L
     private var wakeLock: PowerManager.WakeLock? = null
     private var ringtone: Ringtone? = null
@@ -314,6 +315,17 @@ class AlertService : Service() {
     fun handle(title: String, areas: List<String>) {
         val level = levelOf(title)
         val now = System.currentTimeMillis()
+
+        // פיד ארצי: כל ההתראות, לפני הסינון לפי אזורים (בלי צליל)
+        val feedNew = areas.filter { it.isNotBlank() }.filter { a ->
+            val prev = seenFeed[a]
+            prev == null || prev.first != level || now - prev.second > DEDUP_MS
+        }
+        if (feedNew.isNotEmpty()) {
+            feedNew.forEach { seenFeed[it] = level to now }
+            Prefs.addFeed(this, Prefs.Entry("", title, feedNew.joinToString(", "), level, now))
+        }
+
         val manual = Prefs.cities(this)
         val near = if (Prefs.nearMe(this)) Prefs.nearbyAreas(this) else emptyList()
         // בלי ערים ובלי מיקום ידוע - כל הארץ (עדיף התראה מיותרת מאשר לפספס)
