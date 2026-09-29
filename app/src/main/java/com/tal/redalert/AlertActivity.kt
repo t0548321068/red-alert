@@ -106,6 +106,16 @@ class AlertActivity : Activity() {
             gravity = Gravity.CENTER
         })
 
+        intent.getStringExtra("source")?.takeIf { it.isNotEmpty() }?.let { src ->
+            root.addView(TextView(this).apply {
+                text = "📡 התקבל ראשון מ: $src"
+                textSize = 13f
+                setTextColor(Color.parseColor("#DDFFFFFF"))
+                gravity = Gravity.CENTER
+                setPadding(0, 16, 0, 0)
+            })
+        }
+
         if (level == AlertService.LEVEL_ALERT) {
             stay = TextView(this).apply {
                 textSize = 18f
