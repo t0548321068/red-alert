@@ -63,6 +63,8 @@ class MainActivity : Activity() {
     private lateinit var weatherLine: TextView
     private lateinit var shelterLine: TextView
     private lateinit var quietLine: TextView
+    private lateinit var feedLine: TextView
+    private var feedText = ""
     private lateinit var netInd: TextView
     private lateinit var locInd: TextView
     private lateinit var srvInd: TextView
@@ -179,6 +181,10 @@ class MainActivity : Activity() {
         header.addView(text("v${Updater.currentVersion(this)}", 13f, C.MUTED).apply {
             setPadding(dp(8), dp(6), 0, 0)
         }, LinearLayout.LayoutParams(0, -2, 1f))
+        header.addView(text("🕰", 20f, C.MUTED).apply {
+            setPadding(dp(8), dp(4), dp(8), dp(4))
+            setOnClickListener { startActivity(Intent(this@MainActivity, ClockActivity::class.java)) }
+        })
         header.addView(text("⚙", 22f, C.MUTED).apply {
             setPadding(dp(8), dp(4), dp(8), dp(4))
             setOnClickListener { showSettings() }
@@ -224,6 +230,19 @@ class MainActivity : Activity() {
             status.addView(v, LinearLayout.LayoutParams(-2, -2).apply { if (i > 0) marginStart = dp(8) })
         }
         col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+
+        // פיד ארצי - פס רץ עם כל ההתראות בארץ (בלי צליל)
+        feedLine = text("", 12f, C.MUTED).apply {
+            setSingleLine()
+            ellipsize = TextUtils.TruncateAt.MARQUEE
+            marqueeRepeatLimit = -1
+            isSelected = true
+            gravity = Gravity.CENTER
+            setPadding(dp(12), dp(7), dp(12), dp(7))
+            background = GradientDrawable().apply { cornerRadius = dp(10).toFloat(); setColor(C.CARD) }
+            setOnClickListener { showFeed() }
+        }
+        col.addView(feedLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
         // עיגול הפעלה/כיבוי
         circleIcon = text("✓", 40f, C.GREEN).apply { gravity = Gravity.CENTER }
@@ -501,7 +520,25 @@ class MainActivity : Activity() {
         return hasLocationPerm() && lm.isLocationEnabled
     }
 
+    private fun updateFeed() {
+        val t = FeedText.latest(this) ?: "🇮🇱 פיד ארצי · אין התראות בארץ ב־30 הדקות האחרונות"
+        if (t != feedText) {           // לא לאפס את הגלילה של הפס בכל שנייה
+            feedText = t
+            feedLine.text = t
+            feedLine.setTextColor(if (t.startsWith("🇮🇱")) C.MUTED else C.TEXT)
+        }
+    }
+
+    private fun showFeed() {
+        AlertDialog.Builder(this, dlg())
+            .setTitle("🇮🇱 פיד ארצי · 24 שעות")
+            .setMessage(FeedText.day(this))
+            .setPositiveButton("סגור", null)
+            .show()
+    }
+
     private fun updateIndicators() {
+        updateFeed()
         if (Prefs.isQuietNow(this)) {
             quietLine.text = "🌙 שעות שקט עד ${hhmm(Prefs.quietTo(this))} · מקדימה וסיום בשקט"
             quietLine.setTextColor(C.ORANGE)
