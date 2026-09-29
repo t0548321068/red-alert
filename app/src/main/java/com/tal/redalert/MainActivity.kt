@@ -61,6 +61,7 @@ class MainActivity : Activity() {
     private lateinit var clockTime: TextView
     private lateinit var clockDay: TextView
     private lateinit var weatherLine: TextView
+    private lateinit var shelterLine: TextView
     private var weatherAt = 0L
     private var weatherAccuracy = -1
     private var lastHistoryKey = ""
@@ -119,6 +120,7 @@ class MainActivity : Activity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 2) updateWeather(force = true)
+        if (requestCode == 3 && hasPrecise()) toggleNearMe()
     }
 
     private val ui = Handler(Looper.getMainLooper())
@@ -230,6 +232,8 @@ class MainActivity : Activity() {
         areasCard.addView(areasHead)
         chips = FlowLayout(this, dp(6))
         areasCard.addView(chips, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        shelterLine = text("", 13f, C.TEXT)
+        areasCard.addView(shelterLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         col.addView(areasCard)
 
         // התראות אחרונות
@@ -276,6 +280,8 @@ class MainActivity : Activity() {
         }
         setContentView(scroll)
         askPermissions()
+        // טעינת נתוני האזורים ברקע, כדי שהמסך לא ייתקע בפעם הראשונה
+        Thread { try { AreaData.areas(this) } catch (_: Exception) { } }.start()
     }
 
     private var updateCheckedAt = 0L
@@ -299,6 +305,7 @@ class MainActivity : Activity() {
         val on = !Prefs.enabled(this)
         Prefs.setEnabled(this, on)
         if (on) AlertService.start(this) else AlertService.stop(this)
+        AlertWidget.updateAll(this)
         refresh()
     }
 
@@ -323,9 +330,13 @@ class MainActivity : Activity() {
     private fun renderChips() {
         chips.removeAllViews()
         val list = Prefs.cities(this)
-        if (list.isEmpty()) {
+        val near = if (Prefs.nearMe(this)) Prefs.nearbyAreas(this) else emptyList()
+        if (Prefs.nearMe(this)) {
+            val label = near.firstOrNull()?.let { "📍 קרוב אליי: $it" } ?: "📍 קרוב אליי: מאתר…"
+            chips.addView(chip(label, removable = false) { })
+        }
+        if (list.isEmpty() && near.isEmpty()) {
             chips.addView(chip("כל הארץ", removable = false) {})
-            return
         }
         list.forEach { city ->
             chips.addView(chip(city, removable = true) {
@@ -333,6 +344,10 @@ class MainActivity : Activity() {
                 refresh()
             })
         }
+        // זמן להגעה למרחב מוגן לפי האזורים שלי (הקצר ביותר)
+        val sec = AreaData.shelterSeconds(this, list + near)
+        shelterLine.text = if (sec != null) "⏱ זמן להגעה למרחב מוגן: ${AreaData.shelterText(sec)}" else ""
+        shelterLine.visibility = if (sec != null) View.VISIBLE else View.GONE
     }
 
     private fun renderHistory() {
@@ -397,8 +412,12 @@ class MainActivity : Activity() {
 
     private fun showSettings() {
         val fullOk = Settings.canDrawOverlays(this)
+        val quiet = if (Prefs.quietOn(this))
+            "${hhmm(Prefs.quietFrom(this))}–${hhmm(Prefs.quietTo(this))}" else "כבוי"
         val options = arrayOf("תצוגה", "בדיקת עדכונים",
             "מסך מלא בהתראה: " + if (fullOk) "פעיל ✓" else "לא פעיל – לחץ להפעלה",
+            "קרוב אליי (לפי מיקום): " + if (Prefs.nearMe(this)) "פעיל" else "כבוי",
+            "צלילים", "שעות שקט: $quiet",
             "חיסכון בסוללה", "הגדרות התראות")
         AlertDialog.Builder(this, dlg())
             .setTitle("הגדרות · גרסה ${Updater.currentVersion(this)}")
@@ -407,11 +426,130 @@ class MainActivity : Activity() {
                     0 -> showClockSettings()
                     1 -> Updater.check(this, silent = false)
                     2 -> openFullScreenSettings()
-                    3 -> openBatterySettings()
-                    4 -> openNotificationSettings()
+                    3 -> toggleNearMe()
+                    4 -> showSounds()
+                    5 -> showQuietHours()
+                    6 -> openBatterySettings()
+                    7 -> openNotificationSettings()
                 }
             }
             .show()
+    }
+
+    private fun hhmm(min: Int) = "%02d:%02d".format(min / 60, min % 60)
+
+    /** קרוב אליי: צריך מיקום מדויק. מיקום ברקע נקרא דרך השירות */
+    private fun toggleNearMe() {
+        val on = !Prefs.nearMe(this)
+        if (on && !hasPrecise()) {
+            requestPermissions(arrayOf(
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION), 3)
+            return
+        }
+        Prefs.setNearMe(this, on)
+        if (on) {
+            // זיהוי ראשון מיד, בלי לחכות לשירות
+            Weather.freshLocation(this) { loc ->
+                if (loc != null) Thread {
+                    val list = AreaData.areasAt(this, loc.latitude, loc.longitude).take(8)
+                    Prefs.setNearbyAreas(this, list)
+                    runOnUiThread { refresh() }
+                }.start()
+            }
+            // השירות צריך לעלות מחדש כדי לקבל גישה למיקום ברקע
+            if (Prefs.enabled(this)) { AlertService.stop(this); AlertService.start(this) }
+        }
+        refresh()
+    }
+
+    private val SOUND_NAMES = arrayOf("ירי / חדירה", "התראה מקדימה", "האירוע הסתיים")
+
+    private fun soundLabel(level: Int): String {
+        val v = Prefs.sound(this, level)
+        return when {
+            v == "silent" -> "ללא צליל"
+            v.isEmpty() -> if (level == AlertService.LEVEL_END) "ללא צליל (ברירת מחדל)" else "ברירת מחדל"
+            else -> try {
+                android.media.RingtoneManager.getRingtone(this, Uri.parse(v))?.getTitle(this) ?: "מותאם"
+            } catch (_: Exception) { "מותאם" }
+        }
+    }
+
+    private fun showSounds() {
+        val items = Array(3) { "${SOUND_NAMES[it]}: ${soundLabel(it)}" }
+        AlertDialog.Builder(this, dlg())
+            .setTitle("צלילים")
+            .setItems(items) { _, level -> pickSound(level) }
+            .setPositiveButton("סגור", null)
+            .show()
+    }
+
+    private fun pickSound(level: Int) {
+        val type = if (level == AlertService.LEVEL_ALERT) android.media.RingtoneManager.TYPE_ALARM
+                   else android.media.RingtoneManager.TYPE_NOTIFICATION
+        val cur = Prefs.sound(this, level)
+        val i = Intent(android.media.RingtoneManager.ACTION_RINGTONE_PICKER)
+            .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE,
+                android.media.RingtoneManager.TYPE_ALARM or android.media.RingtoneManager.TYPE_NOTIFICATION or
+                    android.media.RingtoneManager.TYPE_RINGTONE)
+            .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TITLE, "צליל – ${SOUND_NAMES[level]}")
+            .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+            .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+            .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_DEFAULT_URI,
+                android.media.RingtoneManager.getDefaultUri(type))
+        if (cur.isNotEmpty() && cur != "silent") {
+            i.putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, Uri.parse(cur))
+        }
+        @Suppress("DEPRECATION")
+        startActivityForResult(i, 100 + level)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode in 100..102 && resultCode == RESULT_OK && data != null) {
+            val level = requestCode - 100
+            @Suppress("DEPRECATION")
+            val uri = data.getParcelableExtra<Uri>(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            val default = android.media.RingtoneManager.getDefaultUri(
+                if (level == AlertService.LEVEL_ALERT) android.media.RingtoneManager.TYPE_ALARM
+                else android.media.RingtoneManager.TYPE_NOTIFICATION)
+            Prefs.setSound(this, level, when {
+                uri == null -> "silent"
+                uri == default && level != AlertService.LEVEL_END -> ""
+                else -> uri.toString()
+            })
+            showSounds()
+        }
+    }
+
+    /** שעות שקט: רק התראה מקדימה וסיום אירוע מושתקים. ירי תמיד נשמע. */
+    private fun showQuietHours() {
+        val on = Prefs.quietOn(this)
+        val items = arrayOf(
+            "מצב: " + if (on) "פעיל" else "כבוי",
+            "מתחיל: ${hhmm(Prefs.quietFrom(this))}",
+            "נגמר: ${hhmm(Prefs.quietTo(this))}"
+        )
+        AlertDialog.Builder(this, dlg())
+            .setTitle("שעות שקט")
+            .setMessage("בשעות האלה התראה מקדימה וסיום אירוע יגיעו בשקט.\nהתראת ירי תמיד תישמע.")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> { Prefs.setQuietOn(this, !on); showQuietHours() }
+                    1 -> pickTime(Prefs.quietFrom(this)) { Prefs.setQuiet(this, it, Prefs.quietTo(this)); showQuietHours() }
+                    2 -> pickTime(Prefs.quietTo(this)) { Prefs.setQuiet(this, Prefs.quietFrom(this), it); showQuietHours() }
+                }
+            }
+            .setPositiveButton("סגור", null)
+            .show()
+    }
+
+    private fun pickTime(cur: Int, done: (Int) -> Unit) {
+        android.app.TimePickerDialog(this, dlg(), { _, h, m -> done(h * 60 + m) },
+            cur / 60, cur % 60, true).show()
     }
 
     /** הגדרות שעה ותאריך - כל שינוי נראה מיד בשעון */

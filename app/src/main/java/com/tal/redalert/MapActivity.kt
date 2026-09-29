@@ -12,17 +12,6 @@ import org.json.JSONObject
 /** מפת ההתראות - אזורים שהותרעו, צבועים לפי סוג ההתראה האחרונה */
 class MapActivity : Activity() {
 
-    companion object {
-        /** טעינה חד-פעמית של מרכזי ופוליגוני האזורים (מ-assets/areas.json) */
-        @Volatile private var areasCache: JSONObject? = null
-
-        fun areas(a: Activity): JSONObject = areasCache ?: synchronized(this) {
-            areasCache ?: JSONObject(
-                a.assets.open("areas.json").bufferedReader(Charsets.UTF_8).use { it.readText() }
-            ).also { areasCache = it }
-        }
-    }
-
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,14 +40,14 @@ class MapActivity : Activity() {
 
     /** ממיר את היסטוריית ההתראות לנתונים למפה + רק האזורים שצריך */
     private fun buildData(dark: Boolean): Pair<String, String> {
-        val all = areas(this)
+        val all = AreaData.areas(this)
         val needed = JSONObject()
         val events = JSONArray()
 
         Prefs.history(this).filter { it.ts > 0 }.forEach { e ->
             val names = JSONArray()
             e.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach { raw ->
-                matchAreas(all, raw).forEach { name ->
+                AreaData.match(this, raw).forEach { name ->
                     names.put(name)
                     if (!needed.has(name)) needed.put(name, all.getJSONObject(name))
                 }
@@ -78,20 +67,5 @@ class MapActivity : Activity() {
             }
         }
         return data.toString() to needed.toString()
-    }
-
-    /**
-     * שמות ממקורות שונים לא תמיד זהים לשמות הרשמיים:
-     * קודם התאמה מדויקת, אחרת כל האזורים שמתחילים בשם (למשל "תל אביב" -> "תל אביב - מרכז העיר")
-     */
-    private fun matchAreas(all: JSONObject, raw: String): List<String> {
-        if (all.has(raw)) return listOf(raw)
-        val out = mutableListOf<String>()
-        val keys = all.keys()
-        while (keys.hasNext()) {
-            val k = keys.next()
-            if (k.startsWith("$raw -") || k.startsWith("$raw,")) out += k
-        }
-        return out
     }
 }

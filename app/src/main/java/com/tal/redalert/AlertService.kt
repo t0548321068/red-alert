@@ -36,6 +36,7 @@ class AlertService : Service() {
         const val ACTION_TEST = "test"
 
         private const val CH_INFO = "info"
+        private const val CH_QUIET = "quiet"
         private const val CH_UPDATE = "updates_v2"  // ערוץ חדש כדי שההתראה תקפוץ עם צליל
         private const val ID_UPDATE = 3
 
@@ -89,7 +90,14 @@ class AlertService : Service() {
             .setContentIntent(openApp())
             .build()
         if (Build.VERSION.SDK_INT >= 34) {
-            startForeground(ID_SERVICE, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            // עם סוג "מיקום" השירות יכול לקרוא מיקום גם ברקע (ל"קרוב אליי").
+            // אם אי אפשר כרגע (למשל הופעל מהרקע אחרי הדלקה) - ממשיכים בלי.
+            try {
+                startForeground(ID_SERVICE, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
+            } catch (_: Exception) {
+                startForeground(ID_SERVICE, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            }
         } else {
             startForeground(ID_SERVICE, n)
         }
@@ -99,6 +107,7 @@ class AlertService : Service() {
         Thread(::loop, "oref-poll").start()
         Thread(::historyLoop, "oref-history").start()
         Thread(::updateLoop, "update-check").start()
+        Thread(::nearLoop, "near-me").start()
         tzofar = TzofarSource(this) { title, areas -> handle(title, areas) }.also { it.start() }
         tzevadom = TzevadomSource(this) { title, areas -> handle(title, areas) }.also { it.start() }
         telegram = listOf("PikudHaOref_all", "tzevaadomm", "CumtaAlertsChannel", "Radar_Alerts").map { ch ->
@@ -109,7 +118,9 @@ class AlertService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_TEST) {
             val title = intent.getStringExtra("title") ?: "ירי רקטות וטילים"
-            fire(title, listOf("התראת בדיקה"), forceScreen = true)
+            val mine = Prefs.cities(this) + Prefs.nearbyAreas(this)
+            fire(title, listOf("התראת בדיקה"), forceScreen = true,
+                shelter = AreaData.shelterSeconds(this, mine) ?: 15)
         }
         return START_STICKY
     }
@@ -225,9 +236,15 @@ class AlertService : Service() {
     fun handle(title: String, areas: List<String>) {
         val level = levelOf(title)
         val now = System.currentTimeMillis()
-        val filter = Prefs.cities(this)
+        val manual = Prefs.cities(this)
+        val near = if (Prefs.nearMe(this)) Prefs.nearbyAreas(this) else emptyList()
+        // בלי ערים ובלי מיקום ידוע - כל הארץ (עדיף התראה מיותרת מאשר לפספס)
+        val allCountry = manual.isEmpty() && near.isEmpty()
         val fresh = areas.filter { a -> a.isNotBlank() }
-            .filter { a -> filter.isEmpty() || filter.any { f -> a.contains(f) } }
+            .filter { a ->
+                allCountry || manual.any { f -> a.contains(f) } ||
+                    near.any { n -> n == a || n.startsWith("$a -") || a.startsWith("$n -") }
+            }
             .filter { a ->
                 val prev = seen[a]
                 prev == null || prev.first != level || now - prev.second > DEDUP_MS
@@ -246,49 +263,82 @@ class AlertService : Service() {
         else -> String(b, Charsets.UTF_8)
     }
 
-    private fun fire(title: String, areas: List<String>, forceScreen: Boolean = false) {
+    /** "קרוב אליי": כל 2 דקות מזהה באילו אזורים המכשיר נמצא (מהמיקום האחרון, בלי להדליק GPS) */
+    private fun nearLoop() {
+        while (running) {
+            try {
+                if (Prefs.nearMe(this)) {
+                    Weather.lastLocation(this)?.let { loc ->
+                        val list = AreaData.areasAt(this, loc.latitude, loc.longitude).take(8)
+                        if (list.isNotEmpty()) Prefs.setNearbyAreas(this, list)
+                    }
+                }
+            } catch (_: Exception) { }
+            Thread.sleep(2 * 60 * 1000L)
+        }
+    }
+
+    private fun fire(title: String, areas: List<String>, forceScreen: Boolean = false, shelter: Int? = null) {
         val body = areas.joinToString(", ")
         val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
             .format(java.util.Date())
         Prefs.addHistory(this, Prefs.Entry(time, title, body, levelOf(title), System.currentTimeMillis()))
 
         val level = levelOf(title)
+        val quiet = level != LEVEL_ALERT && Prefs.isQuietNow(this)
+        val shelterSec = shelter ?: if (level == LEVEL_ALERT) AreaData.shelterSeconds(this, areas) else null
         val full = Intent(this, AlertActivity::class.java)
             .putExtra("title", title).putExtra("body", body).putExtra("level", level)
+            .putExtra("shelter", shelterSec ?: -1).putExtra("firedAt", System.currentTimeMillis())
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val fullPi = PendingIntent.getActivity(
             this, 1, full, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
-        val n = Notification.Builder(this, if (level == LEVEL_END) CH_INFO else CH_ALERT)
+        val channel = when {
+            quiet -> CH_QUIET
+            level == LEVEL_END -> CH_INFO
+            else -> CH_ALERT
+        }
+        val text = if (shelterSec != null && level == LEVEL_ALERT)
+            "$body · זמן למרחב מוגן: ${AreaData.shelterText(shelterSec)}" else body
+        val nb = Notification.Builder(this, channel)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentTitle(title)
-            .setContentText(body)
-            .setStyle(Notification.BigTextStyle().bigText(body))
+            .setContentText(text)
+            .setStyle(Notification.BigTextStyle().bigText(text))
             .setCategory(Notification.CATEGORY_ALARM)
-            .setFullScreenIntent(fullPi, true)
             .setContentIntent(fullPi)
             .setAutoCancel(true)
-            .build()
+        if (!quiet) nb.setFullScreenIntent(fullPi, true)
+        val n = nb.build()
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n)
 
         // מסך מלא גם כשהטלפון פתוח ובשימוש:
         // בבדיקה (האפליקציה בחזית) או עם הרשאת "הצגה מעל אפליקציות אחרות"
-        if (forceScreen || android.provider.Settings.canDrawOverlays(this)) {
+        if (forceScreen || (!quiet && android.provider.Settings.canDrawOverlays(this))) {
             try { startActivity(full) } catch (_: Exception) { }
         }
 
-        when (level) {
-            LEVEL_ALERT -> playAlarm(RingtoneManager.TYPE_ALARM, 15000)
-            LEVEL_PRE -> playAlarm(RingtoneManager.TYPE_NOTIFICATION, 3000)
+        when {
+            quiet && !forceScreen -> main.post { ringtone?.stop() }
+            level == LEVEL_ALERT -> playAlarm(level, RingtoneManager.TYPE_ALARM, 15000)
+            level == LEVEL_PRE -> playAlarm(level, RingtoneManager.TYPE_NOTIFICATION, 3000)
+            Prefs.sound(this, level).let { it.isNotEmpty() && it != "silent" } ->
+                playAlarm(level, RingtoneManager.TYPE_NOTIFICATION, 3000)   // סיום - רק אם נבחר צליל
             else -> main.post { ringtone?.stop() }
         }
+
+        AlertWidget.updateAll(this)
     }
 
     /** צליל בערוץ "שעון מעורר" - נשמע גם במצב שקט */
-    private fun playAlarm(type: Int, durationMs: Long) {
+    private fun playAlarm(level: Int, type: Int, durationMs: Long) {
+        val chosen = Prefs.sound(this, level)
+        if (chosen == "silent") return
         main.post {
             ringtone?.stop()
-            val uri = RingtoneManager.getDefaultUri(type)
+            val uri = chosen.takeIf { it.isNotEmpty() }?.let { android.net.Uri.parse(it) }
+                ?: RingtoneManager.getDefaultUri(type)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
             ringtone = RingtoneManager.getRingtone(this, uri)?.apply {
                 audioAttributes = AudioAttributes.Builder()
@@ -319,6 +369,8 @@ class AlertService : Service() {
         nm.createNotificationChannel(
             NotificationChannel(CH_UPDATE, "עדכוני גרסה", NotificationManager.IMPORTANCE_HIGH))
         nm.deleteNotificationChannel("updates")
+        nm.createNotificationChannel(
+            NotificationChannel(CH_QUIET, "שעות שקט", NotificationManager.IMPORTANCE_LOW))
         nm.createNotificationChannel(
             NotificationChannel(CH_INFO, "סיום אירוע", NotificationManager.IMPORTANCE_HIGH).apply {
                 setSound(null, null)
