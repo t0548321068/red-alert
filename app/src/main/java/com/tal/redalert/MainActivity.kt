@@ -328,6 +328,7 @@ class MainActivity : Activity() {
         }
         setContentView(scroll)
         askPermissions()
+        showWhatsNewIfUpdated()
         // טעינת נתוני האזורים ברקע, כדי שהמסך לא ייתקע בפעם הראשונה
         Thread { try { AreaData.areas(this) } catch (_: Exception) { } }.start()
     }
@@ -464,7 +465,7 @@ class MainActivity : Activity() {
         val fullOk = Settings.canDrawOverlays(this)
         val quiet = if (Prefs.quietOn(this))
             "${hhmm(Prefs.quietFrom(this))}–${hhmm(Prefs.quietTo(this))}" else "כבוי"
-        val options = arrayOf("תצוגה", "בדיקת עדכונים",
+        val options = arrayOf("תצוגה", "בדיקת עדכונים", "מה חדש",
             "מסך מלא בהתראה: " + if (fullOk) "פעיל ✓" else "לא פעיל – לחץ להפעלה",
             "קרוב אליי (לפי מיקום): " + if (Prefs.nearMe(this)) "פעיל" else "כבוי",
             "צלילים", "שעות שקט: $quiet",
@@ -475,12 +476,13 @@ class MainActivity : Activity() {
                 when (which) {
                     0 -> showClockSettings()
                     1 -> Updater.check(this, silent = false)
-                    2 -> openFullScreenSettings()
-                    3 -> toggleNearMe()
-                    4 -> showSounds()
-                    5 -> showQuietHours()
-                    6 -> openBatterySettings()
-                    7 -> openNotificationSettings()
+                    2 -> showWhatsNew(sinceVersion = null)
+                    3 -> openFullScreenSettings()
+                    4 -> toggleNearMe()
+                    5 -> showSounds()
+                    6 -> showQuietHours()
+                    7 -> openBatterySettings()
+                    8 -> openNotificationSettings()
                 }
             }
             .show()
@@ -596,6 +598,38 @@ class MainActivity : Activity() {
             .setTitle("שרתי התרעות · ${SourceHealth.upCount()}/${SourceHealth.total()} מחוברים")
             .setMessage(if (Prefs.enabled(this)) SourceHealth.report() else "ההאזנה כבויה")
             .setPositiveButton("סגור", null)
+            .show()
+    }
+
+    // ---- מה חדש ----
+
+    /** אחרי עדכון: פעם אחת, כל מה שהשתנה מאז הגרסה הקודמת שהייתה מותקנת */
+    private fun showWhatsNewIfUpdated() {
+        val cur = Updater.currentVersion(this)
+        val seen = Prefs.seenVersion(this)
+        Prefs.setSeenVersion(this, cur)
+        if (seen.isNotEmpty() && seen != cur) showWhatsNew(sinceVersion = seen)
+    }
+
+    /** sinceVersion = null: רק הגרסה הנוכחית (מההגדרות) */
+    private fun showWhatsNew(sinceVersion: String?) {
+        val log = try {
+            org.json.JSONObject(assets.open("changelog.json").bufferedReader(Charsets.UTF_8).use { it.readText() })
+        } catch (_: Exception) { return }
+        val cur = Updater.currentVersion(this)
+        val versions = log.keys().asSequence()
+            .filter { v -> if (sinceVersion == null) v == cur else Updater.isNewer(v, sinceVersion) && !Updater.isNewer(v, cur) }
+            .sortedWith { a, b -> if (Updater.isNewer(a, b)) -1 else if (a == b) 0 else 1 }
+            .toList()
+        if (versions.isEmpty()) return
+        val text = versions.joinToString("\n\n") { v ->
+            val items = log.getJSONArray(v)
+            "גרסה $v\n" + (0 until items.length()).joinToString("\n") { "• " + items.getString(it) }
+        }
+        AlertDialog.Builder(this, dlg())
+            .setTitle("🆕 מה חדש")
+            .setMessage(text)
+            .setPositiveButton("הבנתי", null)
             .show()
     }
 

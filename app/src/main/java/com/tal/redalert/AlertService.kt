@@ -30,7 +30,7 @@ class AlertService : Service() {
         private const val HISTORY_POLL_MS = 10000L
         private const val HISTORY_WINDOW_MS = 90000L
         private const val CH_SERVICE = "service"
-        private const val CH_ALERT = "alerts"
+        private const val CH_ALERT = "alerts_v2"   // בלי רטט בערוץ - רטט לפי סוג, ידנית
         private const val ID_SERVICE = 1
         private const val ID_ALERT = 2
         const val ACTION_TEST = "test"
@@ -418,7 +418,28 @@ class AlertService : Service() {
             else -> main.post { ringtone?.stop() }
         }
 
+        if (!quiet) vibrate(level)
         AlertWidget.updateAll(this)
+    }
+
+    /**
+     * רטט שונה לכל סוג - אפשר לזהות מה קרה גם כשהטלפון בכיס:
+     * ירי: 4 רטטים ארוכים · מקדימה: 2+2 קצרים · סיום: רטט קצר אחד
+     */
+    private fun vibrate(level: Int) {
+        val pattern = when (level) {
+            LEVEL_ALERT -> longArrayOf(0, 1000, 300, 1000, 300, 1000, 300, 1000)
+            LEVEL_PRE -> longArrayOf(0, 250, 150, 250, 700, 250, 150, 250)
+            else -> longArrayOf(0, 200)
+        }
+        try {
+            val v = if (Build.VERSION.SDK_INT >= 31)
+                (getSystemService(VIBRATOR_MANAGER_SERVICE) as android.os.VibratorManager).defaultVibrator
+            else @Suppress("DEPRECATION") (getSystemService(VIBRATOR_SERVICE) as android.os.Vibrator)
+            val attrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build()
+            @Suppress("DEPRECATION")
+            v.vibrate(android.os.VibrationEffect.createWaveform(pattern, -1), attrs)
+        } catch (_: Exception) { }
     }
 
     /** צליל בערוץ "שעון מעורר" - נשמע גם במצב שקט */
@@ -450,15 +471,15 @@ class AlertService : Service() {
             NotificationChannel(CH_SERVICE, "שירות רקע", NotificationManager.IMPORTANCE_MIN))
         nm.createNotificationChannel(
             NotificationChannel(CH_ALERT, "התראות צבע אדום", NotificationManager.IMPORTANCE_HIGH).apply {
-                setSound(null, null) // הצליל מושמע ידנית כאזעקה
-                enableVibration(true)
-                vibrationPattern = longArrayOf(0, 800, 300, 800, 300, 800)
+                setSound(null, null)     // הצליל מושמע ידנית כאזעקה
+                enableVibration(false)   // הרטט מופעל ידנית, שונה לכל סוג
                 setBypassDnd(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             })
         nm.createNotificationChannel(
             NotificationChannel(CH_UPDATE, "עדכוני גרסה", NotificationManager.IMPORTANCE_HIGH))
         nm.deleteNotificationChannel("updates")
+        nm.deleteNotificationChannel("alerts")
         nm.createNotificationChannel(
             NotificationChannel(CH_QUIET, "שעות שקט", NotificationManager.IMPORTANCE_LOW))
         nm.createNotificationChannel(

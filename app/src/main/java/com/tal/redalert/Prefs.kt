@@ -36,6 +36,10 @@ object Prefs {
     fun showWeather(c: Context) = sp(c).getBoolean("weather", true)
     fun setShowWeather(c: Context, v: Boolean) = sp(c).edit().putBoolean("weather", v).apply()
 
+    /** הגרסה האחרונה שהמשתמש ראה עליה "מה חדש" */
+    fun seenVersion(c: Context) = sp(c).getString("seenVer", "") ?: ""
+    fun setSeenVersion(c: Context, v: String) = sp(c).edit().putString("seenVer", v).apply()
+
     // ---- פיד ארצי: כל ההתראות בארץ, בלי קשר לאזורים שלי ----
     private const val MAX_FEED = 150
 
