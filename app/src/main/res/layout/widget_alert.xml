@@ -16,7 +16,8 @@
         android:format24Hour="HH:mm:ss"
         android:textColor="#F2F2F2"
         android:textSize="30sp"
-        android:fontFamily="sans-serif-light" />
+        android:fontFamily="sans-serif"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/widget_status"

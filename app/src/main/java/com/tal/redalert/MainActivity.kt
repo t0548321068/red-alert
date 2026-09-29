@@ -194,7 +194,7 @@ class MainActivity : Activity() {
         // שעון
         clockTime = text("", 44f, C.TEXT).apply {
             gravity = Gravity.CENTER
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
             setOnClickListener { showClockSettings() }
         }
         clockDay = text("", 14f, C.MUTED).apply {

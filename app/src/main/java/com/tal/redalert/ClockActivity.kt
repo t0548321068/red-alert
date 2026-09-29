@@ -61,7 +61,7 @@ class ClockActivity : Activity() {
         time = TextView(this).apply {
             textSize = 84f
             setTextColor(DIM)
-            typeface = Typeface.create("sans-serif-thin", Typeface.NORMAL)
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
             gravity = Gravity.CENTER
         }
         day = TextView(this).apply { textSize = 18f; setTextColor(DIM2); gravity = Gravity.CENTER }
