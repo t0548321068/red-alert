@@ -819,16 +819,11 @@ class MainActivity : Activity() {
             |• מזג אוויר: Open-Meteo · שמות מקומות: OpenStreetMap
             |
             |⚠️ האפליקציה משלימה ואינה מחליפה את האפליקציה הרשמית של פיקוד העורף.
-            |
-            |🔗 github.com/t0548321068/red-alert
         """.trimMargin()
         AlertDialog.Builder(this, dlg())
             .setTitle("ℹ️ אודות")
             .setMessage(msg)
             .setPositiveButton("סגור", null)
-            .setNeutralButton("GitHub") { _, _ ->
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/t0548321068/red-alert")))
-            }
             .show()
     }
 

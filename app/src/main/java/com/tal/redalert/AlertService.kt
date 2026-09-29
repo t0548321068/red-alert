@@ -91,13 +91,12 @@ class AlertService : Service() {
     /** "יישוב|סוג" -> זמן האירוע - למניעת כפילות בין מקורות */
     private val seen = HashMap<String, Long>()
     private val seenFeed = HashMap<String, Long>()
-    private val DEDUP_MS = 3 * 60 * 1000L
+    private val DEDUP_MS = Prefs.DUP_MS
     /** התראות מאותו סוג בתוך דקה וחצי = אותו אירוע -> שורה אחת ברשימה */
     private val MERGE_MS = 90 * 1000L
 
     /** מפתח ליישוב - אותו יישוב בכל המקורות ("תל אביב - מרכז העיר" = "תל אביב" = "תל-אביב") */
-    private fun key(area: String, level: Int) =
-        area.split(" - ")[0].filter { it.isLetterOrDigit() } + "|" + level
+    private fun key(area: String, level: Int) = Prefs.areaKey(area) + "|" + level
     private var wakeLock: PowerManager.WakeLock? = null
     private var ringtone: Ringtone? = null
     private val main = Handler(Looper.getMainLooper())
