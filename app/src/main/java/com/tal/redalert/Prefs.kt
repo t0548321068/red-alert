@@ -52,12 +52,30 @@ object Prefs {
         return (0 until arr.length()).map {
             val o = arr.getJSONObject(it)
             Entry("", o.optString("title"), o.optString("body"), o.optInt("level"), o.optLong("ts"))
-        }
+        }.let { collapse(it) }
     }
 
+    /** כפילויות שנשמרו בגרסאות קודמות: אותו סוג בהפרש של פחות מדקה וחצי = שורה אחת */
+    private fun collapse(list: List<Entry>): List<Entry> {
+        val out = ArrayList<Entry>()
+        for (e in list) {
+            val top = out.lastOrNull()
+            if (top != null && top.level == e.level && e.ts > 0 && top.ts - e.ts in 0 until 90_000L) {
+                // הישנה (המקור הראשון) קובעת את הזמן והכותרת
+                out[out.size - 1] = e.copy(body = mergeBody(e.body, top.body.split(", ")))
+            } else out.add(e)
+        }
+        return out
+    }
+
+    /** mergeMs > 0: אם הרשומה האחרונה מאותו סוג ובתוך הזמן הזה - מצרפים אליה במקום שורה חדשה */
     @Synchronized
-    fun addFeed(c: Context, e: Entry) {
-        val list = listOf(e) + feed(c).take(MAX_FEED - 1)
+    fun addFeed(c: Context, e: Entry, mergeMs: Long = 0) {
+        val old = feed(c)
+        val first = old.firstOrNull()
+        val list = if (mergeMs > 0 && first != null && first.level == e.level && e.ts - first.ts < mergeMs)
+            listOf(first.copy(body = mergeBody(first.body, e.body.split(", ")))) + old.drop(1)
+        else listOf(e) + old.take(MAX_FEED - 1)
         val arr = JSONArray()
         list.forEach {
             arr.put(JSONObject().put("title", it.title).put("body", it.body)
@@ -159,6 +177,25 @@ object Prefs {
             Entry(o.optString("time"), o.optString("title"), o.optString("body"),
                 o.optInt("level"), o.optLong("ts"))
         }.filter { it.body != "התראת בדיקה" }   // בדיקות מגרסאות קודמות לא מוצגות
+            .let { collapse(it) }
+    }
+
+    /** מוסיף יישובים לשורת ההתראה האחרונה (בלי כפילויות) */
+    private fun mergeBody(body: String, add: List<String>): String {
+        fun k(a: String) = a.split(" - ")[0].filter { it.isLetterOrDigit() }
+        val cur = body.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val keys = cur.map { k(it) }.toMutableSet()
+        val extra = add.filter { keys.add(k(it)) }
+        return (cur + extra).joinToString(", ")
+    }
+
+    @Synchronized
+    fun mergeFirstHistory(c: Context, add: List<String>) {
+        val arr = try { JSONArray(sp(c).getString("history", "[]")) } catch (_: Exception) { return }
+        if (arr.length() == 0) return
+        val o = arr.getJSONObject(0)
+        o.put("body", mergeBody(o.optString("body"), add))
+        sp(c).edit().putString("history", arr.toString()).apply()
     }
 
     @Synchronized
