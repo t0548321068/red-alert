@@ -363,9 +363,11 @@ class AlertService : Service() {
 
     /** נקודת כניסה משותפת לכל המקורות: סינון ערים + מניעת כפילות */
     @Synchronized
-    fun handle(title: String, rawAreas: List<String>, eventTime: Long = System.currentTimeMillis(),
+    fun handle(rawTitle: String, rawAreas: List<String>, eventTime: Long = System.currentTimeMillis(),
                source: String = "") {
-        val level = levelOf(title)
+        val level = levelOf(rawTitle)
+        // כל סוגי הסיום ("החשש הוסר" וכו') מוצגים כ"האירוע הסתיים"
+        val title = if (level == LEVEL_END) "האירוע הסתיים" else rawTitle
         val now = System.currentTimeMillis()
         // בלי כפילויות בתוך ההודעה עצמה
         val areas = rawAreas.map { it.trim() }.filter { it.isNotBlank() }.distinctBy { key(it, level) }
@@ -399,7 +401,8 @@ class AlertService : Service() {
         // המקור הכי מהיר כבר התריע על האירוע הזה (לפני פחות מדקה וחצי) -
         // היישובים הנוספים מצטרפים לאותה שורה, בלי צליל ומסך נוספים
         val last = Prefs.history(this).firstOrNull()
-        if (last != null && last.level == level && now - last.ts < MERGE_MS) {
+        if (last != null && last.level == level &&
+            (now - last.ts < MERGE_MS || (level == LEVEL_END && now - last.ts < DEDUP_MS))) {
             Prefs.mergeFirstHistory(this, fresh)
             AlertWidget.updateAll(this)
             return

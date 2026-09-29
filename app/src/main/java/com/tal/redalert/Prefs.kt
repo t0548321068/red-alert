@@ -61,7 +61,9 @@ object Prefs {
      */
     private fun clean(c: Context, e: Entry): Entry {
         var x = e
-        if (e.body.contains("הוסר החשש") || e.body.contains("החשש הוסר"))
+        // כל סוגי הסיום ("החשש הוסר", "ניתן לצאת"...) = "האירוע הסתיים"
+        if (e.level == 2 || AlertService.levelOf(e.title) == 2 ||
+            e.body.contains("הוסר החשש") || e.body.contains("החשש הוסר"))
             x = x.copy(title = "האירוע הסתיים", level = 2)
         val parts = x.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }
         val real = parts.filter { AreaData.isKnown(c, it) }
@@ -87,7 +89,7 @@ object Prefs {
             val i = out.indices.firstOrNull { j ->
                 val k = out[j]
                 k.level == e.level && e.ts > 0 && k.ts - e.ts in 0 until DUP_MS &&
-                    (k.ts - e.ts < 90_000L || keys[j].any { it in ek })
+                    (k.ts - e.ts < 90_000L || k.level == 2 || keys[j].any { it in ek })   // סיום אירוע - תמיד אחד
             }
             if (i == null) { out.add(e); keys.add(ek.toMutableSet()); continue }
             out[i] = e.copy(body = mergeBody(e.body, out[i].body.split(", ")))
