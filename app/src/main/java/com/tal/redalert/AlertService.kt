@@ -155,7 +155,7 @@ class AlertService : Service() {
         if (intent?.action == ACTION_TEST) {
             val title = intent.getStringExtra("title") ?: "ירי רקטות וטילים"
             val mine = Prefs.cities(this) + Prefs.nearbyAreas(this)
-            fire(title, listOf("התראת בדיקה"), forceScreen = true,
+            fire(title, listOf("התראת בדיקה"), forceScreen = true, test = true,
                 shelter = AreaData.shelterSeconds(this, mine) ?: 15)
         }
         return START_STICKY
@@ -404,11 +404,13 @@ class AlertService : Service() {
         }
     }
 
-    private fun fire(title: String, areas: List<String>, forceScreen: Boolean = false, shelter: Int? = null) {
+    private fun fire(title: String, areas: List<String>, forceScreen: Boolean = false, shelter: Int? = null,
+                     test: Boolean = false) {
         val body = areas.joinToString(", ")
         val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
             .format(java.util.Date())
-        Prefs.addHistory(this, Prefs.Entry(time, title, body, levelOf(title), System.currentTimeMillis()))
+        // בדיקה - לא נשמרת בהיסטוריה, במפה ובווידג'ט
+        if (!test) Prefs.addHistory(this, Prefs.Entry(time, title, body, levelOf(title), System.currentTimeMillis()))
 
         val level = levelOf(title)
         val quiet = level != LEVEL_ALERT && Prefs.isQuietNow(this)
@@ -450,14 +452,16 @@ class AlertService : Service() {
         }
 
         // ספירה לאחור בווידג'ט הגדול
-        if (level == LEVEL_ALERT && shelterSec != null && shelterSec > 0) {
+        if (test) { /* בלי ספירה וטיימר בווידג'ט */ }
+        else if (level == LEVEL_ALERT && shelterSec != null && shelterSec > 0) {
             Prefs.setCountdown(this, System.currentTimeMillis() + shelterSec * 1000L, title)
             main.postDelayed({ AlertWidget.updateAll(this) }, shelterSec * 1000L + 500)
         } else if (level == LEVEL_END) Prefs.setCountdown(this, 0, "")
 
         // טיימר שהייה במרחב המוגן: 10 דקות מהירי, "הסתיים" מבטל אותו
-        main.removeCallbacks(stayDone)
-        if (level == LEVEL_ALERT) {
+        if (!test) main.removeCallbacks(stayDone)
+        if (test) { }
+        else if (level == LEVEL_ALERT) {
             Prefs.setStayUntil(this, System.currentTimeMillis() + Prefs.STAY_MS)
             main.postDelayed(stayDone, Prefs.STAY_MS)
         } else if (level == LEVEL_END) {
