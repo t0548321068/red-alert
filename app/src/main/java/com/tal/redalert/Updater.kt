@@ -31,7 +31,7 @@ object Updater {
 
     /** לתצוגה: "1.20" או "1.20 בטא 153" */
     fun versionLabel(c: Context): String =
-        currentVersion(c) + if (isBetaBuild(c)) " בטא ${buildNumber(c)}" else ""
+        currentVersion(c).let { v -> if (isBetaBuild(c) && !v.endsWith("b")) "$v בטא ${buildNumber(c)}" else v }
 
     /** עדכון זמין: label לתצוגה, key לזיכרון "מאוחר יותר", url להורדה */
     data class Update(val label: String, val key: String, val url: String)
@@ -43,7 +43,7 @@ object Updater {
             if (isNewer(ver, cur)) return Update(ver, ver, url)
         }
         if (Prefs.betaUpdates(c)) fetch(BETA_API)?.let { (ver, url, build) ->
-            if (build > buildNumber(c) && !isNewer(cur, ver)) return Update("$ver בטא $build", "beta-$build", url)
+            if (build > buildNumber(c) && !isNewer(cur, ver)) return Update(if (ver.endsWith("b")) "$ver (בטא)" else "$ver בטא $build", "beta-$build", url)
         }
         return null
     }
@@ -100,8 +100,10 @@ object Updater {
     }
 
     fun isNewer(remote: String, local: String): Boolean {
-        val r = remote.split(".").map { it.toIntOrNull() ?: 0 }
-        val l = local.split(".").map { it.toIntOrNull() ?: 0 }
+        // "1.21.1b" -> 1, 21, 1 (האות מסמנת בטא)
+        fun parts(v: String) = v.split(".").map { p -> p.takeWhile { it.isDigit() }.toIntOrNull() ?: 0 }
+        val r = parts(remote)
+        val l = parts(local)
         for (i in 0 until maxOf(r.size, l.size)) {
             val a = r.getOrElse(i) { 0 }
             val b = l.getOrElse(i) { 0 }
