@@ -62,6 +62,7 @@ class MainActivity : Activity() {
     private lateinit var clockDay: TextView
     private lateinit var weatherLine: TextView
     private lateinit var shelterLine: TextView
+    private lateinit var quietLine: TextView
     private lateinit var netInd: TextView
     private lateinit var locInd: TextView
     private lateinit var srvInd: TextView
@@ -239,9 +240,13 @@ class MainActivity : Activity() {
         }
         col.addView(circleWrap, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(24) })
         circleHint = text("", 12f, C.MUTED).apply { gravity = Gravity.CENTER }
-        col.addView(circleHint, LinearLayout.LayoutParams(-1, -2).apply {
-            topMargin = dp(10); bottomMargin = dp(20)
-        })
+        col.addView(circleHint, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        // מצב שקט - מוצג רק כשהוא פעיל עכשיו
+        quietLine = text("", 12f, C.ORANGE).apply {
+            gravity = Gravity.CENTER
+            setOnClickListener { showQuietHours() }
+        }
+        col.addView(quietLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(20) })
 
         // האזורים שלי
         val areasCard = card()
@@ -283,6 +288,11 @@ class MainActivity : Activity() {
                 setOnClickListener {
                     Prefs.setEnabled(this@MainActivity, true)
                     AlertService.start(this@MainActivity, testTitle = title)
+                    if (color != C.RED && Prefs.isQuietNow(this@MainActivity)) {
+                        android.widget.Toast.makeText(this@MainActivity,
+                            "שעות שקט פעילות – ההתראה נשלחה בשקט, בלי צליל ומסך מלא",
+                            android.widget.Toast.LENGTH_LONG).show()
+                    }
                     refresh()
                 }
             }, LinearLayout.LayoutParams(0, -2, 1f).apply { if (i > 0) marginStart = dp(6) })
@@ -340,7 +350,7 @@ class MainActivity : Activity() {
         circleIcon.setTextColor(color)
         circleLabel.text = if (on) "מוגן" else "כבוי"
         circleLabel.setTextColor(color)
-        circleHint.text = if (on) "9 מקורות פעילים · לחיצה לכיבוי" else "לחיצה להפעלה"
+        circleHint.text = if (on) "${SourceHealth.total()} מקורות · לחיצה לכיבוי" else "לחיצה להפעלה"
 
         renderChips()
         renderHistory()
@@ -470,6 +480,7 @@ class MainActivity : Activity() {
         v.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0)
         v.compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color)
         v.text = label
+        v.compoundDrawablePadding = if (label.isEmpty()) 0 else dp(5)
         v.setTextColor(color)
     }
 
@@ -491,23 +502,29 @@ class MainActivity : Activity() {
     }
 
     private fun updateIndicators() {
+        if (Prefs.isQuietNow(this)) {
+            quietLine.text = "🌙 שעות שקט עד ${hhmm(Prefs.quietTo(this))} · מקדימה וסיום בשקט"
+            quietLine.visibility = View.VISIBLE
+        } else {
+            quietLine.text = ""
+            quietLine.visibility = View.INVISIBLE
+        }
         val net = network()
         when {
-            net == null -> setInd(netInd, R.drawable.ic_no_net, "אין רשת", C.RED)
-            net.first == "wifi" -> setInd(netInd, R.drawable.ic_wifi, "וויפי", if (net.second) C.GREEN else C.ORANGE)
-            net.first == "cell" -> setInd(netInd, R.drawable.ic_cell, "נתונים", if (net.second) C.GREEN else C.ORANGE)
-            else -> setInd(netInd, R.drawable.ic_wifi, "מחובר", if (net.second) C.GREEN else C.ORANGE)
+            net == null -> setInd(netInd, R.drawable.ic_no_net, "", C.RED)
+            net.first == "wifi" -> setInd(netInd, R.drawable.ic_wifi, "", if (net.second) C.GREEN else C.ORANGE)
+            net.first == "cell" -> setInd(netInd, R.drawable.ic_cell, "", if (net.second) C.GREEN else C.ORANGE)
+            else -> setInd(netInd, R.drawable.ic_wifi, "", if (net.second) C.GREEN else C.ORANGE)
         }
-        if (locationOn()) setInd(locInd, R.drawable.ic_location, if (hasPrecise()) "מיקום" else "משוער",
-            if (hasPrecise()) C.GREEN else C.ORANGE)
-        else setInd(locInd, R.drawable.ic_location, "מיקום כבוי", C.MUTED)
+        if (locationOn()) setInd(locInd, R.drawable.ic_location, "", if (hasPrecise()) C.GREEN else C.ORANGE)
+        else setInd(locInd, R.drawable.ic_location, "", C.MUTED)
 
         if (!Prefs.enabled(this)) {
-            setInd(srvInd, R.drawable.ic_cloud, "כבוי", C.MUTED)
+            setInd(srvInd, R.drawable.ic_cloud, "0/${SourceHealth.total()}", C.MUTED)
         } else {
             val up = SourceHealth.upCount(); val all = SourceHealth.total()
             val color = when { up == 0 -> C.RED; up < all / 2 -> C.ORANGE; else -> C.GREEN }
-            setInd(srvInd, R.drawable.ic_cloud, "$up/$all מקורות", color)
+            setInd(srvInd, R.drawable.ic_cloud, "$up/$all", color)
         }
     }
 

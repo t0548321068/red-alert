@@ -21,6 +21,8 @@ class MapActivity : Activity() {
         val web = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
+            // זיהוי האפליקציה מול שרתי המפות (חלקם חוסמים WebView אנונימי)
+            settings.userAgentString = settings.userAgentString + " RedAlert-Android (github.com/t0548321068/red-alert)"
             setBackgroundColor(Color.TRANSPARENT)
         }
         setContentView(web)

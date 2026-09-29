@@ -3,14 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="leaflet/leaflet.css">
+<script src="leaflet/leaflet.js"></script>
 <style>
   html, body, #map { margin: 0; height: 100%; }
+  .leaflet-container { background: #1b1d22; }
+  body.light .leaflet-container { background: #e9e9ee; }
   body { font-family: sans-serif; background: #0E0E10; }
   .bar { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000;
          display: flex; gap: 6px; background: rgba(28,28,30,.92); padding: 5px; border-radius: 18px; }
-  .bar button { border: 0; background: transparent; color: #ccc; padding: 7px 13px; border-radius: 14px; font-size: 14px; }
+  .bar button { white-space: nowrap; border: 0; background: transparent; color: #ccc; padding: 7px 13px; border-radius: 14px; font-size: 14px; }
   .bar button.on { background: #FF3B30; color: #fff; }
   .legend { position: absolute; bottom: 18px; right: 10px; z-index: 1000; background: rgba(28,28,30,.92);
             color: #eee; padding: 8px 10px; border-radius: 10px; font-size: 12px; line-height: 1.8; }
@@ -84,13 +86,22 @@
   function render(data, areas) {
     DATA = data; AREAS = areas;
     if (!data.dark) document.body.classList.add('light');
-    var url = data.dark
-      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-    L.tileLayer(url, {
-      maxZoom: 18,
-      attribution: '&copy; OpenStreetMap' + (data.dark ? ' &copy; CARTO' : '')
+    // CARTO בשני המצבים - שרתי OpenStreetMap חוסמים אפליקציות בלי אישור
+    var url = 'https://{s}.basemaps.cartocdn.com/' + (data.dark ? 'dark_all' : 'light_all') + '/{z}/{x}/{y}{r}.png';
+    var tiles = L.tileLayer(url, {
+      maxZoom: 18, subdomains: 'abcd',
+      attribution: '&copy; OpenStreetMap &copy; CARTO'
     }).addTo(map);
+    // גיבוי: אם השרת הראשי לא מחזיר אריחים - עוברים ל-Esri
+    var fails = 0, switched = false;
+    tiles.on('tileerror', function () {
+      if (switched || ++fails < 4) return;
+      switched = true;
+      map.removeLayer(tiles);
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/' +
+        (data.dark ? 'Canvas/World_Dark_Gray_Base' : 'World_Street_Map') + '/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 16, attribution: '&copy; Esri' }).addTo(map);
+    });
     draw();
   }
 
