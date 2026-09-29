@@ -85,7 +85,7 @@ class MainActivity : Activity() {
         if (!force && System.currentTimeMillis() - weatherAt < 15 * 60 * 1000) return
         weatherAt = System.currentTimeMillis()
         if (force || weatherLine.text.isNullOrBlank()) {
-            weatherLine.text = "📍 מאתר מיקום…"
+            weatherLine.text = "📍 מאתר מיקום מדויק…"
             weatherLine.setTextColor(C.MUTED)
         }
         Weather.freshLocation(this) { loc ->
@@ -197,8 +197,13 @@ class MainActivity : Activity() {
             setOnClickListener { onWeatherClick() }
             // לחיצה ארוכה: כמה מדויק המיקום שנמדד
             setOnLongClickListener {
-                val msg = if (weatherAccuracy < 0) "עוד לא נמדד מיקום"
-                    else "דיוק המיקום: כ-$weatherAccuracy מטר" + if (hasPrecise()) "" else " (הרשאה משוערת בלבד)"
+                val best = Prefs.bestAccuracy(this@MainActivity)
+                val msg = buildString {
+                    append(if (weatherAccuracy < 0) "עוד לא נמדד מיקום" else "דיוק עכשיו: כ-$weatherAccuracy מטר")
+                    if (best > 0f) append("\nהשיא של המכשיר: כ-${Math.round(best)} מטר")
+                    append(if (Prefs.dualFrequency(this@MainActivity)) "\nGPS כפול־תדר: יש ✓" else "\nGPS כפול־תדר: לא זוהה")
+                    if (!hasPrecise()) append("\n(הרשאה משוערת בלבד)")
+                }
                 android.widget.Toast.makeText(this@MainActivity, msg, android.widget.Toast.LENGTH_LONG).show()
                 true
             }

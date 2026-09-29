@@ -3,6 +3,7 @@ package com.tal.redalert
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Geocoder
+import android.location.GnssStatus
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -31,52 +32,90 @@ object Weather {
     }
 
     /**
-     * מיקום עדכני ומדויק: מבקש מיקום חדש מהטלפון (עד 15 שניות),
-     * ואם לא הגיע - חוזר למיקום האחרון הידוע.
+     * מיקום בדיוק המרבי שהמכשיר מסוגל לו:
+     * - אוסף מיקומים מכל המקורות ומחכה עד שהדיוק מפסיק להשתפר (עד 30 שניות)
+     * - לומד את הדיוק הטוב ביותר שהמכשיר הגיע אליו אי פעם, ומסיים מיד כשמגיעים אליו
+     * - מזהה אם למכשיר יש GPS כפול־תדר (L5) - אז מחכה יותר, כי אפשר להגיע ל-1-3 מטר
      */
     @SuppressLint("MissingPermission")
     fun freshLocation(c: Context, done: (Location?) -> Unit) {
         val lm = c.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val main = Handler(Looper.getMainLooper())
         var finished = false
+        val listeners = mutableListOf<LocationListener>()
+        var gnssCb: GnssStatus.Callback? = null
+        fun stopAll() {
+            listeners.forEach { try { lm.removeUpdates(it) } catch (_: Exception) { } }
+            gnssCb?.let { try { lm.unregisterGnssStatusCallback(it) } catch (_: Exception) { } }
+        }
         fun finish(l: Location?) {
             if (finished) return
             finished = true
+            stopAll()
+            l?.let { Prefs.recordAccuracy(c, it.accuracy) }
             done(l ?: lastLocation(c))
         }
 
-        // מיקום אחרון שנמדד בדקה האחרונה בדיוק גבוה (GPS) - מספיק, בלי לחכות
+        // היעד: הדיוק הטוב ביותר שהמכשיר הזה הגיע אליו (+ מרווח קטן). בפעם הראשונה - 5 מטר.
+        val deviceBest = Prefs.bestAccuracy(c)
+        val target = if (deviceBest > 0f) maxOf(deviceBest * 1.3f, deviceBest + 1f) else 5f
+
+        // מיקום מהדקה האחרונה שכבר בדיוק המרבי - אין צורך לחכות
         lastLocation(c)?.let {
             val ageMs = System.currentTimeMillis() - it.time
-            if (ageMs < 60 * 1000 && it.accuracy in 0.1f..40f) { finish(it); return }
+            if (ageMs < 60 * 1000 && it.accuracy in 0.1f..target) { finish(it); return }
         }
 
         val providers = buildList {
+            if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) add(LocationManager.GPS_PROVIDER)
             if (Build.VERSION.SDK_INT >= 31 && lm.isProviderEnabled(LocationManager.FUSED_PROVIDER))
                 add(LocationManager.FUSED_PROVIDER)
             if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) add(LocationManager.NETWORK_PROVIDER)
-            if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) add(LocationManager.GPS_PROVIDER)
         }
         if (providers.isEmpty()) { finish(null); return }
 
-        val listeners = mutableListOf<LocationListener>()
-        fun stopAll() = listeners.forEach { try { lm.removeUpdates(it) } catch (_: Exception) { } }
+        // זיהוי GPS כפול־תדר: לוויין שמשדר ב-L5/E5 (~1176 מגה־הרץ)
+        try {
+            gnssCb = object : GnssStatus.Callback() {
+                override fun onSatelliteStatusChanged(status: GnssStatus) {
+                    for (i in 0 until status.satelliteCount) {
+                        if (status.hasCarrierFrequencyHz(i) && status.getCarrierFrequencyHz(i) in 1.1e9f..1.2e9f) {
+                            Prefs.setDualFrequency(c, true)
+                            return
+                        }
+                    }
+                }
+            }
+            lm.registerGnssStatusCallback(gnssCb!!, main)
+        } catch (_: Exception) { }
 
-        // אוספים מיקומים מכל המקורות ולוקחים את המדויק ביותר.
-        // מיקום רשת (לא מדויק) מגיע בדרך כלל ראשון - לכן לא עוצרים עליו.
         var best: Location? = null
+        var lastImprove = 0L
         for (p in providers) {
             val l = LocationListener { loc ->
-                if (best == null || loc.accuracy < best!!.accuracy) best = loc
-                if (loc.accuracy in 0.1f..40f) {   // מדויק מספיק - מסיימים מיד
-                    stopAll()
-                    main.post { finish(best) }
+                if (best == null || loc.accuracy < best!!.accuracy) {
+                    best = loc
+                    lastImprove = System.currentTimeMillis()
                 }
+                if (loc.accuracy in 0.1f..target) main.post { finish(best) }   // הגענו למקסימום של המכשיר
             }
             listeners += l
             try { lm.requestLocationUpdates(p, 0L, 0f, l, Looper.getMainLooper()) } catch (_: Exception) { }
         }
-        main.postDelayed({ stopAll(); finish(best) }, 12_000)
+
+        // בדיקה כל שנייה: אם יש מיקום לוויני והדיוק לא השתפר 6 שניות (10 בכפול־תדר) - זה המקסימום כרגע
+        val check = object : Runnable {
+            override fun run() {
+                if (finished) return
+                val b = best
+                val stall = if (Prefs.dualFrequency(c)) 10_000 else 6_000
+                if (b != null && b.provider != LocationManager.NETWORK_PROVIDER &&
+                    System.currentTimeMillis() - lastImprove > stall) { finish(b); return }
+                main.postDelayed(this, 1000)
+            }
+        }
+        main.postDelayed(check, 1000)
+        main.postDelayed({ finish(best) }, 30_000)
     }
 
     /** קריאת רשת - להריץ מחוץ ל-UI thread */
