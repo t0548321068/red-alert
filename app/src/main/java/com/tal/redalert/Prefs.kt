@@ -36,6 +36,36 @@ object Prefs {
     fun showWeather(c: Context) = sp(c).getBoolean("weather", true)
     fun setShowWeather(c: Context, v: Boolean) = sp(c).edit().putBoolean("weather", v).apply()
 
+    // ---- קרוב אליי: התראה גם לפי המיקום הנוכחי ----
+    fun nearMe(c: Context) = sp(c).getBoolean("nearMe", false)
+    fun setNearMe(c: Context, v: Boolean) = sp(c).edit().putBoolean("nearMe", v).apply()
+    /** האזורים שזוהו לאחרונה סביב המיקום (לתצוגה ולסינון) */
+    fun nearbyAreas(c: Context): List<String> =
+        (sp(c).getString("nearby", "") ?: "").split("|").filter { it.isNotEmpty() }
+    fun setNearbyAreas(c: Context, v: List<String>) =
+        sp(c).edit().putString("nearby", v.joinToString("|")).apply()
+
+    // ---- צליל לכל סוג התראה (ריק = ברירת מחדל, "silent" = בלי צליל) ----
+    fun sound(c: Context, level: Int) = sp(c).getString("sound$level", "") ?: ""
+    fun setSound(c: Context, level: Int, uri: String) = sp(c).edit().putString("sound$level", uri).apply()
+
+    // ---- שעות שקט: משתיק התראה מקדימה וסיום אירוע (ירי תמיד נשמע) ----
+    fun quietOn(c: Context) = sp(c).getBoolean("quietOn", false)
+    fun setQuietOn(c: Context, v: Boolean) = sp(c).edit().putBoolean("quietOn", v).apply()
+    /** דקות מתחילת היום */
+    fun quietFrom(c: Context) = sp(c).getInt("quietFrom", 23 * 60)
+    fun quietTo(c: Context) = sp(c).getInt("quietTo", 7 * 60)
+    fun setQuiet(c: Context, from: Int, to: Int) =
+        sp(c).edit().putInt("quietFrom", from).putInt("quietTo", to).apply()
+
+    fun isQuietNow(c: Context): Boolean {
+        if (!quietOn(c)) return false
+        val k = java.util.Calendar.getInstance()
+        val now = k.get(java.util.Calendar.HOUR_OF_DAY) * 60 + k.get(java.util.Calendar.MINUTE)
+        val f = quietFrom(c); val t = quietTo(c)
+        return if (f <= t) now in f until t else now >= f || now < t   // גם טווח שחוצה חצות
+    }
+
     /** ערכת נושא: true = כהה (ברירת מחדל), false = בהירה */
     fun darkTheme(c: Context) = sp(c).getBoolean("dark", true)
     fun setDarkTheme(c: Context, v: Boolean) = sp(c).edit().putBoolean("dark", v).apply()
