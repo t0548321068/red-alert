@@ -422,25 +422,8 @@ class AlertService : Service() {
         AlertWidget.updateAll(this)
     }
 
-    /**
-     * רטט שונה לכל סוג - אפשר לזהות מה קרה גם כשהטלפון בכיס:
-     * ירי: 4 רטטים ארוכים · מקדימה: 2+2 קצרים · סיום: רטט קצר אחד
-     */
-    private fun vibrate(level: Int) {
-        val pattern = when (level) {
-            LEVEL_ALERT -> longArrayOf(0, 1000, 300, 1000, 300, 1000, 300, 1000)
-            LEVEL_PRE -> longArrayOf(0, 250, 150, 250, 700, 250, 150, 250)
-            else -> longArrayOf(0, 200)
-        }
-        try {
-            val v = if (Build.VERSION.SDK_INT >= 31)
-                (getSystemService(VIBRATOR_MANAGER_SERVICE) as android.os.VibratorManager).defaultVibrator
-            else @Suppress("DEPRECATION") (getSystemService(VIBRATOR_SERVICE) as android.os.Vibrator)
-            val attrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build()
-            @Suppress("DEPRECATION")
-            v.vibrate(android.os.VibrationEffect.createWaveform(pattern, -1), attrs)
-        } catch (_: Exception) { }
-    }
+    /** רטט לפי הבחירה בהגדרות (לכל סוג התראה בנפרד) */
+    private fun vibrate(level: Int) = Vibes.play(this, Prefs.vibe(this, level))
 
     /** צליל בערוץ "שעון מעורר" - נשמע גם במצב שקט */
     private fun playAlarm(level: Int, type: Int, durationMs: Long) {
