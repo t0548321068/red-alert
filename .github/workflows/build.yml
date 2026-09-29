@@ -56,7 +56,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete beta --cleanup-tag -y --repo ${{ github.repository }} || true
-          gh release create beta red-alert.apk --repo ${{ github.repository }} \
+          # שם קובץ ייחודי לכל בטא - שלא יורד קובץ ישן מהמטמון
+          F=red-alert-${{ steps.ver.outputs.name }}-${{ github.run_number }}.apk
+          cp red-alert.apk "$F"
+          gh release create beta "$F" --repo ${{ github.repository }} \
             --prerelease --latest=false --target ${{ github.sha }} \
             --title "בטא ${{ steps.ver.outputs.name }} · ${{ github.run_number }}" \
             --notes "version=${{ steps.ver.outputs.name }}
