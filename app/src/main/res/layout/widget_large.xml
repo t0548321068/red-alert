@@ -35,7 +35,7 @@
                 android:layout_height="wrap_content"
                 android:format12Hour="EEEE, d בMMMM"
                 android:format24Hour="EEEE, d בMMMM"
-                android:textColor="#AEAEB2"
+                android:textColor="#F2F2F2"
                 android:textSize="14sp" />
         </LinearLayout>
 
