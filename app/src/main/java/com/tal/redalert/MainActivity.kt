@@ -194,7 +194,8 @@ class MainActivity : Activity() {
         // כותרת + גלגל שיניים
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         header.addView(text("צבע אדום", 22f, C.TEXT, bold = true))
-        header.addView(text("v${Updater.currentVersion(this)}" + if (Updater.isBetaBuild(this)) "β" else "", 13f, C.MUTED).apply {
+        header.addView(text("v${Updater.currentVersion(this)}" +
+            if (Updater.isBetaBuild(this) && !Updater.currentVersion(this).endsWith("b")) "b" else "", 13f, C.MUTED).apply {
             setPadding(dp(8), dp(6), 0, 0)
             // 7 לחיצות מהירות - פותח את אפשרות הבטא (מוסתרת משאר המשתמשים)
             var taps = 0; var lastTap = 0L
