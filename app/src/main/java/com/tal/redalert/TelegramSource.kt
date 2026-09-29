@@ -76,7 +76,8 @@ class TelegramSource(
         if (lines.isEmpty()) return
 
         val title = when {
-            text.contains("הסתיים") -> "האירוע הסתיים"
+            text.contains("הסתיים") || text.contains("הוסר החשש") || text.contains("החשש הוסר") ||
+                text.contains("ניתן לצאת") -> "האירוע הסתיים"
             text.contains("בדקות הקרובות") -> "בדקות הקרובות צפויות להתקבל התרעות באזורך"
             text.contains("כלי טיס") -> "חדירת כלי טיס עוין"
             text.contains("מחבלים") -> "חדירת מחבלים"

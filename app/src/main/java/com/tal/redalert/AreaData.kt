@@ -37,6 +37,21 @@ object AreaData {
      * שמות ממקורות שונים לא תמיד זהים לשמות הרשמיים:
      * קודם התאמה מדויקת, אחרת כל האזורים שמתחילים בשם (למשל "תל אביב" -> "תל אביב - מרכז העיר")
      */
+    @Volatile private var keysCache: Set<String>? = null
+
+    /** מפתחות של כל היישובים הידועים (שם מלא ושם בסיס) */
+    private fun keys(c: Context): Set<String> = keysCache ?: synchronized(this) {
+        keysCache ?: HashSet<String>().also { set ->
+            areas(c).keys().forEach { n -> set.add(Prefs.areaKey(n)); set.add(Prefs.areaKey(n.substringBefore(" - "))) }
+        }.also { keysCache = it }
+    }
+
+    /** האם זה שם של יישוב/אזור אמיתי (ולא שורת כותרת או תאריך מהודעת טלגרם) */
+    fun isKnown(c: Context, raw: String): Boolean {
+        val k = Prefs.areaKey(raw.trim())
+        return k.isNotEmpty() && k in keys(c)
+    }
+
     fun match(c: Context, raw: String): List<String> {
         val all = areas(c)
         if (all.has(raw)) return listOf(raw)

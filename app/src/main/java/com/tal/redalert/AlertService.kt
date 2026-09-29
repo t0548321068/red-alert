@@ -63,7 +63,7 @@ class AlertService : Service() {
 
         /** סיווג לפי נוסח ההודעה של פיקוד העורף */
         fun levelOf(title: String): Int = when {
-            title.contains("הסתיים") -> LEVEL_END
+            title.contains("הסתיים") || title.contains("הוסר") || title.contains("ניתן לצאת") -> LEVEL_END
             title.contains("בדקות הקרובות") || title.contains("צפויות") ||
                 title.contains("מקדימה") -> LEVEL_PRE
             else -> LEVEL_ALERT
@@ -142,7 +142,11 @@ class AlertService : Service() {
         Thread(::nearLoop, "near-me").start()
         tzofar = TzofarSource(this) { title, areas -> handle(title, areas, source = "tzofar") }.also { it.start() }
         telegram = listOf("PikudHaOref_all", "tzevaadomm", "CumtaAlertsChannel", "Radar_Alerts").map { ch ->
-            TelegramSource(ch) { title, areas -> handle(title, areas, source = "tg:$ch") }.also { it.start() }
+            TelegramSource(ch) { title, areas ->
+                // רק שמות יישובים אמיתיים - בלי שורות כותרת, תאריכים ושמות ערוצים
+                val real = areas.filter { AreaData.isKnown(this, it) }
+                if (real.isNotEmpty()) handle(title, real, source = "tg:$ch")
+            }.also { it.start() }
         }
     }
 
