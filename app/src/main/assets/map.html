@@ -22,6 +22,9 @@
   body.light .bar, body.light .legend, body.light .empty { background: rgba(255,255,255,.95); color: #1C1C1E; }
   body.light .bar button { color: #555; }
   .leaflet-popup-content { direction: rtl; text-align: right; }
+  .me-btn { position: absolute; bottom: 18px; left: 10px; z-index: 1000; width: 46px; height: 46px;
+            border-radius: 50%; border: 0; font-size: 22px; background: rgba(28,28,30,.92); }
+  body.light .me-btn { background: rgba(255,255,255,.95); box-shadow: 0 1px 4px rgba(0,0,0,.25); }
 </style>
 </head>
 <body>
@@ -31,6 +34,7 @@
   <button data-h="24" class="on">24 שעות</button>
   <button data-h="168">שבוע</button>
 </div>
+<button class="me-btn" id="meBtn" title="המיקום שלי">📍</button>
 <div class="empty" id="empty">אין התראות בטווח הזה</div>
 <div class="legend">
   <div><span class="dot" style="background:#FF3B30"></span>ירי / חדירה</div>
@@ -43,6 +47,21 @@
   var map = L.map('map', { zoomControl: false, attributionControl: true }).setView([31.6, 34.9], 8);
   var layer = L.layerGroup().addTo(map);
   var DATA = null, AREAS = null, HOURS = 24;
+  var ME = null, meLayer = L.layerGroup().addTo(map), HAS_BOUNDS = false;
+
+  // נקרא מהאפליקציה כשיש מיקום עדכני
+  function setMe(lat, lon, acc) {
+    ME = [lat, lon];
+    meLayer.clearLayers();
+    if (acc > 0) L.circle(ME, { radius: acc, color: '#0A84FF', weight: 1, fillOpacity: .12 }).addTo(meLayer);
+    L.circleMarker(ME, { radius: 8, color: '#fff', weight: 3, fillColor: '#0A84FF', fillOpacity: 1 })
+      .bindPopup('המיקום שלי' + (acc > 0 ? ' (±' + Math.round(acc) + ' מ\')' : '')).addTo(meLayer);
+    if (!HAS_BOUNDS) map.setView(ME, 14);
+  }
+  document.getElementById('meBtn').onclick = function () {
+    if (ME) map.setView(ME, 15);
+    else if (window.App) App.locate();
+  };
 
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function fmt(ts) {
@@ -74,12 +93,10 @@
       shape.bindPopup(popup).addTo(layer);
       bounds.push(info.c);
     });
-    if (DATA.me) {
-      L.circleMarker(DATA.me, { radius: 7, color: '#fff', weight: 2, fillColor: '#0A84FF', fillOpacity: 1 })
-        .bindPopup('המיקום שלי').addTo(layer);
-    }
     document.getElementById('empty').style.display = bounds.length ? 'none' : 'block';
     if (bounds.length) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
+    else if (ME) map.setView(ME, 13);
+    HAS_BOUNDS = bounds.length > 0;
   }
 
   // נקרא מהאפליקציה
@@ -87,7 +104,7 @@
     DATA = data; AREAS = areas;
     if (!data.dark) document.body.classList.add('light');
     // CARTO בשני המצבים - שרתי OpenStreetMap חוסמים אפליקציות בלי אישור
-    var url = 'https://{s}.basemaps.cartocdn.com/' + (data.dark ? 'dark_all' : 'light_all') + '/{z}/{x}/{y}{r}.png';
+    var url = 'https://{s}.basemaps.cartocdn.com/' + (data.dark ? 'dark_all' : 'rastertiles/voyager') + '/{z}/{x}/{y}{r}.png';
     var tiles = L.tileLayer(url, {
       maxZoom: 18, subdomains: 'abcd',
       attribution: '&copy; OpenStreetMap &copy; CARTO'

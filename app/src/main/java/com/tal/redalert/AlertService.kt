@@ -112,6 +112,7 @@ class AlertService : Service() {
         } else {
             startForeground(ID_SERVICE, n)
         }
+        playAppChime()   // הצליל של האפליקציה - ההאזנה התחילה
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "redalert:poll").apply { acquire() }
         running = true
@@ -436,6 +437,23 @@ class AlertService : Service() {
 
         if (!quiet) vibrate(level)
         AlertWidget.updateAll(this)
+    }
+
+    /** מנגינת האפליקציה (צליל 56) - נשמעת כשההאזנה מתחילה (הפעלה, אחרי עדכון, אחרי הדלקת הטלפון) */
+    private fun playAppChime() {
+        try {
+            android.media.MediaPlayer().apply {
+                setAudioAttributes(AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build())
+                setDataSource(this@AlertService,
+                    android.net.Uri.parse("android.resource://$packageName/${R.raw.app_notify}"))
+                setOnCompletionListener { it.release() }
+                prepare()
+                start()
+            }
+        } catch (_: Exception) { }
     }
 
     /** רטט לפי הבחירה בהגדרות (לכל סוג התראה בנפרד) */
