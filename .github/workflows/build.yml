@@ -49,6 +49,20 @@ jobs:
           files: red-alert.apk
           make_latest: true
 
+      # גרסת בטא: כל בנייה מענף שאינו main - מחליפה את הבטא הקודמת
+      - name: Beta release
+        if: github.ref != 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete beta --cleanup-tag -y --repo ${{ github.repository }} || true
+          gh release create beta red-alert.apk --repo ${{ github.repository }} \
+            --prerelease --latest=false --target ${{ github.sha }} \
+            --title "בטא ${{ steps.ver.outputs.name }} · ${{ github.run_number }}" \
+            --notes "version=${{ steps.ver.outputs.name }}
+          build=${{ github.run_number }}"
+          curl -s -H "Title: Beta" -d "beta" https://ntfy.sh/redalert-tal-updates-7f3k9q
+
       # התראה מיידית לאפליקציות המותקנות (הן מחוברות לנושא הזה ב-ntfy.sh)
       - name: Notify installed apps
         if: github.ref == 'refs/heads/main'

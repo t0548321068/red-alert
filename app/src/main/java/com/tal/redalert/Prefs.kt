@@ -190,6 +190,10 @@ object Prefs {
         if (darkTheme(c)) android.R.style.Theme_DeviceDefault_Dialog_Alert
         else android.R.style.Theme_DeviceDefault_Light_Dialog_Alert
 
+    /** קבלת גרסאות בטא (לפני שהן משוחררות לכולם) */
+    fun betaUpdates(c: Context) = sp(c).getBoolean("beta", false)
+    fun setBetaUpdates(c: Context, v: Boolean) = sp(c).edit().putBoolean("beta", v).commit()
+
     /** גרסה שנבחר עבורה "מאוחר יותר" - לא מקפיצים עליה שוב */
     fun skippedVersion(c: Context) = sp(c).getString("skipVer", "") ?: ""
     fun setSkippedVersion(c: Context, v: String) = sp(c).edit().putString("skipVer", v).commit()
