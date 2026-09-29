@@ -14,7 +14,6 @@ object SourceHealth {
         "history" to "פיקוד העורף – היסטוריה",
         "archive" to "פיקוד העורף – ארכיון",
         "tzofar" to "צופר (push)",
-        "tzevadom" to "tzevadom.com",
         "tg:PikudHaOref_all" to "טלגרם – פיקוד העורף",
         "tg:tzevaadomm" to "טלגרם – צופר",
         "tg:CumtaAlertsChannel" to "טלגרם – כומתה",

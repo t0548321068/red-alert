@@ -68,7 +68,6 @@ class AlertService : Service() {
     private var lastId = ""
     private var tzofar: TzofarSource? = null
     private var telegram: List<TelegramSource> = emptyList()
-    private var tzevadom: TzevadomSource? = null
 
     /** אזור -> (סוג, זמן) - למניעת כפילות בין מקורות */
     private val seen = HashMap<String, Pair<Int, Long>>()
@@ -109,7 +108,6 @@ class AlertService : Service() {
         Thread(::updateLoop, "update-check").start()
         Thread(::nearLoop, "near-me").start()
         tzofar = TzofarSource(this) { title, areas -> handle(title, areas) }.also { it.start() }
-        tzevadom = TzevadomSource(this) { title, areas -> handle(title, areas) }.also { it.start() }
         telegram = listOf("PikudHaOref_all", "tzevaadomm", "CumtaAlertsChannel", "Radar_Alerts").map { ch ->
             TelegramSource(ch) { title, areas -> handle(title, areas) }.also { it.start() }
         }
@@ -129,7 +127,6 @@ class AlertService : Service() {
         running = false
         tzofar?.stop()
         telegram.forEach { it.stop() }
-        tzevadom?.stop()
         ringtone?.stop()
         wakeLock?.let { if (it.isHeld) it.release() }
         super.onDestroy()
@@ -317,12 +314,12 @@ class AlertService : Service() {
 
         // מסך מלא גם כשהטלפון פתוח ובשימוש:
         // בבדיקה (האפליקציה בחזית) או עם הרשאת "הצגה מעל אפליקציות אחרות"
-        if (forceScreen || (!quiet && android.provider.Settings.canDrawOverlays(this))) {
+        if (!quiet && (forceScreen || android.provider.Settings.canDrawOverlays(this))) {
             try { startActivity(full) } catch (_: Exception) { }
         }
 
         when {
-            quiet && !forceScreen -> main.post { ringtone?.stop() }
+            quiet -> main.post { ringtone?.stop() }
             level == LEVEL_ALERT -> playAlarm(level, RingtoneManager.TYPE_ALARM, 15000)
             level == LEVEL_PRE -> playAlarm(level, RingtoneManager.TYPE_NOTIFICATION, 3000)
             Prefs.sound(this, level).let { it.isNotEmpty() && it != "silent" } ->
