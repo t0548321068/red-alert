@@ -35,7 +35,7 @@ object Prefs {
     fun setShowDate(c: Context, v: Boolean) = sp(c).edit().putBoolean("date", v).apply()
     fun showWeather(c: Context) = sp(c).getBoolean("weather", true)
     /** כל כמה דקות לרענן את מזג האוויר והמיקום שלו */
-    fun weatherMinutes(c: Context) = sp(c).getInt("weatherMin", 15)
+    fun weatherMinutes(c: Context) = sp(c).getInt("weatherMin", 2)
     fun setWeatherMinutes(c: Context, v: Int) = sp(c).edit().putInt("weatherMin", v).apply()
     fun setShowWeather(c: Context, v: Boolean) = sp(c).edit().putBoolean("weather", v).apply()
 
