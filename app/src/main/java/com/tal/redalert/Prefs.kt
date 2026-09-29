@@ -125,6 +125,15 @@ object Prefs {
     fun setCountdown(c: Context, until: Long, title: String) =
         sp(c).edit().putLong("cdUntil", until).putString("cdTitle", title).apply()
 
+    // ---- טיימר שהייה במרחב המוגן (10 דקות אחרי ירי) ----
+    const val STAY_MS = 10 * 60 * 1000L
+    fun stayUntil(c: Context) = sp(c).getLong("stayUntil", 0L)
+    fun setStayUntil(c: Context, v: Long) = sp(c).edit().putLong("stayUntil", v).apply()
+
+    // ---- עקיפת "נא לא להפריע" בזמן התראה ----
+    fun dndOverride(c: Context) = sp(c).getBoolean("dndOverride", true)
+    fun setDndOverride(c: Context, v: Boolean) = sp(c).edit().putBoolean("dndOverride", v).apply()
+
     /** ערכת נושא: true = כהה (ברירת מחדל), false = בהירה */
     fun darkTheme(c: Context) = sp(c).getBoolean("dark", true)
     fun setDarkTheme(c: Context, v: Boolean) = sp(c).edit().putBoolean("dark", v).apply()

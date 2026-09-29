@@ -52,6 +52,8 @@ class AlertService : Service() {
         private const val CH_WATCH = "watchdog_v2"
         private const val ID_WATCH = 4
         private const val UNPROTECTED_AFTER_MS = 2 * 60 * 1000L
+        private const val CH_STAY = "stay"
+        private const val ID_STAY = 6
         private const val CH_UPDATE = "updates_v3"  // ערוץ חדש כדי שההתראה תקפוץ עם צליל
         private const val ID_UPDATE = 3
 
@@ -120,6 +122,9 @@ class AlertService : Service() {
             startForeground(ID_SERVICE, n)
         }
         playAppChime()   // הצליל של האפליקציה - ההאזנה התחילה
+        // טיימר שהייה שהיה פעיל לפני הפעלה מחדש של השירות
+        val stayLeft = Prefs.stayUntil(this) - System.currentTimeMillis()
+        if (stayLeft > 0) main.postDelayed(stayDone, stayLeft) else Prefs.setStayUntil(this, 0)
         speaker = Speaker(this)
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "redalert:poll").apply { acquire() }
@@ -163,6 +168,7 @@ class AlertService : Service() {
         telegram.forEach { it.stop() }
         updatePush?.stop()
         ringtone?.stop()
+        main.removeCallbacks(stayDone)
         wakeLock?.let { if (it.isHeld) it.release() }
         super.onDestroy()
     }
@@ -432,6 +438,7 @@ class AlertService : Service() {
             .setAutoCancel(true)
         if (!quiet) nb.setFullScreenIntent(fullPi, true)
         val n = nb.build()
+        if (!quiet && level != LEVEL_END) overrideDnd()
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n)
 
         // מסך מלא גם כשהטלפון פתוח ובשימוש:
@@ -447,6 +454,16 @@ class AlertService : Service() {
             Prefs.setCountdown(this, System.currentTimeMillis() + shelterSec * 1000L, title)
             main.postDelayed({ AlertWidget.updateAll(this) }, shelterSec * 1000L + 500)
         } else if (level == LEVEL_END) Prefs.setCountdown(this, 0, "")
+
+        // טיימר שהייה במרחב המוגן: 10 דקות מהירי, "הסתיים" מבטל אותו
+        main.removeCallbacks(stayDone)
+        if (level == LEVEL_ALERT) {
+            Prefs.setStayUntil(this, System.currentTimeMillis() + Prefs.STAY_MS)
+            main.postDelayed(stayDone, Prefs.STAY_MS)
+        } else if (level == LEVEL_END) {
+            Prefs.setStayUntil(this, 0)
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(ID_STAY)
+        }
 
         val playSound = {
             when {
@@ -473,6 +490,45 @@ class AlertService : Service() {
 
         if (!quiet) vibrate(level)
         AlertWidget.updateAll(this)
+    }
+
+    /** עברו 10 דקות מהירי - מודיעים שאפשר לצאת */
+    private val stayDone = Runnable {
+        Prefs.setStayUntil(this, 0)
+        val n = Notification.Builder(this, CH_STAY)
+            .setSmallIcon(R.drawable.ic_stat_siren)
+            .setColor(0xFF2E7D32.toInt())
+            .setContentTitle("✅ עברו 10 דקות – אפשר לצאת מהמרחב המוגן")
+            .setContentText("אלא אם התקבלה הנחיה אחרת")
+            .setContentIntent(openApp())
+            .setAutoCancel(true)
+            .build()
+        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_STAY, n)
+        AlertWidget.updateAll(this)
+    }
+
+    /**
+     * "נא לא להפריע" פעיל - מכבים אותו לדקה בזמן ההתראה ומחזירים את המצב הקודם.
+     * דורש הרשאת "גישה לנא לא להפריע" (⚙ ← נא לא להפריע).
+     */
+    private var dndSaved = -1
+    private fun overrideDnd() {
+        if (!Prefs.dndOverride(this)) return
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        if (!nm.isNotificationPolicyAccessGranted) return
+        val cur = nm.currentInterruptionFilter
+        if (cur == NotificationManager.INTERRUPTION_FILTER_ALL) return
+        if (dndSaved == -1) dndSaved = cur
+        try { nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL) } catch (_: Exception) { return }
+        main.removeCallbacks(dndRestore)
+        main.postDelayed(dndRestore, 60_000)
+    }
+    private val dndRestore = Runnable {
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        // מחזירים רק אם המשתמש לא שינה בינתיים בעצמו
+        if (dndSaved != -1 && nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_ALL)
+            try { nm.setInterruptionFilter(dndSaved) } catch (_: Exception) { }
+        dndSaved = -1
     }
 
     /** מדליק את המסך כשהוא כבוי - שההתראה תופיע מיד גם על מסך הנעילה */
@@ -555,6 +611,12 @@ class AlertService : Service() {
             NotificationChannel(CH_WATCH, "האפליקציה לא מוגנת", NotificationManager.IMPORTANCE_HIGH).apply {
                 setSound(appSound, notifAttrs)
                 enableVibration(true)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            })
+        nm.createNotificationChannel(
+            NotificationChannel(CH_STAY, "יציאה מהמרחב המוגן", NotificationManager.IMPORTANCE_HIGH).apply {
+                setSound(appSound, notifAttrs)
+                setBypassDnd(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             })
         nm.createNotificationChannel(
