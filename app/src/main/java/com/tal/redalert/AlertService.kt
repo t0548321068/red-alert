@@ -37,10 +37,10 @@ class AlertService : Service() {
 
         private const val CH_INFO = "info"
         private const val CH_QUIET = "quiet"
-        private const val CH_WATCH = "watchdog"
+        private const val CH_WATCH = "watchdog_v2"
         private const val ID_WATCH = 4
         private const val UNPROTECTED_AFTER_MS = 2 * 60 * 1000L
-        private const val CH_UPDATE = "updates_v2"  // ערוץ חדש כדי שההתראה תקפוץ עם צליל
+        private const val CH_UPDATE = "updates_v3"  // ערוץ חדש כדי שההתראה תקפוץ עם צליל
         private const val ID_UPDATE = 3
 
         const val LEVEL_ALERT = 0
@@ -455,14 +455,24 @@ class AlertService : Service() {
                 setBypassDnd(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             })
+        val appSound = android.net.Uri.parse("android.resource://$packageName/${R.raw.app_notify}")
+        val notifAttrs = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
         nm.createNotificationChannel(
-            NotificationChannel(CH_UPDATE, "עדכוני גרסה", NotificationManager.IMPORTANCE_HIGH))
+            NotificationChannel(CH_UPDATE, "עדכוני גרסה", NotificationManager.IMPORTANCE_HIGH).apply {
+                setSound(appSound, notifAttrs)
+            })
+        nm.deleteNotificationChannel("updates_v2")
+        nm.deleteNotificationChannel("watchdog")
         nm.deleteNotificationChannel("updates")
         nm.deleteNotificationChannel("alerts")
         nm.createNotificationChannel(
             NotificationChannel(CH_QUIET, "שעות שקט", NotificationManager.IMPORTANCE_LOW))
         nm.createNotificationChannel(
             NotificationChannel(CH_WATCH, "האפליקציה לא מוגנת", NotificationManager.IMPORTANCE_HIGH).apply {
+                setSound(appSound, notifAttrs)
                 enableVibration(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             })

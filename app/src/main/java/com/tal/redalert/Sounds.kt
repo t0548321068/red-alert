@@ -15,10 +15,9 @@ object Sounds {
     const val DEVICE = "device"
     const val SILENT = "silent"
 
-    /** ברירת מחדל: ירי - הצופר של האפליקציה · מקדימה - צליל הטלפון (כמו עד עכשיו) · סיום - בלי צליל */
+    /** ברירת מחדל כמו עד עכשיו: ירי ומקדימה - צליל הטלפון · סיום - בלי צליל */
     private fun default(level: Int) = when (level) {
-        AlertService.LEVEL_ALERT -> APP_SIREN
-        AlertService.LEVEL_PRE -> DEVICE
+        AlertService.LEVEL_ALERT, AlertService.LEVEL_PRE -> DEVICE
         else -> SILENT
     }
 
