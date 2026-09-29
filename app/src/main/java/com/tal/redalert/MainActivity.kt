@@ -504,6 +504,11 @@ class MainActivity : Activity() {
     private fun updateIndicators() {
         if (Prefs.isQuietNow(this)) {
             quietLine.text = "🌙 שעות שקט עד ${hhmm(Prefs.quietTo(this))} · מקדימה וסיום בשקט"
+            quietLine.setTextColor(C.ORANGE)
+            quietLine.visibility = View.VISIBLE
+        } else if (Prefs.quietOn(this)) {
+            quietLine.text = "🌙 שעות שקט ${hhmm(Prefs.quietFrom(this))}–${hhmm(Prefs.quietTo(this))}"
+            quietLine.setTextColor(C.MUTED)
             quietLine.visibility = View.VISIBLE
         } else {
             quietLine.text = ""
@@ -646,19 +651,27 @@ class MainActivity : Activity() {
     /** שעות שקט: רק התראה מקדימה וסיום אירוע מושתקים. ירי תמיד נשמע. */
     private fun showQuietHours() {
         val on = Prefs.quietOn(this)
+        // בלי setMessage - באנדרואיד הודעה מסתירה את רשימת האפשרויות
         val items = arrayOf(
-            "מצב: " + if (on) "פעיל" else "כבוי",
-            "מתחיל: ${hhmm(Prefs.quietFrom(this))}",
-            "נגמר: ${hhmm(Prefs.quietTo(this))}"
+            if (on) "✅ פעיל – לחץ לכיבוי" else "⬜ כבוי – לחץ להפעלה",
+            "🕚 מתחיל ב־${hhmm(Prefs.quietFrom(this))} – לחץ לשינוי",
+            "🕖 נגמר ב־${hhmm(Prefs.quietTo(this))} – לחץ לשינוי",
+            "ℹ️ מקדימה וסיום יגיעו בשקט. ירי תמיד נשמע."
         )
         AlertDialog.Builder(this, dlg())
-            .setTitle("שעות שקט")
-            .setMessage("בשעות האלה התראה מקדימה וסיום אירוע יגיעו בשקט.\nהתראת ירי תמיד תישמע.")
+            .setTitle("🌙 שעות שקט")
             .setItems(items) { _, which ->
                 when (which) {
-                    0 -> { Prefs.setQuietOn(this, !on); showQuietHours() }
+                    0 -> {
+                        Prefs.setQuietOn(this, !on)
+                        android.widget.Toast.makeText(this,
+                            if (!on) "שעות שקט הופעלו" else "שעות שקט כובו",
+                            android.widget.Toast.LENGTH_SHORT).show()
+                        showQuietHours()
+                    }
                     1 -> pickTime(Prefs.quietFrom(this)) { Prefs.setQuiet(this, it, Prefs.quietTo(this)); showQuietHours() }
                     2 -> pickTime(Prefs.quietTo(this)) { Prefs.setQuiet(this, Prefs.quietFrom(this), it); showQuietHours() }
+                    else -> showQuietHours()
                 }
             }
             .setPositiveButton("סגור", null)

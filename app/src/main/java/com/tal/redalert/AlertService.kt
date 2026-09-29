@@ -68,6 +68,7 @@ class AlertService : Service() {
     private var lastId = ""
     private var tzofar: TzofarSource? = null
     private var telegram: List<TelegramSource> = emptyList()
+    private var updatePush: UpdatePush? = null
 
     /** אזור -> (סוג, זמן) - למניעת כפילות בין מקורות */
     private val seen = HashMap<String, Pair<Int, Long>>()
@@ -106,6 +107,7 @@ class AlertService : Service() {
         Thread(::loop, "oref-poll").start()
         Thread(::historyLoop, "oref-history").start()
         Thread(::updateLoop, "update-check").start()
+        updatePush = UpdatePush { onUpdatePing() }.also { it.start() }
         Thread(::nearLoop, "near-me").start()
         tzofar = TzofarSource(this) { title, areas -> handle(title, areas) }.also { it.start() }
         telegram = listOf("PikudHaOref_all", "tzevaadomm", "CumtaAlertsChannel", "Radar_Alerts").map { ch ->
@@ -127,6 +129,7 @@ class AlertService : Service() {
         running = false
         tzofar?.stop()
         telegram.forEach { it.stop() }
+        updatePush?.stop()
         ringtone?.stop()
         wakeLock?.let { if (it.isHeld) it.release() }
         super.onDestroy()
@@ -176,25 +179,43 @@ class AlertService : Service() {
         handle(title, (0 until arr.length()).map { arr.getString(it) })
     }
 
-    /** בדיקת גרסה חדשה כל 30 דקות - התראה אחת לכל גרסה, לחיצה פותחת את הפופ-אפ */
+    /**
+     * גרסה חדשה: התראה מיידית דרך ntfy (GitHub שולח ברגע הפרסום),
+     * ובנוסף בדיקה כל 30 דקות כגיבוי. התראה אחת לכל גרסה, לחיצה פותחת את חלון ההתקנה.
+     */
     private fun updateLoop() {
         Thread.sleep(60_000)
         while (running) {
-            val v = Updater.pendingVersion(this)
-            if (v != null && Prefs.notifiedVersion(this) != v) {
-                Prefs.setNotifiedVersion(this, v)
-                val n = Notification.Builder(this, CH_UPDATE)
-                    .setSmallIcon(android.R.drawable.stat_sys_download_done)
-                    .setContentTitle("🆕 גרסה חדשה זמינה – $v")
-                    .setContentText("לחץ כדי להתקין")
-                    .setCategory(Notification.CATEGORY_RECOMMENDATION)
-                    .setContentIntent(openApp())
-                    .setAutoCancel(true)
-                    .build()
-                (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_UPDATE, n)
-            }
+            notifyIfNewVersion()
             Thread.sleep(30 * 60 * 1000L)
         }
+    }
+
+    /** הודעה מ-ntfy: בודקים מול GitHub (עם כמה ניסיונות - הפרסום לפעמים מתעכב בכמה שניות) */
+    private fun onUpdatePing() {
+        Thread {
+            for (i in 0 until 4) {
+                if (notifyIfNewVersion()) return@Thread
+                Thread.sleep(15_000)
+            }
+        }.start()
+    }
+
+    @Synchronized
+    private fun notifyIfNewVersion(): Boolean {
+        val v = Updater.pendingVersion(this) ?: return false
+        if (Prefs.notifiedVersion(this) == v) return true
+        Prefs.setNotifiedVersion(this, v)
+        val n = Notification.Builder(this, CH_UPDATE)
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setContentTitle("🆕 גרסה חדשה זמינה – $v")
+            .setContentText("לחץ כדי להתקין")
+            .setCategory(Notification.CATEGORY_RECOMMENDATION)
+            .setContentIntent(openApp())
+            .setAutoCancel(true)
+            .build()
+        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_UPDATE, n)
+        return true
     }
 
     /**
