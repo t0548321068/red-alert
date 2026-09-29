@@ -78,6 +78,7 @@ class AlertService : Service() {
     private var tzofar: TzofarSource? = null
     private var telegram: List<TelegramSource> = emptyList()
     private var updatePush: UpdatePush? = null
+    private var speaker: Speaker? = null
 
     /** אזור -> (סוג, זמן) - למניעת כפילות בין מקורות */
     private val seen = HashMap<String, Pair<Int, Long>>()
@@ -113,6 +114,7 @@ class AlertService : Service() {
             startForeground(ID_SERVICE, n)
         }
         playAppChime()   // הצליל של האפליקציה - ההאזנה התחילה
+        speaker = Speaker(this)
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "redalert:poll").apply { acquire() }
         running = true
@@ -130,6 +132,7 @@ class AlertService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_SILENCE) {
+            speaker?.stop()
             main.post { ringtone?.stop() }
             Vibes.stop(this)
             return START_STICKY
@@ -145,6 +148,7 @@ class AlertService : Service() {
 
     override fun onDestroy() {
         running = false
+        speaker?.shutdown()
         tzofar?.stop()
         telegram.forEach { it.stop() }
         updatePush?.stop()
@@ -426,13 +430,27 @@ class AlertService : Service() {
             try { startActivity(full) } catch (_: Exception) { }
         }
 
-        when {
-            quiet -> main.post { ringtone?.stop() }
-            level == LEVEL_ALERT -> playAlarm(level, RingtoneManager.TYPE_ALARM, 15000)
-            level == LEVEL_PRE -> playAlarm(level, RingtoneManager.TYPE_NOTIFICATION, 3000)
-            Sounds.effective(this, level) != Sounds.SILENT ->
-                playAlarm(level, RingtoneManager.TYPE_NOTIFICATION, 3000)   // סיום - רק אם נבחר צליל
-            else -> main.post { ringtone?.stop() }
+        val playSound = {
+            when {
+                quiet -> main.post { ringtone?.stop() }
+                level == LEVEL_ALERT -> playAlarm(level, RingtoneManager.TYPE_ALARM, 15000)
+                level == LEVEL_PRE -> playAlarm(level, RingtoneManager.TYPE_NOTIFICATION, 3000)
+                Sounds.effective(this, level) != Sounds.SILENT ->
+                    playAlarm(level, RingtoneManager.TYPE_NOTIFICATION, 3000)   // סיום - רק אם נבחר צליל
+                else -> main.post { ringtone?.stop() }
+            }
+            Unit
+        }
+
+        // הקראה: קודם מקריאים (סוג, אזורים, זמן להגעה) ואז הצליל.
+        // הרטט מתחיל מיד. אם ההקראה נתקעת - הצליל מתחיל בכל מקרה אחרי 8 שניות.
+        if (!quiet && Prefs.speakAlerts(this)) {
+            val started = java.util.concurrent.atomic.AtomicBoolean(false)
+            val once = { if (started.compareAndSet(false, true)) main.post { playSound() } }
+            speaker?.speak(Speaker.textFor(title, areas, shelterSec)) { once() } ?: once()
+            main.postDelayed({ once() }, 8000)
+        } else {
+            playSound()
         }
 
         if (!quiet) vibrate(level)

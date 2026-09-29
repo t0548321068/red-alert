@@ -472,7 +472,8 @@ class MainActivity : Activity() {
         val options = arrayOf("תצוגה", "בדיקת עדכונים", "מה חדש",
             "מסך מלא בהתראה: " + if (fullOk) "פעיל ✓" else "לא פעיל – לחץ להפעלה",
             "קרוב אליי (לפי מיקום): " + if (Prefs.nearMe(this)) "פעיל" else "כבוי",
-            "צלילים", "רטט", "שעות שקט: $quiet",
+            "צלילים", "רטט", "🗣 הקראה: " + if (Prefs.speakAlerts(this)) "פעיל" else "כבוי",
+            "שעות שקט: $quiet",
             "חיסכון בסוללה", "הגדרות התראות")
         AlertDialog.Builder(this, dlg())
             .setTitle("הגדרות · גרסה ${Updater.currentVersion(this)}")
@@ -485,9 +486,10 @@ class MainActivity : Activity() {
                     4 -> toggleNearMe()
                     5 -> showSounds()
                     6 -> showVibes()
-                    7 -> showQuietHours()
-                    8 -> openBatterySettings()
-                    9 -> openNotificationSettings()
+                    7 -> showSpeech()
+                    8 -> showQuietHours()
+                    9 -> openBatterySettings()
+                    10 -> openNotificationSettings()
                 }
             }
             .show()
@@ -748,6 +750,45 @@ class MainActivity : Activity() {
             })
             showSounds()
         }
+    }
+
+    private var testSpeaker: Speaker? = null
+
+    /** הקראה: הפעלה/כיבוי ודוגמה */
+    private fun showSpeech() {
+        val on = Prefs.speakAlerts(this)
+        val items = arrayOf(
+            if (on) "✅ פעיל – לחץ לכיבוי" else "⬜ כבוי – לחץ להפעלה",
+            "🔊 השמע דוגמה",
+            "ℹ️ מקריא סוג, אזורים וזמן להגעה – ואז הצליל"
+        )
+        AlertDialog.Builder(this, dlg())
+            .setTitle("🗣 הקראה בקול")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> { Prefs.setSpeakAlerts(this, !on); showSpeech() }
+                    1 -> {
+                        val sp = testSpeaker ?: Speaker(this).also { testSpeaker = it }
+                        // המנוע עולה תוך רגע - מחכים לו
+                        ui.postDelayed({
+                            if (sp.hebrewOk == false) {
+                                android.widget.Toast.makeText(this,
+                                    "אין קול עברי בטלפון. הגדרות ← שפה ← המרת טקסט לדיבור ← התקנת עברית",
+                                    android.widget.Toast.LENGTH_LONG).show()
+                            } else {
+                                val mine = Prefs.cities(this) + Prefs.nearbyAreas(this)
+                                val areas = mine.ifEmpty { listOf("תל אביב - מרכז העיר") }.take(3)
+                                sp.speak(Speaker.textFor("ירי רקטות וטילים", areas,
+                                    AreaData.shelterSeconds(this, areas) ?: 90)) {}
+                            }
+                        }, if (testSpeaker == sp && sp.hebrewOk != null) 0 else 1200)
+                        showSpeech()
+                    }
+                    else -> showSpeech()
+                }
+            }
+            .setPositiveButton("סגור", null)
+            .show()
     }
 
     /** רטט: בחירה לכל סוג התראה, עם דוגמה בכל לחיצה */
