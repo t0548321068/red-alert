@@ -474,6 +474,7 @@ class MainActivity : Activity() {
             "מסך מלא בהתראה: " + if (fullOk) "פעיל ✓" else "לא פעיל – לחץ להפעלה",
             "קרוב אליי (לפי מיקום): " + if (Prefs.nearMe(this)) "פעיל" else "כבוי",
             "צלילים", "רטט", "🗣 הקראה: " + if (Prefs.speakAlerts(this)) "פעיל" else "כבוי",
+            "🔕 עקיפת נא לא להפריע: " + dndState(),
             "שעות שקט: $quiet",
             "חיסכון בסוללה", "הגדרות התראות")
         AlertDialog.Builder(this, dlg())
@@ -488,9 +489,10 @@ class MainActivity : Activity() {
                     5 -> showSounds()
                     6 -> showVibes()
                     7 -> showSpeech()
-                    8 -> showQuietHours()
-                    9 -> openBatterySettings()
-                    10 -> openNotificationSettings()
+                    8 -> showDnd()
+                    9 -> showQuietHours()
+                    10 -> openBatterySettings()
+                    11 -> openNotificationSettings()
                 }
             }
             .show()
@@ -756,6 +758,35 @@ class MainActivity : Activity() {
     private var testSpeaker: Speaker? = null
 
     /** הקראה: הפעלה/כיבוי ודוגמה */
+    private fun dndAccess() =
+        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).isNotificationPolicyAccessGranted
+    private fun dndState() = when {
+        !Prefs.dndOverride(this) -> "כבוי"
+        dndAccess() -> "פעיל"
+        else -> "צריך הרשאה"
+    }
+
+    /** בזמן התראה "נא לא להפריע" נכבה לדקה וחוזר למצב הקודם */
+    private fun showDnd() {
+        val on = Prefs.dndOverride(this)
+        val items = arrayOf(
+            if (on) "✅ פעיל – לחץ לכיבוי" else "⬜ כבוי – לחץ להפעלה",
+            "🔑 הרשאה: " + if (dndAccess()) "מאושרת ✓" else "לא מאושרת – לחץ לאישור",
+            "ℹ️ בזמן ירי ו\"התראה מקדימה\" – נא לא להפריע נכבה לדקה כדי שהצליל, הרטט והמסך יעבדו, ואז חוזר לבד"
+        )
+        AlertDialog.Builder(this, dlg())
+            .setTitle("🔕 עקיפת נא לא להפריע")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> { Prefs.setDndOverride(this, !on); showDnd() }
+                    1 -> startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+                    else -> showDnd()
+                }
+            }
+            .setPositiveButton("סגור", null)
+            .show()
+    }
+
     private fun showSpeech() {
         val on = Prefs.speakAlerts(this)
         val items = arrayOf(

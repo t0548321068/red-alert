@@ -76,6 +76,7 @@
             android:textStyle="bold" />
 
         <TextView
+            android:id="@+id/wl_cd_note"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="היכנסו למרחב המוגן"

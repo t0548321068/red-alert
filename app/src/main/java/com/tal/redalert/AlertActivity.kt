@@ -19,18 +19,27 @@ class AlertActivity : Activity() {
     private var shelterSec = -1
     private var firedAt = 0L
 
+    private var stay: TextView? = null
+
     private val tick = object : Runnable {
         override fun run() {
-            val cd = countdown ?: return
-            val left = shelterSec - ((System.currentTimeMillis() - firedAt) / 1000).toInt()
-            if (shelterSec <= 0) {
-                cd.text = "מיידי"
-            } else if (left > 0) {
-                cd.text = "%d:%02d".format(left / 60, left % 60)
-                ui.postDelayed(this, 250)
-            } else {
-                cd.text = "0:00"
+            val now = System.currentTimeMillis()
+            countdown?.let { cd ->
+                val left = shelterSec - ((now - firedAt) / 1000).toInt()
+                cd.text = when {
+                    shelterSec <= 0 -> "מיידי"
+                    left > 0 -> "%d:%02d".format(left / 60, left % 60)
+                    else -> "0:00"
+                }
             }
+            // טיימר שהייה: 10 דקות מהירי
+            stay?.let { st ->
+                val left = ((firedAt + Prefs.STAY_MS - now) / 1000).toInt()
+                st.text = if (left > 0) "⏳ נשארים במרחב המוגן: %d:%02d".format(left / 60, left % 60)
+                          else "✅ אפשר לצאת מהמרחב המוגן\n(אם לא התקבלה הנחיה אחרת)"
+                if (left > 0) { ui.postDelayed(this, 250); return }
+            }
+            if (countdown != null && shelterSec > 0 && now - firedAt < shelterSec * 1000L) ui.postDelayed(this, 250)
         }
     }
 
@@ -96,6 +105,17 @@ class AlertActivity : Activity() {
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
         })
+
+        if (level == AlertService.LEVEL_ALERT) {
+            stay = TextView(this).apply {
+                textSize = 18f
+                setTextColor(Color.WHITE)
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                setPadding(0, 24, 0, 0)
+            }
+            root.addView(stay)
+        }
 
         // מה לעשות - הנחיות קצרות לפי סוג האיום
         val tips = Guidance.forTitle(intent.getStringExtra("title") ?: "")

@@ -37,12 +37,20 @@ class AlertWidgetLarge : AppWidgetProvider() {
             v.setTextViewText(R.id.wl_status, if (on) "● מוגן" else "○ כבוי")
             v.setTextColor(R.id.wl_status, Color.parseColor(if (on) "#30D158" else "#8E8E93"))
 
-            // ספירה לאחור - רק בזמן שנשאר זמן להגעה למרחב המוגן
-            val left = Prefs.countdownUntil(c) - System.currentTimeMillis()
-            if (left > 0) {
+            // ספירה לאחור עד הכניסה, ואחריה טיימר השהייה (10 דקות)
+            val now = System.currentTimeMillis()
+            val left = Prefs.countdownUntil(c) - now
+            val stayLeft = Prefs.stayUntil(c) - now
+            if (left > 0 || stayLeft > 0) {
+                val inStay = left <= 0
                 v.setViewVisibility(R.id.wl_cd_box, View.VISIBLE)
-                v.setTextViewText(R.id.wl_cd_title, Prefs.countdownTitle(c))
-                v.setChronometer(R.id.wl_cd, SystemClock.elapsedRealtime() + left, null, true)
+                v.setInt(R.id.wl_cd_box, "setBackgroundResource",
+                    if (inStay) R.drawable.widget_stay_bg else R.drawable.widget_alert_bg)
+                v.setTextViewText(R.id.wl_cd_title,
+                    if (inStay) "⏳ נשארים במרחב המוגן" else Prefs.countdownTitle(c))
+                v.setTextViewText(R.id.wl_cd_note,
+                    if (inStay) "עד שאפשר לצאת" else "היכנסו למרחב המוגן")
+                v.setChronometer(R.id.wl_cd, SystemClock.elapsedRealtime() + if (inStay) stayLeft else left, null, true)
                 v.setChronometerCountDown(R.id.wl_cd, true)
             } else {
                 v.setChronometer(R.id.wl_cd, SystemClock.elapsedRealtime(), null, false)
