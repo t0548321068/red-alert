@@ -52,7 +52,20 @@ object Prefs {
         return (0 until arr.length()).map {
             val o = arr.getJSONObject(it)
             Entry("", o.optString("title"), o.optString("body"), o.optInt("level"), o.optLong("ts"))
-        }.let { collapse(it) }
+        }.map { clean(c, it) }.let { collapse(it) }
+    }
+
+    /**
+     * ניקוי רשומות ישנות: "הוסר החשש" = סיום אירוע, ובלי שורות זבל מטלגרם
+     * (שמות ערוצים, תאריכים, "היישובים הבאים")
+     */
+    private fun clean(c: Context, e: Entry): Entry {
+        var x = e
+        if (e.body.contains("הוסר החשש") || e.body.contains("החשש הוסר"))
+            x = x.copy(title = "האירוע הסתיים", level = 2)
+        val parts = x.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val real = parts.filter { AreaData.isKnown(c, it) }
+        return if (real.isNotEmpty() && real.size < parts.size) x.copy(body = real.joinToString(", ")) else x
     }
 
     /** מפתח ליישוב - זהה בכל המקורות: "קריית שמונה" = "קרית שמונה", "תל אביב - מרכז" = "תל-אביב" */
@@ -193,6 +206,7 @@ object Prefs {
             Entry(o.optString("time"), o.optString("title"), o.optString("body"),
                 o.optInt("level"), o.optLong("ts"), o.optString("src"))
         }.filter { it.body != "התראת בדיקה" }   // בדיקות מגרסאות קודמות לא מוצגות
+            .map { clean(c, it) }
             .let { collapse(it) }
     }
 
