@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  html, body, #map { margin: 0; height: 100%; }
+  body { font-family: sans-serif; background: #0E0E10; }
+  .bar { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000;
+         display: flex; gap: 6px; background: rgba(28,28,30,.92); padding: 5px; border-radius: 18px; }
+  .bar button { border: 0; background: transparent; color: #ccc; padding: 7px 13px; border-radius: 14px; font-size: 14px; }
+  .bar button.on { background: #FF3B30; color: #fff; }
+  .legend { position: absolute; bottom: 18px; right: 10px; z-index: 1000; background: rgba(28,28,30,.92);
+            color: #eee; padding: 8px 10px; border-radius: 10px; font-size: 12px; line-height: 1.8; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-left: 6px; }
+  .empty { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); z-index: 1000;
+           background: rgba(28,28,30,.92); color: #eee; padding: 8px 14px; border-radius: 10px; font-size: 14px; display: none; }
+  body.light .bar, body.light .legend, body.light .empty { background: rgba(255,255,255,.95); color: #1C1C1E; }
+  body.light .bar button { color: #555; }
+  .leaflet-popup-content { direction: rtl; text-align: right; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="bar">
+  <button data-h="1">שעה</button>
+  <button data-h="24" class="on">24 שעות</button>
+  <button data-h="168">שבוע</button>
+</div>
+<div class="empty" id="empty">אין התראות בטווח הזה</div>
+<div class="legend">
+  <div><span class="dot" style="background:#FF3B30"></span>ירי / חדירה</div>
+  <div><span class="dot" style="background:#FF9F0A"></span>התראה מקדימה</div>
+  <div><span class="dot" style="background:#30D158"></span>האירוע הסתיים</div>
+  <div><span class="dot" style="background:#0A84FF"></span>המיקום שלי</div>
+</div>
+<script>
+  var COLORS = ['#FF3B30', '#FF9F0A', '#30D158'];
+  var map = L.map('map', { zoomControl: false, attributionControl: true }).setView([31.6, 34.9], 8);
+  var layer = L.layerGroup().addTo(map);
+  var DATA = null, AREAS = null, HOURS = 24;
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmt(ts) {
+    var d = new Date(ts);
+    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function draw() {
+    layer.clearLayers();
+    if (!DATA) return;
+    var since = Date.now() - HOURS * 3600 * 1000;
+    // לכל אזור - האירוע האחרון בטווח הזמן קובע את הצבע
+    var latest = {};
+    DATA.events.forEach(function (e) {
+      if (e.ts < since) return;
+      e.areas.forEach(function (a) {
+        if (!latest[a] || latest[a].ts < e.ts) latest[a] = e;
+      });
+    });
+    var bounds = [];
+    Object.keys(latest).forEach(function (name) {
+      var info = AREAS[name];
+      if (!info) return;
+      var e = latest[name], color = COLORS[e.level] || COLORS[0];
+      var popup = '<b>' + name + '</b><br>' + e.title + '<br>' + fmt(e.ts);
+      var shape = info.p
+        ? L.polygon(info.p, { color: color, weight: 1.5, fillOpacity: .45 })
+        : L.circleMarker(info.c, { radius: 7, color: color, fillOpacity: .7 });
+      shape.bindPopup(popup).addTo(layer);
+      bounds.push(info.c);
+    });
+    if (DATA.me) {
+      L.circleMarker(DATA.me, { radius: 7, color: '#fff', weight: 2, fillColor: '#0A84FF', fillOpacity: 1 })
+        .bindPopup('המיקום שלי').addTo(layer);
+    }
+    document.getElementById('empty').style.display = bounds.length ? 'none' : 'block';
+    if (bounds.length) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
+  }
+
+  // נקרא מהאפליקציה
+  function render(data, areas) {
+    DATA = data; AREAS = areas;
+    if (!data.dark) document.body.classList.add('light');
+    var url = data.dark
+      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    L.tileLayer(url, {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap' + (data.dark ? ' &copy; CARTO' : '')
+    }).addTo(map);
+    draw();
+  }
+
+  document.querySelectorAll('.bar button').forEach(function (b) {
+    b.onclick = function () {
+      document.querySelectorAll('.bar button').forEach(function (x) { x.classList.remove('on'); });
+      b.classList.add('on');
+      HOURS = +b.dataset.h;
+      draw();
+    };
+  });
+</script>
+</body>
+</html>
