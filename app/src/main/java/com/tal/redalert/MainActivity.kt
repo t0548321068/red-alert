@@ -336,6 +336,8 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        // רשת ביטחון: אם ההאזנה אמורה לפעול - לוודא שהשירות באמת רץ (בטוח לקרוא גם אם כבר רץ)
+        if (Prefs.enabled(this)) AlertService.start(this)
         ui.post(tick)
         // בכל חזרה לאפליקציה (כולל לחיצה על התראת "גרסה חדשה"), לכל היותר פעם ב-10 דקות
         if (System.currentTimeMillis() - updateCheckedAt > 10 * 60 * 1000) {
