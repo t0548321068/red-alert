@@ -91,6 +91,20 @@ class AlertActivity : Activity() {
             gravity = Gravity.CENTER
         })
 
+        // מה לעשות - הנחיות קצרות לפי סוג האיום
+        val tips = Guidance.forTitle(intent.getStringExtra("title") ?: "")
+        root.addView(TextView(this).apply {
+            text = tips.joinToString("\n") { "• $it" }
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            setLineSpacing(0f, 1.25f)
+            setPadding(36, 28, 36, 28)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = 30f
+                setColor(Color.parseColor("#26000000"))
+            }
+        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 36 })
+
         // כפתורים: השתקה (צליל ורטט בלבד) · סגירה בלחיצה ארוכה
         val buttons = LinearLayout(this).apply {
             gravity = Gravity.CENTER
@@ -129,7 +143,12 @@ class AlertActivity : Activity() {
         buttons.addView(mute)
         buttons.addView(close, LinearLayout.LayoutParams(-2, -2).apply { marginStart = 40 })
         root.addView(buttons)
-        setContentView(root, ViewGroup.LayoutParams(-1, -1))
+        // גלילה - שהכל ייכנס גם במסך קטן
+        setContentView(android.widget.ScrollView(this).apply {
+            isFillViewport = true
+            setBackgroundColor(Color.parseColor(bg))
+            addView(root, ViewGroup.LayoutParams(-1, -1))
+        })
     }
 
     @Deprecated("Deprecated in Java")

@@ -283,6 +283,10 @@ class MainActivity : Activity() {
         val histCard = card()
         val histHead = LinearLayout(this)
         histHead.addView(text("התראות אחרונות", 13f, C.MUTED), LinearLayout.LayoutParams(0, -2, 1f))
+        histHead.addView(text("📜 הכל", 13f, C.BLUE).apply {
+            setPadding(0, 0, dp(14), 0)
+            setOnClickListener { startActivity(Intent(this@MainActivity, HistoryActivity::class.java)) }
+        })
         histHead.addView(text("🗺 מפה", 13f, C.BLUE).apply {
             setOnClickListener { startActivity(Intent(this@MainActivity, MapActivity::class.java)) }
         })
@@ -538,6 +542,9 @@ class MainActivity : Activity() {
         AlertDialog.Builder(this, dlg())
             .setTitle("🇮🇱 פיד ארצי · 24 שעות")
             .setMessage(FeedText.day(this))
+            .setNeutralButton("היסטוריה מלאה") { _, _ ->
+                startActivity(Intent(this, HistoryActivity::class.java))
+            }
             .setPositiveButton("סגור", null)
             .show()
     }

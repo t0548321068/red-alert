@@ -39,6 +39,10 @@
             android:excludeFromRecents="true" />
 
         <activity
+            android:name=".HistoryActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".MapActivity"
             android:exported="false"
             android:label="מפת התראות" />
