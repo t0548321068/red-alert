@@ -36,6 +36,12 @@ class AlertActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // מופיע מעל מסך הנעילה ומדליק את המסך
+        if (android.os.Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true) }
+        @Suppress("DEPRECATION")
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+            android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+            android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
         val level = intent.getIntExtra("level", AlertService.LEVEL_ALERT)
         shelterSec = intent.getIntExtra("shelter", -1)
         firedAt = intent.getLongExtra("firedAt", System.currentTimeMillis())
@@ -154,6 +160,13 @@ class AlertActivity : Activity() {
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         android.widget.Toast.makeText(this, "לסגירה: לחיצה ארוכה על ✕ סגור", android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    /** התראה חדשה כשהמסך כבר פתוח - מציגים אותה */
+    override fun onNewIntent(i: android.content.Intent) {
+        super.onNewIntent(i)
+        setIntent(i)
+        recreate()
     }
 
     override fun onResume() {

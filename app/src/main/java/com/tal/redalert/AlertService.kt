@@ -436,9 +436,17 @@ class AlertService : Service() {
 
         // מסך מלא גם כשהטלפון פתוח ובשימוש:
         // בבדיקה (האפליקציה בחזית) או עם הרשאת "הצגה מעל אפליקציות אחרות"
-        if (!quiet && (forceScreen || android.provider.Settings.canDrawOverlays(this))) {
+        if (!quiet) wakeScreen()
+        val screenOff = !(getSystemService(POWER_SERVICE) as PowerManager).isInteractive
+        if (!quiet && (forceScreen || screenOff || android.provider.Settings.canDrawOverlays(this))) {
             try { startActivity(full) } catch (_: Exception) { }
         }
+
+        // ספירה לאחור בווידג'ט הגדול
+        if (level == LEVEL_ALERT && shelterSec != null && shelterSec > 0) {
+            Prefs.setCountdown(this, System.currentTimeMillis() + shelterSec * 1000L, title)
+            main.postDelayed({ AlertWidget.updateAll(this) }, shelterSec * 1000L + 500)
+        } else if (level == LEVEL_END) Prefs.setCountdown(this, 0, "")
 
         val playSound = {
             when {
@@ -465,6 +473,17 @@ class AlertService : Service() {
 
         if (!quiet) vibrate(level)
         AlertWidget.updateAll(this)
+    }
+
+    /** מדליק את המסך כשהוא כבוי - שההתראה תופיע מיד גם על מסך הנעילה */
+    @Suppress("DEPRECATION")
+    private fun wakeScreen() {
+        val pm = getSystemService(POWER_SERVICE) as PowerManager
+        if (pm.isInteractive) return
+        try {
+            pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                "redalert:screen").acquire(20_000)
+        } catch (_: Exception) { }
     }
 
     /** מנגינת האפליקציה (צליל 56) - נשמעת כשההאזנה מתחילה (הפעלה, אחרי עדכון, אחרי הדלקת הטלפון) */
