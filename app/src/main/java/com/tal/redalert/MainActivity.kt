@@ -137,7 +137,8 @@ class MainActivity : Activity() {
             updateWeather()
             updateStatusLine()
             // שאר המסך מתעדכן רק כשמשהו השתנה
-            val key = "${Prefs.enabled(this@MainActivity)}|${Prefs.history(this@MainActivity).firstOrNull()?.ts}"
+            val key = "${Prefs.enabled(this@MainActivity)}|${Prefs.history(this@MainActivity).firstOrNull()?.ts}|" +
+                Prefs.nearbyAreas(this@MainActivity).joinToString()   // גם כשהאזורים הקרובים משתנים
             if (key != lastHistoryKey) { lastHistoryKey = key; refresh() }
             ui.postDelayed(this, 1000 - System.currentTimeMillis() % 1000)
         }
@@ -360,6 +361,7 @@ class MainActivity : Activity() {
         if (Prefs.enabled(this)) AlertService.start(this)
         ui.post(tick)
         askLockScreen()
+        refreshNearby()
         // בכל חזרה לאפליקציה (כולל לחיצה על התראת "גרסה חדשה"), לכל היותר פעם ב-10 דקות
         if (System.currentTimeMillis() - updateCheckedAt > 10 * 60 * 1000) {
             updateCheckedAt = System.currentTimeMillis()
@@ -1026,6 +1028,20 @@ class MainActivity : Activity() {
     private fun openNotificationSettings() {
         startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
             .putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+    }
+
+    /** בכל פתיחה - מיקום עדכני ל"קרוב אליי" (בנוסף לעדכון של השירות כל 2 דקות) */
+    private fun refreshNearby() {
+        if (!Prefs.nearMe(this) || checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED) return
+        Weather.freshLocation(this) { loc ->
+            if (loc != null) Thread {
+                try {
+                    val list = AreaData.areasAt(this, loc.latitude, loc.longitude).take(8)
+                    if (list.isNotEmpty()) Prefs.setNearbyAreas(this, list)
+                } catch (_: Exception) { }
+            }.start()
+        }
     }
 
     private var lockAsked = false

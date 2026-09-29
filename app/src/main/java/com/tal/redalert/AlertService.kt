@@ -413,14 +413,21 @@ class AlertService : Service() {
         else -> String(b, Charsets.UTF_8)
     }
 
-    /** "קרוב אליי": כל 2 דקות מזהה באילו אזורים המכשיר נמצא (מהמיקום האחרון, בלי להדליק GPS) */
+    /**
+     * "קרוב אליי": כל 2 דקות לוקח מיקום עדכני (לא רק מה שהטלפון זוכר)
+     * ומזהה באילו אזורים המכשיר נמצא עכשיו.
+     */
     private fun nearLoop() {
         while (running) {
             try {
-                if (Prefs.nearMe(this)) {
-                    Weather.lastLocation(this)?.let { loc ->
-                        val list = AreaData.areasAt(this, loc.latitude, loc.longitude).take(8)
-                        if (list.isNotEmpty()) Prefs.setNearbyAreas(this, list)
+                if (Prefs.nearMe(this)) main.post {
+                    Weather.freshLocation(this) { loc ->
+                        if (loc != null) Thread {
+                            try {
+                                val list = AreaData.areasAt(this, loc.latitude, loc.longitude).take(8)
+                                if (list.isNotEmpty() && list != Prefs.nearbyAreas(this)) Prefs.setNearbyAreas(this, list)
+                            } catch (_: Exception) { }
+                        }.start()
                     }
                 }
             } catch (_: Exception) { }
