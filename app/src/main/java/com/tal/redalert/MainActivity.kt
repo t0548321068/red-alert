@@ -977,7 +977,7 @@ class MainActivity : Activity() {
     private fun showClockSettings() {
         val items = arrayOf(
             "ערכת צבעים: " + if (Prefs.darkTheme(this)) "כהה" else "בהירה",
-            "סגנון יום: ${TimeFormat.DAY_OPTIONS[Prefs.dayStyle(this)]}",
+            "סגנון יום: ${TimeFormat.dayOptions()[Prefs.dayStyle(this)]}",
             "שניות: " + if (Prefs.showSeconds(this)) "מוצג" else "מוסתר",
             "תאריך: " + if (Prefs.showDate(this)) "מוצג" else "מוסתר",
             "מזג אוויר: " + if (Prefs.showWeather(this)) "מוצג" else "מוסתר",
@@ -1000,7 +1000,7 @@ class MainActivity : Activity() {
                         .show()
                     1 -> AlertDialog.Builder(this, dlg())
                         .setTitle("סגנון יום")
-                        .setSingleChoiceItems(TimeFormat.DAY_OPTIONS, Prefs.dayStyle(this)) { d, i ->
+                        .setSingleChoiceItems(TimeFormat.dayOptions(), Prefs.dayStyle(this)) { d, i ->
                             Prefs.setDayStyle(this, i)
                             updateClock(); refresh(); d.dismiss(); showClockSettings()
                         }

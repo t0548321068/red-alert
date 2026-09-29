@@ -9,7 +9,11 @@ object TimeFormat {
     private val LETTERS = arrayOf("א'", "ב'", "ג'", "ד'", "ה'", "ו'", "ש'")
 
     /** דוגמאות לתפריט ההגדרות */
-    val DAY_OPTIONS = arrayOf("יום שני", "שני", "יום ב'", "ב'")
+    /** אפשרויות הסגנון - לפי היום של היום (שלישי -> "יום שלישי", "שלישי", "יום ג'", "ג'") */
+    fun dayOptions(): Array<String> {
+        val i = Calendar.getInstance().get(Calendar.DAY_OF_WEEK) - 1
+        return arrayOf("יום ${NAMES[i]}", NAMES[i], "יום ${LETTERS[i]}", LETTERS[i])
+    }
 
     private fun cal(ms: Long) = Calendar.getInstance().apply { timeInMillis = ms }
 

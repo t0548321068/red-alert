@@ -52,7 +52,7 @@ object Prefs {
         return (0 until arr.length()).map {
             val o = arr.getJSONObject(it)
             Entry("", o.optString("title"), o.optString("body"), o.optInt("level"), o.optLong("ts"))
-        }.map { clean(c, it) }.let { collapse(it) }
+        }.map { clean(c, it) }.sortedByDescending { it.ts }.let { collapse(it) }
     }
 
     /**
@@ -95,7 +95,7 @@ object Prefs {
             out[i] = e.copy(body = mergeBody(e.body, out[i].body.split(", ")))
             keys[i].addAll(ek)
         }
-        return out
+        return out.sortedByDescending { it.ts }   // תמיד מהחדשה לישנה
     }
 
     /** mergeMs > 0: אם הרשומה האחרונה מאותו סוג ובתוך הזמן הזה - מצרפים אליה במקום שורה חדשה */
@@ -217,6 +217,7 @@ object Prefs {
                 o.optInt("level"), o.optLong("ts"), o.optString("src"))
         }.filter { it.body != "התראת בדיקה" }   // בדיקות מגרסאות קודמות לא מוצגות
             .map { clean(c, it) }
+            .sortedByDescending { it.ts }
             .let { collapse(it) }
     }
 
