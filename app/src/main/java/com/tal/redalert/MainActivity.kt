@@ -468,7 +468,7 @@ class MainActivity : Activity() {
         val options = arrayOf("תצוגה", "בדיקת עדכונים", "מה חדש",
             "מסך מלא בהתראה: " + if (fullOk) "פעיל ✓" else "לא פעיל – לחץ להפעלה",
             "קרוב אליי (לפי מיקום): " + if (Prefs.nearMe(this)) "פעיל" else "כבוי",
-            "צלילים", "שעות שקט: $quiet",
+            "צלילים", "רטט", "שעות שקט: $quiet",
             "חיסכון בסוללה", "הגדרות התראות")
         AlertDialog.Builder(this, dlg())
             .setTitle("הגדרות · גרסה ${Updater.currentVersion(this)}")
@@ -480,9 +480,10 @@ class MainActivity : Activity() {
                     3 -> openFullScreenSettings()
                     4 -> toggleNearMe()
                     5 -> showSounds()
-                    6 -> showQuietHours()
-                    7 -> openBatterySettings()
-                    8 -> openNotificationSettings()
+                    6 -> showVibes()
+                    7 -> showQuietHours()
+                    8 -> openBatterySettings()
+                    9 -> openNotificationSettings()
                 }
             }
             .show()
@@ -725,6 +726,25 @@ class MainActivity : Activity() {
             })
             showSounds()
         }
+    }
+
+    /** רטט: בחירה לכל סוג התראה, עם דוגמה בכל לחיצה */
+    private fun showVibes() {
+        val items = Array(3) { "${SOUND_NAMES[it]}: ${Vibes.NAMES[Prefs.vibe(this, it)]}" }
+        AlertDialog.Builder(this, dlg())
+            .setTitle("📳 רטט")
+            .setItems(items) { _, level ->
+                AlertDialog.Builder(this, dlg())
+                    .setTitle("רטט – ${SOUND_NAMES[level]}")
+                    .setSingleChoiceItems(Vibes.NAMES, Prefs.vibe(this, level)) { _, i ->
+                        Prefs.setVibe(this, level, i)
+                        Vibes.play(this, i)          // דוגמה מיידית
+                    }
+                    .setPositiveButton("שמור") { _, _ -> showVibes() }
+                    .show()
+            }
+            .setPositiveButton("סגור", null)
+            .show()
     }
 
     /** שעות שקט: רק התראה מקדימה וסיום אירוע מושתקים. ירי תמיד נשמע. */

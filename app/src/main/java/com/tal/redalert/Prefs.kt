@@ -88,6 +88,10 @@ object Prefs {
     fun sound(c: Context, level: Int) = sp(c).getString("sound$level", "") ?: ""
     fun setSound(c: Context, level: Int, uri: String) = sp(c).edit().putString("sound$level", uri).apply()
 
+    // ---- סוג רטט לכל סוג התראה ----
+    fun vibe(c: Context, level: Int) = sp(c).getInt("vibe$level", Vibes.default(level))
+    fun setVibe(c: Context, level: Int, v: Int) = sp(c).edit().putInt("vibe$level", v).apply()
+
     // ---- שעות שקט: משתיק התראה מקדימה וסיום אירוע (ירי תמיד נשמע) ----
     fun quietOn(c: Context) = sp(c).getBoolean("quietOn", false)
     fun setQuietOn(c: Context, v: Boolean) = sp(c).edit().putBoolean("quietOn", v).apply()
