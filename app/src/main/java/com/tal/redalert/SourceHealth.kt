@@ -24,6 +24,12 @@ object SourceHealth {
     /** מקורות עם חיבור פתוח קבוע (push) - מחוברים כל עוד החיבור פתוח */
     private val open = ConcurrentHashMap<String, Boolean>()
 
+    /** מתי ההאזנה התחילה - בחצי הדקה הראשונה מקור שעוד לא ענה הוא "מתחבר", לא "מנותק" */
+    @Volatile private var startedAt = 0L
+    fun reset() { startedAt = System.currentTimeMillis() }
+    fun connecting(key: String) = !isUp(key) && System.currentTimeMillis() - startedAt < 30_000
+    fun anyConnecting() = NAMES.keys.any { connecting(it) }
+
     fun ok(key: String) { lastOk[key] = System.currentTimeMillis() }
     fun setOpen(key: String, v: Boolean) { open[key] = v; if (v) ok(key) }
 
@@ -40,6 +46,7 @@ object SourceHealth {
     fun total() = NAMES.size
 
     fun report(): String = NAMES.entries.joinToString("\n") { (k, name) ->
-        (if (isUp(k)) "🟢 " else "🔴 ") + name
+        (if (isUp(k)) "🟢 " else if (connecting(k)) "🟡 " else "🔴 ") + name +
+            (if (connecting(k)) " (מתחבר…)" else "")
     }
 }

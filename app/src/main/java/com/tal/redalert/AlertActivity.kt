@@ -34,7 +34,10 @@ class AlertActivity : Activity() {
             }
             // טיימר שהייה: 10 דקות מהירי
             stay?.let { st ->
-                val left = ((firedAt + Prefs.STAY_MS - now) / 1000).toInt()
+                // 10 הדקות מתחילות רק אחרי שנגמר הזמן להגעה
+                val enterEnd = firedAt + shelterSec.coerceAtLeast(0) * 1000L
+                if (now < enterEnd) { st.text = ""; ui.postDelayed(this, 250); return }
+                val left = ((enterEnd + Prefs.STAY_MS - now) / 1000).toInt()
                 st.text = if (left > 0) "⏳ נשארים במרחב המוגן: %d:%02d".format(left / 60, left % 60)
                           else "✅ אפשר לצאת מהמרחב המוגן\n(אם לא התקבלה הנחיה אחרת)"
                 if (left > 0) { ui.postDelayed(this, 250); return }

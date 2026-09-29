@@ -127,6 +127,7 @@ class AlertService : Service() {
         } else {
             startForeground(ID_SERVICE, n)
         }
+        SourceHealth.reset()   // מקורות מתחברים - "מתחבר" ולא "מנותק"
         // טיימר שהייה שהיה פעיל לפני הפעלה מחדש של השירות
         val stayLeft = Prefs.stayUntil(this) - System.currentTimeMillis()
         if (stayLeft > 0) main.postDelayed(stayDone, stayLeft) else Prefs.setStayUntil(this, 0)
@@ -496,7 +497,7 @@ class AlertService : Service() {
         // אחרי שנגמר הזמן להגעה - ההתראה עוברת לספירת השהייה (10 דקות)
         if (level == LEVEL_ALERT && !test) {
             main.removeCallbacks(stayNotif)
-            stayNotifPi = fullPi; stayTitle = title; stayBody = body; stayEnd = System.currentTimeMillis() + Prefs.STAY_MS
+            stayNotifPi = fullPi; stayTitle = title; stayBody = body; stayEnd = System.currentTimeMillis() + (shelterSec ?: 0).coerceAtLeast(0) * 1000L + Prefs.STAY_MS
             main.postDelayed(stayNotif, ((shelterSec ?: 0).coerceAtLeast(0) * 1000L) + 500)
         } else if (level == LEVEL_END) main.removeCallbacks(stayNotif)
 
@@ -510,8 +511,10 @@ class AlertService : Service() {
         if (!test) main.removeCallbacks(stayDone)
         if (test) { }
         else if (level == LEVEL_ALERT) {
-            Prefs.setStayUntil(this, System.currentTimeMillis() + Prefs.STAY_MS)
-            main.postDelayed(stayDone, Prefs.STAY_MS)
+            // 10 הדקות מתחילות אחרי שנגמר הזמן להגעה למרחב המוגן
+            val enterMs = (shelterSec ?: 0).coerceAtLeast(0) * 1000L
+            Prefs.setStayUntil(this, System.currentTimeMillis() + enterMs + Prefs.STAY_MS)
+            main.postDelayed(stayDone, enterMs + Prefs.STAY_MS)
         } else if (level == LEVEL_END) {
             Prefs.setStayUntil(this, 0)
             (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(ID_STAY)
