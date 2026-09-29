@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/wl_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:orientation="vertical"
+    android:layoutDirection="rtl"
+    android:padding="14dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextClock
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:format12Hour="HH:mm:ss"
+                android:format24Hour="HH:mm:ss"
+                android:textColor="#F2F2F2"
+                android:textSize="40sp"
+                android:fontFamily="sans-serif-light" />
+
+            <TextClock
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:format12Hour="EEEE, d בMMMM"
+                android:format24Hour="EEEE, d בMMMM"
+                android:textColor="#AEAEB2"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/wl_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="● מוגן"
+            android:textColor="#30D158"
+            android:textSize="15sp" />
+    </LinearLayout>
+
+    <!-- ספירה לאחור בזמן התראה -->
+    <LinearLayout
+        android:id="@+id/wl_cd_box"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/widget_alert_bg"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="8dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/wl_cd_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ירי רקטות וטילים"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp" />
+
+        <Chronometer
+            android:id="@+id/wl_cd"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFF"
+            android:textSize="34sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="היכנסו למרחב המוגן"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="התראות אחרונות"
+        android:textColor="#8E8E93"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/wl_h1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:text="אין התראות עדיין"
+        android:textColor="#8E8E93"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/wl_h2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textSize="12sp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/wl_h3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textSize="12sp"
+        android:visibility="gone" />
+</LinearLayout>

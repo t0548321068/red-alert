@@ -22,6 +22,7 @@ class AlertWidget : AppWidgetProvider() {
             val mgr = AppWidgetManager.getInstance(c)
             val ids = mgr.getAppWidgetIds(ComponentName(c, AlertWidget::class.java))
             if (ids.isNotEmpty()) ids.forEach { mgr.updateAppWidget(it, build(c)) }
+            AlertWidgetLarge.updateAll(c)
         }
 
         private fun build(c: Context): RemoteViews {

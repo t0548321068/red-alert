@@ -119,6 +119,12 @@ object Prefs {
         return if (f <= t) now in f until t else now >= f || now < t   // גם טווח שחוצה חצות
     }
 
+    // ---- ספירה לאחור פעילה (לווידג'ט) ----
+    fun countdownUntil(c: Context) = sp(c).getLong("cdUntil", 0L)
+    fun countdownTitle(c: Context) = sp(c).getString("cdTitle", "") ?: ""
+    fun setCountdown(c: Context, until: Long, title: String) =
+        sp(c).edit().putLong("cdUntil", until).putString("cdTitle", title).apply()
+
     /** ערכת נושא: true = כהה (ברירת מחדל), false = בהירה */
     fun darkTheme(c: Context) = sp(c).getBoolean("dark", true)
     fun setDarkTheme(c: Context, v: Boolean) = sp(c).edit().putBoolean("dark", v).apply()

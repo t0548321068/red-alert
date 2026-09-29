@@ -344,6 +344,7 @@ class MainActivity : Activity() {
         // רשת ביטחון: אם ההאזנה אמורה לפעול - לוודא שהשירות באמת רץ (בטוח לקרוא גם אם כבר רץ)
         if (Prefs.enabled(this)) AlertService.start(this)
         ui.post(tick)
+        askLockScreen()
         // בכל חזרה לאפליקציה (כולל לחיצה על התראת "גרסה חדשה"), לכל היותר פעם ב-10 דקות
         if (System.currentTimeMillis() - updateCheckedAt > 10 * 60 * 1000) {
             updateCheckedAt = System.currentTimeMillis()
@@ -954,6 +955,24 @@ class MainActivity : Activity() {
     private fun openNotificationSettings() {
         startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
             .putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+    }
+
+    private var lockAsked = false
+    /** אנדרואיד 14+: בלי ההרשאה הזו ההתראה לא נדלקת על מסך נעילה */
+    private fun askLockScreen() {
+        if (lockAsked || Build.VERSION.SDK_INT < 34 || !Prefs.enabled(this)) return
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        if (nm.canUseFullScreenIntent()) return
+        lockAsked = true
+        android.app.AlertDialog.Builder(this, Prefs.dialogTheme(this))
+            .setTitle("התראה על מסך נעילה")
+            .setMessage("כדי שההתראה תידלק מיד כשהמסך כבוי – צריך לאשר \"התראות במסך מלא\".")
+            .setPositiveButton("אישור") { _, _ ->
+                startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
+                    .setData(Uri.parse("package:$packageName")))
+            }
+            .setNegativeButton("לא עכשיו", null)
+            .show()
     }
 
     private fun openFullScreenSettings() {
