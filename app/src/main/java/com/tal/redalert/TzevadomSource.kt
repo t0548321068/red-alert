@@ -62,12 +62,18 @@ class TzevadomSource(
             .header("Referer", "https://tzevadom.com/")
             .header("User-Agent", "Mozilla/5.0 (Linux; Android) RedAlert")
             .build()
+        try { doListen(req) } finally { SourceHealth.setOpen("tzevadom", false) }
+    }
+
+    private fun doListen(req: Request) {
         client.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) return
+            SourceHealth.setOpen("tzevadom", true)
             val reader = resp.body?.source() ?: return
             val buf = StringBuilder()
             while (running) {
                 val line = reader.readUtf8Line() ?: break
+                SourceHealth.ok("tzevadom")
                 when {
                     line.startsWith("data:") -> buf.append(line.removePrefix("data:").trim())
                     line.isEmpty() && buf.isNotEmpty() -> {

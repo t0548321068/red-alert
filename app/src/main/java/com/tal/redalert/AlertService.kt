@@ -166,6 +166,7 @@ class AlertService : Service() {
     /** מקור 1: הקובץ החי של פיקוד העורף */
     private fun check() {
         val text = fetchOref(URL_ALERTS)
+        SourceHealth.ok("oref")   // תשובה תקינה (גם ריקה = אין התראות)
         if (text.isEmpty()) return
 
         val json = JSONObject(text)
@@ -212,6 +213,7 @@ class AlertService : Service() {
             for (url in listOf(URL_HISTORY, URL_ARCHIVE)) {
                 try {
                     val text = fetchOref(url)
+                    SourceHealth.ok(if (url == URL_HISTORY) "history" else "archive")
                     if (!text.startsWith("[")) continue
                     val arr = org.json.JSONArray(text)
                     val now = System.currentTimeMillis()

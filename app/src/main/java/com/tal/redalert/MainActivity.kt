@@ -62,6 +62,9 @@ class MainActivity : Activity() {
     private lateinit var clockDay: TextView
     private lateinit var weatherLine: TextView
     private lateinit var shelterLine: TextView
+    private lateinit var netInd: TextView
+    private lateinit var locInd: TextView
+    private lateinit var srvInd: TextView
     private var weatherAt = 0L
     private var weatherAccuracy = -1
     private var lastHistoryKey = ""
@@ -127,6 +130,7 @@ class MainActivity : Activity() {
     private val tick = object : Runnable {
         override fun run() {
             updateClock()
+            updateIndicators()
             updateWeather()
             // שאר המסך מתעדכן רק כשמשהו השתנה
             val key = "${Prefs.enabled(this@MainActivity)}|${Prefs.history(this@MainActivity).firstOrNull()?.ts}"
@@ -209,6 +213,16 @@ class MainActivity : Activity() {
             }
         }
         col.addView(weatherLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+
+        // חיווים: רשת / מיקום / שרתי התרעות
+        val status = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        netInd = indicator(R.drawable.ic_wifi) { showNetworkInfo() }
+        locInd = indicator(R.drawable.ic_location) { onLocationIndicator() }
+        srvInd = indicator(R.drawable.ic_cloud) { showSourcesInfo() }
+        listOf(netInd, locInd, srvInd).forEachIndexed { i, v ->
+            status.addView(v, LinearLayout.LayoutParams(-2, -2).apply { if (i > 0) marginStart = dp(8) })
+        }
+        col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
         // עיגול הפעלה/כיבוי
         circleIcon = text("✓", 40f, C.GREEN).apply { gravity = Gravity.CENTER }
@@ -438,6 +452,88 @@ class MainActivity : Activity() {
                     7 -> openNotificationSettings()
                 }
             }
+            .show()
+    }
+
+    // ---- חיווים ----
+
+    private fun indicator(icon: Int, onClick: () -> Unit) = text("", 12f, C.TEXT).apply {
+        setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0)
+        compoundDrawablePadding = dp(5)
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(10), dp(5), dp(10), dp(5))
+        background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(C.CARD) }
+        setOnClickListener { onClick() }
+    }
+
+    private fun setInd(v: TextView, icon: Int, label: String, color: Int) {
+        v.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0)
+        v.compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color)
+        v.text = label
+        v.setTextColor(color)
+    }
+
+    /** סוג החיבור: וויפי / נתונים / אחר, והאם יש אינטרנט בפועל */
+    private fun network(): Pair<String, Boolean>? {
+        val cm = getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return null) ?: return null
+        val type = when {
+            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
+            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) -> "cell"
+            else -> "other"
+        }
+        return type to caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    private fun locationOn(): Boolean {
+        val lm = getSystemService(LOCATION_SERVICE) as android.location.LocationManager
+        return hasLocationPerm() && lm.isLocationEnabled
+    }
+
+    private fun updateIndicators() {
+        val net = network()
+        when {
+            net == null -> setInd(netInd, R.drawable.ic_no_net, "אין רשת", C.RED)
+            net.first == "wifi" -> setInd(netInd, R.drawable.ic_wifi, "וויפי", if (net.second) C.GREEN else C.ORANGE)
+            net.first == "cell" -> setInd(netInd, R.drawable.ic_cell, "נתונים", if (net.second) C.GREEN else C.ORANGE)
+            else -> setInd(netInd, R.drawable.ic_wifi, "מחובר", if (net.second) C.GREEN else C.ORANGE)
+        }
+        if (locationOn()) setInd(locInd, R.drawable.ic_location, if (hasPrecise()) "מיקום" else "משוער",
+            if (hasPrecise()) C.GREEN else C.ORANGE)
+        else setInd(locInd, R.drawable.ic_location, "מיקום כבוי", C.MUTED)
+
+        if (!Prefs.enabled(this)) {
+            setInd(srvInd, R.drawable.ic_cloud, "כבוי", C.MUTED)
+        } else {
+            val up = SourceHealth.upCount(); val all = SourceHealth.total()
+            val color = when { up == 0 -> C.RED; up < all / 2 -> C.ORANGE; else -> C.GREEN }
+            setInd(srvInd, R.drawable.ic_cloud, "$up/$all מקורות", color)
+        }
+    }
+
+    private fun showNetworkInfo() {
+        val net = network()
+        val msg = when {
+            net == null -> "אין חיבור לרשת – התראות לא יגיעו"
+            !net.second -> "מחובר ל${if (net.first == "wifi") "וויפי" else "נתונים"}, אבל אין גישה לאינטרנט"
+            else -> "מחובר ל${if (net.first == "wifi") "וויפי" else if (net.first == "cell") "נתונים סלולריים" else "רשת"} ✓"
+        }
+        android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+    }
+
+    private fun onLocationIndicator() {
+        when {
+            !hasLocationPerm() || !hasPrecise() -> onWeatherClick()
+            !locationOn() -> startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            else -> updateWeather(force = true)
+        }
+    }
+
+    private fun showSourcesInfo() {
+        AlertDialog.Builder(this, dlg())
+            .setTitle("שרתי התרעות · ${SourceHealth.upCount()}/${SourceHealth.total()} מחוברים")
+            .setMessage(if (Prefs.enabled(this)) SourceHealth.report() else "ההאזנה כבויה")
+            .setPositiveButton("סגור", null)
             .show()
     }
 
