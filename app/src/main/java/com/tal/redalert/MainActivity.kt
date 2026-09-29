@@ -600,7 +600,10 @@ class MainActivity : Activity() {
             setInd(srvInd, R.drawable.ic_cloud, "0/${SourceHealth.total()}", C.MUTED)
         } else {
             val up = SourceHealth.upCount(); val all = SourceHealth.total()
-            val color = when { up == 0 -> C.RED; up < all / 2 -> C.ORANGE; else -> C.GREEN }
+            val color = when {
+                up < all && SourceHealth.anyConnecting() -> C.MUTED   // אחרי הפעלה/עדכון - עוד מתחברים
+                up == 0 -> C.RED; up < all / 2 -> C.ORANGE; else -> C.GREEN
+            }
             setInd(srvInd, R.drawable.ic_cloud, "$up/$all", color)
         }
     }
