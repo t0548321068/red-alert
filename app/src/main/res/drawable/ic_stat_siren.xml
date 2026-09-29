@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- סמל הצופר של האפליקציה לשורת ההתראות (אנדרואיד מציג אותו בצבע אחד) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <!-- כיפה -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M7,18 V12.5 A5,5 0 0,1 17,12.5 V18 Z"/>
+    <!-- בסיס -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M5.5,18.5 H18.5 A1,1 0 0,1 19.5,19.5 V20.5 A1,1 0 0,1 18.5,21.5 H5.5 A1,1 0 0,1 4.5,20.5 V19.5 A1,1 0 0,1 5.5,18.5 Z"/>
+    <!-- קרני אור -->
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineCap="round"
+        android:pathData="M12,2.5 V5 M4.5,5.5 L6.3,7.3 M19.5,5.5 L17.7,7.3 M2,11.5 H4.2 M22,11.5 H19.8"/>
+</vector>

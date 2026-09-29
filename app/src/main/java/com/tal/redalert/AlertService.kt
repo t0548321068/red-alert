@@ -93,7 +93,8 @@ class AlertService : Service() {
         super.onCreate()
         createChannels()
         val n = Notification.Builder(this, CH_SERVICE)
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setSmallIcon(R.drawable.ic_stat_siren)
+            .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
             .setContentTitle("צבע אדום פעיל")
             .setContentText("מאזין להתראות פיקוד העורף")
             .setOngoing(true)
@@ -212,7 +213,8 @@ class AlertService : Service() {
                 if (!alerted && now - badSince >= UNPROTECTED_AFTER_MS) {
                     alerted = true
                     nm.notify(ID_WATCH, Notification.Builder(this, CH_WATCH)
-                        .setSmallIcon(android.R.drawable.stat_notify_error)
+                        .setSmallIcon(R.drawable.ic_stat_siren)
+            .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
                         .setContentTitle("⚠️ צבע אדום לא מוגן")
                         .setContentText("$reason – התראות לא יגיעו כרגע")
                         .setContentIntent(openApp())
@@ -222,7 +224,8 @@ class AlertService : Service() {
             } else {
                 if (alerted) {
                     nm.notify(ID_WATCH, Notification.Builder(this, CH_WATCH)
-                        .setSmallIcon(android.R.drawable.ic_dialog_info)
+                        .setSmallIcon(R.drawable.ic_stat_siren)
+            .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
                         .setContentTitle("✅ צבע אדום חזר לפעול")
                         .setContentText("${SourceHealth.upCount()}/${SourceHealth.total()} מקורות מחוברים")
                         .setContentIntent(openApp())
@@ -277,7 +280,8 @@ class AlertService : Service() {
         if (Prefs.notifiedVersion(this) == v) return true
         Prefs.setNotifiedVersion(this, v)
         val n = Notification.Builder(this, CH_UPDATE)
-            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setSmallIcon(R.drawable.ic_stat_siren)
+            .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
             .setContentTitle("🆕 גרסה חדשה זמינה – $v")
             .setContentText("לחץ כדי להתקין")
             .setCategory(Notification.CATEGORY_RECOMMENDATION)
@@ -403,7 +407,8 @@ class AlertService : Service() {
         val text = if (shelterSec != null && level == LEVEL_ALERT)
             "$body · זמן למרחב מוגן: ${AreaData.shelterText(shelterSec)}" else body
         val nb = Notification.Builder(this, channel)
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setSmallIcon(R.drawable.ic_stat_siren)
+            .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(Notification.BigTextStyle().bigText(text))
