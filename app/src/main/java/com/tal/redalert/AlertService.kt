@@ -55,13 +55,13 @@ class AlertService : Service() {
 
         private const val CH_INFO = "info"
         private const val CH_QUIET = "quiet"
-        private const val CH_WATCH = "watchdog_v2"
+        private const val CH_WATCH = "watchdog_v3"
         private const val ID_WATCH = 4
         private const val UNPROTECTED_AFTER_MS = 2 * 60 * 1000L
-        private const val CH_STAY = "stay"
+        private const val CH_STAY = "stay_v2"
         private const val ID_STAY = 6
         private const val ID_LISTEN = 7
-        private const val CH_UPDATE = "updates_v3"  // ערוץ חדש כדי שההתראה תקפוץ עם צליל
+        private const val CH_UPDATE = "updates_v4"  // ערוץ חדש - הצליל לפי שם הקובץ (לא לפי מספר שמשתנה בין גרסאות)
         private const val ID_UPDATE = 3
 
         const val LEVEL_ALERT = 0
@@ -704,7 +704,8 @@ class AlertService : Service() {
                 setBypassDnd(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             })
-        val appSound = android.net.Uri.parse("android.resource://$packageName/${R.raw.app_notify}")
+        // לפי שם ולא לפי מספר המשאב - המספר משתנה בין גרסאות, והערוץ שומר את הקישור לתמיד
+        val appSound = android.net.Uri.parse("android.resource://$packageName/raw/app_notify")
         val notifAttrs = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_NOTIFICATION)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -714,6 +715,9 @@ class AlertService : Service() {
                 setSound(appSound, notifAttrs)
             })
         nm.deleteNotificationChannel("updates_v2")
+        nm.deleteNotificationChannel("updates_v3")
+        nm.deleteNotificationChannel("watchdog_v2")
+        nm.deleteNotificationChannel("stay")
         nm.deleteNotificationChannel("watchdog")
         nm.deleteNotificationChannel("updates")
         nm.deleteNotificationChannel("alerts")
