@@ -608,7 +608,12 @@ class MainActivity : Activity() {
         val cur = Updater.currentVersion(this)
         val seen = Prefs.seenVersion(this)
         Prefs.setSeenVersion(this, cur)
-        if (seen.isNotEmpty() && seen != cur) showWhatsNew(sinceVersion = seen)
+        when {
+            seen.isNotEmpty() && seen != cur -> showWhatsNew(sinceVersion = seen)
+            // גרסאות ישנות לא שמרו את הערך - אם זו לא התקנה חדשה, מציגים את הגרסה הנוכחית
+            seen.isEmpty() && (Prefs.enabled(this) || Prefs.history(this).isNotEmpty()) ->
+                showWhatsNew(sinceVersion = null)
+        }
     }
 
     /** sinceVersion = null: רק הגרסה הנוכחית (מההגדרות) */
