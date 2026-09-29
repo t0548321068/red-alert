@@ -535,12 +535,13 @@ class MainActivity : Activity() {
 
     private fun showNetworkInfo() {
         val net = network()
+        val type = when (net?.first) { "wifi" -> " (וויפי)"; "cell" -> " (נתונים)"; else -> "" }
         val msg = when {
-            net == null -> "אין חיבור לרשת – התראות לא יגיעו"
-            !net.second -> "מחובר ל${if (net.first == "wifi") "וויפי" else "נתונים"}, אבל אין גישה לאינטרנט"
-            else -> "מחובר ל${if (net.first == "wifi") "וויפי" else if (net.first == "cell") "נתונים סלולריים" else "רשת"} ✓"
+            net == null -> "לא מחובר לרשת – התראות לא יגיעו"
+            !net.second -> "מחובר לרשת$type, אבל אין אינטרנט"
+            else -> "מחובר לרשת$type ✓"
         }
-        android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+        android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
     }
 
     private fun onLocationIndicator() {
