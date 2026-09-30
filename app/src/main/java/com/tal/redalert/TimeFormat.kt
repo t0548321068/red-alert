@@ -23,15 +23,6 @@ object TimeFormat {
         return if (Prefs.showSeconds(c)) "$hm:%02d".format(k.get(Calendar.SECOND)) else hm
     }
 
-    /** ברכה לפי השעה */
-    fun greeting(ms: Long): String = when (cal(ms).get(Calendar.HOUR_OF_DAY)) {
-        in 5..11 -> "בוקר טוב"
-        in 12..14 -> "צהריים טובים"
-        in 15..17 -> "אחר צהריים טובים"
-        in 18..21 -> "ערב טוב"
-        else -> "לילה טוב"
-    }
-
     fun day(c: Context, ms: Long): String {
         val i = cal(ms).get(Calendar.DAY_OF_WEEK) - 1
         return when (Prefs.dayStyle(c)) {
