@@ -50,13 +50,24 @@ async def one(name, text):
                 await edge_tts.Communicate(text, VOICE, rate="+0%").save(tmp)
                 break
             except Exception as e:
+                last = e
                 await asyncio.sleep(2 + attempt * 3)
         else:
-            print("FAILED", name, text); return
+            print(f"::warning::FAILED {name}: {last}"); return
     # מונו, 24kHz, 32kbps - קטן ועדיין ברור
     subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", tmp, "-ac", "1", "-ar", "24000", "-b:a", "32k", dst], check=True)
 
+async def safe(n, t):
+    try: await one(n, t)
+    except Exception as e: print(f"::warning::{n}: {type(e).__name__}: {e}")
+
 async def main():
-    await asyncio.gather(*(one(n, t) for n, t in items.items()))
-    print("clips:", len(os.listdir(OUT)), "of", len(items))
-asyncio.run(main())
+    await asyncio.gather(*(safe(n, t) for n, t in items.items()))
+    done = len(os.listdir(OUT))
+    print(f"::notice::clips {done} of {len(items)}")
+    if done < len(items) * 0.9: sys.exit(f"::error::only {done} clips")
+try:
+    asyncio.run(main())
+except SystemExit: raise
+except Exception as e:
+    print(f"::error::{type(e).__name__}: {e}"); raise
