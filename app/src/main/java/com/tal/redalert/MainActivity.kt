@@ -340,9 +340,14 @@ class MainActivity : Activity() {
         col.addView(areasCard)
 
         // התראות אחרונות
-        val histCard = card()
+        // כרטיס גרפיט עם פס צבע לכל התראה
+        val histCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(12), dp(14), dp(4))
+            background = graphite(20)
+        }
         val histHead = LinearLayout(this)
-        histHead.addView(text("התראות אחרונות", 13f, C.MUTED), LinearLayout.LayoutParams(0, -2, 1f))
+        histHead.addView(text("התראות אחרונות", 13f, Color.parseColor("#AAAAAA")), LinearLayout.LayoutParams(0, -2, 1f))
         histHead.addView(text("📜 הכל", 13f, C.BLUE).apply {
             setPadding(0, 0, dp(14), 0)
             setOnClickListener { startActivity(Intent(this@MainActivity, HistoryActivity::class.java)) }
@@ -353,7 +358,7 @@ class MainActivity : Activity() {
         histCard.addView(histHead)
         historyBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         histCard.addView(historyBox, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
-        col.addView(histCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        col.addView(histCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
 
         // כפתורי בדיקה
         val tests = LinearLayout(this)
@@ -478,37 +483,54 @@ class MainActivity : Activity() {
     private fun renderHistory() {
         historyBox.removeAllViews()
         val items = Prefs.history(this).take(5)
+        val muted = Color.parseColor("#AAAAAA")
         if (items.isEmpty()) {
-            historyBox.addView(text("אין התראות עדיין", 14f, C.MUTED).apply {
-                setPadding(0, dp(6), 0, dp(6))
-            })
+            historyBox.addView(text("אין התראות עדיין", 14f, muted).apply { setPadding(0, dp(8), 0, dp(10)) })
             return
         }
         items.forEachIndexed { i, e ->
             val row = LinearLayout(this).apply {
-                setPadding(0, dp(8), 0, dp(8))
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(10), 0, dp(10))
             }
-            val dotColor = when (e.level) {
-                AlertService.LEVEL_PRE -> C.ORANGE
-                AlertService.LEVEL_END -> C.END
+            val barColor = when (e.level) {
+                AlertService.LEVEL_PRE -> Color.parseColor("#F08C00")
+                AlertService.LEVEL_END -> C.GREEN
                 else -> C.RED
             }
+            // פס צבע לפי סוג ההתראה
             row.addView(View(this).apply {
-                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(dotColor) }
-            }, LinearLayout.LayoutParams(dp(8), dp(8)).apply { topMargin = dp(7); marginEnd = dp(10) })
+                background = GradientDrawable().apply { cornerRadius = dp(2).toFloat(); setColor(barColor) }
+            }, LinearLayout.LayoutParams(dp(4), dp(34)).apply { marginEnd = dp(10) })
             val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
             val shortTitle = if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title
-            texts.addView(text(shortTitle, 14f, C.TEXT))
-            texts.addView(text(e.body, 12f, C.MUTED).apply {
-                maxLines = 2; ellipsize = TextUtils.TruncateAt.END
-            })
+            texts.addView(text(shortTitle, 15f, Color.WHITE))
+            texts.addView(text(e.body, 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
             row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
-            row.addView(text(if (e.ts > 0) TimeFormat.stamp(this, e.ts) else e.time.take(5), 12f, C.MUTED))
+            // שעה, ומתחת: היום / אתמול / תאריך
+            val whenCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.END }
+            if (e.ts > 0) {
+                whenCol.addView(text(TimeFormat.time(this, e.ts).take(5), 12f, muted))
+                whenCol.addView(text(dayLabel(e.ts), 12f, muted))
+            } else whenCol.addView(text(e.time.take(5), 12f, muted))
+            row.addView(whenCol, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
             historyBox.addView(row)
-            if (i < items.size - 1) {
-                historyBox.addView(View(this).apply { setBackgroundColor(C.CHIP) },
-                    LinearLayout.LayoutParams(-1, dp(1)))
-            }
+            if (i < items.size - 1) historyBox.addView(View(this).apply { setBackgroundColor(Color.parseColor("#14FFFFFF")) },
+                LinearLayout.LayoutParams(-1, dp(1)))
+        }
+    }
+
+    /** "היום" / "אתמול" / תאריך */
+    private fun dayLabel(ts: Long): String {
+        val k = java.util.Calendar.getInstance()
+        fun key(c: java.util.Calendar) = c.get(java.util.Calendar.YEAR) * 1000 + c.get(java.util.Calendar.DAY_OF_YEAR)
+        val today = key(k)
+        val e = java.util.Calendar.getInstance().apply { timeInMillis = ts }
+        k.add(java.util.Calendar.DAY_OF_YEAR, -1)
+        return when (key(e)) {
+            today -> "היום"
+            key(k) -> "אתמול"
+            else -> "%02d/%02d".format(e.get(java.util.Calendar.DAY_OF_MONTH), e.get(java.util.Calendar.MONTH) + 1)
         }
     }
 
