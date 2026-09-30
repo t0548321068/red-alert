@@ -175,6 +175,8 @@ class MainActivity : Activity() {
     }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+    /** רווח אחיד בין כרטיס לכרטיס במסך הראשי */
+    private val GAP = 12
     private fun dlg() = Prefs.dialogTheme(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -198,7 +200,7 @@ class MainActivity : Activity() {
 
         val col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(4), dp(16), dp(24))   // כותרת קרובה יותר לראש המסך
+            setPadding(dp(16), dp(4), dp(16), dp(GAP))   // כותרת קרובה יותר לראש המסך
         }
 
         // כותרת + גלגל שיניים
@@ -280,7 +282,7 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams(dp(1), dp(26)))
             status.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
         }
-        col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
+        col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
         weatherLine = text("", 14f, C.TEXT).apply {
             gravity = Gravity.CENTER
         }
@@ -324,7 +326,7 @@ class MainActivity : Activity() {
             addView(circleGlow, LinearLayout.LayoutParams(dp(62), dp(34)))
             setOnClickListener { toggle() }
         }
-        col.addView(circle, LinearLayout.LayoutParams(-1, dp(90)).apply { topMargin = dp(10) })
+        col.addView(circle, LinearLayout.LayoutParams(-1, dp(90)).apply { topMargin = dp(GAP) })
         // מצב שקט - מוצג רק כשהוא פעיל עכשיו
         quietLine = text("", 12f, C.ORANGE).apply {
             gravity = Gravity.CENTER
@@ -332,7 +334,7 @@ class MainActivity : Activity() {
         }
         col.addView(quietLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
         // כרטיס השעה ומזג האוויר - מתחת לכפתור מוגן
-        col.addView(clockCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6); bottomMargin = dp(16) })
+        col.addView(clockCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
 
         // האזורים שלי
         // אזורי התרעה: אזור לפי מיקום + אזורים נוספים
@@ -342,19 +344,23 @@ class MainActivity : Activity() {
             clipToOutline = true
         }
         chips = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        areasCard.addView(chips, LinearLayout.LayoutParams(-1, -2))
+        areasCard.addView(chips, LinearLayout.LayoutParams(-1, -2, 1f))
         shelterLine = text("", 13f, Color.parseColor("#E6FFFFFF"))
         areasCard.addView(shelterLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
-        col.addView(areasCard)
+        // המסך לא נגלל: אזורי ההתרעה תופסים את מה שנשאר (לכל היותר), והרשימה שבתוכם נגללת
+        val areasSlot = FrameLayout(this).apply {
+            addView(areasCard, FrameLayout.LayoutParams(-1, -2, Gravity.TOP))
+        }
+        col.addView(areasSlot, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(GAP) })
 
         historyBox = LinearLayout(this)   // לא מוצג - נשאר לשימוש פנימי
         // הכפתור עבר לתפריט הצידי
 
         // הפיד הארצי - בתחתית המסך
-        col.addView(feedLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
+        col.addView(feedLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
 
-        val scroll = ScrollView(this).apply {
-            addView(col)
+        val scroll = FrameLayout(this).apply {
+            addView(col, FrameLayout.LayoutParams(-1, -1))
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")
                 v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
@@ -468,18 +474,11 @@ class MainActivity : Activity() {
             })
             rows.addView(r)
         }
-        if (list.size > 4) {
-            val sc = ScrollView(this).apply {
-                isVerticalScrollBarEnabled = true
-                addView(rows)
-                // גלילה בתוך הרשימה בלי שהמסך כולו יזוז
-                setOnTouchListener { v, _ -> v.parent.requestDisallowInterceptTouchEvent(true); false }
-            }
-            bottom.addView(sc, LinearLayout.LayoutParams(-1, dp(4 * 42)))
-        } else bottom.addView(rows)
+        // הרשימה נגללת כשאין לה מקום במסך
+        bottom.addView(ScrollView(this).apply { addView(rows) }, LinearLayout.LayoutParams(-1, -2, 1f))
         if (list.isEmpty() && !nearOn)
             bottom.addView(text("⚠️ אין אזורים – לא יתקבלו התראות", 13f, C.ORANGE).apply { setPadding(0, dp(4), 0, dp(4)) })
-        chips.addView(bottom)
+        chips.addView(bottom, LinearLayout.LayoutParams(-1, -2, 1f))
         shelterLine.visibility = View.GONE   // הזמן מוצג עכשיו בפס המיקום
     }
 
