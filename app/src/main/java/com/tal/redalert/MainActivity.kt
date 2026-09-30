@@ -53,8 +53,9 @@ class MainActivity : Activity() {
     }
 
     private lateinit var circle: LinearLayout
-    private lateinit var circleGlow: View
-    private lateinit var circleIcon: TextView
+    private lateinit var circleGlow: FrameLayout   // המתג
+    private lateinit var switchKnob: View
+    private lateinit var circleIcon: View          // הנקודה
     private lateinit var circleLabel: TextView
     private lateinit var circleHint: TextView
     private lateinit var chips: LinearLayout
@@ -161,7 +162,7 @@ class MainActivity : Activity() {
             age < 60 -> "לפני $age שניות"
             else -> "לפני ${age / 60} דק׳"
         }
-        circleHint.text = "לחיצה לכיבוי\nעדכון אחרון: $ago"
+        circleHint.text = "עדכון אחרון: $ago"
     }
 
     private fun updateClock() {
@@ -300,24 +301,31 @@ class MainActivity : Activity() {
         }
 
         // עיגול הפעלה/כיבוי
-        circleIcon = text("✓", 46f, C.GREEN).apply { gravity = Gravity.CENTER }
-        circleLabel = text("מוגן", 22f, C.GREEN, bold = true).apply { gravity = Gravity.CENTER }
+        // כרטיס מוגן: נקודה + "מוגן" + עדכון אחרון, ומתג בצד. לחיצה בכל מקום מפעילה/מכבה
+        circleIcon = View(this)
+        circleLabel = text("מוגן", 24f, Color.WHITE, bold = true)
+        circleHint = text("", 12f, Color.parseColor("#AAAAAA"))
+        val titleRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        titleRow.addView(circleIcon, LinearLayout.LayoutParams(dp(12), dp(12)).apply { marginEnd = dp(8) })
+        titleRow.addView(circleLabel)
+        val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        texts.addView(titleRow)
+        texts.addView(circleHint, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(4) })
+        switchKnob = View(this).apply {
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) }
+        }
+        circleGlow = FrameLayout(this).apply {
+            addView(switchKnob, FrameLayout.LayoutParams(dp(28), dp(28)).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
+        }
         circle = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            addView(circleIcon)
-            addView(circleLabel)
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(20), dp(18), dp(20), dp(18))
+            background = graphite(18)
+            addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(circleGlow, LinearLayout.LayoutParams(dp(62), dp(34)))
             setOnClickListener { toggle() }
         }
-        // כפתור מלבני עם הילה שקופה מסביב (בלי צל שחור מתחתיו)
-        circleGlow = View(this).apply { setLayerType(View.LAYER_TYPE_SOFTWARE, null) }
-        val circleWrap = FrameLayout(this).apply {
-            addView(circleGlow, FrameLayout.LayoutParams(-1, dp(136)))
-            addView(circle, FrameLayout.LayoutParams(-1, dp(100)).apply { setMargins(dp(18), dp(18), dp(18), dp(18)) })
-        }
-        col.addView(circleWrap, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6); marginStart = dp(-18); marginEnd = dp(-18) })
-        circleHint = text("", 12f, C.MUTED).apply { gravity = Gravity.CENTER }
-        col.addView(circleHint, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(-8) })
+        col.addView(circle, LinearLayout.LayoutParams(-1, dp(90)).apply { topMargin = dp(16) })
         // מצב שקט - מוצג רק כשהוא פעיל עכשיו
         quietLine = text("", 12f, C.ORANGE).apply {
             gravity = Gravity.CENTER
@@ -393,20 +401,18 @@ class MainActivity : Activity() {
         val on = Prefs.enabled(this)
         val color = if (on) C.GREEN else C.OFF
         // עיגול מלא: צבע בהיר במרכז שמתכהה לקצוות, כיתוב לבן מודגש
-        circle.background = GradientDrawable().apply {
-            cornerRadius = dp(24).toFloat()
-            gradientType = GradientDrawable.RADIAL_GRADIENT
-            gradientRadius = dp(180).toFloat()
-            colors = if (on) intArrayOf(Color.parseColor("#30D158"), Color.parseColor("#0B3D1A"))
-                     else intArrayOf(Color.parseColor("#8E8E93"), Color.parseColor("#2A2A2C"))
+        val green = Color.parseColor("#30D158")
+        circleIcon.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL; setColor(if (on) green else Color.parseColor("#8E8E93"))
         }
-        circle.elevation = 0f
-        val glow = if (on) Color.parseColor("#30D158") else Color.parseColor("#8E8E93")
-        circleGlow.background = GlowRect(glow, dp(18).toFloat(), dp(24).toFloat())
-        circleIcon.visibility = View.GONE
         circleLabel.text = if (on) "מוגן" else "כבוי"
-        circleLabel.setTextColor(Color.WHITE)
-        circleLabel.textSize = 24f
+        circleGlow.background = GradientDrawable().apply {
+            cornerRadius = dp(17).toFloat(); setColor(if (on) green else Color.parseColor("#5A5A5E"))
+        }
+        // מתג דולק: הידית בצד השמאלי (כמו מתג אנדרואיד בעברית)
+        (switchKnob.layoutParams as FrameLayout.LayoutParams).gravity =
+            Gravity.CENTER_VERTICAL or (if (on) Gravity.LEFT else Gravity.RIGHT)
+        switchKnob.requestLayout()
         updateStatusLine()
 
         renderChips()
@@ -1442,20 +1448,4 @@ class FlowLayout(context: Context, private val gap: Int) : ViewGroup(context) {
             rowH = maxOf(rowH, c.measuredHeight)
         }
     }
-}
-
-/** הילה מסביב למלבן מעוגל: המלבן עצמו + טשטוש החוצה לכל הכיוונים */
-private class GlowRect(color: Int, private val blur: Float, private val radius: Float) : android.graphics.drawable.Drawable() {
-    private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-        this.color = (color and 0x00FFFFFF) or (0x99 shl 24)
-        maskFilter = android.graphics.BlurMaskFilter(blur * 0.8f, android.graphics.BlurMaskFilter.Blur.NORMAL)
-    }
-    override fun draw(c: android.graphics.Canvas) {
-        val r = android.graphics.RectF(bounds).apply { inset(blur, blur) }
-        c.drawRoundRect(r, radius, radius, paint)
-    }
-    override fun setAlpha(a: Int) { paint.alpha = a }
-    override fun setColorFilter(f: android.graphics.ColorFilter?) { paint.colorFilter = f }
-    @Deprecated("Deprecated in Java")
-    override fun getOpacity() = android.graphics.PixelFormat.TRANSLUCENT
 }
