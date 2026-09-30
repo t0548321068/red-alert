@@ -32,6 +32,8 @@
           padding: 0; text-shadow: 0 0 3px var(--sea), 0 0 3px var(--sea); }
   .city::before { display: none; }
   .leaflet-popup-content { direction: rtl; text-align: right; }
+  /* מפה קטנה במסך ההתראה: רק המפה והאזורים, בלי כפתורים */
+  body.mini .bar, body.mini .legend, body.mini .me-btn, body.mini .empty { display: none !important; }
 </style>
 </head>
 <body>
@@ -209,6 +211,26 @@
       b.classList.add('on'); MODE = b.dataset.m; drawAlerts();
     };
   });
+  // מסך ההתראה: מפה קטנה וקבועה (בלי גרירה) שמראה רק את אזורי ההתראה
+  function miniMode() {
+    document.body.classList.add('mini');
+    map.dragging.disable(); map.touchZoom.disable(); map.doubleClickZoom.disable();
+    map.scrollWheelZoom.disable(); map.boxZoom.disable(); map.keyboard.disable();
+    if (map.tap) map.tap.disable();
+  }
+  function miniShow(names, level) {
+    alertLayer.clearLayers();
+    var color = COLORS[level] || COLORS[0], pts = [];
+    names.forEach(function (n) {
+      var a = ALL_AREAS[n]; if (!a) return;
+      (a.p ? L.polygon(a.p, { color: color, weight: 2, fillColor: color, fillOpacity: .6, interactive: false })
+           : L.circleMarker(a.c, { radius: 8, color: color, fillOpacity: .8, interactive: false })).addTo(alertLayer);
+      pts = pts.concat(a.p || [a.c]);
+    });
+    if (pts.length) map.fitBounds(pts, { padding: [24, 24], maxZoom: 13 });
+    syncLabels();
+  }
+
   // מצויר מיד, עוד לפני שהאפליקציה שולחת נתונים
   drawBase(); syncLabels();
 </script>
