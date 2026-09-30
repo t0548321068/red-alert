@@ -115,7 +115,7 @@ class AlertActivity : Activity() {
 
         intent.getStringExtra("source")?.takeIf { it.isNotEmpty() }?.let { src ->
             root.addView(TextView(this).apply {
-                text = "📡 התקבל ראשון מ: $src"
+                text = "📡 מקור ההתרעה: $src"
                 textSize = 13f
                 setTextColor(Color.parseColor("#DDFFFFFF"))
                 gravity = Gravity.CENTER
