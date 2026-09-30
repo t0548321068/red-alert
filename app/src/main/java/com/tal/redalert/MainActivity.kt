@@ -337,12 +337,11 @@ class MainActivity : Activity() {
         // אזורי התרעה: אזור לפי מיקום + אזורים נוספים
         val areasCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
             background = graphite(20)
+            clipToOutline = true
         }
-        areasCard.addView(text("אזורי התרעה", 16f, Color.WHITE, bold = true))
         chips = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        areasCard.addView(chips, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        areasCard.addView(chips, LinearLayout.LayoutParams(-1, -2))
         shelterLine = text("", 13f, Color.parseColor("#E6FFFFFF"))
         areasCard.addView(shelterLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         col.addView(areasCard)
@@ -419,39 +418,54 @@ class MainActivity : Activity() {
         renderHistory()
     }
 
+    /** אזורי התרעה: פס בולט עם המיקום שלי, ומתחתיו האזורים הנוספים */
     private fun renderChips() {
         chips.removeAllViews()
         val list = Prefs.cities(this)
-        val near = if (Prefs.nearMe(this)) Prefs.nearbyAreas(this) else emptyList()
+        val nearOn = Prefs.nearMe(this)
+        val near = if (nearOn) Prefs.nearbyAreas(this) else emptyList()
         val muted = Color.parseColor("#AAAAAA")
-        fun section(title: String, action: String? = null, onAction: (() -> Unit)? = null) {
-            val h = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(10), 0, dp(2)) }
-            h.addView(text(title, 12f, muted), LinearLayout.LayoutParams(0, -2, 1f))
-            if (action != null) h.addView(text(action, 13f, Color.parseColor("#64B5F6")).apply {
-                setPadding(dp(8), dp(2), 0, dp(2)); setOnClickListener { onAction?.invoke() } })
-            chips.addView(h)
+        val light = Color.parseColor("#D6FFE0")
+
+        // המיקום שלי
+        val top = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                if (nearOn) intArrayOf(Color.parseColor("#1E8E3E"), Color.parseColor("#145A2A"))
+                else intArrayOf(Color.parseColor("#3A3A3C"), Color.parseColor("#2C2C2E")))
         }
-        fun row(label: String, color: Int = Color.WHITE, onRemove: (() -> Unit)? = null) {
-            val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(6), 0, dp(6)) }
-            r.addView(text(label, 15f, color), LinearLayout.LayoutParams(0, -2, 1f))
-            if (onRemove != null) r.addView(text("✕", 15f, muted).apply {
-                setPadding(dp(10), 0, dp(4), 0); setOnClickListener { onRemove() } })
-            chips.addView(r)
+        top.addView(text("📍 המיקום שלי", 12f, if (nearOn) light else muted))
+        top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 20f, Color.WHITE, bold = true)
+            .apply { setPadding(0, dp(2), 0, 0) })
+        val sec = if (nearOn && near.isNotEmpty()) AreaData.shelterSeconds(this, near.take(1)) else null
+        if (sec != null) top.addView(text("⏱ ${AreaData.shelterText(sec)} להגעה למרחב מוגן", 12f, light)
+            .apply { setPadding(0, dp(2), 0, 0) })
+        chips.addView(top)
+
+        // אזורים נוספים
+        val bottom = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), dp(8)) }
+        val head = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(4), 0, dp(4)) }
+        head.addView(text("אזורים נוספים", 12f, muted), LinearLayout.LayoutParams(0, -2, 1f))
+        head.addView(text("+ הוספה", 13f, Color.parseColor("#64B5F6")).apply {
+            setPadding(dp(8), dp(2), 0, dp(2)); setOnClickListener { addCity() } })
+        bottom.addView(head)
+        if (list.isEmpty()) bottom.addView(text("אין אזורים נוספים", 14f, muted).apply { setPadding(0, dp(7), 0, dp(7)) })
+        list.forEachIndexed { i, city ->
+            if (i > 0) bottom.addView(View(this).apply { setBackgroundColor(Color.parseColor("#14FFFFFF")) },
+                LinearLayout.LayoutParams(-1, dp(1)))
+            val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(8)) }
+            r.addView(text(city, 16f, Color.WHITE), LinearLayout.LayoutParams(0, -2, 1f))
+            r.addView(text("✕", 15f, muted).apply {
+                setPadding(dp(10), 0, dp(4), 0)
+                setOnClickListener { Prefs.setCities(this@MainActivity, Prefs.cities(this@MainActivity) - city); refresh() }
+            })
+            bottom.addView(r)
         }
-        section("לפי מיקום")
-        if (Prefs.nearMe(this)) row("📍 " + (near.firstOrNull() ?: "מאתר…"))
-        else row("📍 כבוי", muted)
-        section("אזורים נוספים", "+ הוספה") { addCity() }
-        if (list.isEmpty()) row("אין אזורים נוספים", muted)
-        list.forEach { city ->
-            row("🔔 $city") { Prefs.setCities(this, Prefs.cities(this) - city); refresh() }
-        }
-        if (list.isEmpty() && !Prefs.nearMe(this))
-            row("⚠️ אין אזורים – לא יתקבלו התראות", C.ORANGE)
-        // זמן להגעה למרחב מוגן לפי האזורים שלי (הקצר ביותר)
-        val sec = AreaData.shelterSeconds(this, list + near)
-        shelterLine.text = if (sec != null) "⏱ זמן להגעה למרחב מוגן: ${AreaData.shelterText(sec)}" else ""
-        shelterLine.visibility = if (sec != null) View.VISIBLE else View.GONE
+        if (list.isEmpty() && !nearOn)
+            bottom.addView(text("⚠️ אין אזורים – לא יתקבלו התראות", 13f, C.ORANGE).apply { setPadding(0, dp(4), 0, dp(4)) })
+        chips.addView(bottom)
+        shelterLine.visibility = View.GONE   // הזמן מוצג עכשיו בפס המיקום
     }
 
     /** במסך הראשי: שורת סיכום של ההתראה האחרונה */
