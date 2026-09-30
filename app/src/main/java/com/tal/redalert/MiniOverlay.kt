@@ -48,7 +48,7 @@ object MiniOverlay {
         val shelter = full.getIntExtra("shelter", -1)
         val firedAt = full.getLongExtra("firedAt", System.currentTimeMillis())
         val color = when (level) {
-            AlertService.LEVEL_PRE -> "#E65100"
+            AlertService.LEVEL_PRE -> "#F08C00"
             AlertService.LEVEL_END -> "#2E7D32"
             else -> "#D50000"
         }
