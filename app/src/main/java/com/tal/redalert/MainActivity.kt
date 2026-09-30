@@ -53,6 +53,7 @@ class MainActivity : Activity() {
     }
 
     private lateinit var circle: LinearLayout
+    private lateinit var circleGlow: View
     private lateinit var circleIcon: TextView
     private lateinit var circleLabel: TextView
     private lateinit var circleHint: TextView
@@ -304,12 +305,15 @@ class MainActivity : Activity() {
             addView(circleLabel)
             setOnClickListener { toggle() }
         }
+        // הילה שקופה סביב כל הכפתור (בלי צל שחור מתחתיו)
+        circleGlow = View(this)
         val circleWrap = FrameLayout(this).apply {
+            addView(circleGlow, FrameLayout.LayoutParams(dp(230), dp(230), Gravity.CENTER))
             addView(circle, FrameLayout.LayoutParams(dp(170), dp(170), Gravity.CENTER))
         }
-        col.addView(circleWrap, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(24) })
+        col.addView(circleWrap, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(-6) })
         circleHint = text("", 12f, C.MUTED).apply { gravity = Gravity.CENTER }
-        col.addView(circleHint, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        col.addView(circleHint, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(-20) })
         // מצב שקט - מוצג רק כשהוא פעיל עכשיו
         quietLine = text("", 12f, C.ORANGE).apply {
             gravity = Gravity.CENTER
@@ -390,10 +394,16 @@ class MainActivity : Activity() {
             colors = if (on) intArrayOf(Color.parseColor("#30D158"), Color.parseColor("#0B3D1A"))
                      else intArrayOf(Color.parseColor("#8E8E93"), Color.parseColor("#2A2A2C"))
         }
-        if (Build.VERSION.SDK_INT >= 28) {
-            circle.elevation = dp(14).toFloat()
-            circle.outlineAmbientShadowColor = color
-            circle.outlineSpotShadowColor = color
+        circle.elevation = 0f
+        val glow = if (on) Color.parseColor("#30D158") else Color.parseColor("#8E8E93")
+        fun a(x: Int) = (glow and 0x00FFFFFF) or (x shl 24)
+        circleGlow.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            gradientType = GradientDrawable.RADIAL_GRADIENT
+            gradientRadius = dp(115).toFloat()
+            if (Build.VERSION.SDK_INT >= 29)
+                setColors(intArrayOf(a(0x80), a(0x80), a(0x40), a(0)), floatArrayOf(0f, 0.72f, 0.82f, 1f))
+            else colors = intArrayOf(a(0x80), a(0x50), a(0))
         }
         circleIcon.visibility = View.GONE
         circleLabel.text = if (on) "מוגן" else "כבוי"
