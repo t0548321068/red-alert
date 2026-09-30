@@ -73,14 +73,28 @@ class MapActivity : Activity() {
         return events
     }
 
-    /** כל הארץ + שלי + האזורים שהייתי בהם */
+    /**
+     * כל הארץ, ו"שלי" = ההתראות שקיבלתי + התראות בארץ באזורים שהייתי בהם באותו זמן
+     * (לפי היסטוריית המיקום)
+     */
     private fun buildData(dark: Boolean): String {
-        val visits = JSONObject()
-        Prefs.visits(this).forEach { (k, v) -> visits.put(k, v) }
+        val visits = Prefs.visits(this)
+        val all = events(Prefs.feed(this))
+        val mine = events(Prefs.history(this))
+        for (i in 0 until all.length()) {
+            val e = all.getJSONObject(i)
+            val ts = e.getLong("ts")
+            val areas = e.getJSONArray("areas")
+            val here = JSONArray()
+            for (j in 0 until areas.length()) {
+                val a = areas.getString(j)
+                if (Prefs.wasIn(visits, a, ts)) here.put(a)
+            }
+            if (here.length() > 0) mine.put(JSONObject(e.toString()).put("areas", here))
+        }
         val data = JSONObject()
-            .put("all", events(Prefs.feed(this)))
-            .put("mine", events(Prefs.history(this)))
-            .put("visits", visits)
+            .put("all", all)
+            .put("mine", mine)
             .put("dark", dark)
         if (checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) ==
             android.content.pm.PackageManager.PERMISSION_GRANTED) {

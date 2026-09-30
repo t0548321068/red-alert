@@ -139,21 +139,36 @@ object Prefs {
     fun setNearbyAreas(c: Context, v: List<String>) =
         sp(c).edit().putString("nearby", v.joinToString("|")).commit()
 
-    // ---- אזורים שהייתי בהם (למפה): אזור -> מתי הייתי שם לאחרונה ----
-    fun visits(c: Context): Map<String, Long> {
-        val o = try { JSONObject(sp(c).getString("visits", "{}") ?: "{}") } catch (_: Exception) { JSONObject() }
-        val m = HashMap<String, Long>()
-        o.keys().forEach { k -> m[k] = o.optLong(k) }
+    // ---- היסטוריית מיקום: באילו אזורי התראה הייתי ומתי (לטאב "שלי" במפה) ----
+    // אזור -> רשימת קטעי זמן [התחלה, סוף]. נשמר שבוע אחורה.
+    fun visits(c: Context): Map<String, List<LongArray>> {
+        val o = try { JSONObject(sp(c).getString("visits2", "{}") ?: "{}") } catch (_: Exception) { JSONObject() }
+        val m = HashMap<String, List<LongArray>>()
+        o.keys().forEach { k ->
+            val a = o.optJSONArray(k) ?: return@forEach
+            m[k] = (0 until a.length()).map { i -> a.getJSONArray(i).let { longArrayOf(it.getLong(0), it.getLong(1)) } }
+        }
         return m
     }
     @Synchronized
     fun addVisits(c: Context, zones: List<String>, ts: Long) {
         if (zones.isEmpty()) return
-        val m = visits(c).filterValues { ts - it < 8L * 24 * 3600 * 1000 }.toMutableMap()   // שבוע אחורה
-        zones.forEach { m[it] = ts }
-        val o = JSONObject(); m.forEach { (k, v) -> o.put(k, v) }
-        sp(c).edit().putString("visits", o.toString()).apply()
+        val week = 8L * 24 * 3600 * 1000
+        val m = visits(c).mapValues { (_, l) -> l.filter { ts - it[1] < week }.toMutableList() }.toMutableMap()
+        zones.forEach { z ->
+            val l = m.getOrPut(z) { mutableListOf() }
+            val last = l.lastOrNull()
+            // עדכון כל 2 דקות: אם הייתי כאן עד לפני 6 דקות - אותו ביקור, אחרת ביקור חדש
+            if (last != null && ts - last[1] <= 6 * 60 * 1000) last[1] = ts else l.add(longArrayOf(ts, ts))
+        }
+        val o = JSONObject()
+        m.forEach { (k, l) -> if (l.isNotEmpty()) o.put(k, JSONArray().apply { l.forEach { put(JSONArray().put(it[0]).put(it[1])) } }) }
+        sp(c).edit().putString("visits2", o.toString()).apply()
     }
+
+    /** האם הייתי באזור הזה בזמן הזה (עם מרווח של 3 דקות) */
+    fun wasIn(v: Map<String, List<LongArray>>, zone: String, ts: Long): Boolean =
+        v[zone]?.any { ts >= it[0] - 3 * 60 * 1000 && ts <= it[1] + 3 * 60 * 1000 } == true
 
     // ---- צליל לכל סוג התראה (ריק = ברירת מחדל, "silent" = בלי צליל) ----
     fun sound(c: Context, level: Int) = sp(c).getString("sound$level", "") ?: ""
