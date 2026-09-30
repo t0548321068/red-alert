@@ -586,7 +586,7 @@ class AlertService : Service() {
             .setColor(0xFFB45309.toInt())
             .setContentTitle("⏳ נשארים במרחב המוגן")
             .setContentText("$stayTitle · $stayBody")
-            .setSubText("עד שאפשר לצאת")
+            .setSubText("זמן מומלץ במרחב המוגן")
             .setWhen(stayEnd).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(stayNotifPi)
@@ -596,18 +596,9 @@ class AlertService : Service() {
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n)
     }
 
-    /** עברו 10 דקות מהירי - מודיעים שאפשר לצאת */
+    /** עברו 10 הדקות - רק מעדכנים תצוגה. "ניתן לצאת" רק בהודעת סיום אירוע */
     private val stayDone = Runnable {
         Prefs.setStayUntil(this, 0)
-        val n = Notification.Builder(this, CH_STAY)
-            .setSmallIcon(R.drawable.ic_stat_siren)
-            .setColor(0xFF2E7D32.toInt())
-            .setContentTitle("✅ עברו 10 דקות – אפשר לצאת מהמרחב המוגן")
-            .setContentText("אלא אם התקבלה הנחיה אחרת")
-            .setContentIntent(openApp())
-            .setAutoCancel(true)
-            .build()
-        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_STAY, n)
         AlertWidget.updateAll(this)
     }
 
