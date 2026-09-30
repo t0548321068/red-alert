@@ -177,14 +177,14 @@
 
   // מתמקד באזורים של התראה מסוימת (מהרשימה במסך הראשי)
   var FOCUSED = false;
-  function focusOn(names, ts) {
+  function focusOn(names, ts, all) {
     if (!names || !names.length) return;
     FOCUSED = true;
     var age = (Date.now() - ts) / 3600000;
     var h = age <= 1 ? 1 : age <= 24 ? 24 : 168;
-    HOURS = h; MODE = 'mine';
+    HOURS = h; MODE = all ? 'all' : 'mine';
     document.querySelectorAll('.bar button[data-h]').forEach(function (x) { x.classList.toggle('on', +x.dataset.h === h); });
-    document.querySelectorAll('.bar button[data-m]').forEach(function (x) { x.classList.toggle('on', x.dataset.m === 'mine'); });
+    document.querySelectorAll('.bar button[data-m]').forEach(function (x) { x.classList.toggle('on', x.dataset.m === MODE); });
     drawAlerts();
     var pts = [];
     names.forEach(function (n) { var a = ALL_AREAS[n]; if (a) pts = pts.concat(a.p || [a.c]); });
