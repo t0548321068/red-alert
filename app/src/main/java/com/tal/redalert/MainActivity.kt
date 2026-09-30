@@ -650,8 +650,8 @@ class MainActivity : Activity() {
         root.setOnClickListener { close(d, panel, panelW) }
 
         val cats = listOf(
-            Triple("🔔", "התראות", { alertsRows() }),
             Triple("🎨", "תצוגה", { displayRows() }),
+            Triple("🔔", "התראות", { alertsRows() }),
             Triple("📱", "הרשאות וטלפון", { phoneRows() }),
             Triple("ℹ️", "כללי", { generalRows() })
         )
