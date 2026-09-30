@@ -55,13 +55,13 @@ class AlertService : Service() {
 
         private const val CH_INFO = "info"
         private const val CH_QUIET = "quiet"
-        private const val CH_WATCH = "watchdog_v3"
+        private const val CH_WATCH = "watchdog_v4"
         private const val ID_WATCH = 4
         private const val UNPROTECTED_AFTER_MS = 2 * 60 * 1000L
-        private const val CH_STAY = "stay_v2"
+        private const val CH_STAY = "stay_v3"
         private const val ID_STAY = 6
         private const val ID_LISTEN = 7
-        private const val CH_UPDATE = "updates_v4"  // ערוץ חדש - הצליל לפי שם הקובץ (לא לפי מספר שמשתנה בין גרסאות)
+        private const val CH_UPDATE = "updates_v5"  // ערוץ חדש - הצליל לפי שם הקובץ (לא לפי מספר שמשתנה בין גרסאות)
         private const val ID_UPDATE = 3
 
         const val LEVEL_ALERT = 0
@@ -712,12 +712,15 @@ class AlertService : Service() {
             .build()
         nm.createNotificationChannel(
             NotificationChannel(CH_UPDATE, "עדכוני גרסה", NotificationManager.IMPORTANCE_HIGH).apply {
-                setSound(appSound, notifAttrs)
+                // בינתיים: צליל ההתראות הרגיל של הטלפון (לא המנגינה של האפליקציה)
             })
         nm.deleteNotificationChannel("updates_v2")
         nm.deleteNotificationChannel("updates_v3")
         nm.deleteNotificationChannel("watchdog_v2")
         nm.deleteNotificationChannel("stay")
+        nm.deleteNotificationChannel("updates_v4")
+        nm.deleteNotificationChannel("watchdog_v3")
+        nm.deleteNotificationChannel("stay_v2")
         nm.deleteNotificationChannel("watchdog")
         nm.deleteNotificationChannel("updates")
         nm.deleteNotificationChannel("alerts")
@@ -725,13 +728,13 @@ class AlertService : Service() {
             NotificationChannel(CH_QUIET, "שעות שקט", NotificationManager.IMPORTANCE_LOW))
         nm.createNotificationChannel(
             NotificationChannel(CH_WATCH, "האפליקציה לא מוגנת", NotificationManager.IMPORTANCE_HIGH).apply {
-                setSound(appSound, notifAttrs)
+                // בינתיים: צליל ההתראות הרגיל של הטלפון (לא המנגינה של האפליקציה)
                 enableVibration(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             })
         nm.createNotificationChannel(
             NotificationChannel(CH_STAY, "יציאה מהמרחב המוגן", NotificationManager.IMPORTANCE_HIGH).apply {
-                setSound(appSound, notifAttrs)
+                // בינתיים: צליל ההתראות הרגיל של הטלפון (לא המנגינה של האפליקציה)
                 setBypassDnd(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             })
