@@ -540,10 +540,9 @@ class AlertService : Service() {
         val toMini = level == LEVEL_END && MiniOverlay.isShowing()
         if (!quiet && !toMini) nb.setFullScreenIntent(fullPi, true)
         // ספירה לאחור ישר בשורת ההתראות
+        // ספירה לאחור גדולה בתוך ההתראה הקופצת
         if (level == LEVEL_ALERT && shelterSec != null && shelterSec > 0) {
-            nb.setWhen(System.currentTimeMillis() + shelterSec * 1000L)
-                .setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(true)
-                .setSubText("זמן להגעה למרחב המוגן")
+            countdownView(nb, title, body, "זמן להגעה למרחב המוגן", shelterSec * 1000L, 0xFFD50000.toInt())
         }
         val n = nb.build()
         if (!quiet && level != LEVEL_END) overrideDnd()
@@ -623,14 +622,29 @@ class AlertService : Service() {
             .setColor(0xFFB45309.toInt())
             .setContentTitle("⏳ נשארים במרחב המוגן")
             .setContentText("$stayTitle · $stayBody")
-            .setSubText("זמן מומלץ במרחב המוגן")
-            .setWhen(stayEnd).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(stayNotifPi)
             .setAutoCancel(true)
             .setTimeoutAfter(stayEnd - System.currentTimeMillis())
-            .build()
-        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n)
+        countdownView(n, "⏳ נשארים במרחב המוגן", "$stayTitle · $stayBody", "זמן מומלץ במרחב המוגן",
+            stayEnd - System.currentTimeMillis(), 0xFFB45309.toInt())
+        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n.build())
+    }
+
+    /** התראה עם ספירה לאחור גדולה (גם בחלון הקופץ וגם בשורת ההתראות) */
+    private fun countdownView(nb: Notification.Builder, title: String, body: String, label: String, leftMs: Long, color: Int) {
+        fun rv() = android.widget.RemoteViews(packageName, R.layout.notif_countdown).apply {
+            setTextViewText(R.id.nc_title, title)
+            setTextViewText(R.id.nc_body, body)
+            setTextViewText(R.id.nc_label, label)
+            setChronometer(R.id.nc_timer, android.os.SystemClock.elapsedRealtime() + leftMs, null, true)
+            setChronometerCountDown(R.id.nc_timer, true)
+            setTextColor(R.id.nc_timer, color)
+        }
+        nb.setStyle(Notification.DecoratedCustomViewStyle())
+            .setCustomContentView(rv())
+            .setCustomHeadsUpContentView(rv())
+            .setCustomBigContentView(rv())
     }
 
     /** עברו 10 הדקות - רק מעדכנים תצוגה. "ניתן לצאת" רק בהודעת סיום אירוע */
