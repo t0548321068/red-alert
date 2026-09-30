@@ -215,11 +215,9 @@ class MainActivity : Activity() {
         clockTime = text("", 44f, C.TEXT).apply {
             gravity = Gravity.CENTER
             typeface = Typeface.create("sans-serif", Typeface.BOLD)
-            setOnClickListener { showClockSettings() }
         }
         clockDay = text("", 14f, C.TEXT).apply {
             gravity = Gravity.CENTER
-            setOnClickListener { showClockSettings() }
         }
         greeting = text("", 16f, C.TEXT).apply { gravity = Gravity.CENTER }
         // כרטיס השעון: רקע גרפיט, הכל ממורכז, טקסט לבן
@@ -248,9 +246,10 @@ class MainActivity : Activity() {
                 cornerRadius = dp(18).toFloat()
             }
         }
-        netInd = indicator(R.drawable.ic_globe) { showNetworkInfo() }
-        locInd = indicator(R.drawable.ic_location) { onLocationIndicator() }
-        srvInd = indicator(R.drawable.ic_antenna) { showSourcesInfo() }
+        // בלי לחיצה על החיווים (רק 7 הלחיצות הנסתרות על הגרסה נשארו)
+        netInd = indicator(R.drawable.ic_globe, null)
+        locInd = indicator(R.drawable.ic_location, null)
+        srvInd = indicator(R.drawable.ic_antenna, null)
         // גרסה: 7 לחיצות מהירות - פותח את אפשרות הבטא (מוסתרת משאר המשתמשים)
         var taps = 0; var lastTap = 0L
         val verInd = indicator(R.drawable.ic_info) {
@@ -274,19 +273,6 @@ class MainActivity : Activity() {
         col.addView(clockCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         weatherLine = text("", 14f, C.TEXT).apply {
             gravity = Gravity.CENTER
-            setOnClickListener { onWeatherClick() }
-            // לחיצה ארוכה: כמה מדויק המיקום שנמדד
-            setOnLongClickListener {
-                val best = Prefs.bestAccuracy(this@MainActivity)
-                val msg = buildString {
-                    append(if (weatherAccuracy < 0) "עוד לא נמדד מיקום" else "דיוק עכשיו: כ-$weatherAccuracy מטר")
-                    if (best > 0f) append("\nהשיא של המכשיר: כ-${Math.round(best)} מטר")
-                    append(if (Prefs.dualFrequency(this@MainActivity)) "\nGPS כפול־תדר: יש ✓" else "\nGPS כפול־תדר: לא זוהה")
-                    if (!hasPrecise()) append("\n(הרשאה משוערת בלבד)")
-                }
-                android.widget.Toast.makeText(this@MainActivity, msg, android.widget.Toast.LENGTH_LONG).show()
-                true
-            }
         }
         weatherLine.setTextColor(soft)
         clockCard.addView(weatherLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
@@ -301,7 +287,6 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             setPadding(dp(12), dp(7), dp(12), dp(7))
             background = GradientDrawable().apply { cornerRadius = dp(10).toFloat(); setColor(C.CARD) }
-            setOnClickListener { showFeed() }
         }
         col.addView(feedLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
@@ -786,11 +771,11 @@ class MainActivity : Activity() {
     // ---- חיווים ----
 
     /** חיווי: אייקון למעלה, טקסט מתחת */
-    private fun indicator(icon: Int, onClick: () -> Unit) = text("", 12f, Color.parseColor("#E6E6E6")).apply {
+    private fun indicator(icon: Int, onClick: (() -> Unit)?) = text("", 12f, Color.parseColor("#E6E6E6")).apply {
         setCompoundDrawablesRelativeWithIntrinsicBounds(0, icon, 0, 0)
         compoundDrawablePadding = dp(4)
         gravity = Gravity.CENTER
-        setOnClickListener { onClick() }
+        if (onClick != null) setOnClickListener { onClick() }
     }
 
     /** האייקון בצבע המצב, הטקסט תמיד לבן-אפור */
