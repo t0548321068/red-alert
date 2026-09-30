@@ -340,20 +340,14 @@ class MainActivity : Activity() {
         col.addView(areasCard)
 
         // התראות אחרונות
-        // כפתור "התראות אחרונות" - הרשימה נפתחת במסך משלה
-        val histBtn = LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
+        // כפתור "התראות אחרונות" - רק הכיתוב, ממורכז. הרשימה נפתחת במסך משלה
+        val histBtn = text("התראות אחרונות", 16f, Color.WHITE).apply {
+            gravity = Gravity.CENTER
+            setPadding(dp(16), dp(16), dp(16), dp(16))
             background = graphite(20)
             setOnClickListener { showRecent() }
         }
-        histBtn.addView(text("📜", 22f, Color.WHITE), LinearLayout.LayoutParams(dp(40), -2))
-        val histTexts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        histTexts.addView(text("התראות אחרונות", 16f, Color.WHITE))
-        historyBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }   // שורת סיכום: ההתראה האחרונה
-        histTexts.addView(historyBox)
-        histBtn.addView(histTexts, LinearLayout.LayoutParams(0, -2, 1f))
-        histBtn.addView(text("‹", 20f, Color.parseColor("#888888")))
+        historyBox = LinearLayout(this)   // לא מוצג - נשאר לשימוש פנימי
         col.addView(histBtn, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
 
         // כפתורי בדיקה
