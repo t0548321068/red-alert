@@ -606,7 +606,7 @@ class AlertService : Service() {
         if (!quiet && (Prefs.speakAlerts(this) || shabbat)) {
             val started = java.util.concurrent.atomic.AtomicBoolean(false)
             val once = { if (started.compareAndSet(false, true)) main.post { playSound() } }
-            speaker?.speak(Speaker.textFor(title, areas, shelterSec)) { once() } ?: once()
+            speaker?.speakAlert(title, areas, shelterSec) { once() } ?: once()
             main.postDelayed({ once() }, 8000)
         } else {
             playSound()

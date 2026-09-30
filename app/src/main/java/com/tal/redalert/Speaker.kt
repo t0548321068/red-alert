@@ -74,10 +74,85 @@ class Speaker(private val c: Context) {
 
     fun stop() {
         try { tts.stop() } catch (_: Exception) { }
+        stopClips()
         finish()
     }
 
-    fun shutdown() = try { tts.shutdown() } catch (_: Exception) { }
+    // ---- הקלטות מוכנות (קול "אבר") - בלי אינטרנט, אותו קול בכל טלפון ----
+    private var player: android.media.MediaPlayer? = null
+
+    /** מקריא התראה מהקלטות; אם אין הקלטות מתאימות - בקול של הטלפון */
+    fun speakAlert(title: String, areas: List<String>, shelter: Int?, done: () -> Unit) {
+        val clips = try { clipsFor(title, areas, shelter) } catch (_: Exception) { emptyList() }
+        if (clips.isEmpty()) { speak(textFor(title, areas, shelter), done); return }
+        stopClips()
+        onDone = done
+        playClips(clips, 0)
+    }
+
+    private fun playClips(clips: List<String>, i: Int) {
+        if (i >= clips.size) { stopClips(); finish(); return }
+        try {
+            val fd = c.assets.openFd(clips[i])
+            val mp = android.media.MediaPlayer().apply {
+                setAudioAttributes(AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                setDataSource(fd.fileDescriptor, fd.startOffset, fd.length)
+                fd.close()
+                setOnCompletionListener { it.release(); if (player === it) player = null; playClips(clips, i + 1) }
+                setOnErrorListener { mp, _, _ -> mp.release(); if (player === mp) player = null; playClips(clips, i + 1); true }
+                prepare()
+            }
+            player = mp
+            mp.start()
+        } catch (_: Exception) { playClips(clips, i + 1) }
+    }
+
+    private fun stopClips() {
+        player?.let { try { it.stop() } catch (_: Exception) { }; try { it.release() } catch (_: Exception) { } }
+        player = null
+    }
+
+    private fun has(path: String) = try { c.assets.openFd(path).close(); true } catch (_: Exception) { false }
+
+    /** סוג → אזורים (עד 4, ואם יש עוד "ואזורים נוספים") → זמן להגעה */
+    private fun clipsFor(title: String, areas: List<String>, shelter: Int?): List<String> {
+        val level = AlertService.levelOf(title)
+        val t = when {
+            level == AlertService.LEVEL_END -> "t_end"
+            level == AlertService.LEVEL_PRE -> "t_pre"
+            title.contains("טילים") || title.contains("רקטות") -> "t_rockets"
+            title.contains("כלי טיס") -> "t_uav"
+            title.contains("מחבלים") -> "t_terror"
+            title.contains("רעידת") -> "t_quake"
+            title.contains("צונאמי") -> "t_tsunami"
+            title.contains("חומרים מסוכנים") -> "t_hazmat"
+            title.contains("רדיולוג") -> "t_radio"
+            title.contains("קונבנציונלי") -> "t_nonconv"
+            else -> "t_generic"
+        }
+        val out = mutableListOf("voice/$t.mp3")
+        val names = areas.flatMap { raw ->
+            val p = "voice/a_${key(raw)}.mp3"
+            if (has(p)) listOf(raw) else AreaData.match(c, raw).take(1)
+        }.distinct()
+        val shown = if (names.size <= 5) names else names.take(4)
+        shown.forEach { n -> "voice/a_${key(n)}.mp3".let { if (has(it)) out += it } }
+        if (names.size > shown.size) out += "voice/more.mp3"
+        if (level == AlertService.LEVEL_ALERT && shelter != null) {
+            val s = listOf(0, 15, 30, 45, 60, 90).minByOrNull { Math.abs(it - shelter) }
+            if (s != null) out += "voice/s_$s.mp3"
+        }
+        return out.filter { has(it) }.takeIf { it.isNotEmpty() && it.first() == "voice/$t.mp3" } ?: emptyList()
+    }
+
+    private fun key(s: String): String {
+        val h = java.security.MessageDigest.getInstance("SHA-1").digest(s.toByteArray(Charsets.UTF_8))
+        return h.joinToString("") { "%02x".format(it) }.take(12)
+    }
+
+    fun shutdown() { stopClips(); try { tts.shutdown() } catch (_: Exception) { } }
 
     companion object {
         const val GOOGLE_TTS = "com.google.android.tts"

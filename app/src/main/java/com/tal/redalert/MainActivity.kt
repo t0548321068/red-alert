@@ -1229,7 +1229,6 @@ class MainActivity : Activity() {
         val on = Prefs.speakAlerts(this)
         val items = arrayOf(
             if (on) "✅ פעיל – לחץ לכיבוי" else "⬜ כבוי – לחץ להפעלה",
-            "🗣 קול: " + if (Prefs.maleVoice(this)) "גבר" else "אישה",
             "🔊 השמע דוגמה",
             "ℹ️ מקריא סוג, אזורים וזמן להגעה – ואז הצליל"
         )
@@ -1240,27 +1239,11 @@ class MainActivity : Activity() {
                 when (which) {
                     0 -> { Prefs.setSpeakAlerts(this, !on); showSpeech() }
                     1 -> {
-                        Prefs.setMaleVoice(this, !Prefs.maleVoice(this))
-                        testSpeaker?.applyVoice()
-                        // השירות יטען את הקול החדש בהתראה הבאה
-                        if (Prefs.enabled(this)) AlertService.reloadVoice(this)
-                        showSpeech()
-                    }
-                    2 -> {
+                        // דוגמה בקול של ההתראות (הקלטות "אבר")
                         val sp = testSpeaker ?: Speaker(this).also { testSpeaker = it }
-                        // המנוע עולה תוך רגע - מחכים לו
-                        ui.postDelayed({
-                            if (sp.hebrewOk == false) {
-                                android.widget.Toast.makeText(this,
-                                    "אין קול עברי בטלפון. הגדרות ← שפה ← המרת טקסט לדיבור ← התקנת עברית",
-                                    android.widget.Toast.LENGTH_LONG).show()
-                            } else {
-                                val mine = Prefs.cities(this) + Prefs.nearbyAreas(this)
-                                val areas = mine.ifEmpty { listOf("תל אביב - מרכז העיר") }.take(3)
-                                sp.speak(Speaker.textFor("ירי רקטות וטילים", areas,
-                                    AreaData.shelterSeconds(this, areas) ?: 90)) {}
-                            }
-                        }, if (testSpeaker == sp && sp.hebrewOk != null) 0 else 1200)
+                        val mine = Prefs.cities(this) + Prefs.nearbyAreas(this)
+                        val areas = mine.ifEmpty { listOf("תל אביב - מרכז העיר") }.take(3)
+                        sp.speakAlert("ירי רקטות וטילים", areas, AreaData.shelterSeconds(this, areas) ?: 90) {}
                         showSpeech()
                     }
                     else -> showSpeech()
