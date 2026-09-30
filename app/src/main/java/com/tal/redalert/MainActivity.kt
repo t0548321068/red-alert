@@ -57,7 +57,7 @@ class MainActivity : Activity() {
     private lateinit var circleIcon: TextView
     private lateinit var circleLabel: TextView
     private lateinit var circleHint: TextView
-    private lateinit var chips: FlowLayout
+    private lateinit var chips: LinearLayout
     private lateinit var historyBox: LinearLayout
     private lateinit var clockTime: TextView
     private lateinit var greeting: TextView
@@ -322,14 +322,16 @@ class MainActivity : Activity() {
         col.addView(quietLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(20) })
 
         // האזורים שלי
-        val areasCard = card()
-        val areasHead = LinearLayout(this)
-        areasHead.addView(text("האזורים שלי", 13f, C.MUTED), LinearLayout.LayoutParams(0, -2, 1f))
-        areasHead.addView(text("+ הוסף", 13f, C.BLUE).apply { setOnClickListener { addCity() } })
-        areasCard.addView(areasHead)
-        chips = FlowLayout(this, dp(6))
-        areasCard.addView(chips, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
-        shelterLine = text("", 13f, C.TEXT)
+        // אזורי התרעה: אזור לפי מיקום + אזורים נוספים
+        val areasCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            background = graphite(20)
+        }
+        areasCard.addView(text("אזורי התרעה", 16f, Color.WHITE, bold = true))
+        chips = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        areasCard.addView(chips, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        shelterLine = text("", 13f, Color.parseColor("#E6FFFFFF"))
         areasCard.addView(shelterLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         col.addView(areasCard)
 
@@ -419,19 +421,31 @@ class MainActivity : Activity() {
         chips.removeAllViews()
         val list = Prefs.cities(this)
         val near = if (Prefs.nearMe(this)) Prefs.nearbyAreas(this) else emptyList()
-        if (Prefs.nearMe(this)) {
-            val label = near.firstOrNull()?.let { "📍 קרוב אליי: $it" } ?: "📍 קרוב אליי: מאתר…"
-            chips.addView(chip(label, removable = false) { })
+        val muted = Color.parseColor("#AAAAAA")
+        fun section(title: String, action: String? = null, onAction: (() -> Unit)? = null) {
+            val h = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(10), 0, dp(2)) }
+            h.addView(text(title, 12f, muted), LinearLayout.LayoutParams(0, -2, 1f))
+            if (action != null) h.addView(text(action, 13f, Color.parseColor("#64B5F6")).apply {
+                setPadding(dp(8), dp(2), 0, dp(2)); setOnClickListener { onAction?.invoke() } })
+            chips.addView(h)
         }
-        if (list.isEmpty() && !Prefs.nearMe(this)) {
-            chips.addView(chip("⚠️ אין אזורים – לא יתקבלו התראות", removable = false) { toggleNearMe() })
+        fun row(label: String, color: Int = Color.WHITE, onRemove: (() -> Unit)? = null) {
+            val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(6), 0, dp(6)) }
+            r.addView(text(label, 15f, color), LinearLayout.LayoutParams(0, -2, 1f))
+            if (onRemove != null) r.addView(text("✕", 15f, muted).apply {
+                setPadding(dp(10), 0, dp(4), 0); setOnClickListener { onRemove() } })
+            chips.addView(r)
         }
+        section("לפי מיקום")
+        if (Prefs.nearMe(this)) row("📍 " + (near.firstOrNull() ?: "מאתר…"))
+        else row("📍 כבוי", muted)
+        section("אזורים נוספים", "+ הוספה") { addCity() }
+        if (list.isEmpty()) row("אין אזורים נוספים", muted)
         list.forEach { city ->
-            chips.addView(chip(city, removable = true) {
-                Prefs.setCities(this, Prefs.cities(this) - city)
-                refresh()
-            })
+            row("🔔 $city") { Prefs.setCities(this, Prefs.cities(this) - city); refresh() }
         }
+        if (list.isEmpty() && !Prefs.nearMe(this))
+            row("⚠️ אין אזורים – לא יתקבלו התראות", C.ORANGE)
         // זמן להגעה למרחב מוגן לפי האזורים שלי (הקצר ביותר)
         val sec = AreaData.shelterSeconds(this, list + near)
         shelterLine.text = if (sec != null) "⏱ זמן להגעה למרחב מוגן: ${AreaData.shelterText(sec)}" else ""
