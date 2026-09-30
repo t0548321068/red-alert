@@ -320,13 +320,13 @@ class MainActivity : Activity() {
         }
         circle = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(20), dp(18), dp(20), dp(18))
+            setPadding(dp(20), dp(10), dp(20), dp(10))
             background = graphite(18)
             addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
             addView(circleGlow, LinearLayout.LayoutParams(dp(62), dp(34)))
             setOnClickListener { toggle() }
         }
-        col.addView(circle, LinearLayout.LayoutParams(-1, dp(90)).apply { topMargin = dp(GAP) })
+        col.addView(circle, LinearLayout.LayoutParams(-1, dp(76)).apply { topMargin = dp(GAP) })
         // מצב שקט - מוצג רק כשהוא פעיל עכשיו
         quietLine = text("", 12f, C.ORANGE).apply {
             gravity = Gravity.CENTER
