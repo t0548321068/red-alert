@@ -115,6 +115,7 @@ object Updater {
     private fun offer(a: Activity, u: Update) {
         val beta = u.key.startsWith("beta")
         AlertDialog.Builder(a, Prefs.dialogTheme(a))
+            .setIcon(R.mipmap.ic_launcher)
             .setTitle((if (beta) "🧪 גרסת בטא זמינה – " else "🆕 גרסה חדשה זמינה – ") + u.label)
             .setMessage("הגרסה שלך: ${versionLabel(a)}\nלהתקין עכשיו?" +
                 (if (beta) "\n\nגרסת בטא – לפני שחרור לכולם, יכולות להיות בה תקלות." else "") +
