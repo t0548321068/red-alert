@@ -255,10 +255,10 @@ class MainActivity : Activity() {
         // כרטיס חיווים מעל השעון: רשת / מיקום / מקורות - שלוש עמודות שוות
         val status = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(6), dp(12), dp(6), dp(12))
+            setPadding(dp(6), dp(7), dp(6), dp(7))
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 intArrayOf(Color.parseColor("#232526"), Color.parseColor("#414345"))).apply {
-                cornerRadius = dp(20).toFloat()
+                cornerRadius = dp(18).toFloat()
             }
         }
         netInd = indicator(R.drawable.ic_globe) { showNetworkInfo() }
@@ -266,7 +266,7 @@ class MainActivity : Activity() {
         srvInd = indicator(R.drawable.ic_antenna) { showSourcesInfo() }
         listOf(netInd, locInd, srvInd).forEachIndexed { i, v ->
             if (i > 0) status.addView(View(this).apply { setBackgroundColor(Color.parseColor("#22FFFFFF")) },
-                LinearLayout.LayoutParams(dp(1), dp(34)))
+                LinearLayout.LayoutParams(dp(1), dp(26)))
             status.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
         }
         col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
@@ -578,9 +578,9 @@ class MainActivity : Activity() {
     // ---- חיווים ----
 
     /** חיווי: אייקון למעלה, טקסט מתחת */
-    private fun indicator(icon: Int, onClick: () -> Unit) = text("", 12f, Color.parseColor("#E6E6E6")).apply {
+    private fun indicator(icon: Int, onClick: () -> Unit) = text("", 11f, Color.parseColor("#E6E6E6")).apply {
         setCompoundDrawablesRelativeWithIntrinsicBounds(0, icon, 0, 0)
-        compoundDrawablePadding = dp(4)
+        compoundDrawablePadding = dp(1)
         gravity = Gravity.CENTER
         setOnClickListener { onClick() }
     }
