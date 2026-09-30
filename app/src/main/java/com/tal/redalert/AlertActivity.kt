@@ -207,7 +207,7 @@ class AlertActivity : Activity() {
         }
         val label = TextView(this).apply {
             // החיצים מבודדים משמאל-לימין - כדי שלא יתהפכו בטקסט העברי ויצביעו לכיוון ההחלקה
-            text = "החלק לסגירה  \u2066›››\u2069"
+            text = "\u2066›››\u2069  החלק לסגירה  \u2066›››\u2069"
             setTextColor(Color.WHITE); textSize = 16f; gravity = Gravity.CENTER
         }
         track.addView(label, android.widget.FrameLayout.LayoutParams(-1, -1))
