@@ -192,7 +192,7 @@ class MainActivity : Activity() {
 
         val col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(16), dp(16), dp(24))
+            setPadding(dp(16), dp(4), dp(16), dp(24))   // כותרת קרובה יותר לראש המסך
         }
 
         // כותרת + גלגל שיניים
