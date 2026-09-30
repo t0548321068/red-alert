@@ -1,0 +1,17 @@
+name: tts-sample
+on:
+  push:
+    branches: [tts-sample]
+jobs:
+  gen:
+    runs-on: ubuntu-latest
+    steps:
+      - run: pip install edge-tts
+      - run: |
+          edge-tts --voice he-IL-AvriNeural --text "צבע אדום. ירי רקטות וטילים. שדרות, איבים, ניר עם. היכנסו למרחב המוגן." --write-media avri.mp3
+          edge-tts --voice he-IL-HilaNeural --text "צבע אדום. ירי רקטות וטילים. שדרות, איבים, ניר עם. היכנסו למרחב המוגן." --write-media hila.mp3
+          ls -la
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voices
+          path: "*.mp3"
