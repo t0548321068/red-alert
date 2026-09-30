@@ -450,7 +450,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(dp(16), dp(14), dp(16), dp(14))   // רקע כמו שאר הכרטיסים (של הכרטיס עצמו)
         }
-        top.addView(text("📍 המיקום שלי", 12f, muted))
+        top.addView(text("המיקום שלי", 12f, muted))
         top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 20f, Color.WHITE, bold = true)
             .apply { setPadding(0, dp(2), 0, 0) })
         val sec = if (nearOn && near.isNotEmpty()) AreaData.shelterSeconds(this, near.take(1)) else null
