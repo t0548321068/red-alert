@@ -194,7 +194,7 @@ class AlertActivity : Activity() {
 
     private fun dpx(v: Int) = (v * resources.displayMetrics.density).toInt()
 
-    /** פס "החלק לסגירה": גוררים את העיגול מימין לשמאל */
+    /** פס "החלק לסגירה": גוררים את העיגול לצד השני */
     @android.annotation.SuppressLint("ClickableViewAccessibility")
     private fun slideToClose(): android.view.View {
         val track = android.widget.FrameLayout(this).apply {
@@ -206,7 +206,7 @@ class AlertActivity : Activity() {
             layoutDirection = android.view.View.LAYOUT_DIRECTION_LTR
         }
         val label = TextView(this).apply {
-            text = "החלק לסגירה  ‹‹‹"
+            text = "החלק לסגירה  ›››"
             setTextColor(Color.WHITE); textSize = 16f; gravity = Gravity.CENTER
         }
         track.addView(label, android.widget.FrameLayout.LayoutParams(-1, -1))
@@ -219,7 +219,7 @@ class AlertActivity : Activity() {
             }
         }
         track.addView(knob, android.widget.FrameLayout.LayoutParams(size, size).apply {
-            gravity = Gravity.CENTER_VERTICAL or Gravity.END; rightMargin = dpx(4)
+            gravity = Gravity.CENTER_VERTICAL or Gravity.START; leftMargin = dpx(4)
         })
         var downX = 0f
         knob.setOnTouchListener { v, e ->
@@ -227,13 +227,12 @@ class AlertActivity : Activity() {
             when (e.actionMasked) {
                 android.view.MotionEvent.ACTION_DOWN -> { downX = e.rawX - v.translationX; true }
                 android.view.MotionEvent.ACTION_MOVE -> {
-                    // מימין לשמאל
-                    v.translationX = (e.rawX - downX).coerceIn(-max, 0f)
-                    label.alpha = 1f + v.translationX / max
+                    v.translationX = (e.rawX - downX).coerceIn(0f, max)
+                    label.alpha = 1f - v.translationX / max
                     true
                 }
                 android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
-                    if (-v.translationX > max * 0.85f) {
+                    if (v.translationX > max * 0.85f) {
                         AlertService.silence(this)
                         MiniOverlay.hide(this)
                         finish()
