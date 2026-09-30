@@ -103,6 +103,9 @@ class AlertActivity : Activity() {
             root.addView(countdown)
         }
 
+        // מפה קטנה עם אזורי ההתראה
+        miniMap(level)?.let { root.addView(it, LinearLayout.LayoutParams(-1, dpx(180)).apply { bottomMargin = dpx(16) }) }
+
         root.addView(TextView(this).apply {
             text = note
             textSize = 20f
@@ -193,6 +196,33 @@ class AlertActivity : Activity() {
     }
 
     private fun dpx(v: Int) = (v * resources.displayMetrics.density).toInt()
+
+    /** מפה קטנה (בלי אינטרנט) שמסמנת את האזורים של ההתראה בצבע שלה */
+    @android.annotation.SuppressLint("SetJavaScriptEnabled")
+    private fun miniMap(level: Int): android.view.View? {
+        val names = org.json.JSONArray()
+        (intent.getStringExtra("body") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            .forEach { raw -> try { AreaData.match(this, raw).forEach { names.put(it) } } catch (_: Exception) { } }
+        if (names.length() == 0) return null
+        val web = android.webkit.WebView(this).apply {
+            settings.javaScriptEnabled = true
+            setBackgroundColor(Color.parseColor("#0F1720"))
+            isVerticalScrollBarEnabled = false; isHorizontalScrollBarEnabled = false
+            // פינות מעוגלות
+            outlineProvider = object : android.view.ViewOutlineProvider() {
+                override fun getOutline(v: android.view.View, o: android.graphics.Outline) =
+                    o.setRoundRect(0, 0, v.width, v.height, dpx(18).toFloat())
+            }
+            clipToOutline = true
+            webViewClient = object : android.webkit.WebViewClient() {
+                override fun onPageFinished(view: android.webkit.WebView, url: String) {
+                    view.evaluateJavascript("miniMode(); miniShow($names, $level);", null)
+                }
+            }
+            loadUrl("file:///android_asset/map.html")
+        }
+        return web
+    }
 
     /** פס "החלק לסגירה": גוררים את העיגול לצד השני */
     @android.annotation.SuppressLint("ClickableViewAccessibility")
