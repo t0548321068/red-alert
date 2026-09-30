@@ -56,7 +56,6 @@ class MainActivity : Activity() {
     private lateinit var circleIcon: TextView
     private lateinit var circleLabel: TextView
     private lateinit var circleHint: TextView
-    private lateinit var greeting: TextView
     private lateinit var chips: FlowLayout
     private lateinit var historyBox: LinearLayout
     private lateinit var clockTime: TextView
@@ -167,7 +166,6 @@ class MainActivity : Activity() {
         val g = Prefs.showGreeting(this)
         greeting.visibility = if (g) View.VISIBLE else View.GONE
         if (g) greeting.text = TimeFormat.greeting(now)
-        greeting.text = TimeFormat.greeting(now)
     }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
@@ -238,8 +236,6 @@ class MainActivity : Activity() {
         }
         greeting = text("", 16f, C.TEXT).apply { gravity = Gravity.CENTER }
         col.addView(greeting, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
-        greeting = text("", 18f, C.TEXT).apply { gravity = Gravity.CENTER }
-        col.addView(greeting, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
         col.addView(clockTime, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
         col.addView(clockDay)
         weatherLine = text("", 14f, C.TEXT).apply {
