@@ -197,16 +197,17 @@ class MainActivity : Activity() {
 
         // כותרת + גלגל שיניים
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        header.addView(text("צבע אדום", 22f, C.TEXT, bold = true))
+        // ☰ פותח את התפריט הצידי (התראות אחרונות + הגדרות)
+        header.addView(text("☰", 24f, C.TEXT).apply {
+            setPadding(dp(4), dp(2), dp(4), dp(2))
+            setOnClickListener { showSettings() }
+        })
+        header.addView(text("צבע אדום", 22f, C.TEXT, bold = true).apply { setPadding(dp(8), 0, dp(8), 0) })
         // מספר הגרסה עבר לכרטיס החיווים - כאן רק מרווח
         header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         header.addView(text("🕰", 20f, C.MUTED).apply {
             setPadding(dp(8), dp(4), dp(8), dp(4))
             setOnClickListener { startActivity(Intent(this@MainActivity, ClockActivity::class.java)) }
-        })
-        header.addView(text("⚙", 22f, C.MUTED).apply {
-            setPadding(dp(8), dp(4), dp(8), dp(4))
-            setOnClickListener { showSettings() }
         })
         col.addView(header)
 
@@ -339,16 +340,8 @@ class MainActivity : Activity() {
         areasCard.addView(shelterLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         col.addView(areasCard)
 
-        // התראות אחרונות
-        // כפתור "התראות אחרונות" - רק הכיתוב, ממורכז. הרשימה נפתחת במסך משלה
-        val histBtn = text("התראות אחרונות", 16f, Color.WHITE).apply {
-            gravity = Gravity.CENTER
-            setPadding(dp(16), dp(16), dp(16), dp(16))
-            background = graphite(20)
-            setOnClickListener { showRecent() }
-        }
         historyBox = LinearLayout(this)   // לא מוצג - נשאר לשימוש פנימי
-        col.addView(histBtn, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
+        // הכפתור עבר לתפריט הצידי
 
         // כפתורי בדיקה
         val tests = LinearLayout(this)
@@ -635,7 +628,13 @@ class MainActivity : Activity() {
         val root = android.widget.FrameLayout(this).apply { setBackgroundColor(Color.parseColor("#99000000")) }
         val panelW = (resources.displayMetrics.widthPixels * 0.85f).toInt()
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(18), dp(14), dp(30)) }
-        body.addView(text("⚙ הגדרות", 22f, Color.WHITE, bold = true).apply { setPadding(dp(4), 0, dp(4), dp(6)) })
+        body.addView(text("📜  התראות אחרונות", 16f, Color.WHITE, bold = true).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(14), dp(15), dp(14), dp(15))
+            background = graphite(18)
+            setOnClickListener { d.dismiss(); showRecent() }
+        })
+        body.addView(text("⚙ הגדרות", 18f, Color.WHITE, bold = true).apply { setPadding(dp(4), dp(20), dp(4), 0) })
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         body.addView(content)
         val panel = ScrollView(this).apply {
