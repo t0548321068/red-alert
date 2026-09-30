@@ -313,7 +313,7 @@ class MainActivity : Activity() {
         }
         col.addView(circleWrap, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(-6) })
         circleHint = text("", 12f, C.MUTED).apply { gravity = Gravity.CENTER }
-        col.addView(circleHint, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(-20) })
+        col.addView(circleHint, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(-12) })
         // מצב שקט - מוצג רק כשהוא פעיל עכשיו
         quietLine = text("", 12f, C.ORANGE).apply {
             gravity = Gravity.CENTER
