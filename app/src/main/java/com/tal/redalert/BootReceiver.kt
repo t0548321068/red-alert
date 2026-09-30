@@ -11,6 +11,6 @@ class BootReceiver : BroadcastReceiver() {
             intent.action == Intent.ACTION_MY_PACKAGE_REPLACED
         if (restart && Prefs.enabled(context)) {
             AlertService.start(context)
-        }
+        } else if (restart) AlertService.showOff(context)   // כבוי - תזכורת שלא מוגן
     }
 }
