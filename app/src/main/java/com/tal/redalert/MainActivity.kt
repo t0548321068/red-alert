@@ -451,8 +451,8 @@ class MainActivity : Activity() {
             val label = near.firstOrNull()?.let { "📍 קרוב אליי: $it" } ?: "📍 קרוב אליי: מאתר…"
             chips.addView(chip(label, removable = false) { })
         }
-        if (list.isEmpty() && near.isEmpty()) {
-            chips.addView(chip("כל הארץ", removable = false) {})
+        if (list.isEmpty() && !Prefs.nearMe(this)) {
+            chips.addView(chip("⚠️ אין אזורים – לא יתקבלו התראות", removable = false) { toggleNearMe() })
         }
         list.forEach { city ->
             chips.addView(chip(city, removable = true) {
@@ -740,7 +740,7 @@ class MainActivity : Activity() {
             // זיהוי ראשון מיד, בלי לחכות לשירות
             Weather.freshLocation(this) { loc ->
                 if (loc != null) Thread {
-                    val list = AreaData.areasAt(this, loc.latitude, loc.longitude).take(8)
+                    val list = AreaData.areasAt(this, loc.latitude, loc.longitude, 1.0).take(4)
                     Prefs.setNearbyAreas(this, list)
                     runOnUiThread { refresh() }
                 }.start()
@@ -1127,7 +1127,7 @@ class MainActivity : Activity() {
             if (loc != null) Thread {
                 try {
                     Prefs.addVisits(this, AreaData.areasAt(this, loc.latitude, loc.longitude, 0.0), System.currentTimeMillis())
-                    val list = AreaData.areasAt(this, loc.latitude, loc.longitude).take(8)
+                    val list = AreaData.areasAt(this, loc.latitude, loc.longitude, 1.0).take(4)
                     if (list.isNotEmpty()) Prefs.setNearbyAreas(this, list)
                 } catch (_: Exception) { }
             }.start()
