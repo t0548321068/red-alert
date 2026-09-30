@@ -40,7 +40,8 @@ class MapActivity : Activity() {
                             val names = JSONArray()
                             body.split(",").map { it.trim() }.filter { it.isNotEmpty() }
                                 .forEach { raw -> AreaData.match(this@MapActivity, raw).forEach { names.put(it) } }
-                            view.evaluateJavascript("focusOn($names, ${intent.getLongExtra("focusTs", 0L)});", null)
+                            view.evaluateJavascript("focusOn($names, ${intent.getLongExtra("focusTs", 0L)}, " +
+                                "${intent.getBooleanExtra("focusAll", false)});", null)
                         }
                         locate(view)
                     }

@@ -482,19 +482,20 @@ class MainActivity : Activity() {
             12f, muted).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
     }
 
-    /** מסך "התראות אחרונות": רשימה נגללת של כל ההתראות שלי. לחיצה על התראה - המפה על האזור שלה */
+    /** מסך "התראות אחרונות": רשימה נגללת של כל ההתראות בארץ (בלי סינון). לחיצה על התראה - המפה על האזור שלה */
     private fun showRecent() = fullPage("📜 התראות אחרונות") { c ->
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(4), dp(14), dp(4))
             background = graphite(20)
         }
-        fillHistory(card, Int.MAX_VALUE)
+        fillHistory(card, Int.MAX_VALUE, Prefs.feed(this), national = true)
         c.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
     }
 
-    private fun fillHistory(historyBox: LinearLayout, count: Int) {
-        val items = Prefs.history(this).take(count)
+    private fun fillHistory(historyBox: LinearLayout, count: Int,
+                            source: List<Prefs.Entry> = Prefs.history(this), national: Boolean = false) {
+        val items = source.take(count)
         val muted = Color.parseColor("#AAAAAA")
         if (items.isEmpty()) {
             historyBox.addView(text("אין התראות עדיין", 14f, muted).apply { setPadding(0, dp(8), 0, dp(10)) })
@@ -507,7 +508,8 @@ class MainActivity : Activity() {
                 // לחיצה: המפה על האזורים של ההתראה
                 setOnClickListener {
                     startActivity(Intent(this@MainActivity, MapActivity::class.java)
-                        .putExtra("focus", e.body).putExtra("focusTs", e.ts))
+                        .putExtra("focus", e.body).putExtra("focusTs", e.ts)
+                        .putExtra("focusAll", national))
                 }
             }
             val barColor = when (e.level) {
