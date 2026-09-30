@@ -36,7 +36,8 @@ class ClockActivity : Activity() {
     private val tick = object : Runnable {
         override fun run() {
             val now = System.currentTimeMillis()
-            time.text = TimeFormat.time(this@ClockActivity, now)
+            time.text = TimeFormat.clock(this@ClockActivity, now)
+            TimeFormat.fit(time, 84f)
             day.text = TimeFormat.dayLine(this@ClockActivity, now)
 
             val on = Prefs.enabled(this@ClockActivity)

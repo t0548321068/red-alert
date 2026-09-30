@@ -23,6 +23,28 @@ object TimeFormat {
         return if (Prefs.showSeconds(c)) "$hm:%02d".format(k.get(Calendar.SECOND)) else hm
     }
 
+    /** שעה לשעון הגדול: עם שניות מהבהבות (שקופות בשנייה אי־זוגית, בלי לזוז) */
+    fun clock(c: Context, ms: Long): CharSequence {
+        val t = time(c, ms)
+        if (!Prefs.showSeconds(c) || !Prefs.blinkSeconds(c) || cal(ms).get(Calendar.SECOND) % 2 == 0) return t
+        return android.text.SpannableString(t).apply {
+            setSpan(android.text.style.ForegroundColorSpan(android.graphics.Color.TRANSPARENT),
+                t.length - 2, t.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+    }
+
+    /** השעה תמיד בשורה אחת: אם לא נכנסת ברוחב - מקטינים רק כמה שצריך */
+    fun fit(tv: android.widget.TextView, maxSp: Float) {
+        tv.setSingleLine(true)
+        val w = tv.width - tv.paddingLeft - tv.paddingRight
+        if (w <= 0) { tv.post { if (tv.width > 0) fit(tv, maxSp) }; return }
+        val maxPx = maxSp * tv.resources.displayMetrics.scaledDensity
+        tv.paint.textSize = maxPx
+        val need = tv.paint.measureText(tv.text.toString())
+        val px = if (need > w) maxPx * w / need * 0.97f else maxPx
+        if (Math.abs(tv.textSize - px) > 0.5f) tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, px)
+    }
+
     fun day(c: Context, ms: Long): String {
         val i = cal(ms).get(Calendar.DAY_OF_WEEK) - 1
         return when (Prefs.dayStyle(c)) {

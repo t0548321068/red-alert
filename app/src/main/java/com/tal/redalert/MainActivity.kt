@@ -162,7 +162,8 @@ class MainActivity : Activity() {
 
     private fun updateClock() {
         val now = System.currentTimeMillis()
-        clockTime.text = TimeFormat.time(this, now)
+        clockTime.text = TimeFormat.clock(this, now)
+        TimeFormat.fit(clockTime, 52f)
         clockDay.text = TimeFormat.dayLine(this, now)
         val g = Prefs.showGreeting(this)
         greeting.visibility = if (g) View.VISIBLE else View.GONE
@@ -1255,6 +1256,7 @@ class MainActivity : Activity() {
             "ערכת צבעים: " + if (Prefs.darkTheme(this)) "כהה" else "בהירה",
             "סגנון יום: ${TimeFormat.dayOptions()[Prefs.dayStyle(this)]}",
             "שניות: " + if (Prefs.showSeconds(this)) "מוצג" else "מוסתר",
+            "שניות מהבהבות: " + if (Prefs.blinkSeconds(this)) "פעיל" else "כבוי",
             "תאריך: " + if (Prefs.showDate(this)) "מוצג" else "מוסתר",
             "מזג אוויר: " + if (Prefs.showWeather(this)) "מוצג" else "מוסתר",
             "עדכון מזג אוויר: " + weatherLabel(Prefs.weatherMinutes(this)),
@@ -1286,10 +1288,11 @@ class MainActivity : Activity() {
                         }
                         .show()
                     2 -> { Prefs.setShowSeconds(this, !Prefs.showSeconds(this)); updateClock(); refresh(); showClockSettings() }
-                    3 -> { Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); showClockSettings() }
-                    4 -> { Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); showClockSettings() }
-                    6 -> { Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock(); showClockSettings() }
-                    5 -> {
+                    3 -> { Prefs.setBlinkSeconds(this, !Prefs.blinkSeconds(this)); updateClock(); showClockSettings() }
+                    4 -> { Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); showClockSettings() }
+                    5 -> { Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); showClockSettings() }
+                    7 -> { Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock(); showClockSettings() }
+                    6 -> {
                         val opts = intArrayOf(1, 2, 5, 10, 15, 30, 60)
                         AlertDialog.Builder(this, dlg())
                             .setIcon(R.mipmap.ic_launcher)
