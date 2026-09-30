@@ -499,7 +499,9 @@ class AlertService : Service() {
             .setCategory(Notification.CATEGORY_ALARM)
             .setContentIntent(fullPi)
             .setAutoCancel(true)
-        if (!quiet) nb.setFullScreenIntent(fullPi, true)
+        // סיום אירוע כשהחלון הקטן פתוח - מוצג בו (ירוק), בלי מסך מלא
+        val toMini = level == LEVEL_END && MiniOverlay.isShowing()
+        if (!quiet && !toMini) nb.setFullScreenIntent(fullPi, true)
         // ספירה לאחור ישר בשורת ההתראות
         if (level == LEVEL_ALERT && shelterSec != null && shelterSec > 0) {
             nb.setWhen(System.currentTimeMillis() + shelterSec * 1000L)
@@ -514,7 +516,8 @@ class AlertService : Service() {
         // בבדיקה (האפליקציה בחזית) או עם הרשאת "הצגה מעל אפליקציות אחרות"
         if (!quiet) wakeScreen()
         val screenOff = !(getSystemService(POWER_SERVICE) as PowerManager).isInteractive
-        if (!quiet && (forceScreen || screenOff || android.provider.Settings.canDrawOverlays(this))) {
+        if (toMini) main.post { MiniOverlay.showEnd(body) }
+        else if (!quiet && (forceScreen || screenOff || android.provider.Settings.canDrawOverlays(this))) {
             try { startActivity(full) } catch (_: Exception) { }
         }
 
@@ -541,7 +544,6 @@ class AlertService : Service() {
             Prefs.setStayUntil(this, System.currentTimeMillis() + enterMs + Prefs.STAY_MS)
             main.postDelayed(stayDone, enterMs + Prefs.STAY_MS)
         } else if (level == LEVEL_END) {
-            main.post { MiniOverlay.hide(this) }   // האירוע הסתיים - בלי החלון הקטן
             Prefs.setStayUntil(this, 0)
             (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(ID_STAY)
         }
