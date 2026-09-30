@@ -205,6 +205,11 @@ class MainActivity : Activity() {
         header.addView(text("צבע אדום", 22f, C.TEXT, bold = true).apply { setPadding(dp(8), 0, dp(8), 0) })
         // מספר הגרסה עבר לכרטיס החיווים - כאן רק מרווח
         header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+        // כפתור בדיקה אחד: בוחרים מקדימה / ירי / סיום
+        header.addView(text("🔔", 20f, C.MUTED).apply {
+            setPadding(dp(8), dp(4), dp(8), dp(4))
+            setOnClickListener { chooseTest() }
+        })
         header.addView(text("🕰", 20f, C.MUTED).apply {
             setPadding(dp(8), dp(4), dp(8), dp(4))
             setOnClickListener { startActivity(Intent(this@MainActivity, ClockActivity::class.java)) }
@@ -288,7 +293,6 @@ class MainActivity : Activity() {
             setPadding(dp(12), dp(7), dp(12), dp(7))
             background = GradientDrawable().apply { cornerRadius = dp(10).toFloat(); setColor(C.CARD) }
         }
-        col.addView(feedLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
         // עיגול הפעלה/כיבוי
         circleIcon = text("✓", 46f, C.GREEN).apply { gravity = Gravity.CENTER }
@@ -328,32 +332,8 @@ class MainActivity : Activity() {
         historyBox = LinearLayout(this)   // לא מוצג - נשאר לשימוש פנימי
         // הכפתור עבר לתפריט הצידי
 
-        // כפתורי בדיקה
-        val tests = LinearLayout(this)
-        listOf(
-            Triple("מקדימה", C.ORANGE, "בדקות הקרובות צפויות להתקבל התרעות באזורך"),
-            Triple("בדיקת ירי", C.RED, "ירי רקטות וטילים"),
-            Triple("סיום", C.GREEN, "האירוע הסתיים")
-        ).forEachIndexed { i, (label, color, title) ->
-            tests.addView(text(label, 13f, color).apply {
-                gravity = Gravity.CENTER
-                setPadding(0, dp(8), 0, dp(8))
-                background = GradientDrawable().apply {
-                    cornerRadius = dp(10).toFloat(); setStroke(dp(1), color)
-                }
-                setOnClickListener {
-                    Prefs.setEnabled(this@MainActivity, true)
-                    AlertService.start(this@MainActivity, testTitle = title)
-                    if (color != C.RED && Prefs.isQuietNow(this@MainActivity)) {
-                        android.widget.Toast.makeText(this@MainActivity,
-                            "שעות שקט פעילות – ההתראה נשלחה בשקט, בלי צליל ומסך מלא",
-                            android.widget.Toast.LENGTH_LONG).show()
-                    }
-                    refresh()
-                }
-            }, LinearLayout.LayoutParams(0, -2, 1f).apply { if (i > 0) marginStart = dp(6) })
-        }
-        col.addView(tests, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        // הפיד הארצי - בתחתית המסך
+        col.addView(feedLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
 
         val scroll = ScrollView(this).apply {
             addView(col)
@@ -608,6 +588,29 @@ class MainActivity : Activity() {
     private var openCat = -1
 
     /** הגדרות: מגירה שנפתחת מצד ימין, כל קטגוריה נפתחת/נסגרת במקום */
+    private fun chooseTest() {
+        val tests = listOf(
+            "מקדימה" to "בדקות הקרובות צפויות להתקבל התרעות באזורך",
+            "בדיקת ירי" to "ירי רקטות וטילים",
+            "סיום" to "האירוע הסתיים")
+        AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
+            .setTitle("בדיקת התראה")
+            .setItems(tests.map { it.first }.toTypedArray()) { _, i ->
+                val title = tests[i].second
+                Prefs.setEnabled(this, true)
+                AlertService.start(this, testTitle = title)
+                if (i != 1 && Prefs.isQuietNow(this)) {
+                    android.widget.Toast.makeText(this,
+                        "שעות שקט פעילות – ההתראה נשלחה בשקט, בלי צליל ומסך מלא",
+                        android.widget.Toast.LENGTH_LONG).show()
+                }
+                refresh()
+            }
+            .setNegativeButton("ביטול", null)
+            .show()
+    }
+
     private fun showSettings() {
         val d = android.app.Dialog(this, android.R.style.Theme_Translucent_NoTitleBar)
         val root = android.widget.FrameLayout(this).apply { setBackgroundColor(Color.parseColor("#99000000")) }
