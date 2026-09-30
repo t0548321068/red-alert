@@ -34,6 +34,9 @@ object Prefs {
     fun setShowSeconds(c: Context, v: Boolean) = sp(c).edit().putBoolean("seconds", v).commit()
     fun showDate(c: Context) = sp(c).getBoolean("date", true)
     fun setShowDate(c: Context, v: Boolean) = sp(c).edit().putBoolean("date", v).commit()
+    /** ברכה לפי השעה (בוקר טוב / ערב טוב...) */
+    fun showGreeting(c: Context) = sp(c).getBoolean("greeting", true)
+    fun setShowGreeting(c: Context, v: Boolean) = sp(c).edit().putBoolean("greeting", v).commit()
     fun showWeather(c: Context) = sp(c).getBoolean("weather", true)
     /** כל כמה דקות לרענן את מזג האוויר והמיקום שלו */
     fun weatherMinutes(c: Context) = sp(c).getInt("weatherMin", 2)

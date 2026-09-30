@@ -56,6 +56,7 @@ class MainActivity : Activity() {
     private lateinit var circleIcon: TextView
     private lateinit var circleLabel: TextView
     private lateinit var circleHint: TextView
+    private lateinit var greeting: TextView
     private lateinit var chips: FlowLayout
     private lateinit var historyBox: LinearLayout
     private lateinit var clockTime: TextView
@@ -163,6 +164,9 @@ class MainActivity : Activity() {
         val now = System.currentTimeMillis()
         clockTime.text = TimeFormat.time(this, now)
         clockDay.text = TimeFormat.dayLine(this, now)
+        val g = Prefs.showGreeting(this)
+        greeting.visibility = if (g) View.VISIBLE else View.GONE
+        if (g) greeting.text = TimeFormat.greeting(now)
         greeting.text = TimeFormat.greeting(now)
     }
 
@@ -234,6 +238,8 @@ class MainActivity : Activity() {
         }
         greeting = text("", 16f, C.TEXT).apply { gravity = Gravity.CENTER }
         col.addView(greeting, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        greeting = text("", 18f, C.TEXT).apply { gravity = Gravity.CENTER }
+        col.addView(greeting, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
         col.addView(clockTime, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
         col.addView(clockDay)
         weatherLine = text("", 14f, C.TEXT).apply {
@@ -999,7 +1005,8 @@ class MainActivity : Activity() {
             "שניות: " + if (Prefs.showSeconds(this)) "מוצג" else "מוסתר",
             "תאריך: " + if (Prefs.showDate(this)) "מוצג" else "מוסתר",
             "מזג אוויר: " + if (Prefs.showWeather(this)) "מוצג" else "מוסתר",
-            "עדכון מזג אוויר: " + weatherLabel(Prefs.weatherMinutes(this))
+            "עדכון מזג אוויר: " + weatherLabel(Prefs.weatherMinutes(this)),
+            "ברכה (בוקר טוב / ערב טוב…): " + if (Prefs.showGreeting(this)) "מוצג" else "מוסתר"
         )
         AlertDialog.Builder(this, dlg())
             .setIcon(R.mipmap.ic_launcher)
@@ -1029,6 +1036,7 @@ class MainActivity : Activity() {
                     2 -> { Prefs.setShowSeconds(this, !Prefs.showSeconds(this)); updateClock(); refresh(); showClockSettings() }
                     3 -> { Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); showClockSettings() }
                     4 -> { Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); showClockSettings() }
+                    6 -> { Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock(); showClockSettings() }
                     5 -> {
                         val opts = intArrayOf(1, 2, 5, 10, 15, 30, 60)
                         AlertDialog.Builder(this, dlg())
