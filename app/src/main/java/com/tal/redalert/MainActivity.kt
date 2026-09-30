@@ -297,7 +297,7 @@ class MainActivity : Activity() {
             marqueeRepeatLimit = -1
             isSelected = true
             gravity = Gravity.CENTER
-            setPadding(dp(12), dp(13), dp(12), dp(13))   // פיד ארצי - כרטיס גבוה יותר
+            setPadding(dp(12), dp(20), dp(12), dp(20))   // פיד ארצי - כרטיס גבוה יותר
             background = GradientDrawable().apply { cornerRadius = dp(10).toFloat(); setColor(C.CARD) }
         }
 
