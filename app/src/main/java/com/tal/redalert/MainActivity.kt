@@ -482,16 +482,32 @@ class MainActivity : Activity() {
             12f, muted).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
     }
 
-    /** מסך "התראות אחרונות": רשימה נגללת של כל ההתראות בארץ (בלי סינון). לחיצה על התראה - המפה על האזור שלה */
+    /**
+     * מסך "התראות אחרונות": כל ההתראות שהיו בארץ (החודש האחרון, מהארכיון של פיקוד העורף),
+     * בלי סינון. לחיצה על התראה - המפה על האזור שלה.
+     */
     private fun showRecent() = fullPage("📜 התראות אחרונות") { c ->
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(4), dp(14), dp(4))
             background = graphite(20)
         }
-        fillHistory(card, Int.MAX_VALUE, Prefs.feed(this), national = true)
         c.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        val cached = archiveCache
+        if (cached != null) { fillHistory(card, Int.MAX_VALUE, cached, national = true); return@fullPage }
+        card.addView(text("טוען את כל ההתראות…", 14f, Color.parseColor("#AAAAAA")).apply { setPadding(0, dp(12), 0, dp(12)) })
+        Thread {
+            val list = try { OrefArchive.fetch() } catch (_: Exception) { emptyList() }
+                .ifEmpty { Prefs.feed(this) }   // אין חיבור לארכיון - מה שהאפליקציה שמרה
+            runOnUiThread {
+                archiveCache = list
+                card.removeAllViews()
+                fillHistory(card, Int.MAX_VALUE, list, national = true)
+            }
+        }.start()
     }
+    /** נטען פעם אחת לכל פתיחה של האפליקציה */
+    private var archiveCache: List<Prefs.Entry>? = null
 
     private fun fillHistory(historyBox: LinearLayout, count: Int,
                             source: List<Prefs.Entry> = Prefs.history(this), national: Boolean = false) {
