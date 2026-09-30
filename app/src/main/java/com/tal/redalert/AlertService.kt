@@ -541,6 +541,7 @@ class AlertService : Service() {
             Prefs.setStayUntil(this, System.currentTimeMillis() + enterMs + Prefs.STAY_MS)
             main.postDelayed(stayDone, enterMs + Prefs.STAY_MS)
         } else if (level == LEVEL_END) {
+            main.post { MiniOverlay.hide(this) }   // האירוע הסתיים - בלי החלון הקטן
             Prefs.setStayUntil(this, 0)
             (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(ID_STAY)
         }

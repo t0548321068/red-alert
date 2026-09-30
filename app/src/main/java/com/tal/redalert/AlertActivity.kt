@@ -48,6 +48,7 @@ class AlertActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        MiniOverlay.hide(this)   // המסך המלא חזר - בלי החלון הקטן
         // מופיע מעל מסך הנעילה ומדליק את המסך
         if (android.os.Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true) }
         @Suppress("DEPRECATION")
@@ -144,7 +145,7 @@ class AlertActivity : Activity() {
             }
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 36 })
 
-        // כפתורים: השתקה (צליל ורטט בלבד) · סגירה בלחיצה ארוכה
+        // כפתורים: השתקה (צליל ורטט בלבד) · מזעור לחלון קטן · סגירה בהחלקה
         val buttons = LinearLayout(this).apply {
             gravity = Gravity.CENTER
             setPadding(0, 60, 0, 0)
@@ -168,20 +169,21 @@ class AlertActivity : Activity() {
                 alpha = 0.6f
             }
         }
-        val close = btn("✕ סגור").apply {
+        // מזער: חלון קטן למעלה עם הספירה, והמסך המלא נסגר
+        val mini = btn("▭ מזער").apply {
             setOnClickListener {
-                android.widget.Toast.makeText(this@AlertActivity, "לחיצה ארוכה לסגירה",
-                    android.widget.Toast.LENGTH_SHORT).show()
-            }
-            setOnLongClickListener {
-                AlertService.silence(this@AlertActivity)
+                if (MiniOverlay.canShow(this@AlertActivity)) MiniOverlay.show(this@AlertActivity, intent)
+                else android.widget.Toast.makeText(this@AlertActivity,
+                    "לחלון קטן צריך הרשאת \"הצגה מעל אפליקציות אחרות\"", android.widget.Toast.LENGTH_LONG).show()
                 finish()
-                true
             }
         }
         buttons.addView(mute)
-        buttons.addView(close, LinearLayout.LayoutParams(-2, -2).apply { marginStart = 40 })
+        buttons.addView(mini, LinearLayout.LayoutParams(-2, -2).apply { marginStart = 40 })
         root.addView(buttons)
+
+        // סגירה: החלקה של הכפתור עד הסוף (לא נסגר בנגיעה בטעות)
+        root.addView(slideToClose(), LinearLayout.LayoutParams(-1, dpx(64)).apply { topMargin = dpx(28) })
         // גלילה - שהכל ייכנס גם במסך קטן
         setContentView(android.widget.ScrollView(this).apply {
             isFillViewport = true
@@ -190,9 +192,65 @@ class AlertActivity : Activity() {
         })
     }
 
+    private fun dpx(v: Int) = (v * resources.displayMetrics.density).toInt()
+
+    /** פס "החלק לסגירה": גוררים את העיגול לצד השני */
+    @android.annotation.SuppressLint("ClickableViewAccessibility")
+    private fun slideToClose(): android.view.View {
+        val track = android.widget.FrameLayout(this).apply {
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = dpx(32).toFloat()
+                setColor(Color.parseColor("#33FFFFFF"))
+                setStroke(dpx(2), Color.WHITE)
+            }
+            layoutDirection = android.view.View.LAYOUT_DIRECTION_LTR
+        }
+        val label = TextView(this).apply {
+            text = "החלק לסגירה  ›››"
+            setTextColor(Color.WHITE); textSize = 16f; gravity = Gravity.CENTER
+        }
+        track.addView(label, android.widget.FrameLayout.LayoutParams(-1, -1))
+        val size = dpx(56)
+        val knob = TextView(this).apply {
+            text = "✕"; textSize = 22f; gravity = Gravity.CENTER
+            setTextColor(Color.parseColor("#D50000"))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.OVAL; setColor(Color.WHITE)
+            }
+        }
+        track.addView(knob, android.widget.FrameLayout.LayoutParams(size, size).apply {
+            gravity = Gravity.CENTER_VERTICAL or Gravity.START; leftMargin = dpx(4)
+        })
+        var downX = 0f
+        knob.setOnTouchListener { v, e ->
+            val max = (track.width - size - dpx(8)).toFloat()
+            when (e.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> { downX = e.rawX - v.translationX; true }
+                android.view.MotionEvent.ACTION_MOVE -> {
+                    v.translationX = (e.rawX - downX).coerceIn(0f, max)
+                    label.alpha = 1f - v.translationX / max
+                    true
+                }
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                    if (v.translationX > max * 0.85f) {
+                        AlertService.silence(this)
+                        MiniOverlay.hide(this)
+                        finish()
+                    } else {
+                        v.animate().translationX(0f).setDuration(200).start()
+                        label.animate().alpha(1f).setDuration(200).start()
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+        return track
+    }
+
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        android.widget.Toast.makeText(this, "לסגירה: לחיצה ארוכה על ✕ סגור", android.widget.Toast.LENGTH_SHORT).show()
+        android.widget.Toast.makeText(this, "לסגירה: החלק את הכפתור · למזעור: ▭ מזער", android.widget.Toast.LENGTH_SHORT).show()
     }
 
     /** התראה חדשה כשהמסך כבר פתוח - מציגים אותה */
