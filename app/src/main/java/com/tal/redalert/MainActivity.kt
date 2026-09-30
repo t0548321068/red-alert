@@ -455,8 +455,10 @@ class MainActivity : Activity() {
             setPadding(dp(8), dp(2), 0, dp(2)); setOnClickListener { addCity() } })
         bottom.addView(head)
         if (list.isEmpty()) bottom.addView(text("אין אזורים נוספים", 14f, muted).apply { setPadding(0, dp(7), 0, dp(7)) })
+        // הרשימה נגללת: עד 4 שורות גלויות, השאר בגלילה
+        val rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         list.forEachIndexed { i, city ->
-            if (i > 0) bottom.addView(View(this).apply { setBackgroundColor(Color.parseColor("#14FFFFFF")) },
+            if (i > 0) rows.addView(View(this).apply { setBackgroundColor(Color.parseColor("#14FFFFFF")) },
                 LinearLayout.LayoutParams(-1, dp(1)))
             val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(8)) }
             r.addView(text(city, 16f, Color.WHITE), LinearLayout.LayoutParams(0, -2, 1f))
@@ -464,8 +466,17 @@ class MainActivity : Activity() {
                 setPadding(dp(10), 0, dp(4), 0)
                 setOnClickListener { Prefs.setCities(this@MainActivity, Prefs.cities(this@MainActivity) - city); refresh() }
             })
-            bottom.addView(r)
+            rows.addView(r)
         }
+        if (list.size > 4) {
+            val sc = ScrollView(this).apply {
+                isVerticalScrollBarEnabled = true
+                addView(rows)
+                // גלילה בתוך הרשימה בלי שהמסך כולו יזוז
+                setOnTouchListener { v, _ -> v.parent.requestDisallowInterceptTouchEvent(true); false }
+            }
+            bottom.addView(sc, LinearLayout.LayoutParams(-1, dp(4 * 42)))
+        } else bottom.addView(rows)
         if (list.isEmpty() && !nearOn)
             bottom.addView(text("⚠️ אין אזורים – לא יתקבלו התראות", 13f, C.ORANGE).apply { setPadding(0, dp(4), 0, dp(4)) })
         chips.addView(bottom)
@@ -572,28 +583,46 @@ class MainActivity : Activity() {
         }
     }
 
+    /** הוספת אזור: חיפוש (גם חלקי) ברשימת אזורי ההתרעה הרשמיים, לחיצה על תוצאה מוסיפה */
     private fun addCity() {
+        val all = AreaData.areas(this).keys().asSequence().toList().sorted()
         val input = EditText(this).apply {
-            hint = "לדוגמה: תל אביב"
+            hint = "חיפוש אזור, לדוגמה: תל אב"
             setSingleLine()
         }
-        val wrap = FrameLayout(this).apply {
+        val results = android.widget.ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, ArrayList())
+        val listView = android.widget.ListView(this).apply { adapter = results }
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(8), dp(20), 0)
             addView(input)
+            addView(listView, LinearLayout.LayoutParams(-1, dp(300)))
         }
-        AlertDialog.Builder(this, dlg())
+        fun filter(q: String) {
+            val t = q.trim()
+            val k = Prefs.areaKey(t)
+            val mine = Prefs.cities(this)
+            val found = if (t.isEmpty()) emptyList() else all.filter {
+                it !in mine && (it.contains(t) || (k.isNotEmpty() && Prefs.areaKey(it).contains(k)))
+            }.sortedBy { if (it.startsWith(t)) 0 else 1 }.take(200)
+            results.clear(); results.addAll(found); results.notifyDataSetChanged()
+        }
+        input.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(e: android.text.Editable?) { filter(e.toString()) }
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+        })
+        val d = AlertDialog.Builder(this, dlg())
             .setIcon(R.mipmap.ic_launcher)
-            .setTitle("הוספת אזור")
-            .setView(wrap)
-            .setPositiveButton("הוסף") { _, _ ->
-                val v = input.text.toString().trim().replace(",", " ")
-                if (v.isNotEmpty() && v !in Prefs.cities(this)) {
-                    Prefs.setCities(this, Prefs.cities(this) + v)
-                    refresh()
-                }
-            }
-            .setNegativeButton("ביטול", null)
+            .setTitle("הוספת אזור התרעה")
+            .setView(box)
+            .setNegativeButton("סגירה", null)
             .show()
+        listView.setOnItemClickListener { _, _, pos, _ ->
+            val v = results.getItem(pos) ?: return@setOnItemClickListener
+            if (v !in Prefs.cities(this)) { Prefs.setCities(this, Prefs.cities(this) + v); refresh() }
+            d.dismiss()
+        }
     }
 
     // ---- מסך הגדרות: כפתור לכל קטגוריה, וכל קטגוריה במסך משלה ----
