@@ -78,6 +78,7 @@ object Prefs {
 
     /** חלון זמן שבו אותה התראה מכמה מקורות נחשבת כפילות */
     const val DUP_MS = 5 * 60 * 1000L
+    const val END_MERGE_MS = 30 * 60 * 1000L
 
     /**
      * איחוד כפילויות לתצוגה: אותו סוג, עם יישוב משותף, בהפרש של עד 5 דקות = שורה אחת.
@@ -89,12 +90,16 @@ object Prefs {
         val keys = ArrayList<MutableSet<String>>()
         for (e in list) {           // מהחדשה לישנה
             val ek = e.body.split(",").map { areaKey(it.trim()) }.filter { it.isNotEmpty() }.toSet()
-            val i = out.indices.firstOrNull { j ->
+            // סיום אירוע: כל הסיומים הרצופים (בלי התראה ביניהם, עד חצי שעה) = שורה אחת
+            val last = out.lastOrNull()
+            val i = if (e.level == 2 && last != null && last.level == 2 && e.ts > 0 &&
+                last.ts - e.ts in 0 until END_MERGE_MS) out.lastIndex
+            else out.indices.firstOrNull { j ->
                 val k = out[j]
                 k.level == e.level && e.ts > 0 && k.ts - e.ts in 0 until DUP_MS &&
                     (k.ts - e.ts < 90_000L || k.level == 2 || keys[j].any { it in ek })   // סיום אירוע - תמיד אחד
             }
-            if (i == null) { out.add(e); keys.add(ek.toMutableSet()); continue }
+            if (i == null) { out.add(e.copy(body = mergeBody(e.body, emptyList()))); keys.add(ek.toMutableSet()); continue }
             out[i] = e.copy(body = mergeBody(e.body, out[i].body.split(", ")))
             keys[i].addAll(ek)
         }
@@ -258,8 +263,9 @@ object Prefs {
     /** מוסיף יישובים לשורת ההתראה האחרונה (בלי כפילויות) */
     private fun mergeBody(body: String, add: List<String>): String {
         fun k(a: String) = areaKey(a)
-        val cur = body.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-        val keys = cur.map { k(it) }.toMutableSet()
+        val keys = mutableSetOf<String>()
+        // גם בתוך אותה שורה - כל יישוב פעם אחת
+        val cur = body.split(",").map { it.trim() }.filter { it.isNotEmpty() && keys.add(k(it)) }
         val extra = add.filter { keys.add(k(it)) }
         return (cur + extra).joinToString(", ")
     }
