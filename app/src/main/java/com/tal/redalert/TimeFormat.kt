@@ -33,13 +33,25 @@ object TimeFormat {
         }
     }
 
-    /** ברכה לפי השעה */
-    fun greeting(ms: Long): String = when (cal(ms).get(Calendar.HOUR_OF_DAY)) {
-        in 5..11 -> "בוקר טוב"
-        in 12..14 -> "צהריים טובים"
-        in 15..17 -> "אחר צהריים טובים"
-        in 18..21 -> "ערב טוב"
-        else -> "לילה טוב"
+    /**
+     * ברכה לפי השעה ולפי השקיעה במקום שלך:
+     * ערב טוב מהשקיעה, לילה טוב שעתיים וחצי אחריה (בין 20:00 ל-22:30),
+     * בוקר טוב מכשעה לפני הזריחה. בחורף הערב והלילה מתחילים מוקדם יותר.
+     */
+    fun greeting(c: Context, ms: Long): String {
+        val loc = try { Weather.lastLocation(c) } catch (_: Exception) { null }
+        val (rise, set) = Sun.times(loc?.latitude ?: 31.77, loc?.longitude ?: 35.21, ms) ?: (360 to 1140)
+        val k = cal(ms)
+        val now = k.get(Calendar.HOUR_OF_DAY) * 60 + k.get(Calendar.MINUTE)
+        val night = (set + 150).coerceIn(20 * 60, 22 * 60 + 30)
+        val morning = (rise - 60).coerceIn(4 * 60, 6 * 60)
+        return when {
+            now < morning || now >= night -> "לילה טוב"
+            now >= set -> "ערב טוב"
+            now < 12 * 60 -> "בוקר טוב"
+            now < 15 * 60 -> "צהריים טובים"
+            else -> "אחר צהריים טובים"
+        }
     }
 
     fun date(ms: Long): String {
