@@ -544,15 +544,6 @@ class AlertService : Service() {
             nb.setWhen(System.currentTimeMillis() + shelterSec * 1000L)
                 .setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(true)
                 .setSubText("זמן להגעה למרחב המוגן")
-            // ספירה לאחור גדולה בתוך ההתראה עצמה
-            val rv = android.widget.RemoteViews(packageName, R.layout.notif_countdown).apply {
-                setTextViewText(R.id.nc_title, title)
-                setTextViewText(R.id.nc_body, body)
-                setChronometer(R.id.nc_cd, android.os.SystemClock.elapsedRealtime() + shelterSec * 1000L, null, true)
-                setChronometerCountDown(R.id.nc_cd, true)
-            }
-            nb.setStyle(Notification.DecoratedCustomViewStyle())
-                .setCustomContentView(rv).setCustomBigContentView(rv).setCustomHeadsUpContentView(rv)
         }
         val n = nb.build()
         if (!quiet && level != LEVEL_END) overrideDnd()
