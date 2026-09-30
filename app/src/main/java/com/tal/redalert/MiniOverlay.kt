@@ -42,11 +42,11 @@ object MiniOverlay {
             else -> "#D50000"
         }
 
-        val text = TextView(app).apply {
+        val label = TextView(app).apply {
             setTextColor(Color.WHITE); textSize = 15f
             setPadding(dp(14), dp(10), dp(8), dp(10))
         }
-        val x = TextView(app).apply {
+        val closeX = TextView(app).apply {
             text = "✕"; setTextColor(Color.WHITE); textSize = 18f
             setPadding(dp(12), dp(8), dp(14), dp(8))
             setOnClickListener { hide(app) }
@@ -56,8 +56,8 @@ object MiniOverlay {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             background = GradientDrawable().apply { cornerRadius = dp(22).toFloat(); setColor(Color.parseColor(color)) }
             elevation = dp(6).toFloat()
-            addView(text, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(x)
+            addView(label, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(closeX)
             setOnClickListener {
                 hide(app)
                 app.startActivity(Intent(full).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -81,7 +81,7 @@ object MiniOverlay {
                 val now = System.currentTimeMillis()
                 val enterEnd = firedAt + shelter.coerceAtLeast(0) * 1000L
                 val stayEnd = enterEnd + Prefs.STAY_MS
-                text.text = when {
+                label.text = when {
                     level != AlertService.LEVEL_ALERT -> title
                     shelter > 0 && now < enterEnd -> "🚨 $title · " + mmss(enterEnd - now)
                     now < stayEnd -> "⏳ במרחב המוגן · " + mmss(stayEnd - now)
