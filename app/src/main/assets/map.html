@@ -17,10 +17,12 @@
          display: flex; gap: 6px; background: var(--panel); padding: 5px; border-radius: 18px; }
   .bar button { white-space: nowrap; border: 0; background: transparent; color: var(--text); padding: 7px 13px; border-radius: 14px; font-size: 14px; }
   .bar button.on { background: #FF3B30; color: #fff; }
+  .bar2 { top: 56px; }
+  .bar2 button.on { background: #0A84FF; }
   .legend { position: absolute; bottom: 18px; right: 10px; z-index: 1000; background: var(--panel);
             color: var(--text); padding: 8px 10px; border-radius: 10px; font-size: 12px; line-height: 1.8; }
   .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-left: 6px; }
-  .empty { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); z-index: 1000; white-space: nowrap;
+  .empty { position: absolute; top: 104px; left: 50%; transform: translateX(-50%); z-index: 1000; white-space: nowrap;
            background: var(--panel); color: var(--text); padding: 8px 14px; border-radius: 10px; font-size: 14px; display: none; }
   .me-btn { position: absolute; bottom: 18px; left: 10px; z-index: 1000; width: 46px; height: 46px;
             border-radius: 50%; border: 0; font-size: 22px; background: var(--panel); }
@@ -39,12 +41,17 @@
   <button data-h="24" class="on">24 שעות</button>
   <button data-h="168">שבוע</button>
 </div>
+<div class="bar bar2">
+  <button data-m="all" class="on">כל הארץ</button>
+  <button data-m="mine">שלי</button>
+</div>
 <div class="empty" id="empty">אין התראות בטווח הזה</div>
 <div class="legend">
   <div><span class="dot" style="background:#FF3B30"></span>ירי / חדירה</div>
   <div><span class="dot" style="background:#FF9F0A"></span>התראה מקדימה</div>
   <div><span class="dot" style="background:#30D158"></span>האירוע הסתיים</div>
   <div><span class="dot" style="background:#0A84FF"></span>המיקום שלי</div>
+  <div><span class="dot" style="background:transparent;border:2px dashed #0A84FF;width:7px;height:7px"></span>אזורים שהייתי בהם</div>
 </div>
 <button class="me-btn" id="meBtn" title="המיקום שלי">📍</button>
 <script>
@@ -60,8 +67,9 @@
   var CITIES = ['ירושלים', 'תל אביב', 'חיפה', 'באר שבע', 'אשדוד', 'אשקלון', 'נתניה', 'אילת',
                 'טבריה', 'קריית שמונה', 'נהריה', 'שדרות', 'עפולה', 'דימונה', 'הרצליה', 'מודיעין'];
   var alertLayer = L.layerGroup().addTo(map);    // אזורים עם התראה
+  var visitLayer = L.layerGroup().addTo(map);   // אזורים שהייתי בהם
   var meLayer = L.layerGroup().addTo(map);
-  var DATA = { dark: true, events: [] }, HOURS = 24, ME = null, HAS_BOUNDS = false;
+  var DATA = { dark: true, all: [], mine: [], visits: {} }, HOURS = 24, MODE = 'all', ME = null, HAS_BOUNDS = false;
 
   function drawBase() {
     baseLayer.clearLayers(); labelLayer.clearLayers();
@@ -109,7 +117,8 @@
   function drawAlerts() {
     alertLayer.clearLayers();
     var since = Date.now() - HOURS * 3600 * 1000, latest = {};
-    DATA.events.forEach(function (e) {
+    drawVisits(since);
+    (DATA[MODE] || []).forEach(function (e) {
       if (e.ts < since) return;
       e.areas.forEach(function (a) { if (!latest[a] || latest[a].ts < e.ts) latest[a] = e; });
     });
@@ -126,9 +135,25 @@
     empty.style.display = bounds.length ? 'none' : 'block';
     clearTimeout(window._emptyT);
     if (!bounds.length) window._emptyT = setTimeout(function () { empty.style.display = 'none'; }, 3500);
+    // גם האזורים שהייתי בהם - שיראו יחד עם ההתראות
+    var v = DATA.visits || {};
+    var vb = Object.keys(v).filter(function (n) { return v[n] >= since && ALL_AREAS[n]; }).map(function (n) { return ALL_AREAS[n].c; });
+    if (bounds.length) bounds = bounds.concat(vb);
     HAS_BOUNDS = bounds.length > 0;
     if (HAS_BOUNDS) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
     else if (ME) map.setView(ME, 12);
+  }
+
+  // אזורי ההתראה שהייתי בהם בטווח הזמן - מסגרת כחולה מקווקוות
+  function drawVisits(since) {
+    visitLayer.clearLayers();
+    var v = DATA.visits || {};
+    Object.keys(v).forEach(function (name) {
+      if (v[name] < since) return;
+      var a = ALL_AREAS[name]; if (!a || !a.p) return;
+      L.polygon(a.p, { color: '#0A84FF', weight: 2.5, dashArray: '6 5', fillColor: '#0A84FF', fillOpacity: .12 })
+        .bindPopup(info(name) + '<br>📍 הייתי כאן · ' + fmt(v[name])).addTo(visitLayer);
+    });
   }
 
   // ---- נקרא מהאפליקציה ----
@@ -150,10 +175,17 @@
     if (ME) map.setView(ME, 14);
     else if (window.App) App.locate();
   };
-  document.querySelectorAll('.bar button').forEach(function (b) {
+  document.querySelectorAll('.bar button[data-h]').forEach(function (b) {
     b.onclick = function () {
-      document.querySelectorAll('.bar button').forEach(function (x) { x.classList.remove('on'); });
+      document.querySelectorAll('.bar button[data-h]').forEach(function (x) { x.classList.remove('on'); });
       b.classList.add('on'); HOURS = +b.dataset.h; drawAlerts();
+    };
+  });
+  // כל הארץ / שלי
+  document.querySelectorAll('.bar button[data-m]').forEach(function (b) {
+    b.onclick = function () {
+      document.querySelectorAll('.bar button[data-m]').forEach(function (x) { x.classList.remove('on'); });
+      b.classList.add('on'); MODE = b.dataset.m; drawAlerts();
     };
   });
   // מצויר מיד, עוד לפני שהאפליקציה שולחת נתונים

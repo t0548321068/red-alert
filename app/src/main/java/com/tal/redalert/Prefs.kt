@@ -48,7 +48,7 @@ object Prefs {
     fun setSeenVersion(c: Context, v: String) = sp(c).edit().putString("seenVer", v).commit()
 
     // ---- פיד ארצי: כל ההתראות בארץ, בלי קשר לאזורים שלי ----
-    private const val MAX_FEED = 150
+    private const val MAX_FEED = 600   // מספיק לשבוע במפה
 
     fun feed(c: Context): List<Entry> {
         val arr = try { JSONArray(sp(c).getString("feed", "[]")) } catch (_: Exception) { JSONArray() }
@@ -138,6 +138,22 @@ object Prefs {
         (sp(c).getString("nearby", "") ?: "").split("|").filter { it.isNotEmpty() }
     fun setNearbyAreas(c: Context, v: List<String>) =
         sp(c).edit().putString("nearby", v.joinToString("|")).commit()
+
+    // ---- אזורים שהייתי בהם (למפה): אזור -> מתי הייתי שם לאחרונה ----
+    fun visits(c: Context): Map<String, Long> {
+        val o = try { JSONObject(sp(c).getString("visits", "{}") ?: "{}") } catch (_: Exception) { JSONObject() }
+        val m = HashMap<String, Long>()
+        o.keys().forEach { k -> m[k] = o.optLong(k) }
+        return m
+    }
+    @Synchronized
+    fun addVisits(c: Context, zones: List<String>, ts: Long) {
+        if (zones.isEmpty()) return
+        val m = visits(c).filterValues { ts - it < 8L * 24 * 3600 * 1000 }.toMutableMap()   // שבוע אחורה
+        zones.forEach { m[it] = ts }
+        val o = JSONObject(); m.forEach { (k, v) -> o.put(k, v) }
+        sp(c).edit().putString("visits", o.toString()).apply()
+    }
 
     // ---- צליל לכל סוג התראה (ריק = ברירת מחדל, "silent" = בלי צליל) ----
     fun sound(c: Context, level: Int) = sp(c).getString("sound$level", "") ?: ""

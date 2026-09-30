@@ -56,11 +56,10 @@ class MapActivity : Activity() {
         view.evaluateJavascript("setMe(${l.latitude}, ${l.longitude}, ${l.accuracy});", null)
     }
 
-    /** ממיר את היסטוריית ההתראות לנתונים למפה + רק האזורים שצריך */
-    private fun buildData(dark: Boolean): String {
+    /** ממיר רשימת התראות לנתונים למפה (שמות האזורים המלאים) */
+    private fun events(list: List<Prefs.Entry>): JSONArray {
         val events = JSONArray()
-
-        Prefs.history(this).filter { it.ts > 0 }.forEach { e ->
+        list.filter { it.ts > 0 }.forEach { e ->
             val names = JSONArray()
             e.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach { raw ->
                 AreaData.match(this, raw).forEach { name -> names.put(name) }
@@ -71,8 +70,18 @@ class MapActivity : Activity() {
                     .put("level", e.level).put("areas", names))
             }
         }
+        return events
+    }
 
-        val data = JSONObject().put("events", events).put("dark", dark)
+    /** כל הארץ + שלי + האזורים שהייתי בהם */
+    private fun buildData(dark: Boolean): String {
+        val visits = JSONObject()
+        Prefs.visits(this).forEach { (k, v) -> visits.put(k, v) }
+        val data = JSONObject()
+            .put("all", events(Prefs.feed(this)))
+            .put("mine", events(Prefs.history(this)))
+            .put("visits", visits)
+            .put("dark", dark)
         if (checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) ==
             android.content.pm.PackageManager.PERMISSION_GRANTED) {
             Weather.lastLocation(this)?.let {
