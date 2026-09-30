@@ -417,23 +417,23 @@ class MainActivity : Activity() {
     private fun refresh() {
         val on = Prefs.enabled(this)
         val color = if (on) C.GREEN else C.OFF
-        // עיגול עם זוהר מבפנים (מהמרכז לרקע)
+        // עיגול מלא: צבע בהיר במרכז שמתכהה לקצוות, כיתוב לבן מודגש
         circle.background = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
             gradientType = GradientDrawable.RADIAL_GRADIENT
             gradientRadius = dp(85).toFloat()
-            colors = intArrayOf(if (on) C.GREEN_BG else C.OFF_BG, C.BG)
-            setStroke(dp(2), color)
+            colors = if (on) intArrayOf(Color.parseColor("#30D158"), Color.parseColor("#0B3D1A"))
+                     else intArrayOf(Color.parseColor("#8E8E93"), Color.parseColor("#2A2A2C"))
         }
         if (Build.VERSION.SDK_INT >= 28) {
             circle.elevation = dp(14).toFloat()
             circle.outlineAmbientShadowColor = color
             circle.outlineSpotShadowColor = color
         }
-        circleIcon.text = if (on) "✓" else "✕"
-        circleIcon.setTextColor(color)
+        circleIcon.visibility = View.GONE
         circleLabel.text = if (on) "מוגן" else "כבוי"
-        circleLabel.setTextColor(color)
+        circleLabel.setTextColor(Color.WHITE)
+        circleLabel.textSize = 24f
         updateStatusLine()
 
         renderChips()
