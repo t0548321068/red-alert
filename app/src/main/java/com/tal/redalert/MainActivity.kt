@@ -626,28 +626,78 @@ class MainActivity : Activity() {
         d.show()
     }
 
+    /** קטגוריה פתוחה במגירת ההגדרות (נשמרת בין פתיחות) */
+    private var openCat = -1
+
+    /** הגדרות: מגירה שנפתחת מצד ימין, כל קטגוריה נפתחת/נסגרת במקום */
     private fun showSettings() {
-        fullPage("הגדרות") { c ->
-            fun catBtn(icon: String, title: String, sub: String, open: () -> Unit) {
-                val b = LinearLayout(this).apply {
-                    gravity = Gravity.CENTER_VERTICAL
-                    setPadding(dp(16), dp(16), dp(16), dp(16))
-                    background = graphite(20)
-                    setOnClickListener { open() }
-                }
-                b.addView(text(icon, 24f, Color.WHITE), LinearLayout.LayoutParams(dp(44), -2))
-                val t = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-                t.addView(text(title, 17f, Color.WHITE))
-                t.addView(text(sub, 12f, Color.parseColor("#AAAAAA")))
-                b.addView(t, LinearLayout.LayoutParams(0, -2, 1f))
-                b.addView(text("‹", 20f, Color.parseColor("#888888")))
-                c.addView(b, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
-            }
-            catBtn("🔔", "התראות", "קרוב אליי, צלילים, רטט, הקראה, שעות שקט") { showSettingsAlerts() }
-            catBtn("🎨", "תצוגה", "ערכת צבעים, שעון ותאריך, מזג אוויר, ברכה") { showSettingsDisplay() }
-            catBtn("📱", "הרשאות וטלפון", "מסך מלא, חיסכון בסוללה, הגדרות הטלפון") { showSettingsPhone() }
-            catBtn("ℹ️", "כללי", "עדכונים, מה חדש, אודות") { showSettingsGeneral() }
+        val d = android.app.Dialog(this, android.R.style.Theme_Translucent_NoTitleBar)
+        val root = android.widget.FrameLayout(this).apply { setBackgroundColor(Color.parseColor("#99000000")) }
+        val panelW = (resources.displayMetrics.widthPixels * 0.85f).toInt()
+        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(18), dp(14), dp(30)) }
+        body.addView(text("⚙ הגדרות", 22f, Color.WHITE, bold = true).apply { setPadding(dp(4), 0, dp(4), dp(6)) })
+        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        body.addView(content)
+        val panel = ScrollView(this).apply {
+            setBackgroundColor(Color.parseColor("#111111"))
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            elevation = dp(12).toFloat()
+            isClickable = true
+            addView(body)
         }
+        root.addView(panel, android.widget.FrameLayout.LayoutParams(panelW, -1, Gravity.END))
+        root.layoutDirection = View.LAYOUT_DIRECTION_LTR   // END = ימין
+        root.setOnClickListener { close(d, panel, panelW) }
+
+        val cats = listOf(
+            Triple("🔔", "התראות", { alertsRows() }),
+            Triple("🎨", "תצוגה", { displayRows() }),
+            Triple("📱", "הרשאות וטלפון", { phoneRows() }),
+            Triple("ℹ️", "כללי", { generalRows() })
+        )
+        fun rebuild() {
+            content.removeAllViews()
+            cats.forEachIndexed { idx, (icon, title, rows) ->
+                val card = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = graphite(18) }
+                val head = LinearLayout(this).apply {
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(14), dp(15), dp(14), dp(15))
+                    setOnClickListener { openCat = if (openCat == idx) -1 else idx; rebuild() }
+                }
+                head.addView(text(icon, 20f, Color.WHITE), LinearLayout.LayoutParams(dp(36), -2))
+                head.addView(text(title, 16f, Color.WHITE, bold = true), LinearLayout.LayoutParams(0, -2, 1f))
+                head.addView(text(if (openCat == idx) "▲" else "▼", 13f, Color.parseColor("#AAAAAA")))
+                card.addView(head)
+                if (openCat == idx) rows().forEach { r ->
+                    card.addView(View(this).apply { setBackgroundColor(Color.parseColor("#14FFFFFF")) }, LinearLayout.LayoutParams(-1, dp(1)))
+                    val row = LinearLayout(this).apply {
+                        gravity = Gravity.CENTER_VERTICAL
+                        setPadding(dp(14), dp(12), dp(14), dp(12))
+                        setOnClickListener { r.action(); rebuild() }
+                    }
+                    row.addView(text(r.icon, 16f, Color.WHITE), LinearLayout.LayoutParams(dp(32), -2))
+                    row.addView(text(r.title, 14f, Color.WHITE), LinearLayout.LayoutParams(0, -2, 1f))
+                    row.addView(text(r.value(), 12f, Color.parseColor("#AAAAAA")))
+                    card.addView(row)
+                }
+                content.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+            }
+        }
+        rebuild()
+        d.setContentView(root)
+        d.window?.setLayout(-1, -1)
+        // חוזרים מחלון של הגדרה - מעדכנים את המצבים
+        d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
+        d.setOnKeyListener { _, k, e ->
+            if (k == android.view.KeyEvent.KEYCODE_BACK && e.action == android.view.KeyEvent.ACTION_UP) { close(d, panel, panelW); true } else false
+        }
+        panel.translationX = panelW.toFloat()
+        d.show()
+        panel.animate().translationX(0f).setDuration(220).start()
+    }
+
+    private fun close(d: android.app.Dialog, panel: View, w: Int) {
+        panel.animate().translationX(w.toFloat()).setDuration(180).withEndAction { d.dismiss() }.start()
     }
 
     /** כרטיס עם שורות: אייקון, שם, מצב בצד וחץ */
@@ -679,8 +729,8 @@ class MainActivity : Activity() {
 
     private fun onOff(b: Boolean) = if (b) "פעיל" else "כבוי"
 
-    private fun showSettingsAlerts() = rowsPage("🔔 התראות") {
-        listOf(
+    private fun alertsRows(): List<Row> {
+        return listOf(
             Row("📍", "קרוב אליי", { onOff(Prefs.nearMe(this)) }) { toggleNearMe() },
             Row("🔔", "צלילים", { if (AlertService.PHONE_DEFAULTS) "של הטלפון" else "" }) {
                 if (AlertService.PHONE_DEFAULTS) openNotificationSettings() else showSounds() },
@@ -693,8 +743,8 @@ class MainActivity : Activity() {
         )
     }
 
-    private fun showSettingsDisplay() = rowsPage("🎨 תצוגה") {
-        listOf(
+    private fun displayRows(): List<Row> {
+        return listOf(
             Row("🎨", "ערכת צבעים", { if (Prefs.darkTheme(this)) "כהה" else "בהירה" }) { chooseTheme() },
             Row("🕐", "שעון ותאריך", { "" }) { showClockSettings() },
             Row("🌤", "מזג אוויר", { if (Prefs.showWeather(this)) weatherLabel(Prefs.weatherMinutes(this)) else "מוסתר" }) {
@@ -704,17 +754,17 @@ class MainActivity : Activity() {
         )
     }
 
-    private fun showSettingsPhone() = rowsPage("📱 הרשאות וטלפון") {
-        listOf(
+    private fun phoneRows(): List<Row> {
+        return listOf(
             Row("📱", "מסך מלא בהתראה", { if (Settings.canDrawOverlays(this)) "פעיל ✓" else "לא פעיל" }) { openFullScreenSettings() },
             Row("🔋", "חיסכון בסוללה", { "" }) { openBatterySettings() },
             Row("⚙️", "הגדרות התראות בטלפון", { "" }) { openNotificationSettings() }
         )
     }
 
-    private fun showSettingsGeneral() = rowsPage("ℹ️ כללי") {
+    private fun generalRows(): List<Row> {
         val beta = Prefs.betaUnlocked(this) || Prefs.betaUpdates(this)
-        listOf(
+        return listOf(
             Row("⬆️", "בדיקת עדכונים", { "v" + Updater.versionLabel(this) }) { Updater.check(this, silent = false) },
             Row("🆕", "מה חדש", { "" }) { showWhatsNew(sinceVersion = null) },
             Row("ℹ️", "אודות", { "" }) { showAbout() }
