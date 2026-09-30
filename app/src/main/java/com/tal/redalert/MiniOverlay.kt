@@ -33,6 +33,7 @@ object MiniOverlay {
         fun dp(v: Int) = (v * d).toInt()
 
         val title = full.getStringExtra("title") ?: "צבע אדום"
+        val area = full.getStringExtra("body") ?: ""
         val level = full.getIntExtra("level", AlertService.LEVEL_ALERT)
         val shelter = full.getIntExtra("shelter", -1)
         val firedAt = full.getLongExtra("firedAt", System.currentTimeMillis())
@@ -42,9 +43,26 @@ object MiniOverlay {
             else -> "#D50000"
         }
 
+        // שורה 1: סוג ההתראה · שורה 2: האזור
         val label = TextView(app).apply {
             setTextColor(Color.WHITE); textSize = 15f
-            setPadding(dp(14), dp(10), dp(8), dp(10))
+            maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+        val areaLine = TextView(app).apply {
+            text = area; setTextColor(Color.parseColor("#E6FFFFFF")); textSize = 13f
+            maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
+            visibility = if (area.isEmpty()) View.GONE else View.VISIBLE
+        }
+        val texts = LinearLayout(app).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(8), dp(8), dp(8))
+            addView(label); addView(areaLine)
+        }
+        // הספירה - תמיד גלויה, גם כשהאזור ארוך
+        val timer = TextView(app).apply {
+            setTextColor(Color.WHITE); textSize = 18f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setPadding(dp(6), 0, dp(4), 0)
         }
         val closeX = TextView(app).apply {
             text = "✕"; setTextColor(Color.WHITE); textSize = 18f
@@ -56,7 +74,8 @@ object MiniOverlay {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             background = GradientDrawable().apply { cornerRadius = dp(22).toFloat(); setColor(Color.parseColor(color)) }
             elevation = dp(6).toFloat()
-            addView(label, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(timer)
             addView(closeX)
             setOnClickListener {
                 hide(app)
@@ -81,11 +100,11 @@ object MiniOverlay {
                 val now = System.currentTimeMillis()
                 val enterEnd = firedAt + shelter.coerceAtLeast(0) * 1000L
                 val stayEnd = enterEnd + Prefs.STAY_MS
-                label.text = when {
-                    level != AlertService.LEVEL_ALERT -> title
-                    shelter > 0 && now < enterEnd -> "🚨 $title · " + mmss(enterEnd - now)
-                    now < stayEnd -> "⏳ במרחב המוגן · " + mmss(stayEnd - now)
-                    else -> "✅ אפשר לצאת מהמרחב המוגן"
+                when {
+                    level != AlertService.LEVEL_ALERT -> { label.text = title; timer.text = "" }
+                    shelter > 0 && now < enterEnd -> { label.text = "🚨 $title"; timer.text = mmss(enterEnd - now) }
+                    now < stayEnd -> { label.text = "⏳ במרחב המוגן"; timer.text = mmss(stayEnd - now) }
+                    else -> { label.text = "✅ אפשר לצאת מהמרחב המוגן"; timer.text = "" }
                 }
                 if (level == AlertService.LEVEL_ALERT && now < stayEnd) ui.postDelayed(this, 500)
             }
