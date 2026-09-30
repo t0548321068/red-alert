@@ -49,7 +49,7 @@ class AlertWidgetLarge : AppWidgetProvider() {
                 v.setTextViewText(R.id.wl_cd_title,
                     if (inStay) "⏳ נשארים במרחב המוגן" else Prefs.countdownTitle(c))
                 v.setTextViewText(R.id.wl_cd_note,
-                    if (inStay) "עד שאפשר לצאת" else "היכנסו למרחב המוגן")
+                    if (inStay) "זמן מומלץ במרחב המוגן" else "היכנסו למרחב המוגן")
                 v.setChronometer(R.id.wl_cd, SystemClock.elapsedRealtime() + if (inStay) stayLeft else left, null, true)
                 v.setChronometerCountDown(R.id.wl_cd, true)
             } else {

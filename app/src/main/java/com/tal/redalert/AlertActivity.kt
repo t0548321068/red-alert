@@ -39,7 +39,7 @@ class AlertActivity : Activity() {
                 if (now < enterEnd) { st.text = ""; ui.postDelayed(this, 250); return }
                 val left = ((enterEnd + Prefs.STAY_MS - now) / 1000).toInt()
                 st.text = if (left > 0) "⏳ נשארים במרחב המוגן: %d:%02d".format(left / 60, left % 60)
-                          else "✅ אפשר לצאת מהמרחב המוגן\n(אם לא התקבלה הנחיה אחרת)"
+                          else "⏳ ממתינים להודעת סיום אירוע"
                 if (left > 0) { ui.postDelayed(this, 250); return }
             }
             if (countdown != null && shelterSec > 0 && now - firedAt < shelterSec * 1000L) ui.postDelayed(this, 250)

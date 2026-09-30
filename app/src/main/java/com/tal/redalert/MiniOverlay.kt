@@ -31,7 +31,7 @@ object MiniOverlay {
 
     private const val RED = "#D50000"
     private const val ORANGE = "#B45309"   // נשארים במרחב המוגן
-    private const val GREEN = "#2E7D32"    // אפשר לצאת / האירוע הסתיים
+    private const val GREEN = "#2E7D32"    // האירוע הסתיים - ניתן לצאת
 
     fun canShow(c: Context) = Settings.canDrawOverlays(c)
 
@@ -112,12 +112,12 @@ object MiniOverlay {
                 val now = System.currentTimeMillis()
                 val enterEnd = firedAt + shelter.coerceAtLeast(0) * 1000L
                 val stayEnd = enterEnd + Prefs.STAY_MS
-                // ספירה לכניסה (אדום) -> ספירת שהייה במרחב המוגן (כתום) -> אפשר לצאת (ירוק)
+                // ספירה לכניסה (אדום) -> שהייה במרחב המוגן (כתום) -> ממתינים לסיום (כתום). ירוק רק בהודעת סיום
                 when {
                     level != AlertService.LEVEL_ALERT -> { label.text = title; timer.text = "" }
                     shelter > 0 && now < enterEnd -> { label.text = "🚨 $title"; timer.text = mmss(enterEnd - now); bg?.setColor(Color.parseColor(RED)) }
                     now < stayEnd -> { label.text = "⏳ נשארים במרחב המוגן"; timer.text = mmss(stayEnd - now); bg?.setColor(Color.parseColor(ORANGE)) }
-                    else -> { label.text = "✅ אפשר לצאת מהמרחב המוגן"; timer.text = ""; bg?.setColor(Color.parseColor(GREEN)) }
+                    else -> { label.text = "⏳ ממתינים להודעת סיום"; timer.text = ""; bg?.setColor(Color.parseColor(ORANGE)) }
                 }
                 if (level == AlertService.LEVEL_ALERT && now < stayEnd) ui.postDelayed(this, 500)
             }
