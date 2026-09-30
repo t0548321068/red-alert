@@ -439,7 +439,8 @@ class MainActivity : Activity() {
         top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 20f, Color.WHITE, bold = true)
             .apply { setPadding(0, dp(2), 0, 0) })
         val sec = if (nearOn && near.isNotEmpty()) AreaData.shelterSeconds(this, near.take(1)) else null
-        if (sec != null) top.addView(text("⏱ ${AreaData.shelterText(sec)} להגעה למרחב מוגן", 12f, light)
+        if (sec != null) top.addView(text(if (sec <= 0) "⏱ כניסה מיידית למרחב מוגן"
+                else "⏱ ${AreaData.shelterText(sec)} להגעה למרחב מוגן", 12f, light)
             .apply { setPadding(0, dp(2), 0, 0) })
         chips.addView(top)
 
