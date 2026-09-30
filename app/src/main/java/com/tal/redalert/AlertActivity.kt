@@ -206,7 +206,7 @@ class AlertActivity : Activity() {
             layoutDirection = android.view.View.LAYOUT_DIRECTION_LTR
         }
         val label = TextView(this).apply {
-            text = "החלק לסגירה  ›››"
+            text = "החלק לסגירה  ❯❯❯"   // ❯ לא מתהפך בטקסט עברי - מצביע לכיוון ההחלקה
             setTextColor(Color.WHITE); textSize = 16f; gravity = Gravity.CENTER
         }
         track.addView(label, android.widget.FrameLayout.LayoutParams(-1, -1))
