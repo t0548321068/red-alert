@@ -281,7 +281,6 @@ class MainActivity : Activity() {
             status.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
         }
         col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
-        col.addView(clockCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         weatherLine = text("", 14f, C.TEXT).apply {
             gravity = Gravity.CENTER
         }
@@ -325,13 +324,15 @@ class MainActivity : Activity() {
             addView(circleGlow, LinearLayout.LayoutParams(dp(62), dp(34)))
             setOnClickListener { toggle() }
         }
-        col.addView(circle, LinearLayout.LayoutParams(-1, dp(90)).apply { topMargin = dp(16) })
+        col.addView(circle, LinearLayout.LayoutParams(-1, dp(90)).apply { topMargin = dp(10) })
         // מצב שקט - מוצג רק כשהוא פעיל עכשיו
         quietLine = text("", 12f, C.ORANGE).apply {
             gravity = Gravity.CENTER
             setOnClickListener { showQuietHours() }
         }
-        col.addView(quietLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(20) })
+        col.addView(quietLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        // כרטיס השעה ומזג האוויר - מתחת לכפתור מוגן
+        col.addView(clockCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6); bottomMargin = dp(16) })
 
         // האזורים שלי
         // אזורי התרעה: אזור לפי מיקום + אזורים נוספים
@@ -430,6 +431,7 @@ class MainActivity : Activity() {
         // המיקום שלי
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
             setPadding(dp(16), dp(14), dp(16), dp(14))
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 if (nearOn) intArrayOf(Color.parseColor("#1E8E3E"), Color.parseColor("#145A2A"))
