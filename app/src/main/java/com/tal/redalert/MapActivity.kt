@@ -35,6 +35,13 @@ class MapActivity : Activity() {
                     val data = buildData(dark)
                     runOnUiThread {
                         view.evaluateJavascript("render($data);", null)
+                        // נפתח מהתראה ברשימה - מתמקדים באזורים שלה
+                        intent.getStringExtra("focus")?.let { body ->
+                            val names = JSONArray()
+                            body.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                                .forEach { raw -> AreaData.match(this@MapActivity, raw).forEach { names.put(it) } }
+                            view.evaluateJavascript("focusOn($names, ${intent.getLongExtra("focusTs", 0L)});", null)
+                        }
                         locate(view)
                     }
                 }.start()

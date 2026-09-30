@@ -492,6 +492,11 @@ class MainActivity : Activity() {
             val row = LinearLayout(this).apply {
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(0, dp(10), 0, dp(10))
+                // לחיצה: המפה על האזורים של ההתראה
+                setOnClickListener {
+                    startActivity(Intent(this@MainActivity, MapActivity::class.java)
+                        .putExtra("focus", e.body).putExtra("focusTs", e.ts))
+                }
             }
             val barColor = when (e.level) {
                 AlertService.LEVEL_PRE -> Color.parseColor("#F08C00")
@@ -510,7 +515,8 @@ class MainActivity : Activity() {
             // שעה, ומתחת: היום / אתמול / תאריך
             val whenCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.END }
             if (e.ts > 0) {
-                whenCol.addView(text(TimeFormat.time(this, e.ts).take(5), 12f, muted))
+                whenCol.addView(text(java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
+                    .format(java.util.Date(e.ts)), 12f, muted))
                 whenCol.addView(text(dayLabel(e.ts), 12f, muted))
             } else whenCol.addView(text(e.time.take(5), 12f, muted))
             row.addView(whenCol, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })

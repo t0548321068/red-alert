@@ -172,7 +172,24 @@
     if (acc > 0) L.circle(ME, { radius: acc, color: '#0A84FF', weight: 1, fillOpacity: .15, interactive: false }).addTo(meLayer);
     L.circleMarker(ME, { radius: 8, color: '#fff', weight: 3, fillColor: '#0A84FF', fillOpacity: 1 })
       .bindPopup('המיקום שלי' + (acc > 0 ? ' (±' + Math.round(acc) + ' מ\')' : '')).addTo(meLayer);
-    if (!HAS_BOUNDS) map.setView(ME, 12);
+    if (!HAS_BOUNDS && !FOCUSED) map.setView(ME, 12);
+  }
+
+  // מתמקד באזורים של התראה מסוימת (מהרשימה במסך הראשי)
+  var FOCUSED = false;
+  function focusOn(names, ts) {
+    if (!names || !names.length) return;
+    FOCUSED = true;
+    var age = (Date.now() - ts) / 3600000;
+    var h = age <= 1 ? 1 : age <= 24 ? 24 : 168;
+    HOURS = h; MODE = 'mine';
+    document.querySelectorAll('.bar button[data-h]').forEach(function (x) { x.classList.toggle('on', +x.dataset.h === h); });
+    document.querySelectorAll('.bar button[data-m]').forEach(function (x) { x.classList.toggle('on', x.dataset.m === 'mine'); });
+    drawAlerts();
+    var pts = [];
+    names.forEach(function (n) { var a = ALL_AREAS[n]; if (a) pts = pts.concat(a.p || [a.c]); });
+    if (pts.length) map.fitBounds(pts, { padding: [60, 60], maxZoom: 14 });
+    alertLayer.eachLayer(function (l) { if (names.some(function (n) { return l.getPopup() && l.getPopup().getContent().indexOf('<b>' + n + '</b>') === 0; })) l.openPopup(); });
   }
 
   document.getElementById('meBtn').onclick = function () {
