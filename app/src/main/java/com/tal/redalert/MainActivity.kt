@@ -291,7 +291,7 @@ class MainActivity : Activity() {
 
 
         // פיד ארצי - פס רץ עם כל ההתראות בארץ (בלי צליל)
-        feedLine = text("", 12f, C.MUTED).apply {
+        feedLine = text("", 14f, C.MUTED).apply {
             setSingleLine()
             ellipsize = TextUtils.TruncateAt.MARQUEE
             marqueeRepeatLimit = -1
@@ -703,6 +703,14 @@ class MainActivity : Activity() {
             addView(body)
         }
         root.addView(panel, android.widget.FrameLayout.LayoutParams(panelW, -1, Gravity.END))
+        // המגירה לא נכנסת מתחת לשורת הסטטוס / סרגל הניווט של הטלפון
+        val statusH = resources.getIdentifier("status_bar_height", "dimen", "android").let { if (it > 0) resources.getDimensionPixelSize(it) else dp(24) }
+        body.setPadding(dp(14), statusH + dp(14), dp(14), dp(30))
+        root.setOnApplyWindowInsetsListener { _, insets ->
+            @Suppress("DEPRECATION")
+            body.setPadding(dp(14), maxOf(insets.systemWindowInsetTop, statusH) + dp(14), dp(14), insets.systemWindowInsetBottom + dp(30))
+            insets
+        }
         root.layoutDirection = View.LAYOUT_DIRECTION_LTR   // END = ימין
         root.setOnClickListener { close(d, panel, panelW) }
 
@@ -1183,6 +1191,9 @@ class MainActivity : Activity() {
             |• מזג אוויר: Open-Meteo · שמות מקומות: OpenStreetMap
             |
             |⚠️ האפליקציה משלימה ואינה מחליפה את האפליקציה הרשמית של פיקוד העורף.
+            |
+            |נבנתה על ידי טל ששון
+            |© ${java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)} כל הזכויות שמורות
         """.trimMargin()
         AlertDialog.Builder(this, dlg())
             .setIcon(R.mipmap.ic_launcher)
