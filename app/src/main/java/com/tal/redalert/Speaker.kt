@@ -19,7 +19,7 @@ class Speaker(private val c: Context) {
         private set
     private var onDone: (() -> Unit)? = null
 
-    private val tts: TextToSpeech = TextToSpeech(c.applicationContext) { status ->
+    private val tts: TextToSpeech = TextToSpeech(c.applicationContext, { status ->
         if (status == TextToSpeech.SUCCESS) {
             val r = tts.setLanguage(Locale("he", "IL"))
             hebrewOk = r != TextToSpeech.LANG_MISSING_DATA && r != TextToSpeech.LANG_NOT_SUPPORTED
@@ -31,7 +31,7 @@ class Speaker(private val c: Context) {
             applyVoice()
             ready = true
         } else hebrewOk = false
-    }
+    }, GOOGLE_TTS)   // מנוע ההקראה של Google (קול עברי טבעי). אם לא מותקן - המנוע הרגיל של הטלפון
 
     init {
         tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
@@ -48,8 +48,10 @@ class Speaker(private val c: Context) {
      */
     fun applyVoice() {
         val male = Prefs.maleVoice(c)
+        // קולות עבריים - הכי איכותיים קודם, ומועדפים קולות שלא צריכים אינטרנט
         val hebrew = try {
             tts.voices?.filter { it.locale.language == "he" || it.locale.language == "iw" }.orEmpty()
+                .sortedWith(compareBy({ it.isNetworkConnectionRequired }, { -it.quality }))
         } catch (_: Exception) { emptyList() }
         fun isMale(v: android.speech.tts.Voice) =
             v.name.contains("male", true) && !v.name.contains("female", true)
@@ -78,6 +80,7 @@ class Speaker(private val c: Context) {
     fun shutdown() = try { tts.shutdown() } catch (_: Exception) { }
 
     companion object {
+        const val GOOGLE_TTS = "com.google.android.tts"
         /** בניית הטקסט להקראה */
         fun textFor(title: String, areas: List<String>, shelter: Int?): String {
             val names = areas.map { it.replace(" - ", " ").replace("-", " ") }
