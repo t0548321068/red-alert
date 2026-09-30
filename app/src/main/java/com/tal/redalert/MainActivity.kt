@@ -578,9 +578,9 @@ class MainActivity : Activity() {
     // ---- חיווים ----
 
     /** חיווי: אייקון למעלה, טקסט מתחת */
-    private fun indicator(icon: Int, onClick: () -> Unit) = text("", 11f, Color.parseColor("#E6E6E6")).apply {
+    private fun indicator(icon: Int, onClick: () -> Unit) = text("", 12f, Color.parseColor("#E6E6E6")).apply {
         setCompoundDrawablesRelativeWithIntrinsicBounds(0, icon, 0, 0)
-        compoundDrawablePadding = dp(1)
+        compoundDrawablePadding = dp(4)
         gravity = Gravity.CENTER
         setOnClickListener { onClick() }
     }
