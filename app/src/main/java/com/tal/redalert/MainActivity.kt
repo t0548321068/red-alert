@@ -152,11 +152,11 @@ class MainActivity : Activity() {
         val age = if (last == 0L) -1L else (System.currentTimeMillis() - last) / 1000
         val ago = when {
             age < 0 -> "מתחבר…"
-            age <= 1 -> "עדכון אחרון עכשיו"
-            age < 60 -> "עדכון אחרון לפני $age שניות"
-            else -> "עדכון אחרון לפני ${age / 60} דק׳"
+            age <= 1 -> "עכשיו"
+            age < 60 -> "לפני $age שניות"
+            else -> "לפני ${age / 60} דק׳"
         }
-        circleHint.text = "מוגן · ${SourceHealth.upCount()}/${SourceHealth.total()} מקורות · $ago\nלחיצה לכיבוי"
+        circleHint.text = "לחיצה לכיבוי\nעדכון אחרון: $ago"
     }
 
     private fun updateClock() {
