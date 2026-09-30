@@ -9,12 +9,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: v1.23-work
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - run: pip install edge-tts
+      - run: python tools/gen_voice.py
       - run: |
-          edge-tts --voice he-IL-AvriNeural --text "צבע אדום. ירי רקטות וטילים. שדרות, איבים, ניר עם. היכנסו למרחב המוגן." --write-media avri.mp3
-          edge-tts --voice he-IL-HilaNeural --text "צבע אדום. ירי רקטות וטילים. שדרות, איבים, ניר עם. היכנסו למרחב המוגן." --write-media hila.mp3
-          ls -la
-      - run: |
-          mkdir -p samples && mv *.mp3 samples/
+          du -sh app/src/main/assets/voice
           git config user.name bot && git config user.email bot@users.noreply.github.com
-          git add samples && git commit -m "voice samples [skip ci]" && git push
+          git add app/src/main/assets/voice
+          git commit -m "Avri voice clips [skip ci]" && git push origin HEAD:v1.23-work
