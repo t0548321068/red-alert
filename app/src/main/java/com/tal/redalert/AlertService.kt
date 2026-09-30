@@ -406,11 +406,10 @@ class AlertService : Service() {
 
         val manual = Prefs.cities(this)
         val near = if (Prefs.nearMe(this)) Prefs.nearbyAreas(this) else emptyList()
-        // בלי ערים ובלי מיקום ידוע - כל הארץ (עדיף התראה מיותרת מאשר לפספס)
-        val allCountry = manual.isEmpty() && near.isEmpty()
+        // רק לפי המיקום + האזורים שהוספתי. אף פעם לא "כל הארץ"
         val fresh = areas
             .filter { a ->
-                allCountry || manual.any { f -> a.contains(f) } ||
+                manual.any { f -> a.contains(f) } ||
                     near.any { n -> n == a || n.startsWith("$a -") || a.startsWith("$n -") }
             }
             .filter { a ->
@@ -457,7 +456,7 @@ class AlertService : Service() {
                                 Prefs.addVisits(this, AreaData.areasAt(this, loc.latitude, loc.longitude, 0.0),
                                     System.currentTimeMillis())
                                 if (Prefs.nearMe(this)) {
-                                    val list = AreaData.areasAt(this, loc.latitude, loc.longitude).take(8)
+                                    val list = AreaData.areasAt(this, loc.latitude, loc.longitude, 1.0).take(4)
                                     if (list.isNotEmpty() && list != Prefs.nearbyAreas(this)) Prefs.setNearbyAreas(this, list)
                                 }
                             } catch (_: Exception) { }
