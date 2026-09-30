@@ -1,0 +1,12 @@
+de-DE-FlorianMultilingualNeural    Male      General                Friendly, Positive
+de-DE-SeraphinaMultilingualNeural  Female    General                Friendly, Positive
+en-AU-WilliamMultilingualNeural    Male      General                Friendly, Positive
+en-US-AndrewMultilingualNeural     Male      Conversation, Copilot  Warm, Confident, Authentic, Honest
+en-US-AvaMultilingualNeural        Female    Conversation, Copilot  Expressive, Caring, Pleasant, Friendly
+en-US-BrianMultilingualNeural      Male      Conversation, Copilot  Approachable, Casual, Sincere
+en-US-EmmaMultilingualNeural       Female    Conversation, Copilot  Cheerful, Clear, Conversational
+fr-FR-RemyMultilingualNeural       Male      General                Friendly, Positive
+fr-FR-VivienneMultilingualNeural   Female    General                Friendly, Positive
+it-IT-GiuseppeMultilingualNeural   Male      General                Friendly, Positive
+ko-KR-HyunsuMultilingualNeural     Male      General                Friendly, Positive
+pt-BR-ThalitaMultilingualNeural    Female    General                Friendly, Positive
