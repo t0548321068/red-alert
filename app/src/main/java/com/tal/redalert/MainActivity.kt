@@ -269,7 +269,7 @@ class MainActivity : Activity() {
             val now = System.currentTimeMillis()
             taps = if (now - lastTap < 1500) taps + 1 else 1
             lastTap = now
-            if (taps >= 7 && !Prefs.betaUnlocked(this@MainActivity)) {
+            if (taps >= 7 && !Prefs.betaUnlocked(this@MainActivity) && Prefs.betaAllowed(this@MainActivity)) {
                 Prefs.setBetaUnlocked(this@MainActivity, true)
                 android.widget.Toast.makeText(this@MainActivity, "🧪 גרסאות בטא נפתחו (⚙)",
                     android.widget.Toast.LENGTH_SHORT).show()
@@ -1171,7 +1171,8 @@ class MainActivity : Activity() {
             .setTitle("🧪 גרסאות בטא")
             .setMessage("קבלת גרסאות ניסיון לפני שהן משוחררות לכולם.\n" +
                 "יכולות להיות בהן תקלות. כשיוצאת גרסה רגילה חדשה – היא מותקנת כרגיל.\n\n" +
-                "מצב: " + if (on) "מקבל גרסאות בטא ✓" else "כבוי")
+                "מצב: " + (if (on) "מקבל גרסאות בטא ✓" else "כבוי") +
+                "\n\nמזהה מכשיר: ${Prefs.deviceCode(this)}")
             .setPositiveButton(if (on) "כבה" else "הפעל") { _, _ ->
                 Prefs.setBetaUpdates(this, !on)
                 Prefs.setSkippedVersion(this, "")
