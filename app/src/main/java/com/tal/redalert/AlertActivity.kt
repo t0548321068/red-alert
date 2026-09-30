@@ -60,7 +60,7 @@ class AlertActivity : Activity() {
         firedAt = intent.getLongExtra("firedAt", System.currentTimeMillis())
 
         val (bg, note) = when (level) {
-            AlertService.LEVEL_PRE -> "#E65100" to "היו בקרבת מרחב מוגן"
+            AlertService.LEVEL_PRE -> "#F08C00" to "היו בקרבת מרחב מוגן"
             AlertService.LEVEL_END -> "#2E7D32" to "ניתן לצאת מהמרחב המוגן"
             else -> "#D50000" to "היכנסו למרחב המוגן"
         }
