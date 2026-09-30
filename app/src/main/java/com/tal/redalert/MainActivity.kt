@@ -262,7 +262,7 @@ class MainActivity : Activity() {
         // בלי לחיצה על החיווים (רק 7 הלחיצות הנסתרות על הגרסה נשארו)
         netInd = indicator(R.drawable.ic_globe, null)
         locInd = indicator(R.drawable.ic_location, null)
-        srvInd = indicator(R.drawable.ic_antenna, null)
+        srvInd = indicator(R.drawable.ic_antenna) { showSourcesInfo() }   // לחיצה: רשימת המקורות
         // גרסה: 7 לחיצות מהירות - פותח את אפשרות הבטא (מוסתרת משאר המשתמשים)
         var taps = 0; var lastTap = 0L
         val verInd = indicator(R.drawable.ic_info) {
