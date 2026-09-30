@@ -198,22 +198,8 @@ class MainActivity : Activity() {
         // כותרת + גלגל שיניים
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         header.addView(text("צבע אדום", 22f, C.TEXT, bold = true))
-        header.addView(text("v${Updater.currentVersion(this)}" +
-            if (Updater.isBetaBuild(this) && !Updater.currentVersion(this).endsWith("b")) "b" else "", 13f, C.MUTED).apply {
-            setPadding(dp(8), dp(6), 0, 0)
-            // 7 לחיצות מהירות - פותח את אפשרות הבטא (מוסתרת משאר המשתמשים)
-            var taps = 0; var lastTap = 0L
-            setOnClickListener {
-                val now = System.currentTimeMillis()
-                taps = if (now - lastTap < 1500) taps + 1 else 1
-                lastTap = now
-                if (taps >= 7 && !Prefs.betaUnlocked(this@MainActivity)) {
-                    Prefs.setBetaUnlocked(this@MainActivity, true)
-                    android.widget.Toast.makeText(this@MainActivity, "🧪 גרסאות בטא נפתחו (⚙)",
-                        android.widget.Toast.LENGTH_SHORT).show()
-                }
-            }
-        }, LinearLayout.LayoutParams(0, -2, 1f))
+        // מספר הגרסה עבר לכרטיס החיווים - כאן רק מרווח
+        header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         header.addView(text("🕰", 20f, C.MUTED).apply {
             setPadding(dp(8), dp(4), dp(8), dp(4))
             setOnClickListener { startActivity(Intent(this@MainActivity, ClockActivity::class.java)) }
@@ -264,7 +250,21 @@ class MainActivity : Activity() {
         netInd = indicator(R.drawable.ic_globe) { showNetworkInfo() }
         locInd = indicator(R.drawable.ic_location) { onLocationIndicator() }
         srvInd = indicator(R.drawable.ic_antenna) { showSourcesInfo() }
-        listOf(netInd, locInd, srvInd).forEachIndexed { i, v ->
+        // גרסה: 7 לחיצות מהירות - פותח את אפשרות הבטא (מוסתרת משאר המשתמשים)
+        var taps = 0; var lastTap = 0L
+        val verInd = indicator(R.drawable.ic_info) {
+            val now = System.currentTimeMillis()
+            taps = if (now - lastTap < 1500) taps + 1 else 1
+            lastTap = now
+            if (taps >= 7 && !Prefs.betaUnlocked(this@MainActivity)) {
+                Prefs.setBetaUnlocked(this@MainActivity, true)
+                android.widget.Toast.makeText(this@MainActivity, "🧪 גרסאות בטא נפתחו (⚙)",
+                    android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+        setInd(verInd, R.drawable.ic_info, "v${Updater.currentVersion(this)}" +
+            if (Updater.isBetaBuild(this) && !Updater.currentVersion(this).endsWith("b")) "b" else "", C.MUTED)
+        listOf(netInd, locInd, srvInd, verInd).forEachIndexed { i, v ->
             if (i > 0) status.addView(View(this).apply { setBackgroundColor(Color.parseColor("#22FFFFFF")) },
                 LinearLayout.LayoutParams(dp(1), dp(26)))
             status.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
