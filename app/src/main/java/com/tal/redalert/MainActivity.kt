@@ -265,11 +265,18 @@ class MainActivity : Activity() {
         }
         setInd(verInd, R.drawable.ic_info, "v${Updater.currentVersion(this)}" +
             if (Updater.isBetaBuild(this) && !Updater.currentVersion(this).endsWith("b")) "b" else "", C.MUTED)
+        // רווחים שווים: אותו רווח בין כל שני חיווים ובקצוות (המפריד באמצע הרווח)
+        fun gap(w: Float) = status.addView(View(this), LinearLayout.LayoutParams(0, 1, w))
         listOf(netInd, locInd, srvInd, verInd).forEachIndexed { i, v ->
-            if (i > 0) status.addView(View(this).apply { setBackgroundColor(Color.parseColor("#22FFFFFF")) },
-                LinearLayout.LayoutParams(dp(1), dp(26)))
-            status.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
+            if (i == 0) gap(1f) else {
+                gap(0.5f)
+                status.addView(View(this).apply { setBackgroundColor(Color.parseColor("#22FFFFFF")) },
+                    LinearLayout.LayoutParams(dp(1), dp(26)))
+                gap(0.5f)
+            }
+            status.addView(v, LinearLayout.LayoutParams(-2, -2))
         }
+        gap(1f)
         col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
         col.addView(clockCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         weatherLine = text("", 14f, C.TEXT).apply {
