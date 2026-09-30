@@ -236,7 +236,7 @@ object Prefs {
      * בטא רק למכשירים שברשימה (לפי מזהה המכשיר). רשימה ריקה = בלי הגבלה.
      * בכל מכשיר אחר הבטא כבויה ומוסתרת, גם אם הופעלה בעבר.
      */
-    private val BETA_DEVICES = setOf<String>()
+    private val BETA_DEVICES = setOf("1F31D43C")   // הטלפון של טל
 
     /** מזהה קצר וקבוע של המכשיר (8 תווים) */
     fun deviceCode(c: Context): String {
@@ -246,7 +246,7 @@ object Prefs {
         return h.take(4).joinToString("") { "%02X".format(it) }
     }
 
-    fun betaAllowed(c: Context) = BETA_DEVICES.isEmpty() || deviceCode(c) in BETA_DEVICES
+    fun betaAllowed(c: Context) = BETA_DEVICES.isEmpty() || deviceCode(c).uppercase() in BETA_DEVICES
 
     fun betaUnlocked(c: Context) = sp(c).getBoolean("betaUnlocked", false) && betaAllowed(c)
     fun setBetaUnlocked(c: Context, v: Boolean) = sp(c).edit().putBoolean("betaUnlocked", v).commit()
