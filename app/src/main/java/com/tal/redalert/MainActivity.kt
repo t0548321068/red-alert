@@ -142,9 +142,13 @@ class MainActivity : Activity() {
             val key = "${Prefs.enabled(this@MainActivity)}|${Prefs.history(this@MainActivity).firstOrNull()?.ts}|" +
                 Prefs.nearbyAreas(this@MainActivity).joinToString()   // גם כשהאזורים הקרובים משתנים
             if (key != lastHistoryKey) { lastHistoryKey = key; refresh() }
-            ui.postDelayed(this, 1000 - System.currentTimeMillis() % 1000)
+            val ms = System.currentTimeMillis() % 1000
+            ui.postDelayed(this, 1000 - ms)
+            // הבהוב הנקודתיים: עוד עדכון באמצע השנייה
+            if (Prefs.blinkColon(this@MainActivity) && ms < 500) ui.postDelayed(halfTick, 500 - ms)
         }
     }
+    private val halfTick = Runnable { updateClock() }
 
     /** "מוגן · 8/8 מקורות · עדכון אחרון לפני 2 שניות" */
     private fun updateStatusLine() {
@@ -373,7 +377,7 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
-        ui.removeCallbacks(tick)
+        ui.removeCallbacks(tick); ui.removeCallbacks(halfTick)
         super.onPause()
     }
 

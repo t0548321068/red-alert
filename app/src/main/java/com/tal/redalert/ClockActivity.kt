@@ -33,6 +33,8 @@ class ClockActivity : Activity() {
     private val DIM = Color.parseColor("#8A8A8E")
     private val DIM2 = Color.parseColor("#55555A")
 
+    private val halfTick = Runnable { time.text = TimeFormat.clock(this, System.currentTimeMillis()) }
+
     private val tick = object : Runnable {
         override fun run() {
             val now = System.currentTimeMillis()
@@ -47,6 +49,8 @@ class ClockActivity : Activity() {
 
             if (now - lastShift > 60_000) { shift(); lastShift = now }
             ui.postDelayed(this, 1000 - now % 1000)
+            // הבהוב הנקודתיים: עוד עדכון באמצע השנייה
+            if (Prefs.blinkColon(this@ClockActivity) && now % 1000 < 500) ui.postDelayed(halfTick, 500 - now % 1000)
         }
     }
 
@@ -97,5 +101,5 @@ class ClockActivity : Activity() {
     }
 
     override fun onResume() { super.onResume(); ui.post(tick) }
-    override fun onPause() { ui.removeCallbacks(tick); super.onPause() }
+    override fun onPause() { ui.removeCallbacks(tick); ui.removeCallbacks(halfTick); super.onPause() }
 }

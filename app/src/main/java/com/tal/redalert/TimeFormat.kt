@@ -25,11 +25,11 @@ object TimeFormat {
 
     /**
      * שעה לשעון הגדול: הנקודתיים מורמות לאמצע גובה הספרות,
-     * ואם נבחר - מהבהבות (שקופות בשנייה אי־זוגית, בלי שהשעה זזה)
+     * ואם נבחר - מהבהבות (חצי שנייה מוצגות, חצי שנייה שקופות, בלי שהשעה זזה)
      */
     fun clock(c: Context, ms: Long): CharSequence {
         val t = time(c, ms)
-        val hide = Prefs.blinkColon(c) && cal(ms).get(Calendar.SECOND) % 2 == 1
+        val hide = Prefs.blinkColon(c) && ms % 1000 >= 500   // חצי שנייה כן, חצי שנייה לא
         val sp = android.text.SpannableString(t)
         t.forEachIndexed { i, ch ->
             if (ch != ':') return@forEachIndexed
