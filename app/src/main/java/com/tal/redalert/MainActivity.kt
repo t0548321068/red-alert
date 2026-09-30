@@ -36,7 +36,7 @@ class MainActivity : Activity() {
 
         fun apply(dark: Boolean) {
             fun c(d: String, l: String) = Color.parseColor(if (dark) d else l)
-            BG = c("#0E0E10", "#F2F2F7")
+            BG = c("#000000", "#F2F2F7")
             CARD = c("#1C1C1E", "#FFFFFF")
             CHIP = c("#2C2C2E", "#E5E5EA")
             TEXT = c("#F2F2F2", "#1C1C1E")
@@ -106,11 +106,11 @@ class MainActivity : Activity() {
                 val w = try { Weather.fetch(this, loc) } catch (_: Exception) { null }
                 runOnUiThread {
                     if (w == null) { weatherAt = 0L; return@runOnUiThread }
-                    val (icon, desc) = Weather.describe(w.code, w.isDay)
+                    val (icon, _) = Weather.describe(w.code, w.isDay)
                     val hint = if (hasPrecise()) "" else " (לחץ למיקום מדויק)"
-                    weatherLine.text = listOf("$icon ${w.temp}°", desc, w.place)
+                    weatherLine.text = listOf("$icon ${w.temp}°", w.place)
                         .filter { it.isNotBlank() }.joinToString(" · ") + hint
-                    weatherLine.setTextColor(C.TEXT)
+                    weatherLine.setTextColor(Color.parseColor("#E6FFFFFF"))
                     weatherAccuracy = w.accuracy
                 }
             }.start()
@@ -235,9 +235,24 @@ class MainActivity : Activity() {
             setOnClickListener { showClockSettings() }
         }
         greeting = text("", 16f, C.TEXT).apply { gravity = Gravity.CENTER }
-        col.addView(greeting, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
-        col.addView(clockTime, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
-        col.addView(clockDay)
+        // כרטיס השעון: רקע גרפיט, הכל ממורכז, טקסט לבן
+        val clockCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(16), dp(16), dp(16))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.parseColor("#232526"), Color.parseColor("#414345"))).apply {
+                cornerRadius = dp(24).toFloat()
+            }
+        }
+        val white = Color.WHITE
+        val soft = Color.parseColor("#E6FFFFFF")
+        greeting.setTextColor(soft)
+        clockTime.setTextColor(white); clockTime.textSize = 52f
+        clockDay.setTextColor(soft)
+        clockCard.addView(greeting)
+        clockCard.addView(clockTime)
+        clockCard.addView(clockDay)
+        col.addView(clockCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
         weatherLine = text("", 14f, C.TEXT).apply {
             gravity = Gravity.CENTER
             setOnClickListener { onWeatherClick() }
@@ -254,17 +269,18 @@ class MainActivity : Activity() {
                 true
             }
         }
-        col.addView(weatherLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+        weatherLine.setTextColor(soft)
+        clockCard.addView(weatherLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
 
         // חיווים: רשת / מיקום / שרתי התרעות
         val status = LinearLayout(this).apply { gravity = Gravity.CENTER }
         netInd = indicator(R.drawable.ic_wifi) { showNetworkInfo() }
         locInd = indicator(R.drawable.ic_location) { onLocationIndicator() }
-        srvInd = indicator(R.drawable.ic_cloud) { showSourcesInfo() }
+        srvInd = indicator(R.drawable.ic_antenna) { showSourcesInfo() }
         listOf(netInd, locInd, srvInd).forEachIndexed { i, v ->
             status.addView(v, LinearLayout.LayoutParams(-2, -2).apply { if (i > 0) marginStart = dp(8) })
         }
-        col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
 
         // פיד ארצי - פס רץ עם כל ההתראות בארץ (בלי צליל)
         feedLine = text("", 12f, C.MUTED).apply {
@@ -280,8 +296,8 @@ class MainActivity : Activity() {
         col.addView(feedLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
         // עיגול הפעלה/כיבוי
-        circleIcon = text("✓", 40f, C.GREEN).apply { gravity = Gravity.CENTER }
-        circleLabel = text("מוגן", 16f, C.GREEN, bold = true).apply { gravity = Gravity.CENTER }
+        circleIcon = text("✓", 46f, C.GREEN).apply { gravity = Gravity.CENTER }
+        circleLabel = text("מוגן", 22f, C.GREEN, bold = true).apply { gravity = Gravity.CENTER }
         circle = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -290,7 +306,7 @@ class MainActivity : Activity() {
             setOnClickListener { toggle() }
         }
         val circleWrap = FrameLayout(this).apply {
-            addView(circle, FrameLayout.LayoutParams(dp(136), dp(136), Gravity.CENTER))
+            addView(circle, FrameLayout.LayoutParams(dp(170), dp(170), Gravity.CENTER))
         }
         col.addView(circleWrap, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(24) })
         circleHint = text("", 12f, C.MUTED).apply { gravity = Gravity.CENTER }
@@ -404,10 +420,18 @@ class MainActivity : Activity() {
     private fun refresh() {
         val on = Prefs.enabled(this)
         val color = if (on) C.GREEN else C.OFF
+        // עיגול עם זוהר מבפנים (מהמרכז לרקע)
         circle.background = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
-            setColor(if (on) C.GREEN_BG else C.OFF_BG)
-            setStroke(dp(3), color)
+            gradientType = GradientDrawable.RADIAL_GRADIENT
+            gradientRadius = dp(85).toFloat()
+            colors = intArrayOf(if (on) C.GREEN_BG else C.OFF_BG, C.BG)
+            setStroke(dp(2), color)
+        }
+        if (Build.VERSION.SDK_INT >= 28) {
+            circle.elevation = dp(14).toFloat()
+            circle.outlineAmbientShadowColor = color
+            circle.outlineSpotShadowColor = color
         }
         circleIcon.text = if (on) "✓" else "✕"
         circleIcon.setTextColor(color)
@@ -549,7 +573,6 @@ class MainActivity : Activity() {
         compoundDrawablePadding = dp(5)
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(10), dp(5), dp(10), dp(5))
-        background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(C.CARD) }
         setOnClickListener { onClick() }
     }
 
@@ -624,14 +647,14 @@ class MainActivity : Activity() {
         else setInd(locInd, R.drawable.ic_location, "", C.MUTED)
 
         if (!Prefs.enabled(this)) {
-            setInd(srvInd, R.drawable.ic_cloud, "0/${SourceHealth.total()}", C.MUTED)
+            setInd(srvInd, R.drawable.ic_antenna, "0/${SourceHealth.total()}", C.MUTED)
         } else {
             val up = SourceHealth.upCount(); val all = SourceHealth.total()
             val color = when {
                 up < all && SourceHealth.anyConnecting() -> C.MUTED   // אחרי הפעלה/עדכון - עוד מתחברים
                 up == 0 -> C.RED; up < all / 2 -> C.ORANGE; else -> C.GREEN
             }
-            setInd(srvInd, R.drawable.ic_cloud, "$up/$all", color)
+            setInd(srvInd, R.drawable.ic_antenna, "$up/$all", color)
         }
     }
 
@@ -1061,10 +1084,10 @@ class MainActivity : Activity() {
         if (bold) typeface = Typeface.DEFAULT_BOLD
     }
 
+    /** קטע במסך - בלי רקע (עיצוב נקי) */
     private fun card() = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        setPadding(dp(14), dp(12), dp(14), dp(12))
-        background = GradientDrawable().apply { cornerRadius = dp(14).toFloat(); setColor(C.CARD) }
+        setPadding(dp(2), dp(12), dp(2), dp(4))
     }
 
     private fun chip(label: String, removable: Boolean, onRemove: () -> Unit) =
