@@ -305,15 +305,15 @@ class MainActivity : Activity() {
             addView(circleLabel)
             setOnClickListener { toggle() }
         }
-        // הילה שקופה סביב כל הכפתור (בלי צל שחור מתחתיו)
-        circleGlow = View(this)
+        // כפתור מלבני עם הילה שקופה מסביב (בלי צל שחור מתחתיו)
+        circleGlow = View(this).apply { setLayerType(View.LAYER_TYPE_SOFTWARE, null) }
         val circleWrap = FrameLayout(this).apply {
-            addView(circleGlow, FrameLayout.LayoutParams(dp(230), dp(230), Gravity.CENTER))
-            addView(circle, FrameLayout.LayoutParams(dp(170), dp(170), Gravity.CENTER))
+            addView(circleGlow, FrameLayout.LayoutParams(-1, dp(136)))
+            addView(circle, FrameLayout.LayoutParams(-1, dp(100)).apply { setMargins(dp(18), dp(18), dp(18), dp(18)) })
         }
-        col.addView(circleWrap, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(-6) })
+        col.addView(circleWrap, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6); marginStart = dp(-18); marginEnd = dp(-18) })
         circleHint = text("", 12f, C.MUTED).apply { gravity = Gravity.CENTER }
-        col.addView(circleHint, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(-12) })
+        col.addView(circleHint, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(-8) })
         // מצב שקט - מוצג רק כשהוא פעיל עכשיו
         quietLine = text("", 12f, C.ORANGE).apply {
             gravity = Gravity.CENTER
@@ -390,23 +390,15 @@ class MainActivity : Activity() {
         val color = if (on) C.GREEN else C.OFF
         // עיגול מלא: צבע בהיר במרכז שמתכהה לקצוות, כיתוב לבן מודגש
         circle.background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
+            cornerRadius = dp(24).toFloat()
             gradientType = GradientDrawable.RADIAL_GRADIENT
-            gradientRadius = dp(85).toFloat()
+            gradientRadius = dp(180).toFloat()
             colors = if (on) intArrayOf(Color.parseColor("#30D158"), Color.parseColor("#0B3D1A"))
                      else intArrayOf(Color.parseColor("#8E8E93"), Color.parseColor("#2A2A2C"))
         }
         circle.elevation = 0f
         val glow = if (on) Color.parseColor("#30D158") else Color.parseColor("#8E8E93")
-        fun a(x: Int) = (glow and 0x00FFFFFF) or (x shl 24)
-        circleGlow.background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            gradientType = GradientDrawable.RADIAL_GRADIENT
-            gradientRadius = dp(115).toFloat()
-            if (Build.VERSION.SDK_INT >= 29)
-                setColors(intArrayOf(a(0x80), a(0x80), a(0x40), a(0)), floatArrayOf(0f, 0.72f, 0.82f, 1f))
-            else colors = intArrayOf(a(0x80), a(0x50), a(0))
-        }
+        circleGlow.background = GlowRect(glow, dp(18).toFloat(), dp(24).toFloat())
         circleIcon.visibility = View.GONE
         circleLabel.text = if (on) "מוגן" else "כבוי"
         circleLabel.setTextColor(Color.WHITE)
@@ -1446,4 +1438,20 @@ class FlowLayout(context: Context, private val gap: Int) : ViewGroup(context) {
             rowH = maxOf(rowH, c.measuredHeight)
         }
     }
+}
+
+/** הילה מסביב למלבן מעוגל: המלבן עצמו + טשטוש החוצה לכל הכיוונים */
+private class GlowRect(color: Int, private val blur: Float, private val radius: Float) : android.graphics.drawable.Drawable() {
+    private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        this.color = (color and 0x00FFFFFF) or (0x99 shl 24)
+        maskFilter = android.graphics.BlurMaskFilter(blur * 0.8f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+    }
+    override fun draw(c: android.graphics.Canvas) {
+        val r = android.graphics.RectF(bounds).apply { inset(blur, blur) }
+        c.drawRoundRect(r, radius, radius, paint)
+    }
+    override fun setAlpha(a: Int) { paint.alpha = a }
+    override fun setColorFilter(f: android.graphics.ColorFilter?) { paint.colorFilter = f }
+    @Deprecated("Deprecated in Java")
+    override fun getOpacity() = android.graphics.PixelFormat.TRANSLUCENT
 }
