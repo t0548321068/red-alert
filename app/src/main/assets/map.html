@@ -51,7 +51,7 @@
   <div><span class="dot" style="background:#FF9F0A"></span>התראה מקדימה</div>
   <div><span class="dot" style="background:#30D158"></span>האירוע הסתיים</div>
   <div><span class="dot" style="background:#0A84FF"></span>המיקום שלי</div>
-  <div><span class="dot" style="background:transparent;border:2px dashed #0A84FF;width:7px;height:7px"></span>אזורים שהייתי בהם</div>
+  <div><span class="dot" style="background:transparent;border:2px dashed #0A84FF;width:7px;height:7px"></span>האזור שלי עכשיו</div>
 </div>
 <button class="me-btn" id="meBtn" title="המיקום שלי">📍</button>
 <script>
@@ -69,7 +69,7 @@
   var alertLayer = L.layerGroup().addTo(map);    // אזורים עם התראה
   var visitLayer = L.layerGroup().addTo(map);   // אזורים שהייתי בהם
   var meLayer = L.layerGroup().addTo(map);
-  var DATA = { dark: true, all: [], mine: [], visits: {} }, HOURS = 24, MODE = 'all', ME = null, HAS_BOUNDS = false;
+  var DATA = { dark: true, all: [], mine: [] }, HOURS = 24, MODE = 'all', ME = null, HAS_BOUNDS = false;
 
   function drawBase() {
     baseLayer.clearLayers(); labelLayer.clearLayers();
@@ -117,7 +117,6 @@
   function drawAlerts() {
     alertLayer.clearLayers();
     var since = Date.now() - HOURS * 3600 * 1000, latest = {};
-    drawVisits(since);
     (DATA[MODE] || []).forEach(function (e) {
       if (e.ts < since) return;
       e.areas.forEach(function (a) { if (!latest[a] || latest[a].ts < e.ts) latest[a] = e; });
@@ -135,24 +134,28 @@
     empty.style.display = bounds.length ? 'none' : 'block';
     clearTimeout(window._emptyT);
     if (!bounds.length) window._emptyT = setTimeout(function () { empty.style.display = 'none'; }, 3500);
-    // גם האזורים שהייתי בהם - שיראו יחד עם ההתראות
-    var v = DATA.visits || {};
-    var vb = Object.keys(v).filter(function (n) { return v[n] >= since && ALL_AREAS[n]; }).map(function (n) { return ALL_AREAS[n].c; });
-    if (bounds.length) bounds = bounds.concat(vb);
     HAS_BOUNDS = bounds.length > 0;
     if (HAS_BOUNDS) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
     else if (ME) map.setView(ME, 12);
   }
 
-  // אזורי ההתראה שהייתי בהם בטווח הזמן - מסגרת כחולה מקווקוות
-  function drawVisits(since) {
+  // האזור שבו אני נמצא עכשיו - מסגרת כחולה מקווקוות (יחד עם הנקודה הכחולה)
+  function inside(poly, lat, lon) {
+    var c = false;
+    for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      var yi = poly[i][0], xi = poly[i][1], yj = poly[j][0], xj = poly[j][1];
+      if (((yi > lat) !== (yj > lat)) && (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi)) c = !c;
+    }
+    return c;
+  }
+  function drawHere() {
     visitLayer.clearLayers();
-    var v = DATA.visits || {};
-    Object.keys(v).forEach(function (name) {
-      if (v[name] < since) return;
-      var a = ALL_AREAS[name]; if (!a || !a.p) return;
-      L.polygon(a.p, { color: '#0A84FF', weight: 2.5, dashArray: '6 5', fillColor: '#0A84FF', fillOpacity: .12 })
-        .bindPopup(info(name) + '<br>📍 הייתי כאן · ' + fmt(v[name])).addTo(visitLayer);
+    if (!ME) return;
+    Object.keys(ALL_AREAS).forEach(function (name) {
+      var a = ALL_AREAS[name];
+      if (!a.p || !inside(a.p, ME[0], ME[1])) return;
+      L.polygon(a.p, { color: '#0A84FF', weight: 2.5, dashArray: '6 5', fillColor: '#0A84FF', fillOpacity: .12, interactive: false })
+        .addTo(visitLayer);
     });
   }
 
@@ -164,6 +167,7 @@
   }
   function setMe(lat, lon, acc) {
     ME = [lat, lon];
+    drawHere();
     meLayer.clearLayers();
     if (acc > 0) L.circle(ME, { radius: acc, color: '#0A84FF', weight: 1, fillOpacity: .15, interactive: false }).addTo(meLayer);
     L.circleMarker(ME, { radius: 8, color: '#fff', weight: 3, fillColor: '#0A84FF', fillOpacity: 1 })
