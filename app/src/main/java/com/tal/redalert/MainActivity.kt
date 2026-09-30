@@ -928,14 +928,19 @@ class MainActivity : Activity() {
         else setInd(locInd, R.drawable.ic_location, "כבוי", C.MUTED)
 
         if (!Prefs.enabled(this)) {
-            setInd(srvInd, R.drawable.ic_antenna, "0/${SourceHealth.total()} מקורות", C.MUTED)
+            setInd(srvInd, R.drawable.ic_antenna, "לא מחובר", C.MUTED)
         } else {
             val up = SourceHealth.upCount(); val all = SourceHealth.total()
             val color = when {
                 up < all && SourceHealth.anyConnecting() -> C.MUTED   // אחרי הפעלה/עדכון - עוד מתחברים
                 up == 0 -> C.RED; up < all / 2 -> C.ORANGE; else -> C.GREEN
             }
-            setInd(srvInd, R.drawable.ic_antenna, "$up/$all מקורות", color)
+            val label = when {
+                up > 0 -> "מחובר לשרת"
+                SourceHealth.anyConnecting() -> "מתחבר…"
+                else -> "לא מחובר"
+            }
+            setInd(srvInd, R.drawable.ic_antenna, label, color)
         }
     }
 
