@@ -183,6 +183,8 @@ object Prefs {
 
     // ---- הקראה בקול ----
     fun speakAlerts(c: Context) = sp(c).getBoolean("speak", true)
+    fun shabbatMode(c: Context) = sp(c).getInt("shabbatMode", Shabbat.OFF)
+    fun setShabbatMode(c: Context, v: Int) = sp(c).edit().putInt("shabbatMode", v).commit()
     fun setSpeakAlerts(c: Context, v: Boolean) = sp(c).edit().putBoolean("speak", v).commit()
     /** קול ההקראה: גבר (ברירת מחדל, כמו בצופר) או אישה */
     fun maleVoice(c: Context) = sp(c).getBoolean("maleVoice", true)

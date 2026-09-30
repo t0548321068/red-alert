@@ -667,6 +667,17 @@ class MainActivity : Activity() {
     private var openCat = -1
 
     /** הגדרות: מגירה שנפתחת מצד ימין, כל קטגוריה נפתחת/נסגרת במקום */
+    private fun chooseShabbat() {
+        AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
+            .setTitle("🕯 מצב שבת")
+            .setSingleChoiceItems(arrayOf("כבוי", "דלוק", "אוטומטי – בשבת ובחג לפי המיקום"), Prefs.shabbatMode(this)) { d, i ->
+                Prefs.setShabbatMode(this, i); d.dismiss()
+            }
+            .setNegativeButton("סגור", null)
+            .show()
+    }
+
     private fun chooseTest() {
         val tests = listOf(
             "מקדימה" to "בדקות הקרובות צפויות להתקבל התרעות באזורך",
@@ -813,7 +824,8 @@ class MainActivity : Activity() {
             Row("🗣", "הקראה", { onOff(Prefs.speakAlerts(this)) }) { showSpeech() },
             Row("🌙", "שעות שקט", {
                 if (Prefs.quietOn(this)) "${hhmm(Prefs.quietFrom(this))}–${hhmm(Prefs.quietTo(this))}" else "כבוי" }) { showQuietHours() },
-            Row("🔕", "עקיפת נא לא להפריע", { dndState() }) { showDnd() }
+            Row("🔕", "עקיפת נא לא להפריע", { dndState() }) { showDnd() },
+            Row("🕯", "מצב שבת", { Shabbat.label(Prefs.shabbatMode(this)) }) { chooseShabbat() }
         )
     }
 
