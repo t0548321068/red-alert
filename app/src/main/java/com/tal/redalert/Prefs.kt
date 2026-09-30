@@ -32,6 +32,8 @@ object Prefs {
     fun setDayStyle(c: Context, v: Int) = sp(c).edit().putInt("dayStyle", v).commit()
     fun showSeconds(c: Context) = sp(c).getBoolean("seconds", true)
     fun setShowSeconds(c: Context, v: Boolean) = sp(c).edit().putBoolean("seconds", v).commit()
+    fun blinkSeconds(c: Context) = sp(c).getBoolean("blink_seconds", false)
+    fun setBlinkSeconds(c: Context, v: Boolean) = sp(c).edit().putBoolean("blink_seconds", v).commit()
     fun showDate(c: Context) = sp(c).getBoolean("date", true)
     fun setShowDate(c: Context, v: Boolean) = sp(c).edit().putBoolean("date", v).commit()
     /** ברכה לפי השעה (בוקר טוב / ערב טוב...) */
