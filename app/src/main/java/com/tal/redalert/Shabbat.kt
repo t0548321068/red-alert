@@ -54,7 +54,7 @@ object Shabbat {
     /** שבת, או יום טוב בארץ (ראש השנה, יום כיפור, סוכות, שמיני עצרת, פסח, שביעי של פסח, שבועות) */
     private fun isHoly(day: Calendar): Boolean {
         if (day.get(Calendar.DAY_OF_WEEK) == Calendar.SATURDAY) return true
-        val h = HebrewCalendar(TimeZone.getTimeZone("Asia/Jerusalem"), java.util.Locale.getDefault())
+        val h = HebrewCalendar(android.icu.util.TimeZone.getTimeZone("Asia/Jerusalem"), android.icu.util.ULocale.getDefault())
         h.timeInMillis = (day.clone() as Calendar).apply { set(Calendar.HOUR_OF_DAY, 12) }.timeInMillis
         val m = h.get(android.icu.util.Calendar.MONTH); val d = h.get(android.icu.util.Calendar.DAY_OF_MONTH)
         return when (m) {
