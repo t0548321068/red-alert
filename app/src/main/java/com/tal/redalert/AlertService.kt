@@ -647,7 +647,7 @@ class AlertService : Service() {
         val n = Notification.Builder(this, CH_WATCH)
             .setSmallIcon(R.drawable.ic_stat_siren)
             .setColor(0xFF2E7D32.toInt())
-            .setContentTitle("✅ צבע אדום פעיל")
+            .setContentTitle("צבע אדום פעיל")
             .setContentText("מאזין להתראות פיקוד העורף")
             .setContentIntent(openApp())
             .setAutoCancel(true)
