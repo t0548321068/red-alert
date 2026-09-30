@@ -35,11 +35,11 @@ object TimeFormat {
 
     /** ברכה לפי השעה */
     fun greeting(ms: Long): String = when (cal(ms).get(Calendar.HOUR_OF_DAY)) {
-        in 5..11 -> "בוקר טוב ☀️"
-        in 12..14 -> "צהריים טובים 🌤"
-        in 15..17 -> "אחר צהריים טובים 🌇"
-        in 18..21 -> "ערב טוב 🌆"
-        else -> "לילה טוב 🌙"
+        in 5..11 -> "בוקר טוב"
+        in 12..14 -> "צהריים טובים"
+        in 15..17 -> "אחר צהריים טובים"
+        in 18..21 -> "ערב טוב"
+        else -> "לילה טוב"
     }
 
     fun date(ms: Long): String {
