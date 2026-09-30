@@ -58,6 +58,9 @@ class AlertActivity : Activity() {
         val level = intent.getIntExtra("level", AlertService.LEVEL_ALERT)
         shelterSec = intent.getIntExtra("shelter", -1)
         firedAt = intent.getLongExtra("firedAt", System.currentTimeMillis())
+        // מצב שבת: המסך נסגר לבד אחרי דקה
+        val autoClose = intent.getLongExtra("autoCloseMs", 0L)
+        if (autoClose > 0) ui.postDelayed({ finish() }, (firedAt + autoClose - System.currentTimeMillis()).coerceAtLeast(1000L))
 
         val (bg, note) = when (level) {
             AlertService.LEVEL_PRE -> "#F08C00" to "היו בקרבת מרחב מוגן"

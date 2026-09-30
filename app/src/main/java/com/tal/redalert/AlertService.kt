@@ -510,12 +510,15 @@ class AlertService : Service() {
         if (!test) Prefs.addHistory(this, Prefs.Entry(time, title, body, levelOf(title), System.currentTimeMillis(), srcName))
 
         val level = levelOf(title)
-        val quiet = level != LEVEL_ALERT && Prefs.isQuietNow(this)
+        // מצב שבת: כל התראה במסך מלא לדקה אחת, עם הקראה (גם אם כבויה), בלי שעות שקט
+        val shabbat = Shabbat.active(this)
+        val quiet = !shabbat && level != LEVEL_ALERT && Prefs.isQuietNow(this)
         val shelterSec = shelter ?: if (level == LEVEL_ALERT) AreaData.shelterSeconds(this, areas) else null
         val full = Intent(this, AlertActivity::class.java)
             .putExtra("title", title).putExtra("body", body).putExtra("level", level)
             .putExtra("shelter", shelterSec ?: -1).putExtra("firedAt", System.currentTimeMillis())
             .putExtra("source", srcName)
+            .putExtra("autoCloseMs", if (shabbat) 60_000L else 0L)
             .putExtra("mapAreas", (mapAreas ?: areas).joinToString(", "))   // בבדיקה: המפה מראה את האזורים שלי
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val fullPi = PendingIntent.getActivity(
@@ -554,7 +557,7 @@ class AlertService : Service() {
         if (!quiet) wakeScreen()
         val screenOff = !(getSystemService(POWER_SERVICE) as PowerManager).isInteractive
         if (toMini) main.post { MiniOverlay.showEnd(body) }
-        else if (!quiet && (forceScreen || screenOff || android.provider.Settings.canDrawOverlays(this))) {
+        else if (!quiet && (forceScreen || shabbat || screenOff || android.provider.Settings.canDrawOverlays(this))) {
             try { startActivity(full) } catch (_: Exception) { }
         }
 
@@ -600,7 +603,7 @@ class AlertService : Service() {
 
         // הקראה: קודם מקריאים (סוג, אזורים, זמן להגעה) ואז הצליל.
         // הרטט מתחיל מיד. אם ההקראה נתקעת - הצליל מתחיל בכל מקרה אחרי 8 שניות.
-        if (!quiet && Prefs.speakAlerts(this)) {
+        if (!quiet && (Prefs.speakAlerts(this) || shabbat)) {
             val started = java.util.concurrent.atomic.AtomicBoolean(false)
             val once = { if (started.compareAndSet(false, true)) main.post { playSound() } }
             speaker?.speak(Speaker.textFor(title, areas, shelterSec)) { once() } ?: once()
