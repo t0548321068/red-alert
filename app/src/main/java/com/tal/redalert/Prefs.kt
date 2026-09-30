@@ -232,11 +232,27 @@ object Prefs {
         else android.R.style.Theme_DeviceDefault_Light_Dialog_Alert
 
     /** אפשרות הבטא נפתחה (7 לחיצות על מספר הגרסה) */
-    fun betaUnlocked(c: Context) = sp(c).getBoolean("betaUnlocked", false)
+    /**
+     * בטא רק למכשירים שברשימה (לפי מזהה המכשיר). רשימה ריקה = בלי הגבלה.
+     * בכל מכשיר אחר הבטא כבויה ומוסתרת, גם אם הופעלה בעבר.
+     */
+    private val BETA_DEVICES = setOf<String>()
+
+    /** מזהה קצר וקבוע של המכשיר (8 תווים) */
+    fun deviceCode(c: Context): String {
+        @android.annotation.SuppressLint("HardwareIds")
+        val id = android.provider.Settings.Secure.getString(c.contentResolver, android.provider.Settings.Secure.ANDROID_ID) ?: ""
+        val h = java.security.MessageDigest.getInstance("SHA-256").digest(id.toByteArray())
+        return h.take(4).joinToString("") { "%02X".format(it) }
+    }
+
+    fun betaAllowed(c: Context) = BETA_DEVICES.isEmpty() || deviceCode(c) in BETA_DEVICES
+
+    fun betaUnlocked(c: Context) = sp(c).getBoolean("betaUnlocked", false) && betaAllowed(c)
     fun setBetaUnlocked(c: Context, v: Boolean) = sp(c).edit().putBoolean("betaUnlocked", v).commit()
 
     /** קבלת גרסאות בטא (לפני שהן משוחררות לכולם) */
-    fun betaUpdates(c: Context) = sp(c).getBoolean("beta", false)
+    fun betaUpdates(c: Context) = sp(c).getBoolean("beta", false) && betaAllowed(c)
     fun setBetaUpdates(c: Context, v: Boolean) = sp(c).edit().putBoolean("beta", v).commit()
 
     /** גרסה שנבחר עבורה "מאוחר יותר" - לא מקפיצים עליה שוב */
