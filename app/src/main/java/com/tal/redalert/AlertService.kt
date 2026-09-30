@@ -30,7 +30,9 @@ class AlertService : Service() {
         private const val HISTORY_POLL_MS = 10000L
         private const val HISTORY_WINDOW_MS = 90000L
         private const val CH_SERVICE = "service"
-        private const val CH_ALERT = "alerts_v2"   // בלי רטט בערוץ - רטט לפי סוג, ידנית
+        private const val CH_ALERT = "alerts_v3"   // בינתיים: צליל ורטט ברירת מחדל של הטלפון
+        /** בינתיים כל הצלילים והרטטים - של הטלפון (לא של האפליקציה) */
+        const val PHONE_DEFAULTS = true
         private const val ID_SERVICE = 1
         private const val ID_ALERT = 2
         const val ACTION_TEST = "test"
@@ -53,7 +55,7 @@ class AlertService : Service() {
             c.startService(Intent(c, AlertService::class.java).setAction(ACTION_SILENCE))
         }
 
-        private const val CH_INFO = "info"
+        private const val CH_INFO = "info_v2"
         private const val CH_QUIET = "quiet"
         private const val CH_WATCH = "watchdog_v4"
         private const val ID_WATCH = 4
@@ -544,7 +546,8 @@ class AlertService : Service() {
         }
 
         val playSound = {
-            when {
+            if (PHONE_DEFAULTS) Unit   // הטלפון משמיע את צליל ההתראה בעצמו
+            else when {
                 quiet -> main.post { ringtone?.stop() }
                 level == LEVEL_ALERT -> playAlarm(level, RingtoneManager.TYPE_ALARM, 15000)
                 level == LEVEL_PRE -> playAlarm(level, RingtoneManager.TYPE_NOTIFICATION, 3000)
@@ -566,7 +569,7 @@ class AlertService : Service() {
             playSound()
         }
 
-        if (!quiet) vibrate(level)
+        if (!quiet && !PHONE_DEFAULTS) vibrate(level)
         AlertWidget.updateAll(this)
     }
 
@@ -699,8 +702,8 @@ class AlertService : Service() {
             NotificationChannel(CH_SERVICE, "שירות רקע", NotificationManager.IMPORTANCE_MIN))
         nm.createNotificationChannel(
             NotificationChannel(CH_ALERT, "התראות צבע אדום", NotificationManager.IMPORTANCE_HIGH).apply {
-                setSound(null, null)     // הצליל מושמע ידנית כאזעקה
-                enableVibration(false)   // הרטט מופעל ידנית, שונה לכל סוג
+                // צליל ורטט - ברירת המחדל של הטלפון
+                enableVibration(true)
                 setBypassDnd(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             })
@@ -718,6 +721,8 @@ class AlertService : Service() {
         nm.deleteNotificationChannel("updates_v3")
         nm.deleteNotificationChannel("watchdog_v2")
         nm.deleteNotificationChannel("stay")
+        nm.deleteNotificationChannel("alerts_v2")
+        nm.deleteNotificationChannel("info")
         nm.deleteNotificationChannel("updates_v4")
         nm.deleteNotificationChannel("watchdog_v3")
         nm.deleteNotificationChannel("stay_v2")
@@ -740,8 +745,7 @@ class AlertService : Service() {
             })
         nm.createNotificationChannel(
             NotificationChannel(CH_INFO, "סיום אירוע", NotificationManager.IMPORTANCE_HIGH).apply {
-                setSound(null, null)
-                enableVibration(false)
+                enableVibration(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             })
     }

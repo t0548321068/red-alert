@@ -505,7 +505,7 @@ class MainActivity : Activity() {
         val options = arrayOf("תצוגה", "בדיקת עדכונים", "מה חדש",
             "מסך מלא בהתראה: " + if (fullOk) "פעיל ✓" else "לא פעיל – לחץ להפעלה",
             "קרוב אליי (לפי מיקום): " + if (Prefs.nearMe(this)) "פעיל" else "כבוי",
-            "צלילים", "רטט", "🗣 הקראה: " + if (Prefs.speakAlerts(this)) "פעיל" else "כבוי",
+            "🔔 צלילים: של הטלפון", "📳 רטט: של הטלפון", "🗣 הקראה: " + if (Prefs.speakAlerts(this)) "פעיל" else "כבוי",
             "🔕 עקיפת נא לא להפריע: " + dndState(),
             "שעות שקט: $quiet",
             "חיסכון בסוללה", "הגדרות התראות",
@@ -522,8 +522,8 @@ class MainActivity : Activity() {
                     2 -> showWhatsNew(sinceVersion = null)
                     3 -> openFullScreenSettings()
                     4 -> toggleNearMe()
-                    5 -> showSounds()
-                    6 -> showVibes()
+                    5 -> if (AlertService.PHONE_DEFAULTS) openNotificationSettings() else showSounds()
+                    6 -> if (AlertService.PHONE_DEFAULTS) openNotificationSettings() else showVibes()
                     7 -> showSpeech()
                     8 -> showDnd()
                     9 -> showQuietHours()
