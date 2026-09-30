@@ -222,7 +222,7 @@ class AlertService : Service() {
             val title = intent.getStringExtra("title") ?: "ירי רקטות וטילים"
             val mine = Prefs.cities(this) + Prefs.nearbyAreas(this)
             fire(title, listOf("התראת בדיקה"), forceScreen = true, test = true,
-                shelter = AreaData.shelterSeconds(this, mine) ?: 15)
+                shelter = AreaData.shelterSeconds(this, mine) ?: 15, mapAreas = mine)
         }
         return START_STICKY
     }
@@ -501,7 +501,7 @@ class AlertService : Service() {
     }
 
     private fun fire(title: String, areas: List<String>, forceScreen: Boolean = false, shelter: Int? = null,
-                     test: Boolean = false, source: String = "") {
+                     test: Boolean = false, source: String = "", mapAreas: List<String>? = null) {
         val srcName = if (test) "בדיקה" else if (source.isEmpty()) "" else SourceHealth.name(source)
         val body = areas.joinToString(", ")
         val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
@@ -516,6 +516,7 @@ class AlertService : Service() {
             .putExtra("title", title).putExtra("body", body).putExtra("level", level)
             .putExtra("shelter", shelterSec ?: -1).putExtra("firedAt", System.currentTimeMillis())
             .putExtra("source", srcName)
+            .putExtra("mapAreas", (mapAreas ?: areas).joinToString(", "))   // בבדיקה: המפה מראה את האזורים שלי
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val fullPi = PendingIntent.getActivity(
             this, 1, full, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
