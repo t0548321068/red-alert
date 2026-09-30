@@ -910,7 +910,7 @@ class MainActivity : Activity() {
             quietLine.visibility = View.VISIBLE
         } else {
             quietLine.text = ""
-            quietLine.visibility = View.INVISIBLE
+            quietLine.visibility = View.GONE
         }
         val net = network()
         // רשת: אייקון קבוע, מתחתיו סוג החיבור
