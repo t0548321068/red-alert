@@ -448,12 +448,18 @@ class AlertService : Service() {
     private fun nearLoop() {
         while (running) {
             try {
-                if (Prefs.nearMe(this)) main.post {
+                // מיקום עדכני: ל"קרוב אליי", וגם לרשימת האזורים שהייתי בהם (במפה)
+                if (checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                    android.content.pm.PackageManager.PERMISSION_GRANTED) main.post {
                     Weather.freshLocation(this) { loc ->
                         if (loc != null) Thread {
                             try {
-                                val list = AreaData.areasAt(this, loc.latitude, loc.longitude).take(8)
-                                if (list.isNotEmpty() && list != Prefs.nearbyAreas(this)) Prefs.setNearbyAreas(this, list)
+                                Prefs.addVisits(this, AreaData.areasAt(this, loc.latitude, loc.longitude, 0.0),
+                                    System.currentTimeMillis())
+                                if (Prefs.nearMe(this)) {
+                                    val list = AreaData.areasAt(this, loc.latitude, loc.longitude).take(8)
+                                    if (list.isNotEmpty() && list != Prefs.nearbyAreas(this)) Prefs.setNearbyAreas(this, list)
+                                }
                             } catch (_: Exception) { }
                         }.start()
                     }

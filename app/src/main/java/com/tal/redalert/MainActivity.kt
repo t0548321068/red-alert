@@ -1103,6 +1103,7 @@ class MainActivity : Activity() {
         Weather.freshLocation(this) { loc ->
             if (loc != null) Thread {
                 try {
+                    Prefs.addVisits(this, AreaData.areasAt(this, loc.latitude, loc.longitude, 0.0), System.currentTimeMillis())
                     val list = AreaData.areasAt(this, loc.latitude, loc.longitude).take(8)
                     if (list.isNotEmpty()) Prefs.setNearbyAreas(this, list)
                 } catch (_: Exception) { }
