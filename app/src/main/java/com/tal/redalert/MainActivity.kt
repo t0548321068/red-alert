@@ -1088,6 +1088,8 @@ class MainActivity : Activity() {
     /** אנדרואיד 14+: בלי ההרשאה הזו ההתראה לא נדלקת על מסך נעילה */
     private fun askLockScreen() {
         if (lockAsked || Build.VERSION.SDK_INT < 34 || !Prefs.enabled(this)) return
+        // עם "הצגה מעל אפליקציות" המסך נדלק ומוצג גם בלי ההרשאה הזו - לא מציקים
+        if (Settings.canDrawOverlays(this)) return
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         if (nm.canUseFullScreenIntent()) return
         lockAsked = true
