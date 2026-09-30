@@ -376,7 +376,17 @@ class MainActivity : Activity() {
 
     private var updateCheckedAt = 0L
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
+
     override fun onResume() {
+        // "הפעלה" מההתראה "לא מוגן"
+        if (intent?.getBooleanExtra("enable", false) == true) {
+            intent.removeExtra("enable")
+            if (!Prefs.enabled(this)) ui.post { toggle() }
+        }
         super.onResume()
         // רשת ביטחון: אם ההאזנה אמורה לפעול - לוודא שהשירות באמת רץ (בטוח לקרוא גם אם כבר רץ)
         if (Prefs.enabled(this)) AlertService.start(this)

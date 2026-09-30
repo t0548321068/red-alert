@@ -82,7 +82,36 @@ class AlertService : Service() {
          * manual = הופעל בלחיצה (על "מוגן", בדיקה, שינוי הגדרה) - בלי התראת "מאזין".
          * בכל הפעלה אחרת (הדלקת הטלפון, אחרי עדכון, חזרה אחרי שנסגר) - התראה עם המנגינה.
          */
+        private const val ID_OFF = 8
+
+        /** התראה קבועה כשההאזנה כבויה: "לא מוגן" + כפתור הפעלה */
+        fun showOff(c: Context) {
+            val nm = c.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            if (nm.getNotificationChannel(CH_WATCH) == null) nm.createNotificationChannel(
+                NotificationChannel(CH_WATCH, "האפליקציה לא מוגנת", NotificationManager.IMPORTANCE_HIGH).apply {
+                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                })
+            val open = PendingIntent.getActivity(c, 20, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+            val enable = PendingIntent.getActivity(c, 21,
+                Intent(c, MainActivity::class.java).putExtra("enable", true)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+            nm.notify(ID_OFF, Notification.Builder(c, CH_WATCH)
+                .setSmallIcon(R.drawable.ic_stat_siren)
+                .setColor(0xFFD50000.toInt())
+                .setContentTitle("⚠️ לא מוגן")
+                .setContentText("צבע אדום כבוי – התראות לא יגיעו")
+                .setContentIntent(open)
+                .addAction(Notification.Action.Builder(null, "הפעלה", enable).build())
+                .setOngoing(true)
+                .build())
+        }
+
+        fun clearOff(c: Context) =
+            (c.getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(ID_OFF)
+
         fun start(c: Context, testTitle: String? = null, manual: Boolean = false) {
+            clearOff(c)
             val i = Intent(c, AlertService::class.java).putExtra("manual", manual || testTitle != null)
             if (testTitle != null) {
                 i.action = ACTION_TEST
@@ -91,7 +120,10 @@ class AlertService : Service() {
             c.startForegroundService(i)
         }
 
-        fun stop(c: Context) = c.stopService(Intent(c, AlertService::class.java))
+        fun stop(c: Context) {
+            c.stopService(Intent(c, AlertService::class.java))
+            showOff(c)
+        }
     }
 
     @Volatile private var running = false
