@@ -23,26 +23,27 @@ object TimeFormat {
         return if (Prefs.showSeconds(c)) "$hm:%02d".format(k.get(Calendar.SECOND)) else hm
     }
 
-    /** שעה לשעון הגדול: עם שניות מהבהבות (שקופות בשנייה אי־זוגית, בלי לזוז) */
+    /**
+     * שעה לשעון הגדול: הנקודתיים מורמות לאמצע גובה הספרות,
+     * ואם נבחר - מהבהבות (שקופות בשנייה אי־זוגית, בלי שהשעה זזה)
+     */
     fun clock(c: Context, ms: Long): CharSequence {
         val t = time(c, ms)
-        if (!Prefs.showSeconds(c) || !Prefs.blinkSeconds(c) || cal(ms).get(Calendar.SECOND) % 2 == 0) return t
-        return android.text.SpannableString(t).apply {
-            setSpan(android.text.style.ForegroundColorSpan(android.graphics.Color.TRANSPARENT),
-                t.length - 2, t.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        val hide = Prefs.blinkColon(c) && cal(ms).get(Calendar.SECOND) % 2 == 1
+        val sp = android.text.SpannableString(t)
+        t.forEachIndexed { i, ch ->
+            if (ch != ':') return@forEachIndexed
+            sp.setSpan(RaiseSpan(), i, i + 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            if (hide) sp.setSpan(android.text.style.ForegroundColorSpan(android.graphics.Color.TRANSPARENT),
+                i, i + 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
+        return sp
     }
 
-    /** השעה תמיד בשורה אחת: אם לא נכנסת ברוחב - מקטינים רק כמה שצריך */
-    fun fit(tv: android.widget.TextView, maxSp: Float) {
-        tv.setSingleLine(true)
-        val w = tv.width - tv.paddingLeft - tv.paddingRight
-        if (w <= 0) { tv.post { if (tv.width > 0) fit(tv, maxSp) }; return }
-        val maxPx = maxSp * tv.resources.displayMetrics.scaledDensity
-        tv.paint.textSize = maxPx
-        val need = tv.paint.measureText(tv.text.toString())
-        val px = if (need > w) maxPx * w / need * 0.97f else maxPx
-        if (Math.abs(tv.textSize - px) > 0.5f) tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, px)
+    /** מרים את התו מעט למעלה (הנקודתיים יושבות נמוך ביחס לספרות) */
+    private class RaiseSpan : android.text.style.MetricAffectingSpan() {
+        override fun updateDrawState(tp: android.text.TextPaint) { tp.baselineShift -= (tp.textSize * 0.09f).toInt() }
+        override fun updateMeasureState(tp: android.text.TextPaint) { tp.baselineShift -= (tp.textSize * 0.09f).toInt() }
     }
 
     fun day(c: Context, ms: Long): String {
