@@ -33,6 +33,15 @@ object TimeFormat {
         }
     }
 
+    /** ברכה לפי השעה */
+    fun greeting(ms: Long): String = when (cal(ms).get(Calendar.HOUR_OF_DAY)) {
+        in 5..11 -> "בוקר טוב ☀️"
+        in 12..14 -> "צהריים טובים 🌤"
+        in 15..17 -> "אחר צהריים טובים 🌇"
+        in 18..21 -> "ערב טוב 🌆"
+        else -> "לילה טוב 🌙"
+    }
+
     fun date(ms: Long): String {
         val k = cal(ms)
         return "%02d/%02d/%d".format(k.get(Calendar.DAY_OF_MONTH), k.get(Calendar.MONTH) + 1, k.get(Calendar.YEAR))

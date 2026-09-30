@@ -59,6 +59,7 @@ class MainActivity : Activity() {
     private lateinit var chips: FlowLayout
     private lateinit var historyBox: LinearLayout
     private lateinit var clockTime: TextView
+    private lateinit var greeting: TextView
     private lateinit var clockDay: TextView
     private lateinit var weatherLine: TextView
     private lateinit var shelterLine: TextView
@@ -162,6 +163,7 @@ class MainActivity : Activity() {
         val now = System.currentTimeMillis()
         clockTime.text = TimeFormat.time(this, now)
         clockDay.text = TimeFormat.dayLine(this, now)
+        greeting.text = TimeFormat.greeting(now)
     }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
@@ -230,7 +232,9 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             setOnClickListener { showClockSettings() }
         }
-        col.addView(clockTime, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        greeting = text("", 16f, C.TEXT).apply { gravity = Gravity.CENTER }
+        col.addView(greeting, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        col.addView(clockTime, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
         col.addView(clockDay)
         weatherLine = text("", 14f, C.TEXT).apply {
             gravity = Gravity.CENTER
