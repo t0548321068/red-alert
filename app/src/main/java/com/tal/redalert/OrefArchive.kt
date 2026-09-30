@@ -37,10 +37,12 @@ object OrefArchive {
             val area = o.optString("data")
             if (area.isNotBlank() && area !in g.third) g.third.add(area)
         }
-        return groups.values.map { (title, ts, areas) ->
+        val list = groups.values.map { (title, ts, areas) ->
             val level = AlertService.levelOf(title)
             Prefs.Entry("", if (level == AlertService.LEVEL_END) "האירוע הסתיים" else title,
                 areas.joinToString(", "), level, ts)
         }.sortedByDescending { it.ts }
+        // אותו אירוע שהתפרס על כמה דקות / כמה שורות סיום - שורה אחת
+        return Prefs.collapse(list)
     }
 }

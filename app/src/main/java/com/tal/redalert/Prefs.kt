@@ -84,7 +84,7 @@ object Prefs {
      * גם התראות מאותו סוג בהפרש של פחות מדקה וחצי = אותו אירוע.
      * נשארים הזמן, הכותרת והמקור של מי שהגיע ראשון.
      */
-    private fun collapse(list: List<Entry>): List<Entry> {
+    fun collapse(list: List<Entry>): List<Entry> {
         val out = ArrayList<Entry>()
         val keys = ArrayList<MutableSet<String>>()
         for (e in list) {           // מהחדשה לישנה
