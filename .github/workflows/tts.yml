@@ -9,17 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg && pip install edge-tts
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - run: pip install gTTS uroman scipy transformers torch --extra-index-url https://download.pytorch.org/whl/cpu
+      - run: python gen_more.py
       - run: |
-          edge-tts --list-voices | grep -i multilingual | tee samples_list.txt || true
-          T="צבע אדום. ירי רקטות וטילים. שדרות, איבים, ניר עם. היכנסו למרחב המוגן."
-          mkdir -p samples/multi
-          for v in $(grep -io '[a-z][a-z]-[A-Z][A-Z]-[A-Za-z]*MultilingualNeural' samples_list.txt | sort -u); do
-            n=$(echo $v | sed 's/MultilingualNeural//; s/.*-//')
-            SSML=0
-            edge-tts --voice $v --text "$T" --write-media samples/multi/$n.mp3 || echo "::warning::fail $v"
-          done
-          mv samples_list.txt samples/multi/
-          ls -la samples/multi
+          ls -la samples/more
           git config user.name bot && git config user.email bot@users.noreply.github.com
-          git add samples && git commit -m "multilingual samples [skip ci]" && git push
+          git add samples && git commit -m "more samples [skip ci]" && git push
