@@ -1048,7 +1048,7 @@ class MainActivity : Activity() {
                 }.start()
             }
             // השירות צריך לעלות מחדש כדי לקבל גישה למיקום ברקע
-            if (Prefs.enabled(this)) { AlertService.stop(this); AlertService.start(this, manual = true) }
+            if (Prefs.enabled(this)) { stopService(Intent(this, AlertService::class.java)); AlertService.start(this, manual = true) }
         }
         refresh()
     }
