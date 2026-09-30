@@ -252,7 +252,25 @@ class MainActivity : Activity() {
         clockCard.addView(greeting)
         clockCard.addView(clockTime)
         clockCard.addView(clockDay)
-        col.addView(clockCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
+        // כרטיס חיווים מעל השעון: רשת / מיקום / מקורות - שלוש עמודות שוות
+        val status = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(6), dp(12), dp(6), dp(12))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.parseColor("#232526"), Color.parseColor("#414345"))).apply {
+                cornerRadius = dp(20).toFloat()
+            }
+        }
+        netInd = indicator(R.drawable.ic_globe) { showNetworkInfo() }
+        locInd = indicator(R.drawable.ic_location) { onLocationIndicator() }
+        srvInd = indicator(R.drawable.ic_antenna) { showSourcesInfo() }
+        listOf(netInd, locInd, srvInd).forEachIndexed { i, v ->
+            if (i > 0) status.addView(View(this).apply { setBackgroundColor(Color.parseColor("#22FFFFFF")) },
+                LinearLayout.LayoutParams(dp(1), dp(34)))
+            status.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
+        col.addView(clockCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         weatherLine = text("", 14f, C.TEXT).apply {
             gravity = Gravity.CENTER
             setOnClickListener { onWeatherClick() }
@@ -272,15 +290,6 @@ class MainActivity : Activity() {
         weatherLine.setTextColor(soft)
         clockCard.addView(weatherLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
 
-        // חיווים: רשת / מיקום / שרתי התרעות
-        val status = LinearLayout(this).apply { gravity = Gravity.CENTER }
-        netInd = indicator(R.drawable.ic_wifi) { showNetworkInfo() }
-        locInd = indicator(R.drawable.ic_location) { onLocationIndicator() }
-        srvInd = indicator(R.drawable.ic_antenna) { showSourcesInfo() }
-        listOf(netInd, locInd, srvInd).forEachIndexed { i, v ->
-            status.addView(v, LinearLayout.LayoutParams(-2, -2).apply { if (i > 0) marginStart = dp(8) })
-        }
-        col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
 
         // פיד ארצי - פס רץ עם כל ההתראות בארץ (בלי צליל)
         feedLine = text("", 12f, C.MUTED).apply {
@@ -568,20 +577,19 @@ class MainActivity : Activity() {
 
     // ---- חיווים ----
 
-    private fun indicator(icon: Int, onClick: () -> Unit) = text("", 12f, C.TEXT).apply {
-        setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0)
-        compoundDrawablePadding = dp(5)
-        gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(10), dp(5), dp(10), dp(5))
+    /** חיווי: אייקון למעלה, טקסט מתחת */
+    private fun indicator(icon: Int, onClick: () -> Unit) = text("", 12f, Color.parseColor("#E6E6E6")).apply {
+        setCompoundDrawablesRelativeWithIntrinsicBounds(0, icon, 0, 0)
+        compoundDrawablePadding = dp(4)
+        gravity = Gravity.CENTER
         setOnClickListener { onClick() }
     }
 
+    /** האייקון בצבע המצב, הטקסט תמיד לבן-אפור */
     private fun setInd(v: TextView, icon: Int, label: String, color: Int) {
-        v.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0)
+        v.setCompoundDrawablesRelativeWithIntrinsicBounds(0, icon, 0, 0)
         v.compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color)
         v.text = label
-        v.compoundDrawablePadding = if (label.isEmpty()) 0 else dp(5)
-        v.setTextColor(color)
     }
 
     /** סוג החיבור: וויפי / נתונים / אחר, והאם יש אינטרנט בפועל */
@@ -637,24 +645,29 @@ class MainActivity : Activity() {
             quietLine.visibility = View.INVISIBLE
         }
         val net = network()
+        // רשת: אייקון קבוע, מתחתיו סוג החיבור
         when {
-            net == null -> setInd(netInd, R.drawable.ic_no_net, "", C.RED)
-            net.first == "wifi" -> setInd(netInd, R.drawable.ic_wifi, "", if (net.second) C.GREEN else C.ORANGE)
-            net.first == "cell" -> setInd(netInd, R.drawable.ic_cell, "", if (net.second) C.GREEN else C.ORANGE)
-            else -> setInd(netInd, R.drawable.ic_wifi, "", if (net.second) C.GREEN else C.ORANGE)
+            net == null -> setInd(netInd, R.drawable.ic_globe, "אין רשת", C.RED)
+            net.first == "wifi" -> setInd(netInd, R.drawable.ic_globe, "Wi-Fi", if (net.second) C.GREEN else C.ORANGE)
+            net.first == "cell" -> setInd(netInd, R.drawable.ic_globe, "נתונים ניידים", if (net.second) C.GREEN else C.ORANGE)
+            else -> setInd(netInd, R.drawable.ic_globe, "מחובר", if (net.second) C.GREEN else C.ORANGE)
         }
-        if (locationOn()) setInd(locInd, R.drawable.ic_location, "", if (hasPrecise()) C.GREEN else C.ORANGE)
-        else setInd(locInd, R.drawable.ic_location, "", C.MUTED)
+        // מיקום: מתחתיו דיוק המיקום במטרים
+        val accM = if (weatherAccuracy > 0) weatherAccuracy
+            else (try { Weather.lastLocation(this)?.accuracy?.let { Math.round(it) } } catch (_: Exception) { null } ?: -1)
+        val acc = if (accM > 0) "$accM מ׳" else "—"
+        if (locationOn()) setInd(locInd, R.drawable.ic_location, acc, if (hasPrecise()) C.GREEN else C.ORANGE)
+        else setInd(locInd, R.drawable.ic_location, "כבוי", C.MUTED)
 
         if (!Prefs.enabled(this)) {
-            setInd(srvInd, R.drawable.ic_antenna, "0/${SourceHealth.total()}", C.MUTED)
+            setInd(srvInd, R.drawable.ic_antenna, "0/${SourceHealth.total()} מקורות", C.MUTED)
         } else {
             val up = SourceHealth.upCount(); val all = SourceHealth.total()
             val color = when {
                 up < all && SourceHealth.anyConnecting() -> C.MUTED   // אחרי הפעלה/עדכון - עוד מתחברים
                 up == 0 -> C.RED; up < all / 2 -> C.ORANGE; else -> C.GREEN
             }
-            setInd(srvInd, R.drawable.ic_antenna, "$up/$all", color)
+            setInd(srvInd, R.drawable.ic_antenna, "$up/$all מקורות", color)
         }
     }
 
