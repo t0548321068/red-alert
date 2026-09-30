@@ -131,7 +131,7 @@ object Prefs {
     }
 
     // ---- קרוב אליי: התראה גם לפי המיקום הנוכחי ----
-    fun nearMe(c: Context) = sp(c).getBoolean("nearMe", false)
+    fun nearMe(c: Context) = sp(c).getBoolean("nearMe", true)   // ברירת מחדל: התראות לפי מיקום
     fun setNearMe(c: Context, v: Boolean) = sp(c).edit().putBoolean("nearMe", v).commit()
     /** האזורים שזוהו לאחרונה סביב המיקום (לתצוגה ולסינון) */
     fun nearbyAreas(c: Context): List<String> =
