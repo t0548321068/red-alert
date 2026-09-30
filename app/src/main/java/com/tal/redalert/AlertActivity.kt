@@ -201,7 +201,7 @@ class AlertActivity : Activity() {
     @android.annotation.SuppressLint("SetJavaScriptEnabled")
     private fun miniMap(level: Int): android.view.View? {
         val names = org.json.JSONArray()
-        (intent.getStringExtra("body") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        (intent.getStringExtra("mapAreas") ?: intent.getStringExtra("body") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
             .forEach { raw -> try { AreaData.match(this, raw).forEach { names.put(it) } } catch (_: Exception) { } }
         if (names.length() == 0) return null
         val web = android.webkit.WebView(this).apply {
