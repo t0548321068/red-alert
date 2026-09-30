@@ -483,6 +483,7 @@ class MainActivity : Activity() {
             addView(input)
         }
         AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
             .setTitle("הוספת אזור")
             .setView(wrap)
             .setPositiveButton("הוסף") { _, _ ->
@@ -512,6 +513,7 @@ class MainActivity : Activity() {
             (if (betaVisible) arrayOf("🧪 גרסאות בטא: " + if (Prefs.betaUpdates(this)) "מקבל ✓" else "כבוי")
              else emptyArray())
         AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
             .setTitle("הגדרות · גרסה ${Updater.versionLabel(this)}")
             .setItems(options) { _, which ->
                 when (which) {
@@ -581,6 +583,7 @@ class MainActivity : Activity() {
 
     private fun showFeed() {
         AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
             .setTitle("🇮🇱 פיד ארצי · 24 שעות")
             .setMessage(FeedText.day(this))
             .setNeutralButton("היסטוריה מלאה") { _, _ ->
@@ -647,6 +650,7 @@ class MainActivity : Activity() {
 
     private fun showSourcesInfo() {
         AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
             .setTitle("שרתי התרעות · ${SourceHealth.upCount()}/${SourceHealth.total()} מחוברים")
             .setMessage(if (Prefs.enabled(this)) SourceHealth.report() else "ההאזנה כבויה")
             .setPositiveButton("סגור", null)
@@ -684,6 +688,7 @@ class MainActivity : Activity() {
             "גרסה $v\n" + (0 until items.length()).joinToString("\n") { "• " + items.getString(it) }
         }
         AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
             .setTitle("🆕 מה חדש")
             .setMessage(text)
             .setPositiveButton("הבנתי", null)
@@ -722,6 +727,7 @@ class MainActivity : Activity() {
     private fun showSounds() {
         val items = Array(3) { "${SOUND_NAMES[it]}: ${Sounds.label(this, it)}" }
         AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
             .setTitle("🔊 צלילים")
             .setItems(items) { _, level -> chooseSound(level) }
             .setPositiveButton("סגור", null)
@@ -744,6 +750,7 @@ class MainActivity : Activity() {
             "🎵 בחירה מצלילי הטלפון…", "🔇 ללא צליל")
         val cur = values.indexOf(Sounds.effective(this, level)).let { if (it < 0) 3 else it }
         AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
             .setTitle("צליל – ${SOUND_NAMES[level]}")
             .setSingleChoiceItems(names, cur) { d, i ->
                 if (values[i] == "pick") { d.dismiss(); preview?.stop(); pickSound(level); return@setSingleChoiceItems }
@@ -814,6 +821,7 @@ class MainActivity : Activity() {
             "ℹ️ בזמן ירי ו\"התראה מקדימה\" – נא לא להפריע נכבה לדקה כדי שהצליל, הרטט והמסך יעבדו, ואז חוזר לבד"
         )
         AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
             .setTitle("🔕 עקיפת נא לא להפריע")
             .setItems(items) { _, which ->
                 when (which) {
@@ -829,6 +837,7 @@ class MainActivity : Activity() {
     private fun showBeta() {
         val on = Prefs.betaUpdates(this)
         AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
             .setTitle("🧪 גרסאות בטא")
             .setMessage("קבלת גרסאות ניסיון לפני שהן משוחררות לכולם.\n" +
                 "יכולות להיות בהן תקלות. כשיוצאת גרסה רגילה חדשה – היא מותקנת כרגיל.\n\n" +
@@ -863,6 +872,7 @@ class MainActivity : Activity() {
             |⚠️ האפליקציה משלימה ואינה מחליפה את האפליקציה הרשמית של פיקוד העורף.
         """.trimMargin()
         AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
             .setTitle("ℹ️ אודות")
             .setMessage(msg)
             .setPositiveButton("סגור", null)
@@ -878,6 +888,7 @@ class MainActivity : Activity() {
             "ℹ️ מקריא סוג, אזורים וזמן להגעה – ואז הצליל"
         )
         AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
             .setTitle("🗣 הקראה בקול")
             .setItems(items) { _, which ->
                 when (which) {
@@ -917,9 +928,11 @@ class MainActivity : Activity() {
     private fun showVibes() {
         val items = Array(3) { "${SOUND_NAMES[it]}: ${Vibes.NAMES[Prefs.vibe(this, it)]}" }
         AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
             .setTitle("📳 רטט")
             .setItems(items) { _, level ->
                 AlertDialog.Builder(this, dlg())
+                    .setIcon(R.mipmap.ic_launcher)
                     .setTitle("רטט – ${SOUND_NAMES[level]}")
                     .setSingleChoiceItems(Vibes.NAMES, Prefs.vibe(this, level)) { _, i ->
                         Prefs.setVibe(this, level, i)
@@ -943,6 +956,7 @@ class MainActivity : Activity() {
             "ℹ️ מקדימה וסיום יגיעו בשקט. ירי תמיד נשמע."
         )
         AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
             .setTitle("🌙 שעות שקט")
             .setItems(items) { _, which ->
                 when (which) {
@@ -984,10 +998,12 @@ class MainActivity : Activity() {
             "עדכון מזג אוויר: " + weatherLabel(Prefs.weatherMinutes(this))
         )
         AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
             .setTitle("תצוגה")
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> AlertDialog.Builder(this, dlg())
+                        .setIcon(R.mipmap.ic_launcher)
                         .setTitle("ערכת צבעים")
                         .setSingleChoiceItems(arrayOf("כהה", "בהירה"), if (Prefs.darkTheme(this)) 0 else 1) { d, i ->
                             d.dismiss()
@@ -999,6 +1015,7 @@ class MainActivity : Activity() {
                         }
                         .show()
                     1 -> AlertDialog.Builder(this, dlg())
+                        .setIcon(R.mipmap.ic_launcher)
                         .setTitle("סגנון יום")
                         .setSingleChoiceItems(TimeFormat.dayOptions(), Prefs.dayStyle(this)) { d, i ->
                             Prefs.setDayStyle(this, i)
@@ -1011,6 +1028,7 @@ class MainActivity : Activity() {
                     5 -> {
                         val opts = intArrayOf(1, 2, 5, 10, 15, 30, 60)
                         AlertDialog.Builder(this, dlg())
+                            .setIcon(R.mipmap.ic_launcher)
                             .setTitle("עדכון מזג אוויר")
                             .setSingleChoiceItems(opts.map { weatherLabel(it) }.toTypedArray(),
                                 opts.indexOf(Prefs.weatherMinutes(this))) { d, i ->
@@ -1094,6 +1112,7 @@ class MainActivity : Activity() {
         if (nm.canUseFullScreenIntent()) return
         lockAsked = true
         android.app.AlertDialog.Builder(this, Prefs.dialogTheme(this))
+            .setIcon(R.mipmap.ic_launcher)
             .setTitle("התראה על מסך נעילה")
             .setMessage("כדי שההתראה תידלק מיד כשהמסך כבוי – צריך לאשר \"התראות במסך מלא\".")
             .setPositiveButton("אישור") { _, _ ->
