@@ -340,25 +340,21 @@ class MainActivity : Activity() {
         col.addView(areasCard)
 
         // התראות אחרונות
-        // כרטיס גרפיט עם פס צבע לכל התראה
-        val histCard = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(12), dp(14), dp(4))
+        // כפתור "התראות אחרונות" - הרשימה נפתחת במסך משלה
+        val histBtn = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
             background = graphite(20)
+            setOnClickListener { showRecent() }
         }
-        val histHead = LinearLayout(this)
-        histHead.addView(text("התראות אחרונות", 13f, Color.parseColor("#AAAAAA")), LinearLayout.LayoutParams(0, -2, 1f))
-        histHead.addView(text("📜 הכל", 13f, C.BLUE).apply {
-            setPadding(0, 0, dp(14), 0)
-            setOnClickListener { startActivity(Intent(this@MainActivity, HistoryActivity::class.java)) }
-        })
-        histHead.addView(text("🗺 מפה", 13f, C.BLUE).apply {
-            setOnClickListener { startActivity(Intent(this@MainActivity, MapActivity::class.java)) }
-        })
-        histCard.addView(histHead)
-        historyBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        histCard.addView(historyBox, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
-        col.addView(histCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
+        histBtn.addView(text("📜", 22f, Color.WHITE), LinearLayout.LayoutParams(dp(40), -2))
+        val histTexts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        histTexts.addView(text("התראות אחרונות", 16f, Color.WHITE))
+        historyBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }   // שורת סיכום: ההתראה האחרונה
+        histTexts.addView(historyBox)
+        histBtn.addView(histTexts, LinearLayout.LayoutParams(0, -2, 1f))
+        histBtn.addView(text("‹", 20f, Color.parseColor("#888888")))
+        col.addView(histBtn, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
 
         // כפתורי בדיקה
         val tests = LinearLayout(this)
@@ -480,9 +476,42 @@ class MainActivity : Activity() {
         shelterLine.visibility = if (sec != null) View.VISIBLE else View.GONE
     }
 
+    /** במסך הראשי: שורת סיכום של ההתראה האחרונה */
     private fun renderHistory() {
         historyBox.removeAllViews()
-        val items = Prefs.history(this).take(5)
+        val e = Prefs.history(this).firstOrNull()
+        val muted = Color.parseColor("#AAAAAA")
+        historyBox.addView(text(
+            if (e == null) "אין התראות עדיין"
+            else (if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title) +
+                (if (e.ts > 0) " · " + dayLabel(e.ts) + " " + java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date(e.ts)) else ""),
+            12f, muted).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
+    }
+
+    /** מסך "התראות אחרונות": כרטיס עם פס צבע לכל התראה + מעבר להיסטוריה המלאה ולמפה */
+    private fun showRecent() = fullPage("📜 התראות אחרונות") { c ->
+        val links = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        links.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+        links.addView(text("📜 הכל", 14f, C.BLUE).apply {
+            setPadding(0, dp(6), dp(16), dp(6))
+            setOnClickListener { startActivity(Intent(this@MainActivity, HistoryActivity::class.java)) }
+        })
+        links.addView(text("🗺 מפה", 14f, C.BLUE).apply {
+            setPadding(0, dp(6), 0, dp(6))
+            setOnClickListener { startActivity(Intent(this@MainActivity, MapActivity::class.java)) }
+        })
+        c.addView(links)
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(4), dp(14), dp(4))
+            background = graphite(20)
+        }
+        fillHistory(card, 20)
+        c.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+    }
+
+    private fun fillHistory(historyBox: LinearLayout, count: Int) {
+        val items = Prefs.history(this).take(count)
         val muted = Color.parseColor("#AAAAAA")
         if (items.isEmpty()) {
             historyBox.addView(text("אין התראות עדיין", 14f, muted).apply { setPadding(0, dp(8), 0, dp(10)) })
