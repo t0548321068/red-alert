@@ -22,6 +22,16 @@ object MiniOverlay {
     private var view: View? = null
     private val ui = Handler(Looper.getMainLooper())
     private var tick: Runnable? = null
+    private var bg: GradientDrawable? = null
+    private var labelV: TextView? = null
+    private var areaV: TextView? = null
+    private var timerV: TextView? = null
+
+    fun isShowing() = view != null
+
+    private const val RED = "#D50000"
+    private const val ORANGE = "#B45309"   // נשארים במרחב המוגן
+    private const val GREEN = "#2E7D32"    // אפשר לצאת / האירוע הסתיים
 
     fun canShow(c: Context) = Settings.canDrawOverlays(c)
 
@@ -73,6 +83,7 @@ object MiniOverlay {
             gravity = Gravity.CENTER_VERTICAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             background = GradientDrawable().apply { cornerRadius = dp(22).toFloat(); setColor(Color.parseColor(color)) }
+                .also { bg = it }
             elevation = dp(6).toFloat()
             addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
             addView(timer)
@@ -94,17 +105,19 @@ object MiniOverlay {
         }
         try { wm.addView(bar, lp) } catch (_: Exception) { return }
         view = bar
+        labelV = label; areaV = areaLine; timerV = timer
 
         val t = object : Runnable {
             override fun run() {
                 val now = System.currentTimeMillis()
                 val enterEnd = firedAt + shelter.coerceAtLeast(0) * 1000L
                 val stayEnd = enterEnd + Prefs.STAY_MS
+                // ספירה לכניסה (אדום) -> ספירת שהייה במרחב המוגן (כתום) -> אפשר לצאת (ירוק)
                 when {
                     level != AlertService.LEVEL_ALERT -> { label.text = title; timer.text = "" }
-                    shelter > 0 && now < enterEnd -> { label.text = "🚨 $title"; timer.text = mmss(enterEnd - now) }
-                    now < stayEnd -> { label.text = "⏳ במרחב המוגן"; timer.text = mmss(stayEnd - now) }
-                    else -> { label.text = "✅ אפשר לצאת מהמרחב המוגן"; timer.text = "" }
+                    shelter > 0 && now < enterEnd -> { label.text = "🚨 $title"; timer.text = mmss(enterEnd - now); bg?.setColor(Color.parseColor(RED)) }
+                    now < stayEnd -> { label.text = "⏳ נשארים במרחב המוגן"; timer.text = mmss(stayEnd - now); bg?.setColor(Color.parseColor(ORANGE)) }
+                    else -> { label.text = "✅ אפשר לצאת מהמרחב המוגן"; timer.text = ""; bg?.setColor(Color.parseColor(GREEN)) }
                 }
                 if (level == AlertService.LEVEL_ALERT && now < stayEnd) ui.postDelayed(this, 500)
             }
@@ -115,8 +128,19 @@ object MiniOverlay {
 
     private fun mmss(ms: Long): String { val s = (ms / 1000).toInt(); return "%d:%02d".format(s / 60, s % 60) }
 
+    /** "האירוע הסתיים" בזמן שהחלון הקטן פתוח - הוא נהיה ירוק (במקום מסך מלא) */
+    fun showEnd(area: String) {
+        if (view == null) return
+        tick?.let { ui.removeCallbacks(it) }; tick = null
+        bg?.setColor(Color.parseColor(GREEN))
+        labelV?.text = "✅ האירוע הסתיים – ניתן לצאת"
+        timerV?.text = ""
+        if (area.isNotEmpty()) { areaV?.text = area; areaV?.visibility = View.VISIBLE }
+    }
+
     fun hide(c: Context) {
         tick?.let { ui.removeCallbacks(it) }; tick = null
+        bg = null; labelV = null; areaV = null; timerV = null
         val v = view ?: return
         view = null
         try { (c.applicationContext.getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(v) } catch (_: Exception) { }
