@@ -432,18 +432,15 @@ class MainActivity : Activity() {
         val nearOn = Prefs.nearMe(this)
         val near = if (nearOn) Prefs.nearbyAreas(this) else emptyList()
         val muted = Color.parseColor("#AAAAAA")
-        val light = Color.parseColor("#D6FFE0")
+        val light = Color.parseColor("#E6FFFFFF")
 
         // המיקום שלי
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
-            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                if (nearOn) intArrayOf(Color.parseColor("#1E8E3E"), Color.parseColor("#145A2A"))
-                else intArrayOf(Color.parseColor("#3A3A3C"), Color.parseColor("#2C2C2E")))
+            setPadding(dp(16), dp(14), dp(16), dp(14))   // רקע כמו שאר הכרטיסים (של הכרטיס עצמו)
         }
-        top.addView(text("📍 המיקום שלי", 12f, if (nearOn) light else muted))
+        top.addView(text("📍 המיקום שלי", 12f, muted))
         top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 20f, Color.WHITE, bold = true)
             .apply { setPadding(0, dp(2), 0, 0) })
         val sec = if (nearOn && near.isNotEmpty()) AreaData.shelterSeconds(this, near.take(1)) else null
@@ -452,6 +449,7 @@ class MainActivity : Activity() {
             .apply { setPadding(0, dp(2), 0, 0) })
         for (i in 0 until top.childCount) (top.getChildAt(i) as? TextView)?.gravity = Gravity.CENTER
         chips.addView(top)
+        chips.addView(View(this).apply { setBackgroundColor(Color.parseColor("#14FFFFFF")) }, LinearLayout.LayoutParams(-1, dp(1)))
 
         // אזורים נוספים
         val bottom = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), dp(8)) }
