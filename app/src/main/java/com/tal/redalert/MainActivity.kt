@@ -444,6 +444,7 @@ class MainActivity : Activity() {
         if (sec != null) top.addView(text(if (sec <= 0) "⏱ כניסה מיידית למרחב מוגן"
                 else "⏱ ${AreaData.shelterText(sec)} להגעה למרחב מוגן", 12f, light)
             .apply { setPadding(0, dp(2), 0, 0) })
+        for (i in 0 until top.childCount) (top.getChildAt(i) as? TextView)?.gravity = Gravity.CENTER
         chips.addView(top)
 
         // אזורים נוספים
