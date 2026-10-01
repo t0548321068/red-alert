@@ -279,12 +279,16 @@ class AlertActivity : Activity() {
         val web = android.webkit.WebView(this).apply {
             settings.javaScriptEnabled = true
             setBackgroundColor(Color.parseColor("#0F1720"))
+            alpha = 0f
             isVerticalScrollBarEnabled = false; isHorizontalScrollBarEnabled = false
             webViewClient = object : android.webkit.WebViewClient() {
                 override fun onPageFinished(view: android.webkit.WebView, url: String) {
                     val me = try { Weather.lastLocation(this@AlertActivity) } catch (_: Exception) { null }
                     val ll = if (me != null) "${me.latitude}, ${me.longitude}" else "null, null"
-                    view.evaluateJavascript("miniMode(); miniShow($names, $level, $ll);", null)
+                    // המפה מוסתרת עד שהיא כבר במקום - בלי לראות את הקפיצה מכל הארץ לאזור
+                    view.evaluateJavascript("miniMode(); miniShow($names, $level, $ll);") {
+                        view.postDelayed({ view.animate().alpha(1f).setDuration(150).start() }, 120)
+                    }
                 }
             }
             loadUrl("file:///android_asset/map.html")

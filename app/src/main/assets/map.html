@@ -234,7 +234,9 @@
       if (pts.length && L.latLngBounds(pts).getCenter().distanceTo([lat, lon]) < 20000) fit.push([lat, lon]);
     }
     // זום קרוב - שאזור ההתרעה ימלא את המפה
-    if (pts.length) map.fitBounds(fit, { padding: [14, 14], maxZoom: 15 });
+    // בלי אנימציית זום (היא מנפחת את הנקודות בפתיחה) - קופץ ישר למקום
+    map.invalidateSize(false);
+    if (pts.length) map.fitBounds(fit, { padding: [14, 14], maxZoom: 15, animate: false });
     syncLabels();
   }
 
