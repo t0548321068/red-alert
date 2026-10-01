@@ -69,51 +69,109 @@ class AlertActivity : Activity() {
         }
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
             setBackgroundColor(Color.parseColor(bg))
-            setPadding(48, 48, 48, 48)
             // בכוונה בלי סגירה בלחיצה על המסך - כדי שלא ייסגר בטעות
         }
-        root.addView(TextView(this).apply {
-            text = intent.getStringExtra("title") ?: "צבע אדום"
-            textSize = 34f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-        })
-        root.addView(TextView(this).apply {
-            text = intent.getStringExtra("body") ?: ""
-            textSize = 24f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            setPadding(0, 40, 0, 40)
-        })
+        val title = intent.getStringExtra("title") ?: "צבע אדום"
+        val bgc = Color.parseColor(bg)
 
-        // ספירה לאחור - רק בהתראת ירי/חדירה ורק אם הזמן ידוע
+        // למעלה: מפה גדולה, והכותרת מעליה עם מעבר צבע
+        val top = android.widget.FrameLayout(this)
+        val map = miniMap(level)
+        val titleView = TextView(this).apply {
+            text = title
+            textSize = 28f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setPadding(dpx(16), dpx(36), dpx(16), dpx(28))
+            background = android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(bgc, bgc, Color.argb(0, Color.red(bgc), Color.green(bgc), Color.blue(bgc))))
+        }
+        if (map != null) {
+            top.addView(map, android.widget.FrameLayout.LayoutParams(-1, -1))
+            top.addView(titleView, android.widget.FrameLayout.LayoutParams(-1, -2).apply { gravity = Gravity.TOP })
+            root.addView(top, LinearLayout.LayoutParams(-1, (resources.displayMetrics.heightPixels * 0.34f).toInt()))
+        } else {
+            root.addView(titleView)
+        }
+
+        // שורה: זמן התגוננות + "היכנסו למרחב המוגן"
+        val row = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dpx(16), dpx(14), dpx(16), dpx(4))
+        }
+        val noteView = TextView(this).apply {
+            text = note
+            textSize = 21f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+        }
         if (level == AlertService.LEVEL_ALERT && shelterSec >= 0) {
-            root.addView(TextView(this).apply {
-                text = "זמן להגעה למרחב המוגן"
-                textSize = 16f
+            val cdBox = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+            }
+            cdBox.addView(TextView(this).apply {
+                text = "זמן התגוננות"
+                textSize = 14f
                 setTextColor(Color.WHITE)
                 gravity = Gravity.CENTER
             })
             countdown = TextView(this).apply {
-                textSize = 72f
+                textSize = 60f
                 setTextColor(Color.WHITE)
                 typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
                 gravity = Gravity.CENTER
-                setPadding(0, 0, 0, 30)
+                includeFontPadding = false
             }
-            root.addView(countdown)
+            cdBox.addView(countdown)
+            row.addView(cdBox, LinearLayout.LayoutParams(0, -2, 1f))
+            row.addView(noteView, LinearLayout.LayoutParams(0, -2, 1f))
+        } else {
+            row.addView(noteView, LinearLayout.LayoutParams(-1, -2))
+        }
+        root.addView(row)
+
+        if (level == AlertService.LEVEL_ALERT) {
+            stay = TextView(this).apply {
+                textSize = 17f
+                setTextColor(Color.WHITE)
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                setPadding(0, dpx(4), 0, 0)
+            }
+            root.addView(stay)
         }
 
-        // מפה קטנה עם אזורי ההתראה
-        miniMap(level)?.let { root.addView(it, LinearLayout.LayoutParams(-1, dpx(180)).apply { bottomMargin = dpx(16) }) }
-
-        root.addView(TextView(this).apply {
-            text = note
-            textSize = 20f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
+        // אזורים כתגיות - בכרטיס שנגלל אם יש הרבה
+        val chips = Flow(this, dpx(6)).apply {
+            setPadding(dpx(10), dpx(10), dpx(10), dpx(10))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = dpx(18).toFloat()
+                setColor(Color.parseColor("#33000000"))
+            }
+        }
+        (intent.getStringExtra("body") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach { a ->
+            chips.addView(TextView(this).apply {
+                text = a
+                textSize = 15f
+                setTextColor(Color.WHITE)
+                setPadding(dpx(12), dpx(5), dpx(12), dpx(5))
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    cornerRadius = dpx(14).toFloat()
+                    setColor(Color.parseColor("#38FFFFFF"))
+                }
+            })
+        }
+        val chipsScroll = android.widget.ScrollView(this).apply {
+            isVerticalScrollBarEnabled = false
+            if (chips.childCount > 0) addView(chips, ViewGroup.LayoutParams(-1, -2))
+        }
+        root.addView(chipsScroll, LinearLayout.LayoutParams(-1, 0, 1f).apply {
+            setMargins(dpx(14), dpx(10), dpx(14), 0)
         })
 
         intent.getStringExtra("source")?.takeIf { it.isNotEmpty() }?.let { src ->
@@ -122,49 +180,24 @@ class AlertActivity : Activity() {
                 textSize = 13f
                 setTextColor(Color.parseColor("#DDFFFFFF"))
                 gravity = Gravity.CENTER
-                setPadding(0, 16, 0, 0)
+                setPadding(0, dpx(8), 0, 0)
             })
         }
 
-        if (level == AlertService.LEVEL_ALERT) {
-            stay = TextView(this).apply {
-                textSize = 18f
-                setTextColor(Color.WHITE)
-                typeface = Typeface.DEFAULT_BOLD
-                gravity = Gravity.CENTER
-                setPadding(0, 24, 0, 0)
-            }
-            root.addView(stay)
-        }
-
-        // מה לעשות - הנחיות קצרות לפי סוג האיום
-        val tips = Guidance.forTitle(intent.getStringExtra("title") ?: "")
-        root.addView(TextView(this).apply {
-            text = tips.joinToString("\n") { "• $it" }
-            textSize = 15f
-            setTextColor(Color.WHITE)
-            setLineSpacing(0f, 1.25f)
-            setPadding(36, 28, 36, 28)
-            background = android.graphics.drawable.GradientDrawable().apply {
-                cornerRadius = 30f
-                setColor(Color.parseColor("#26000000"))
-            }
-        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = 36 })
-
-        // כפתורים: השתקה (צליל ורטט בלבד) · מזעור לחלון קטן · סגירה בהחלקה
+        // כפתורים: השתקה · הנחיות · מזעור · סגירה בהחלקה
         val buttons = LinearLayout(this).apply {
             gravity = Gravity.CENTER
-            setPadding(0, 60, 0, 0)
+            setPadding(dpx(8), dpx(14), dpx(8), 0)
         }
         fun btn(label: String) = TextView(this).apply {
             text = label
-            textSize = 18f
+            textSize = 16f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-            setPadding(44, 26, 44, 26)
+            setPadding(dpx(14), dpx(9), dpx(14), dpx(9))
             background = android.graphics.drawable.GradientDrawable().apply {
-                cornerRadius = 60f
-                setStroke(3, Color.WHITE)
+                cornerRadius = dpx(24).toFloat()
+                setStroke(dpx(2), Color.WHITE)
                 setColor(Color.parseColor("#33FFFFFF"))
             }
         }
@@ -173,6 +206,17 @@ class AlertActivity : Activity() {
                 AlertService.silence(this@AlertActivity)
                 text = "🔇 הושתק"
                 alpha = 0.6f
+            }
+        }
+        // הנחיות - מה לעשות לפי סוג האיום
+        val tips = Guidance.forTitle(title)
+        val guide = btn("ℹ️ הנחיות").apply {
+            setOnClickListener {
+                android.app.AlertDialog.Builder(this@AlertActivity)
+                    .setTitle("הנחיות")
+                    .setMessage(tips.joinToString("\n") { "• $it" })
+                    .setPositiveButton("סגור", null)
+                    .show()
             }
         }
         // מזער: חלון קטן למעלה עם הספירה, והמסך המלא נסגר
@@ -185,17 +229,52 @@ class AlertActivity : Activity() {
             }
         }
         buttons.addView(mute)
-        buttons.addView(mini, LinearLayout.LayoutParams(-2, -2).apply { marginStart = 40 })
+        if (tips.isNotEmpty()) buttons.addView(guide, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dpx(8) })
+        buttons.addView(mini, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dpx(8) })
         root.addView(buttons)
 
         // סגירה: החלקה של הכפתור עד הסוף (לא נסגר בנגיעה בטעות)
-        root.addView(slideToClose(), LinearLayout.LayoutParams(-1, dpx(64)).apply { topMargin = dpx(28) })
-        // גלילה - שהכל ייכנס גם במסך קטן
-        setContentView(android.widget.ScrollView(this).apply {
-            isFillViewport = true
-            setBackgroundColor(Color.parseColor(bg))
-            addView(root, ViewGroup.LayoutParams(-1, -1))
+        root.addView(slideToClose(), LinearLayout.LayoutParams(-1, dpx(60)).apply {
+            setMargins(dpx(16), dpx(14), dpx(16), dpx(20))
         })
+        setContentView(root)
+    }
+
+    /** שורות של תגיות שנשברות לשורה הבאה (מימין לשמאל), ממורכזות */
+    private class Flow(c: android.content.Context, val gap: Int) : ViewGroup(c) {
+        override fun onMeasure(w: Int, h: Int) {
+            val maxW = MeasureSpec.getSize(w) - paddingLeft - paddingRight
+            var x = 0; var y = 0; var lineH = 0
+            for (i in 0 until childCount) {
+                val ch = getChildAt(i)
+                ch.measure(MeasureSpec.makeMeasureSpec(maxW, MeasureSpec.AT_MOST), MeasureSpec.UNSPECIFIED)
+                if (x > 0 && x + ch.measuredWidth > maxW) { x = 0; y += lineH + gap; lineH = 0 }
+                x += ch.measuredWidth + gap; lineH = maxOf(lineH, ch.measuredHeight)
+            }
+            setMeasuredDimension(MeasureSpec.getSize(w), y + lineH + paddingTop + paddingBottom)
+        }
+        override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+            val maxW = r - l - paddingLeft - paddingRight
+            val lines = mutableListOf<MutableList<android.view.View>>(mutableListOf())
+            var x = 0
+            for (i in 0 until childCount) {
+                val ch = getChildAt(i)
+                if (x > 0 && x + ch.measuredWidth > maxW) { lines.add(mutableListOf()); x = 0 }
+                lines.last().add(ch); x += ch.measuredWidth + gap
+            }
+            var y = paddingTop
+            for (line in lines) {
+                val lw = line.sumOf { it.measuredWidth } + gap * (line.size - 1).coerceAtLeast(0)
+                var cx = paddingLeft + (maxW + lw) / 2   // מתחילים מימין
+                var lh = 0
+                for (ch in line) {
+                    cx -= ch.measuredWidth
+                    ch.layout(cx, y, cx + ch.measuredWidth, y + ch.measuredHeight)
+                    cx -= gap; lh = maxOf(lh, ch.measuredHeight)
+                }
+                y += lh + gap
+            }
+        }
     }
 
     private fun dpx(v: Int) = (v * resources.displayMetrics.density).toInt()
@@ -211,12 +290,6 @@ class AlertActivity : Activity() {
             settings.javaScriptEnabled = true
             setBackgroundColor(Color.parseColor("#0F1720"))
             isVerticalScrollBarEnabled = false; isHorizontalScrollBarEnabled = false
-            // פינות מעוגלות
-            outlineProvider = object : android.view.ViewOutlineProvider() {
-                override fun getOutline(v: android.view.View, o: android.graphics.Outline) =
-                    o.setRoundRect(0, 0, v.width, v.height, dpx(18).toFloat())
-            }
-            clipToOutline = true
             webViewClient = object : android.webkit.WebViewClient() {
                 override fun onPageFinished(view: android.webkit.WebView, url: String) {
                     view.evaluateJavascript("miniMode(); miniShow($names, $level);", null)
