@@ -35,12 +35,13 @@ for n in names:
         if N(p) in ac: res.append(ac[N(p)])
         else: res.append(' '.join(wm.get(w, w) for w in p.split()))
     out[n] = re.sub(r'\s+', ' ', ''.join(res)).strip(); src[n] = 'academy+claude'
+for n in out: out[n] = out[n].replace('תַּעֲשִׂיָּה', 'תַּעֲשִׂיָּיה')   # "תעשייה" במלרע
 # תיקונים ידניים (גוברים על הכל)
 import os
 if os.path.exists('tools/pronounce_manual.json'):
     for k, v in json.load(open('tools/pronounce_manual.json', encoding='utf-8')).items(): out[k] = v; src[k] = 'manual'
 # אזורי תעשייה: "אזור תעשייה <מקום>" / "אזור תעשייה צפוני <מקום>" (צמוד, בלי הפסקה)
-AZ = 'אֵזוֹר תַּעֲשִׂיָּה'
+AZ = 'אַזוֹר תַּעֲשִׂיָּיה'   # כך זה נשמע נכון (מלרע) - לפי טל
 DIRS = {'צפוני': 'צְפוֹנִי', 'דרומי': 'דְּרוֹמִי', 'הדרומי': 'דְּרוֹמִי'}
 for n in names:
     ow = [w for w in re.split(r'[\s,]+|\s-\s?|\s?-\s', n) if w]
