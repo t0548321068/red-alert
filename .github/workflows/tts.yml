@@ -22,9 +22,9 @@ jobs:
           ref: tts-sample
           path: s
       - run: |
-          mkdir -p s/samples/v5 && cd s/samples/v5
+          mkdir -p s/samples/v6 && cd s/samples/v5
           gen(){ edge-tts --voice he-IL-AvriNeural --rate=+12% --pitch=+8Hz --text "$2" --write-media raw.mp3; ffmpeg -loglevel error -y -i raw.mp3 -af "treble=g=-5:f=3000" -ac 1 -b:a 48k "$1.mp3"; }
-          gen check_industrial "אַזוֹר תַּעֲשִׂיָּיה קֵיסָרְיָה"
+          gen check_industrial "אֵזוֹר תַּעֲשִׂיָּיה קֵיסָרְיָה"
           rm raw.mp3; cd ../..
           git config user.name bot && git config user.email bot@users.noreply.github.com
-          git add samples && git commit -m "variants v5 [skip ci]" && git push
+          git add samples && git commit -m "variants v6 [skip ci]" && git push
