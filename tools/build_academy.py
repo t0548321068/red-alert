@@ -36,6 +36,10 @@ for n in names:
         else: res.append(' '.join(wm.get(w, w) for w in p.split()))
     out[n] = re.sub(r'\s+', ' ', ''.join(res)).strip(); src[n] = 'academy+claude'
 for n in out: out[n] = out[n].replace('תַּעֲשִׂיָּה', 'תַּעֲשִׂיָּיה')   # "תעשייה" במלרע
+# תיקוני מילים לפי טל (חלים על כל השמות שהמילה מופיעה בהם)
+WORDS = {'אדמים': 'אֶדוּמִים', 'אדומים': 'אֶדוּמִים'}
+for n in out:
+    out[n] = ' '.join(WORDS.get(strip(w), w) for w in out[n].split(' '))
 # תיקונים ידניים (גוברים על הכל)
 import os
 if os.path.exists('tools/pronounce_manual.json'):
