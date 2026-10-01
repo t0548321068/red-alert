@@ -78,16 +78,28 @@ class AlertActivity : Activity() {
         // למעלה: מפה גדולה, והכותרת מעליה עם מעבר צבע
         val top = android.widget.FrameLayout(this)
         val map = miniMap(level)
-        val titleView = TextView(this).apply {
-            text = title
-            textSize = 28f
-            setTextColor(Color.WHITE)
-            typeface = Typeface.DEFAULT_BOLD
+        val titleView = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(dpx(16), dpx(36), dpx(16), dpx(28))
             background = android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
                 intArrayOf(bgc, bgc, Color.argb(0, Color.red(bgc), Color.green(bgc), Color.blue(bgc))))
+            addView(TextView(this@AlertActivity).apply {
+                text = title
+                textSize = 28f
+                setTextColor(Color.WHITE)
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+            })
+            // מתחת לכותרת: מה לעשות
+            addView(TextView(this@AlertActivity).apply {
+                text = note
+                textSize = 20f
+                setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER
+                setPadding(0, dpx(2), 0, 0)
+            })
         }
         if (map != null) {
             top.addView(map, android.widget.FrameLayout.LayoutParams(-1, -1))
@@ -97,28 +109,14 @@ class AlertActivity : Activity() {
             root.addView(titleView)
         }
 
-        // שורה: זמן התגוננות + "היכנסו למרחב המוגן"
-        val row = LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dpx(16), dpx(14), dpx(16), dpx(4))
-        }
-        val noteView = TextView(this).apply {
-            text = note
-            textSize = 21f
-            setTextColor(Color.WHITE)
-            typeface = Typeface.DEFAULT_BOLD
-            gravity = Gravity.CENTER
-        }
+        // זמן התגוננות - ממורכז מתחת למפה
         if (level == AlertService.LEVEL_ALERT && shelterSec >= 0) {
-            val cdBox = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-            }
-            cdBox.addView(TextView(this).apply {
+            root.addView(TextView(this).apply {
                 text = "זמן התגוננות"
                 textSize = 14f
                 setTextColor(Color.WHITE)
                 gravity = Gravity.CENTER
+                setPadding(0, dpx(14), 0, 0)
             })
             countdown = TextView(this).apply {
                 textSize = 60f
@@ -127,13 +125,8 @@ class AlertActivity : Activity() {
                 gravity = Gravity.CENTER
                 includeFontPadding = false
             }
-            cdBox.addView(countdown)
-            row.addView(cdBox, LinearLayout.LayoutParams(0, -2, 1f))
-            row.addView(noteView, LinearLayout.LayoutParams(0, -2, 1f))
-        } else {
-            row.addView(noteView, LinearLayout.LayoutParams(-1, -2))
+            root.addView(countdown)
         }
-        root.addView(row)
 
         if (level == AlertService.LEVEL_ALERT) {
             stay = TextView(this).apply {
