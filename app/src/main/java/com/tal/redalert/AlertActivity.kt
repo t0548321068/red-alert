@@ -307,7 +307,7 @@ class AlertActivity : Activity() {
             setTextColor(Color.WHITE); textSize = 16f; gravity = Gravity.CENTER
         }
         track.addView(label, android.widget.FrameLayout.LayoutParams(-1, -1))
-        val size = dpx(52)   // פס בגובה 60 - רווח 4 מכל הצדדים
+        val size = dpx(48)   // פס בגובה 60 - רווח 6 מכל הצדדים
         val knob = TextView(this).apply {
             text = "✕"; textSize = 22f; gravity = Gravity.CENTER
             setTextColor(Color.parseColor("#D50000"))
@@ -316,11 +316,11 @@ class AlertActivity : Activity() {
             }
         }
         track.addView(knob, android.widget.FrameLayout.LayoutParams(size, size).apply {
-            gravity = Gravity.CENTER_VERTICAL or Gravity.START; leftMargin = dpx(4)
+            gravity = Gravity.CENTER_VERTICAL or Gravity.START; leftMargin = dpx(6)
         })
         var downX = 0f
         knob.setOnTouchListener { v, e ->
-            val max = (track.width - size - dpx(8)).toFloat()
+            val max = (track.width - size - dpx(12)).toFloat()
             when (e.actionMasked) {
                 android.view.MotionEvent.ACTION_DOWN -> { downX = e.rawX - v.translationX; true }
                 android.view.MotionEvent.ACTION_MOVE -> {
