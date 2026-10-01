@@ -22,12 +22,14 @@ jobs:
           ref: tts-sample
           path: s
       - run: |
-          mkdir -p s/samples/v3 && cd s/samples/v3
+          mkdir -p s/samples/v4 && cd s/samples/v4
           gen(){ edge-tts --voice he-IL-AvriNeural --rate=+12% --pitch=+8Hz --text "$2" --write-media raw.mp3; ffmpeg -loglevel error -y -i raw.mp3 -af "treble=g=-5:f=3000" -ac 1 -b:a 48k "$1.mp3"; }
-          gen industrial_5 "אֵיזוֹר תַּעֲשִׂיָּה קֵיסָרְיָה"
-          gen industrial_6 "אֶזוֹר תַּעֲשִׂיָּה קֵיסָרְיָה"
-          gen industrial_7 "איזור תעשייה קיסריה"
-          gen industrial_8 "אֵי-זוֹר תַּ-עֲ-שִׂי-יָה קֵיסָרְיָה"
+          gen industrial_9 "אֵזוֹר תַּעֲשִׂיָּֽה קֵיסָרְיָה"
+          gen industrial_10 "אֵזוֹר תַּעֲשִׂיָּ֫ה קֵיסָרְיָה"
+          gen industrial_11 "אֵזוֹר תַּעֲשִׂי-יָה קֵיסָרְיָה"
+          gen industrial_12 "אֵזוֹר תַּעֲשִׂיָּא קֵיסָרְיָה"
+          gen industrial_13 "אֵזוֹר תעשייה קֵיסָרְיָה"
+          gen industrial_14 "אֵזוֹר תַּעֲשִׂיָה, קֵיסָרְיָה"
           rm raw.mp3; cd ../..
           git config user.name bot && git config user.email bot@users.noreply.github.com
-          git add samples && git commit -m "variants v3 [skip ci]" && git push
+          git add samples && git commit -m "variants v4 [skip ci]" && git push
