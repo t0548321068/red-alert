@@ -73,18 +73,12 @@ class AlertActivity : Activity() {
             // בכוונה בלי סגירה בלחיצה על המסך - כדי שלא ייסגר בטעות
         }
         val title = intent.getStringExtra("title") ?: "צבע אדום"
-        val bgc = Color.parseColor(bg)
 
-        // למעלה: מפה גדולה, והכותרת מעליה עם מעבר צבע
-        val top = android.widget.FrameLayout(this)
         val map = miniMap(level)
         val titleView = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(dpx(16), dpx(36), dpx(16), dpx(28))
-            background = android.graphics.drawable.GradientDrawable(
-                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(bgc, bgc, Color.argb(0, Color.red(bgc), Color.green(bgc), Color.blue(bgc))))
+            setPadding(dpx(16), dpx(36), dpx(16), dpx(14))
             addView(TextView(this@AlertActivity).apply {
                 text = title
                 textSize = 28f
@@ -101,13 +95,9 @@ class AlertActivity : Activity() {
                 setPadding(0, dpx(2), 0, 0)
             })
         }
-        if (map != null) {
-            top.addView(map, android.widget.FrameLayout.LayoutParams(-1, -1))
-            top.addView(titleView, android.widget.FrameLayout.LayoutParams(-1, -2).apply { gravity = Gravity.TOP })
-            root.addView(top, LinearLayout.LayoutParams(-1, (resources.displayMetrics.heightPixels * 0.34f).toInt()))
-        } else {
-            root.addView(titleView)
-        }
+        // הכותרת למעלה, והמפה מתחתיה (לא מוסתרת)
+        root.addView(titleView)
+        if (map != null) root.addView(map, LinearLayout.LayoutParams(-1, (resources.displayMetrics.heightPixels * 0.34f).toInt()))
 
         // זמן התגוננות - ממורכז מתחת למפה
         if (level == AlertService.LEVEL_ALERT && shelterSec >= 0) {
@@ -234,7 +224,7 @@ class AlertActivity : Activity() {
         root.setOnApplyWindowInsetsListener { v, ins ->
             @Suppress("DEPRECATION")
             v.setPadding(0, 0, 0, ins.systemWindowInsetBottom)
-            if (map == null) titleView.setPadding(dpx(16), ins.systemWindowInsetTop + dpx(20), dpx(16), dpx(28))
+            titleView.setPadding(dpx(16), ins.systemWindowInsetTop + dpx(12), dpx(16), dpx(14))
             ins
         }
         setContentView(root)

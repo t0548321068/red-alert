@@ -227,7 +227,8 @@
            : L.circleMarker(a.c, { radius: 8, color: color, fillOpacity: .8, interactive: false })).addTo(alertLayer);
       pts = pts.concat(a.p || [a.c]);
     });
-    if (pts.length) map.fitBounds(pts, { padding: [30, 30], maxZoom: 10 });
+    // זום קרוב - שאזור ההתרעה ימלא את המפה
+    if (pts.length) map.fitBounds(pts, { padding: [14, 14], maxZoom: 15 });
     syncLabels();
   }
 
