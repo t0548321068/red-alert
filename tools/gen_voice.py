@@ -15,10 +15,15 @@ os.makedirs(OUT, exist_ok=True)
 # שמות הקבצים באנגלית (כדי שיהיה קל למצוא קובץ): tools/voice_names.json
 NAMES = json.load(open("tools/voice_names.json", encoding="utf-8"))
 
+import re
+def tts_text(t):
+    # דגש רק איפה שהוא משנה את ההגייה (בּ כּ פּ, שורוק וּ, מפיק הּ). בשאר האותיות הקול נתקע ממנו ("אשדווד")
+    return re.sub(r'([\u05D0-\u05EA])([\u0591-\u05C7]*)',
+                  lambda m: m.group(1) + (m.group(2) if m.group(1) in 'בכךפףוה' else m.group(2).replace('\u05BC', '')), t)
 items = {}
 # אזורים: voice/areas/<english>.mp3
 for n, path in NAMES["areas"].items():
-    items[path[:-4]] = FIX.get(n, n.replace(" - ", " ").replace("-", " "))
+    items[path[:-4]] = tts_text(FIX.get(n, n.replace(" - ", " ").replace("-", " ")))
 TEXT = {
     "rockets": "ירי רקטות וטילים.", "hostile_aircraft": "חדירת כלי טיס עוין.",
     "terrorist_infiltration": "חדירת מחבלים.", "earthquake": "רעידת אדמה.", "tsunami": "צונאמי.",
