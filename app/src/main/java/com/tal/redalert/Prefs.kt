@@ -227,8 +227,17 @@ object Prefs {
     fun setDndOverride(c: Context, v: Boolean) = sp(c).edit().putBoolean("dndOverride", v).commit()
 
     /** ערכת נושא: true = כהה (ברירת מחדל), false = בהירה */
-    fun darkTheme(c: Context) = sp(c).getBoolean("dark", true)
-    fun setDarkTheme(c: Context, v: Boolean) = sp(c).edit().putBoolean("dark", v).commit()
+    /** ערכת צבעים: 0 כהה, 1 בהירה, 2 לפי המערכת */
+    fun themeMode(c: Context) = sp(c).getInt("themeMode", if (sp(c).getBoolean("dark", true)) 0 else 1)
+    fun setThemeMode(c: Context, v: Int) = sp(c).edit().putInt("themeMode", v).commit()
+    val THEME_NAMES = arrayOf("כהה", "בהירה", "לפי המערכת")
+    fun darkTheme(c: Context) = when (themeMode(c)) {
+        1 -> false
+        2 -> (c.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+        else -> true
+    }
+    fun setDarkTheme(c: Context, v: Boolean) = setThemeMode(c, if (v) 0 else 1)
     fun dialogTheme(c: Context) =
         if (darkTheme(c)) android.R.style.Theme_DeviceDefault_Dialog_Alert
         else android.R.style.Theme_DeviceDefault_Light_Dialog_Alert
