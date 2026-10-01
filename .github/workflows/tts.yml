@@ -17,17 +17,3 @@ jobs:
           git config user.name bot && git config user.email bot@users.noreply.github.com
           git add app/src/main/assets/voice
           git commit -m "voice clips [skip ci]" && git push origin HEAD:v1.23-work
-      - uses: actions/checkout@v4
-        with:
-          ref: tts-sample
-          path: s
-      - run: |
-          mkdir -p s/samples/ashdod && cd s/samples/ashdod
-          i=1
-          for t in "אַשְׁדּוֹד" "אַשְׁדֹּד" "אַשְׁדוֹד" "אשדוד"; do
-            edge-tts --voice he-IL-AvriNeural --rate=+12% --pitch=+8Hz --text "$t" --write-media raw.mp3
-            ffmpeg -loglevel error -y -i raw.mp3 -af "treble=g=-5:f=3000" -ac 1 -b:a 48k ashdod_$i.mp3; i=$((i+1))
-          done
-          rm raw.mp3; cd ../..
-          git config user.name bot && git config user.email bot@users.noreply.github.com
-          git add samples && git commit -m "ashdod variants [skip ci]" && git push
