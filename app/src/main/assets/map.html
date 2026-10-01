@@ -34,7 +34,8 @@
   .leaflet-popup-content { direction: rtl; text-align: right; }
   /* מפה קטנה במסך ההתראה: רק המפה והאזורים, בלי כפתורים */
   body.mini .bar, body.mini .legend, body.mini .me-btn, body.mini .empty { display: none !important; }
-  body.mini #map { opacity: 0; }
+  html:has(body.mini), body.mini { background: transparent; }
+  body.mini #map { opacity: 0; transition: opacity .35s ease-out; }
   body.mini.ready #map { opacity: 1; }
 </style>
 </head>
@@ -77,11 +78,12 @@
   var meLayer = L.layerGroup().addTo(map);
   var DATA = { dark: true, all: [], mine: [] }, HOURS = 24, MODE = 'all', ME = null, HAS_BOUNDS = false;
 
-  function drawBase() {
+  function drawBase(only) {
     baseLayer.clearLayers(); labelLayer.clearLayers();
     var land = css('--land'), edge = css('--edge');
     Object.keys(ALL_AREAS).forEach(function (name) {
       var a = ALL_AREAS[name];
+      if (only && !only.contains(a.c)) return;   // מפת ההתרעה: רק מה שבתצוגה - מהיר
       if (a.p) L.polygon(a.p, { color: edge, weight: .6, fillColor: land, fillOpacity: 1 })
         .bindPopup(info(name)).addTo(baseLayer);
       L.tooltip({ permanent: true, direction: 'center', className: 'lbl' })
@@ -248,6 +250,8 @@
     var s = map.getSize();
     if ((s.x < 50 || s.y < 50) && tries < 40) { setTimeout(function () { miniFit(tries + 1); }, 50); return; }
     if (MINI_FIT) map.fitBounds(MINI_FIT, { padding: [14, 14], maxZoom: 15, animate: false });
+    drawBase(map.getBounds().pad(0.6));
+    alertLayer.eachLayer(function (l) { if (l.bringToFront) l.bringToFront(); });   // האזורים מעל הרקע
     syncLabels();
     document.body.classList.add('ready');
   }
@@ -257,8 +261,8 @@
     }
   });
 
-  // מצויר מיד, עוד לפני שהאפליקציה שולחת נתונים
-  drawBase(); syncLabels();
+  // מצויר מיד, עוד לפני שהאפליקציה שולחת נתונים (במפת ההתרעה - רק אחרי המיקוד, ורק הסביבה)
+  if (location.hash.indexOf('#mini=') !== 0) { drawBase(); syncLabels(); }
   // מסך ההתרעה: הנתונים מגיעים בכתובת עצמה (#mini={names,level,lat,lon})
   if (location.hash.indexOf('#mini=') === 0) {
     try {
