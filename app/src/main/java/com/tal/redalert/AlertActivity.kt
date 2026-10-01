@@ -280,14 +280,11 @@ class AlertActivity : Activity() {
             settings.javaScriptEnabled = true
             setBackgroundColor(Color.parseColor("#0F1720"))
             isVerticalScrollBarEnabled = false; isHorizontalScrollBarEnabled = false
-            webViewClient = object : android.webkit.WebViewClient() {
-                override fun onPageFinished(view: android.webkit.WebView, url: String) {
-                    val me = try { Weather.lastLocation(this@AlertActivity) } catch (_: Exception) { null }
-                    val ll = if (me != null) "${me.latitude}, ${me.longitude}" else "null, null"
-                    view.evaluateJavascript("miniMode(); miniShow($names, $level, $ll);", null)
-                }
-            }
-            loadUrl("file:///android_asset/map.html")
+            // הנתונים עוברים בכתובת - המפה נפתחת ישר במצב הקטן על אזור ההתרעה
+            val me = try { Weather.lastLocation(this@AlertActivity) } catch (_: Exception) { null }
+            val q = org.json.JSONObject().put("names", names).put("level", level)
+            if (me != null) q.put("lat", me.latitude).put("lon", me.longitude)
+            loadUrl("file:///android_asset/map.html#mini=" + android.net.Uri.encode(q.toString()))
         }
         return web
     }
