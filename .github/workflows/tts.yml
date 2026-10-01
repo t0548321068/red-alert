@@ -9,11 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: v1.23-work
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg && pip install edge-tts
-      - run: python tools/gen_voice.py
       - run: |
+          mkdir -p samples
+          curl -sL -m 120 -A "Mozilla/5.0" -o samples/academy.pdf "https://hebrew-academy.org.il/wp-content/uploads/%D7%A8%D7%A9%D7%99%D7%9E%D7%AA-%D7%A9%D7%9E%D7%95%D7%AA-%D7%94%D7%99%D7%99%D7%A9%D7%95%D7%91%D7%99%D7%9D-%D7%99%D7%95%D7%9C%D7%99-2022.pdf"
+          ls -la samples/academy.pdf; file samples/academy.pdf
           git config user.name bot && git config user.email bot@users.noreply.github.com
-          git add app/src/main/assets/voice
-          git commit -m "voice clips [skip ci]" && git push origin HEAD:v1.23-work
+          git add samples && git commit -m "academy pdf [skip ci]" && git push
