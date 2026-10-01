@@ -34,9 +34,13 @@
   .leaflet-popup-content { direction: rtl; text-align: right; }
   /* מפה קטנה במסך ההתראה: רק המפה והאזורים, בלי כפתורים */
   body.mini .bar, body.mini .legend, body.mini .me-btn, body.mini .empty { display: none !important; }
+  body.mini #map { opacity: 0; }
+  body.mini.ready #map { opacity: 1; }
 </style>
 </head>
 <body>
+<!-- מסך ההתרעה פותח את המפה עם #mini=... - מצב קטן מהרגע הראשון, בלי לחכות לאפליקציה -->
+<script>if (location.hash.indexOf('#mini=') === 0) document.body.classList.add('mini');</script>
 <div id="map"></div>
 <div class="bar">
   <button data-h="1">שעה</button>
@@ -214,8 +218,6 @@
   // מסך ההתראה: מפה קטנה וקבועה (בלי גרירה) שמראה רק את אזורי ההתראה
   function miniMode() {
     document.body.classList.add('mini');
-    // המפה מוסתרת עד ש-miniShow מציב אותה על האזור - בלי לראות את כל הארץ
-    document.getElementById('map').style.opacity = 0;
     map.dragging.disable(); map.touchZoom.disable(); map.doubleClickZoom.disable();
     map.scrollWheelZoom.disable(); map.boxZoom.disable(); map.keyboard.disable();
     if (map.tap) map.tap.disable();
@@ -242,13 +244,12 @@
   // (אם מתמקדים לפני כן - יוצאת כל הארץ), ורק אז מציג אותה
   var MINI_FIT = null;
   function miniFit(tries) {
-    var el = document.getElementById('map');
     map.invalidateSize(false);
     var s = map.getSize();
     if ((s.x < 50 || s.y < 50) && tries < 40) { setTimeout(function () { miniFit(tries + 1); }, 50); return; }
     if (MINI_FIT) map.fitBounds(MINI_FIT, { padding: [14, 14], maxZoom: 15, animate: false });
     syncLabels();
-    el.style.opacity = 1;
+    document.body.classList.add('ready');
   }
   window.addEventListener('resize', function () {
     if (document.body.classList.contains('mini') && MINI_FIT) {
@@ -258,6 +259,13 @@
 
   // מצויר מיד, עוד לפני שהאפליקציה שולחת נתונים
   drawBase(); syncLabels();
+  // מסך ההתרעה: הנתונים מגיעים בכתובת עצמה (#mini={names,level,lat,lon})
+  if (location.hash.indexOf('#mini=') === 0) {
+    try {
+      var q = JSON.parse(decodeURIComponent(location.hash.substring(6)));
+      miniMode(); miniShow(q.names || [], q.level || 0, q.lat, q.lon);
+    } catch (e) { document.body.classList.add('ready'); }
+  }
 </script>
 </body>
 </html>
