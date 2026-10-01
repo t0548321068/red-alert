@@ -7,24 +7,15 @@ permissions:
 jobs:
   gen:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
           ref: v1.23-work
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg && pip install edge-tts
+      - uses: FedericoCarboni/setup-ffmpeg@v3
+      - run: pip install edge-tts
       - run: python tools/gen_voice.py
       - run: |
           git config user.name bot && git config user.email bot@users.noreply.github.com
           git add app/src/main/assets/voice
           (git commit -m "voice clips [skip ci]" && git push origin HEAD:v1.23-work) || true
-      - uses: actions/checkout@v4
-        with:
-          ref: tts-sample
-          path: s
-      - run: |
-          mkdir -p s/samples/v6 && cd s/samples/v5
-          gen(){ edge-tts --voice he-IL-AvriNeural --rate=+12% --pitch=+8Hz --text "$2" --write-media raw.mp3; ffmpeg -loglevel error -y -i raw.mp3 -af "treble=g=-5:f=3000" -ac 1 -b:a 48k "$1.mp3"; }
-          gen check_industrial "אֵזוֹר תַּעֲשִׂיָּיה קֵיסָרְיָה"
-          rm raw.mp3; cd ../..
-          git config user.name bot && git config user.email bot@users.noreply.github.com
-          git add samples && git commit -m "variants v6 [skip ci]" && git push
