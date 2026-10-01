@@ -307,7 +307,7 @@ class AlertActivity : Activity() {
             setTextColor(Color.WHITE); textSize = 16f; gravity = Gravity.CENTER
         }
         track.addView(label, android.widget.FrameLayout.LayoutParams(-1, -1))
-        val size = dpx(56)
+        val size = dpx(52)   // פס בגובה 60 - רווח 4 מכל הצדדים
         val knob = TextView(this).apply {
             text = "✕"; textSize = 22f; gravity = Gravity.CENTER
             setTextColor(Color.parseColor("#D50000"))
