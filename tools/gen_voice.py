@@ -35,7 +35,11 @@ TEXT = {
     "time_1min": "זמן להגעה למרחב המוגן: דקה.", "time_1_5min": "זמן להגעה למרחב המוגן: דקה וחצי.",
 }
 for k2, t in TEXT.items(): items["phrases/" + k2] = t
-os.makedirs(OUT + "/areas", exist_ok=True); os.makedirs(OUT + "/phrases", exist_ok=True)
+# תיקייה נוספת - הקלטות שעוד לא בשימוש באפליקציה (tools/extra_phrases.json)
+if os.path.exists("tools/extra_phrases.json"):
+    for k2, t in json.load(open("tools/extra_phrases.json", encoding="utf-8")).items():
+        items["extra/" + k2] = tts_text(t)
+os.makedirs(OUT + "/areas", exist_ok=True); os.makedirs(OUT + "/phrases", exist_ok=True); os.makedirs(OUT + "/extra", exist_ok=True)
 json.dump(NAMES["areas"], open(OUT + "/index.json", "w", encoding="utf-8"), ensure_ascii=False, indent=0)
 
 sem = asyncio.Semaphore(6)
@@ -65,7 +69,7 @@ async def safe(n, t):
 
 async def main():
     await asyncio.gather(*(safe(n, t) for n, t in items.items()))
-    done = sum(len(os.listdir(f"{OUT}/{d}")) for d in ("areas", "phrases"))
+    done = sum(len(os.listdir(f"{OUT}/{d}")) for d in ("areas", "phrases", "extra"))
     print(f"::notice::clips {done} of {len(items)}")
     if done < len(items) * 0.9: sys.exit(f"::error::only {done} clips")
 try:
