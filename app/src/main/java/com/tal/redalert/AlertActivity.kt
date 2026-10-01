@@ -282,7 +282,9 @@ class AlertActivity : Activity() {
             isVerticalScrollBarEnabled = false; isHorizontalScrollBarEnabled = false
             webViewClient = object : android.webkit.WebViewClient() {
                 override fun onPageFinished(view: android.webkit.WebView, url: String) {
-                    view.evaluateJavascript("miniMode(); miniShow($names, $level);", null)
+                    val me = try { Weather.lastLocation(this@AlertActivity) } catch (_: Exception) { null }
+                    val ll = if (me != null) "${me.latitude}, ${me.longitude}" else "null, null"
+                    view.evaluateJavascript("miniMode(); miniShow($names, $level, $ll);", null)
                 }
             }
             loadUrl("file:///android_asset/map.html")

@@ -218,7 +218,7 @@
     map.scrollWheelZoom.disable(); map.boxZoom.disable(); map.keyboard.disable();
     if (map.tap) map.tap.disable();
   }
-  function miniShow(names, level) {
+  function miniShow(names, level, lat, lon) {
     alertLayer.clearLayers();
     var color = COLORS[level] || COLORS[0], pts = [];
     names.forEach(function (n) {
@@ -227,8 +227,14 @@
            : L.circleMarker(a.c, { radius: 8, color: color, fillOpacity: .8, interactive: false })).addTo(alertLayer);
       pts = pts.concat(a.p || [a.c]);
     });
+    // המיקום הנוכחי - נקודה כחולה. נכלל בזום רק אם הוא קרוב (עד 20 ק"מ) - כדי שהאזור יישאר ברור
+    var fit = pts.slice();
+    if (lat != null && lon != null) {
+      L.circleMarker([lat, lon], { radius: 7, color: '#fff', weight: 3, fillColor: '#0A84FF', fillOpacity: 1, interactive: false }).addTo(alertLayer);
+      if (pts.length && L.latLngBounds(pts).getCenter().distanceTo([lat, lon]) < 20000) fit.push([lat, lon]);
+    }
     // זום קרוב - שאזור ההתרעה ימלא את המפה
-    if (pts.length) map.fitBounds(pts, { padding: [14, 14], maxZoom: 15 });
+    if (pts.length) map.fitBounds(fit, { padding: [14, 14], maxZoom: 15 });
     syncLabels();
   }
 
