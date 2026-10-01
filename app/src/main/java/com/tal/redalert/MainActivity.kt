@@ -269,7 +269,7 @@ class MainActivity : Activity() {
         }
         // בלי לחיצה על החיווים (רק 7 הלחיצות הנסתרות על הגרסה נשארו)
         netInd = indicator(R.drawable.ic_globe, null)
-        locInd = indicator(R.drawable.ic_location, null)
+        locInd = indicator(R.drawable.ic_location) { onLocationIndicator() }   // לחיצה: רענון מיקום
         srvInd = indicator(R.drawable.ic_antenna) { showSourcesInfo() }   // לחיצה: רשימת המקורות
         // גרסה: 7 לחיצות מהירות - פותח את אפשרות הבטא (מוסתרת משאר המשתמשים)
         var taps = 0; var lastTap = 0L
@@ -994,7 +994,11 @@ class MainActivity : Activity() {
         when {
             !hasLocationPerm() || !hasPrecise() -> onWeatherClick()
             !locationOn() -> startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-            else -> updateWeather(force = true)
+            else -> {
+                android.widget.Toast.makeText(this, "📍 מעדכן מיקום…", android.widget.Toast.LENGTH_SHORT).show()
+                refreshNearby()
+                updateWeather(force = true)
+            }
         }
     }
 

@@ -27,7 +27,7 @@ class AlertService : Service() {
         private const val URL_HISTORY = "https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json"
         private const val URL_ARCHIVE = "https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=1"
         private const val POLL_MS = 2000L
-        private const val HISTORY_POLL_MS = 10000L
+        private const val HISTORY_POLL_MS = 30000L   // גיבוי בלבד
         private const val HISTORY_WINDOW_MS = 90000L
         private const val CH_SERVICE = "service"
         private const val CH_ALERT = "alerts_v3"   // בינתיים: צליל ורטט ברירת מחדל של הטלפון
@@ -39,6 +39,24 @@ class AlertService : Service() {
         const val ACTION_SILENCE = "silence"
         const val ACTION_VOICE = "voice"
         const val ACTION_PUSH = "push"
+        const val ACTION_WATCHDOG = "watchdog"
+        private const val WATCHDOG_MS = 5 * 60 * 1000L
+
+        /** שומר: מעיר את השירות כל ~5 דקות גם כשהטלפון ישן */
+        fun scheduleWatchdog(c: Context) {
+            val am = c.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+            val pi = PendingIntent.getForegroundService(c, 30,
+                Intent(c, AlertService::class.java).setAction(ACTION_WATCHDOG),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+            try {
+                am.setAndAllowWhileIdle(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    android.os.SystemClock.elapsedRealtime() + WATCHDOG_MS, pi)
+            } catch (_: Exception) { }
+        }
+
+        /** האם היה אירוע ב-10 הדקות האחרונות (אז בודקים את כל המקורות בתדירות גבוהה) */
+        @Volatile var lastEventAt = 0L
+        fun inEvent() = System.currentTimeMillis() - lastEventAt < 10 * 60 * 1000L
 
         /** בטא הופעלה/כובתה - התחברות מחדש להתראות העדכון */
         fun reloadPush(c: Context) {
@@ -145,6 +163,8 @@ class AlertService : Service() {
     /** מפתח ליישוב - אותו יישוב בכל המקורות ("תל אביב - מרכז העיר" = "תל אביב" = "תל-אביב") */
     private fun key(area: String, level: Int) = Prefs.areaKey(area) + "|" + level
     private var wakeLock: PowerManager.WakeLock? = null
+    /** מחזיק את הטלפון ער לזמן קצוב (לא כל הזמן) */
+    private fun awake(ms: Long) { try { wakeLock?.acquire(ms) } catch (_: Exception) { } }
     private var ringtone: Ringtone? = null
     private val main = Handler(Looper.getMainLooper())
 
@@ -179,22 +199,32 @@ class AlertService : Service() {
         if (stayLeft > 0) main.postDelayed(stayDone, stayLeft) else Prefs.setStayUntil(this, 0)
         speaker = Speaker(this)
         val pm = getSystemService(POWER_SERVICE) as PowerManager
-        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "redalert:poll").apply { acquire() }
+        // בלי להחזיק את המעבד ער כל הזמן: הטלפון ישן, והחיבור הקבוע לצופר מעיר אותו כשיש התראה.
+        // שומר: מעיר את הטלפון כל כמה דקות כדי לוודא שהחיבורים חיים (ולבדוק את פיקוד העורף)
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "redalert:poll").apply { setReferenceCounted(false) }
+        scheduleWatchdog(this)
         running = true
         Thread(::loop, "oref-poll").start()
         Thread(::historyLoop, "oref-history").start()
         Thread(::updateLoop, "update-check").start()
         Thread(::watchdogLoop, "watchdog").start()
-        updatePush = UpdatePush({ Prefs.betaUpdates(this) }) { onUpdatePing() }.also { it.start() }
+        // בלי חיבור קבוע ל-ntfy (חיסכון בסוללה) - בדיקת עדכונים כל 6 שעות ובפתיחת האפליקציה
         Thread(::nearLoop, "near-me").start()
         tzofar = TzofarSource(this) { title, areas -> handle(title, areas, source = "tzofar") }.also { it.start() }
         telegram = listOf("PikudHaOref_all", "tzevaadomm", "CumtaAlertsChannel", "Radar_Alerts").map { ch ->
-            TelegramSource(ch) { title, areas ->
+            TelegramSource(ch, { telegramInterval() }) { title, areas ->
                 // רק שמות יישובים אמיתיים - בלי שורות כותרת, תאריכים ושמות ערוצים
                 val real = areas.filter { AreaData.isKnown(this, it) }
                 if (real.isNotEmpty()) handle(title, real, source = "tg:$ch")
             }.also { it.start() }
         }
+    }
+
+    /** טלגרם: 5 שניות באירוע, 30 שניות כשהמסך דלוק, 2 דקות כשהוא כבוי */
+    private fun telegramInterval(): Long = when {
+        inEvent() -> 5_000L
+        (getSystemService(POWER_SERVICE) as PowerManager).isInteractive -> 30_000L
+        else -> 120_000L
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -203,6 +233,12 @@ class AlertService : Service() {
         if (fresh) {
             fresh = false
             if (intent?.getBooleanExtra("manual", false) != true) announceListening()
+        }
+        if (intent?.action == ACTION_WATCHDOG) {
+            awake(20_000)   // כמה שניות ער: החיבורים מתחדשים ופיקוד העורף נבדק
+            tzofar?.ensureConnected()
+            scheduleWatchdog(this)
+            return START_STICKY
         }
         if (intent?.action == ACTION_PUSH) {
             updatePush?.reconnect()
@@ -348,7 +384,7 @@ class AlertService : Service() {
         Thread.sleep(60_000)
         while (running) {
             notifyIfNewVersion()
-            Thread.sleep(30 * 60 * 1000L)
+            Thread.sleep(6 * 60 * 60 * 1000L)   // כל 6 שעות (וגם בכל פתיחה של האפליקציה)
         }
     }
 
@@ -419,6 +455,8 @@ class AlertService : Service() {
     @Synchronized
     fun handle(rawTitle: String, rawAreas: List<String>, eventTime: Long = System.currentTimeMillis(),
                source: String = "") {
+        awake(60_000)   // התראה הגיעה - הטלפון נשאר ער לזמן הטיפול בה
+        lastEventAt = System.currentTimeMillis()
         val level = levelOf(rawTitle)
         // כל סוגי הסיום ("החשש הוסר" וכו') מוצגים כ"האירוע הסתיים"
         val title = if (level == LEVEL_END) "האירוע הסתיים" else rawTitle
@@ -476,29 +514,38 @@ class AlertService : Service() {
      * "קרוב אליי": כל 2 דקות לוקח מיקום עדכני (לא רק מה שהטלפון זוכר)
      * ומזהה באילו אזורים המכשיר נמצא עכשיו.
      */
+    /**
+     * "קרוב אליי": כל 5 דקות. קודם מיקום מהרשת (כמעט בלי סוללה);
+     * GPS נדלק רק אם זזנו (מעל 300 מ׳) או שהמיקום מהרשת לא מספיק מדויק.
+     */
+    private var lastGps: android.location.Location? = null
     private fun nearLoop() {
         while (running) {
             try {
-                // מיקום עדכני: ל"קרוב אליי", וגם לרשימת האזורים שהייתי בהם (במפה)
                 if (checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) ==
                     android.content.pm.PackageManager.PERMISSION_GRANTED) main.post {
-                    Weather.freshLocation(this) { loc ->
-                        if (loc != null) Thread {
-                            try {
-                                Prefs.addVisits(this, AreaData.areasAt(this, loc.latitude, loc.longitude, 0.0),
-                                    System.currentTimeMillis())
-                                if (Prefs.nearMe(this)) {
-                                    val list = AreaData.areasAt(this, loc.latitude, loc.longitude, 1.0).take(4)
-                                    if (list.isNotEmpty() && list != Prefs.nearbyAreas(this)) Prefs.setNearbyAreas(this, list)
-                                }
-                            } catch (_: Exception) { }
-                        }.start()
+                    awake(40_000)
+                    Weather.networkLocation(this) { net ->
+                        val prev = lastGps
+                        val needGps = net == null || prev == null || net.accuracy > 150f || net.distanceTo(prev) > 300f
+                        if (needGps) Weather.freshLocation(this) { loc -> if (loc != null) { lastGps = loc; useLocation(loc) } }
+                        else useLocation(prev!!)   // לא זזנו - המיקום המדויק הקודם עדיין נכון
                     }
                 }
             } catch (_: Exception) { }
-            Thread.sleep(2 * 60 * 1000L)
+            Thread.sleep(5 * 60 * 1000L)
         }
     }
+
+    private fun useLocation(loc: android.location.Location) = Thread {
+        try {
+            Prefs.addVisits(this, AreaData.areasAt(this, loc.latitude, loc.longitude, 0.0), System.currentTimeMillis())
+            if (Prefs.nearMe(this)) {
+                val list = AreaData.areasAt(this, loc.latitude, loc.longitude, 1.0).take(4)
+                if (list.isNotEmpty() && list != Prefs.nearbyAreas(this)) Prefs.setNearbyAreas(this, list)
+            }
+        } catch (_: Exception) { }
+    }.start()
 
     private fun fire(title: String, areas: List<String>, forceScreen: Boolean = false, shelter: Int? = null,
                      test: Boolean = false, source: String = "", mapAreas: List<String>? = null) {
