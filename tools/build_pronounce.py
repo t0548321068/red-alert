@@ -33,5 +33,9 @@ for n in names:
         if v: hit += 1; out.append(v)
         else: out.append(w)
     if hit: fix[n] = re.sub(r'\s+', ' ', ''.join(out)).strip()
+# ניקוד מלא שנעשה בעזרת Claude (גובר על הרשימה)
+import os
+if os.path.exists('tools/nikud_ai.json'):
+    for k, (v, c) in json.load(open('tools/nikud_ai.json', encoding='utf-8')).items(): fix[k] = v
 json.dump(fix, open('tools/pronounce.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 print('mapped', len(fix))
