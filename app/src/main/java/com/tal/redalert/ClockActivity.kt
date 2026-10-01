@@ -37,8 +37,13 @@ class ClockActivity : Activity() {
 
     private val tick = object : Runnable {
         override fun run() {
+            // מתזמנים קודם - תקלה בהמשך לא תעצור את השעון. כל חצי שנייה (להבהוב הנקודתיים)
+            ui.removeCallbacks(this)
             val now = System.currentTimeMillis()
+            ui.postDelayed(this, if (now % 1000 < 500) 500 - now % 1000 else 1000 - now % 1000)
             time.text = TimeFormat.clock(this@ClockActivity, now)
+            if (now % 1000 >= 500) return
+            try {
             day.text = TimeFormat.dayLine(this@ClockActivity, now)
 
             val on = Prefs.enabled(this@ClockActivity)
@@ -48,9 +53,7 @@ class ClockActivity : Activity() {
             feed.text = FeedText.latest(this@ClockActivity) ?: ""
 
             if (now - lastShift > 60_000) { shift(); lastShift = now }
-            ui.postDelayed(this, 1000 - now % 1000)
-            // הבהוב הנקודתיים: עוד עדכון באמצע השנייה
-            if (Prefs.blinkColon(this@ClockActivity) && now % 1000 < 500) ui.postDelayed(halfTick, 500 - now % 1000)
+            } catch (_: Exception) { }
         }
     }
 
