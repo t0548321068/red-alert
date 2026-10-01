@@ -17,3 +17,19 @@ jobs:
           git config user.name bot && git config user.email bot@users.noreply.github.com
           git add app/src/main/assets/voice
           git commit -m "voice clips [skip ci]" && git push origin HEAD:v1.23-work
+      - uses: actions/checkout@v4
+        with:
+          ref: tts-sample
+          path: s
+      - run: |
+          mkdir -p s/samples/v2 && cd s/samples/v2
+          gen(){ edge-tts --voice he-IL-AvriNeural --rate=+12% --pitch=+8Hz --text "$2" --write-media raw.mp3; ffmpeg -loglevel error -y -i raw.mp3 -af "treble=g=-5:f=3000" -ac 1 -b:a 48k "$1.mp3"; }
+          gen industrial_1 "אֵזוֹר תַּעֲשִׂיָה קֵיסָרְיָה"
+          gen industrial_2 "אזור תעשייה קיסריה"
+          gen industrial_3 "אֵיזוֹר תַּעֲשִׂיָּיה קֵיסָרְיָה"
+          gen industrial_4 "אֵזוֹר הַתַּעֲשִׂיָּה קֵיסָרְיָה"
+          gen kol_1 "כּוֹל הָאָרֶץ"
+          gen kol_2 "כול הארץ"
+          rm raw.mp3; cd ../..
+          git config user.name bot && git config user.email bot@users.noreply.github.com
+          git add samples && git commit -m "variants v2 [skip ci]" && git push
