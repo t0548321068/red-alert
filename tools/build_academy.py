@@ -39,7 +39,7 @@ for n in names:
 import os
 if os.path.exists('tools/pronounce_manual.json'):
     for k, v in json.load(open('tools/pronounce_manual.json', encoding='utf-8')).items(): out[k] = v; src[k] = 'manual'
-# אזורי תעשייה: "אזור תעשייה, <מקום>" או "אזור תעשייה צפוני/דרומי, <מקום>"
+# אזורי תעשייה: "אזור תעשייה <מקום>" / "אזור תעשייה צפוני <מקום>" (צמוד, בלי הפסקה)
 AZ = 'אֵזוֹר תַּעֲשִׂיָּה'
 DIRS = {'צפוני': 'צְפוֹנִי', 'דרומי': 'דְּרוֹמִי', 'הדרומי': 'דְּרוֹמִי'}
 for n in names:
@@ -49,14 +49,14 @@ for n in names:
     if ow[:2] in (['אזור', 'תעשייה'], ['איזור', 'תעשייה']):
         rest_o, rest_v, d = ow[2:], vw[2:], ''
         if rest_o and rest_o[0] in DIRS: d = ' ' + DIRS[rest_o[0]]; rest_v = rest_v[1:]
-        if rest_v: out[n] = AZ + d + ', ' + ' '.join(rest_v)
+        if rest_v: out[n] = AZ + d + ' ' + ' '.join(rest_v)
     elif 'תעשייה' in ow and ow.index('תעשייה') >= 2 and ow[ow.index('תעשייה') - 1] in ('אזור', 'איזור'):
         i = ow.index('תעשייה'); before_v = vw[:i - 1]; after_o = ow[i + 1:]; after_v = vw[i + 1:]
         d = ''
         if after_o and after_o[0] in DIRS: d = ' ' + DIRS[after_o[0]]; after_v = after_v[1:]
-        out[n] = AZ + d + ', ' + ', '.join(x for x in [' '.join(after_v), ' '.join(before_v)] if x)
+        out[n] = AZ + d + ' ' + ', '.join(x for x in [' '.join(after_v), ' '.join(before_v)] if x)
     elif ow[:2] == ['פארק', 'תעשיות']:
-        out[n] = ' '.join(vw[:2]) + ', ' + ' '.join(vw[2:])
+        out[n] = ' '.join(vw)
 # תיקונים ידניים (גוברים על הכל)
 import os
 if os.path.exists('tools/pronounce_manual.json'):
