@@ -38,8 +38,8 @@ class AlertActivity : Activity() {
                 val enterEnd = firedAt + shelterSec.coerceAtLeast(0) * 1000L
                 if (now < enterEnd) { st.text = ""; ui.postDelayed(this, 250); return }
                 val left = ((enterEnd + Prefs.STAY_MS - now) / 1000).toInt()
-                st.text = if (left > 0) "⏳ נשארים במרחב המוגן: %d:%02d".format(left / 60, left % 60)
-                          else "⏳ ממתינים להודעת סיום אירוע"
+                st.text = if (left > 0) "נשארים במרחב המוגן: %d:%02d".format(left / 60, left % 60)
+                          else "ממתינים להודעת סיום אירוע"
                 if (left > 0) { ui.postDelayed(this, 250); return }
             }
             if (countdown != null && shelterSec > 0 && now - firedAt < shelterSec * 1000L) ui.postDelayed(this, 250)
@@ -119,7 +119,7 @@ class AlertActivity : Activity() {
                 setPadding(0, dpx(14), 0, 0)
             })
             countdown = TextView(this).apply {
-                textSize = 60f
+                textSize = 48f
                 setTextColor(Color.WHITE)
                 typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
                 gravity = Gravity.CENTER
@@ -169,7 +169,7 @@ class AlertActivity : Activity() {
 
         intent.getStringExtra("source")?.takeIf { it.isNotEmpty() }?.let { src ->
             root.addView(TextView(this).apply {
-                text = "📡 מקור ההתרעה: $src"
+                text = "מקור ההתרעה: $src"
                 textSize = 13f
                 setTextColor(Color.parseColor("#DDFFFFFF"))
                 gravity = Gravity.CENTER
@@ -230,6 +230,13 @@ class AlertActivity : Activity() {
         root.addView(slideToClose(), LinearLayout.LayoutParams(-1, dpx(60)).apply {
             setMargins(dpx(16), dpx(14), dpx(16), dpx(20))
         })
+        // שלא יוסתר מאחורי כפתורי הניווט / שורת המצב של הטלפון
+        root.setOnApplyWindowInsetsListener { v, ins ->
+            @Suppress("DEPRECATION")
+            v.setPadding(0, 0, 0, ins.systemWindowInsetBottom)
+            if (map == null) titleView.setPadding(dpx(16), ins.systemWindowInsetTop + dpx(20), dpx(16), dpx(28))
+            ins
+        }
         setContentView(root)
     }
 
