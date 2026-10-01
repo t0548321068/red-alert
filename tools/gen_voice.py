@@ -6,6 +6,9 @@ import asyncio, hashlib, json, os, subprocess, sys
 import edge_tts
 
 VOICE = "he-IL-AvriNeural"
+RATE, PITCH = "+12%", "+8Hz"   # "אבר 2" - קצת יותר מהר וגבוה
+# תיקוני הגייה: שם רשמי -> איך להקריא (כתיב מלא / ניקוד)
+FIX = json.load(open("tools/pronounce.json", encoding="utf-8")) if os.path.exists("tools/pronounce.json") else {}
 OUT = "app/src/main/assets/voice"
 os.makedirs(OUT, exist_ok=True)
 
@@ -15,7 +18,7 @@ areas = json.loads(open("app/src/main/assets/areas.js", encoding="utf-8").read()
                    .strip().removeprefix("var ALL_AREAS=").removesuffix(";"))
 items = {}
 for n in areas:
-    items["a_" + key(n)] = n.replace(" - ", " ").replace("-", " ")
+    items["a_" + key(n)] = FIX.get(n, n.replace(" - ", " ").replace("-", " "))
 items["a_" + key("התראת בדיקה")] = "התראת בדיקה"
 PHRASES = {
     "t_rockets": "ירי רקטות וטילים.",
@@ -47,7 +50,7 @@ async def one(name, text):
     async with sem:
         for attempt in range(5):
             try:
-                await edge_tts.Communicate(text, VOICE, rate="+0%").save(tmp)
+                await edge_tts.Communicate(text, VOICE, rate=RATE, pitch=PITCH).save(tmp)
                 break
             except Exception as e:
                 last = e
@@ -55,7 +58,10 @@ async def one(name, text):
         else:
             print(f"::warning::FAILED {name}: {last}"); return
     # מונו, 24kHz, 32kbps - קטן ועדיין ברור
-    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", tmp, "-ac", "1", "-ar", "24000", "-b:a", "32k", dst], check=True)
+    # צליל עמוק יותר, בלי שקט בהתחלה ובסוף
+    af = ("treble=g=-5:f=3000,silenceremove=start_periods=1:start_threshold=-45dB,areverse,"
+          "silenceremove=start_periods=1:start_threshold=-45dB,areverse,apad=pad_dur=0.12")
+    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", tmp, "-af", af, "-ac", "1", "-ar", "22050", "-b:a", "32k", dst], check=True)
 
 async def safe(n, t):
     try: await one(n, t)
