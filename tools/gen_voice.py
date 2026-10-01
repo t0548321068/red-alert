@@ -12,41 +12,32 @@ FIX = json.load(open("tools/pronounce.json", encoding="utf-8")) if os.path.exist
 OUT = "app/src/main/assets/voice"
 os.makedirs(OUT, exist_ok=True)
 
-def key(s): return hashlib.sha1(s.encode("utf-8")).hexdigest()[:12]
+# שמות הקבצים באנגלית (כדי שיהיה קל למצוא קובץ): tools/voice_names.json
+NAMES = json.load(open("tools/voice_names.json", encoding="utf-8"))
 
-areas = json.loads(open("app/src/main/assets/areas.js", encoding="utf-8").read()
-                   .strip().removeprefix("var ALL_AREAS=").removesuffix(";"))
 items = {}
-for n in areas:
-    items["a_" + key(n)] = FIX.get(n, n.replace(" - ", " ").replace("-", " "))
-items["a_" + key("התראת בדיקה")] = "התראת בדיקה"
-PHRASES = {
-    "t_rockets": "ירי רקטות וטילים.",
-    "t_uav": "חדירת כלי טיס עוין.",
-    "t_terror": "חדירת מחבלים.",
-    "t_quake": "רעידת אדמה.",
-    "t_tsunami": "צונאמי.",
-    "t_hazmat": "אירוע חומרים מסוכנים.",
-    "t_radio": "אירוע רדיולוגי.",
-    "t_nonconv": "ירי בלתי קונבנציונלי.",
-    "t_generic": "צבע אדום.",
-    "t_end": "האירוע הסתיים.",
-    "t_pre": "התראה מקדימה. בדקות הקרובות צפויות התרעות.",
-    "more": "ואזורים נוספים.",
-    "s_0": "זמן להגעה למרחב המוגן: מיידי.",
-    "s_15": "זמן להגעה למרחב המוגן: 15 שניות.",
-    "s_30": "זמן להגעה למרחב המוגן: 30 שניות.",
-    "s_45": "זמן להגעה למרחב המוגן: 45 שניות.",
-    "s_60": "זמן להגעה למרחב המוגן: דקה.",
-    "s_90": "זמן להגעה למרחב המוגן: דקה וחצי.",
+# אזורים: voice/areas/<english>.mp3
+for n, path in NAMES["areas"].items():
+    items[path[:-4]] = FIX.get(n, n.replace(" - ", " ").replace("-", " "))
+TEXT = {
+    "rockets": "ירי רקטות וטילים.", "hostile_aircraft": "חדירת כלי טיס עוין.",
+    "terrorist_infiltration": "חדירת מחבלים.", "earthquake": "רעידת אדמה.", "tsunami": "צונאמי.",
+    "hazardous_materials": "אירוע חומרים מסוכנים.", "radiological": "אירוע רדיולוגי.",
+    "nonconventional": "ירי בלתי קונבנציונלי.", "red_alert": "צבע אדום.", "event_ended": "האירוע הסתיים.",
+    "early_warning": "התראה מקדימה. בדקות הקרובות צפויות התרעות.", "more_areas": "ואזורים נוספים.",
+    "time_immediate": "זמן להגעה למרחב המוגן: מיידי.", "time_15s": "זמן להגעה למרחב המוגן: 15 שניות.",
+    "time_30s": "זמן להגעה למרחב המוגן: 30 שניות.", "time_45s": "זמן להגעה למרחב המוגן: 45 שניות.",
+    "time_1min": "זמן להגעה למרחב המוגן: דקה.", "time_1_5min": "זמן להגעה למרחב המוגן: דקה וחצי.",
 }
-items.update(PHRASES)
+for k2, t in TEXT.items(): items["phrases/" + k2] = t
+os.makedirs(OUT + "/areas", exist_ok=True); os.makedirs(OUT + "/phrases", exist_ok=True)
+json.dump(NAMES["areas"], open(OUT + "/index.json", "w", encoding="utf-8"), ensure_ascii=False, indent=0)
 
 sem = asyncio.Semaphore(6)
 async def one(name, text):
     dst = f"{OUT}/{name}.mp3"
     if os.path.exists(dst): return
-    tmp = f"/tmp/{name}.mp3"
+    tmp = "/tmp/" + name.replace("/", "_") + ".mp3"
     async with sem:
         for attempt in range(5):
             try:
@@ -69,7 +60,7 @@ async def safe(n, t):
 
 async def main():
     await asyncio.gather(*(safe(n, t) for n, t in items.items()))
-    done = len(os.listdir(OUT))
+    done = sum(len(os.listdir(f"{OUT}/{d}")) for d in ("areas", "phrases"))
     print(f"::notice::clips {done} of {len(items)}")
     if done < len(items) * 0.9: sys.exit(f"::error::only {done} clips")
 try:
