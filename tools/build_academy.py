@@ -29,6 +29,10 @@ for n in names:
         if N(p) in ac: res.append(ac[N(p)])
         else: res.append(' '.join(wm.get(w, w) for w in p.split()))
     out[n] = re.sub(r'\s+', ' ', ''.join(res)).strip(); src[n] = 'academy+claude'
+# תיקונים ידניים (גוברים על הכל)
+import os
+if os.path.exists('tools/pronounce_manual.json'):
+    for k, v in json.load(open('tools/pronounce_manual.json', encoding='utf-8')).items(): out[k] = v; src[k] = 'manual'
 json.dump(out, open('tools/pronounce.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 json.dump(src, open('tools/nikud_source.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 from collections import Counter; print(Counter(src.values()))
