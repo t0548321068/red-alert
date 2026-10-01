@@ -35,6 +35,13 @@ TEXT = {
     "time_1min": "זמן להגעה למרחב המוגן: דקה.", "time_1_5min": "זמן להגעה למרחב המוגן: דקה וחצי.",
 }
 for k2, t in TEXT.items(): items["phrases/" + k2] = t
+# שמות ערים (כללי, בלי רובעים) - עוד לא בשימוש. voice/cities/<english>.mp3 + index.json
+if os.path.exists("tools/city_names.json"):
+    CITIES = json.load(open("tools/city_names.json", encoding="utf-8"))
+    os.makedirs(OUT + "/cities", exist_ok=True)
+    for heb, c in CITIES.items(): items["cities/" + c["file"]] = tts_text(c["text"])
+    json.dump({h: "cities/" + c["file"] + ".mp3" for h, c in CITIES.items()},
+              open(OUT + "/cities/index.json", "w", encoding="utf-8"), ensure_ascii=False, indent=0)
 # תיקייה נוספת - הקלטות שעוד לא בשימוש באפליקציה (tools/extra_phrases.json)
 if os.path.exists("tools/extra_phrases.json"):
     for k2, t in json.load(open("tools/extra_phrases.json", encoding="utf-8")).items():
@@ -69,7 +76,7 @@ async def safe(n, t):
 
 async def main():
     await asyncio.gather(*(safe(n, t) for n, t in items.items()))
-    done = sum(len(os.listdir(f"{OUT}/{d}")) for d in ("areas", "phrases", "extra"))
+    done = sum(len(os.listdir(f"{OUT}/{d}")) for d in ("areas", "phrases", "extra", "cities") if os.path.isdir(f"{OUT}/{d}")) - (1 if os.path.exists(f"{OUT}/cities/index.json") else 0)
     print(f"::notice::clips {done} of {len(items)}")
     if done < len(items) * 0.9: sys.exit(f"::error::only {done} clips")
 try:
