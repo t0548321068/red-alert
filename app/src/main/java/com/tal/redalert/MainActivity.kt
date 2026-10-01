@@ -94,7 +94,7 @@ class MainActivity : Activity() {
         if (!force && System.currentTimeMillis() - weatherAt < Prefs.weatherMinutes(this) * 60 * 1000L) return
         weatherAt = System.currentTimeMillis()
         if (force || weatherLine.text.isNullOrBlank()) {
-            weatherLine.text = "📍 מאתר מיקום מדויק…"
+            weatherLine.text = "מאתר מיקום מדויק…"
             weatherLine.setTextColor(C.MUTED)
         }
         Weather.freshLocation(this) { loc ->
@@ -839,7 +839,7 @@ class MainActivity : Activity() {
 
     private fun displayRows(): List<Row> {
         return listOf(
-            Row("🎨", "ערכת צבעים", { if (Prefs.darkTheme(this)) "כהה" else "בהירה" }) { chooseTheme() },
+            Row("🎨", "ערכת צבעים", { Prefs.THEME_NAMES[Prefs.themeMode(this)] }) { chooseTheme() },
             Row("🕐", "שעון ותאריך", { "" }) { showClockSettings() },
             Row("🌤", "מזג אוויר", { if (Prefs.showWeather(this)) weatherLabel(Prefs.weatherMinutes(this)) else "מוסתר" }) {
                 Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true) },
@@ -870,10 +870,9 @@ class MainActivity : Activity() {
         AlertDialog.Builder(this, dlg())
             .setIcon(R.mipmap.ic_launcher)
             .setTitle("ערכת צבעים")
-            .setSingleChoiceItems(arrayOf("כהה", "בהירה"), if (Prefs.darkTheme(this)) 0 else 1) { d, i ->
+            .setSingleChoiceItems(Prefs.THEME_NAMES, Prefs.themeMode(this)) { d, i ->
                 d.dismiss()
-                val dark = i == 0
-                if (dark != Prefs.darkTheme(this)) { Prefs.setDarkTheme(this, dark); recreate() }
+                if (i != Prefs.themeMode(this)) { Prefs.setThemeMode(this, i); recreate() }
             }
             .show()
     }
@@ -995,7 +994,7 @@ class MainActivity : Activity() {
             !hasLocationPerm() || !hasPrecise() -> onWeatherClick()
             !locationOn() -> startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
             else -> {
-                android.widget.Toast.makeText(this, "📍 מעדכן מיקום…", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(this, "מעדכן מיקום…", android.widget.Toast.LENGTH_SHORT).show()
                 refreshNearby()
                 updateWeather(force = true)
             }
@@ -1331,7 +1330,7 @@ class MainActivity : Activity() {
     /** הגדרות שעה ותאריך - כל שינוי נראה מיד בשעון */
     private fun showClockSettings() {
         val items = arrayOf(
-            "ערכת צבעים: " + if (Prefs.darkTheme(this)) "כהה" else "בהירה",
+            "ערכת צבעים: " + Prefs.THEME_NAMES[Prefs.themeMode(this)],
             "סגנון יום: ${TimeFormat.dayOptions()[Prefs.dayStyle(this)]}",
             "שניות: " + if (Prefs.showSeconds(this)) "מוצג" else "מוסתר",
             "נקודתיים מהבהבות: " + if (Prefs.blinkColon(this)) "פעיל" else "כבוי",
@@ -1348,11 +1347,10 @@ class MainActivity : Activity() {
                     0 -> AlertDialog.Builder(this, dlg())
                         .setIcon(R.mipmap.ic_launcher)
                         .setTitle("ערכת צבעים")
-                        .setSingleChoiceItems(arrayOf("כהה", "בהירה"), if (Prefs.darkTheme(this)) 0 else 1) { d, i ->
+                        .setSingleChoiceItems(Prefs.THEME_NAMES, Prefs.themeMode(this)) { d, i ->
                             d.dismiss()
-                            val dark = i == 0
-                            if (dark != Prefs.darkTheme(this)) {
-                                Prefs.setDarkTheme(this, dark)
+                            if (i != Prefs.themeMode(this)) {
+                                Prefs.setThemeMode(this, i)
                                 recreate()   // בונה את המסך מחדש בצבעים החדשים
                             }
                         }
