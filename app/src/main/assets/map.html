@@ -214,11 +214,15 @@
   // מסך ההתראה: מפה קטנה וקבועה (בלי גרירה) שמראה רק את אזורי ההתראה
   function miniMode() {
     document.body.classList.add('mini');
+    // המפה מוסתרת עד ש-miniShow מציב אותה על האזור - בלי לראות את כל הארץ
+    document.getElementById('map').style.opacity = 0;
     map.dragging.disable(); map.touchZoom.disable(); map.doubleClickZoom.disable();
     map.scrollWheelZoom.disable(); map.boxZoom.disable(); map.keyboard.disable();
     if (map.tap) map.tap.disable();
   }
   function miniShow(names, level, lat, lon) {
+    // חושף את המפה אחרי שהיא מוצבת - גם אם משהו כאן נכשל
+    setTimeout(function () { document.getElementById('map').style.opacity = 1; }, 80);
     alertLayer.clearLayers();
     var color = COLORS[level] || COLORS[0], pts = [];
     names.forEach(function (n) {
