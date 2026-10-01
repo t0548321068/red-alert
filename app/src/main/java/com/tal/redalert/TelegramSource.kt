@@ -10,6 +10,7 @@ import java.net.URL
  */
 class TelegramSource(
     private val channel: String,
+    private val interval: () -> Long = { 5000L },
     private val onAlert: (title: String, areas: List<String>) -> Unit
 ) {
     companion object {
@@ -33,8 +34,13 @@ class TelegramSource(
     fun stop() { running = false }
 
     private fun loop() {
+        var last = 0L
         while (running) {
-            try { check() } catch (_: Exception) { }
+            // בודקים כשעבר הזמן הנוכחי (משתנה: אירוע / מסך דלוק / כבוי) - צעדים קטנים כדי להגיב מהר לשינוי
+            if (System.currentTimeMillis() - last >= interval()) {
+                last = System.currentTimeMillis()
+                try { check() } catch (_: Exception) { }
+            }
             Thread.sleep(POLL_MS)
         }
     }
