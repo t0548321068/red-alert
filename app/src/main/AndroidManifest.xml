@@ -65,6 +65,7 @@
                 android:value="Real-time civil defense rocket alerts polling" />
         </service>
 
+        <receiver android:name=".WatchdogReceiver" android:exported="false" />
         <receiver
             android:name=".AlertWidget"
             android:exported="false"

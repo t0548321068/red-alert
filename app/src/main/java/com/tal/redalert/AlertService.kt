@@ -45,8 +45,7 @@ class AlertService : Service() {
         /** שומר: מעיר את השירות כל ~5 דקות גם כשהטלפון ישן */
         fun scheduleWatchdog(c: Context) {
             val am = c.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
-            val pi = PendingIntent.getForegroundService(c, 30,
-                Intent(c, AlertService::class.java).setAction(ACTION_WATCHDOG),
+            val pi = PendingIntent.getBroadcast(c, 30, Intent(c, WatchdogReceiver::class.java),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             try {
                 am.setAndAllowWhileIdle(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
@@ -56,6 +55,8 @@ class AlertService : Service() {
 
         /** האם היה אירוע ב-10 הדקות האחרונות (אז בודקים את כל המקורות בתדירות גבוהה) */
         @Volatile var lastEventAt = 0L
+        /** השירות הפעיל (לשומר) */
+        @Volatile var instance: AlertService? = null
         fun inEvent() = System.currentTimeMillis() - lastEventAt < 10 * 60 * 1000L
 
         /** בטא הופעלה/כובתה - התחברות מחדש להתראות העדכון */
@@ -163,6 +164,13 @@ class AlertService : Service() {
     /** מפתח ליישוב - אותו יישוב בכל המקורות ("תל אביב - מרכז העיר" = "תל אביב" = "תל-אביב") */
     private fun key(area: String, level: Int) = Prefs.areaKey(area) + "|" + level
     private var wakeLock: PowerManager.WakeLock? = null
+    /** השומר: כמה שניות ער - החיבורים מתחדשים ופיקוד העורף נבדק - ותזמון הבא */
+    fun onWatchdog() {
+        awake(20_000)
+        tzofar?.ensureConnected()
+        scheduleWatchdog(this)
+    }
+
     /** מחזיק את הטלפון ער לזמן קצוב (לא כל הזמן) */
     private fun awake(ms: Long) { try { wakeLock?.acquire(ms) } catch (_: Exception) { } }
     private var ringtone: Ringtone? = null
@@ -202,6 +210,7 @@ class AlertService : Service() {
         // בלי להחזיק את המעבד ער כל הזמן: הטלפון ישן, והחיבור הקבוע לצופר מעיר אותו כשיש התראה.
         // שומר: מעיר את הטלפון כל כמה דקות כדי לוודא שהחיבורים חיים (ולבדוק את פיקוד העורף)
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "redalert:poll").apply { setReferenceCounted(false) }
+        instance = this
         scheduleWatchdog(this)
         running = true
         Thread(::loop, "oref-poll").start()
@@ -234,12 +243,7 @@ class AlertService : Service() {
             fresh = false
             if (intent?.getBooleanExtra("manual", false) != true) announceListening()
         }
-        if (intent?.action == ACTION_WATCHDOG) {
-            awake(20_000)   // כמה שניות ער: החיבורים מתחדשים ופיקוד העורף נבדק
-            tzofar?.ensureConnected()
-            scheduleWatchdog(this)
-            return START_STICKY
-        }
+        if (intent?.action == ACTION_WATCHDOG) { onWatchdog(); return START_STICKY }
         if (intent?.action == ACTION_PUSH) {
             updatePush?.reconnect()
             return START_STICKY
@@ -264,6 +268,7 @@ class AlertService : Service() {
     }
 
     override fun onDestroy() {
+        if (instance === this) instance = null
         running = false
         speaker?.shutdown()
         tzofar?.stop()
