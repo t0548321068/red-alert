@@ -9,11 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: v1.23-work
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg && pip install edge-tts
-      - run: python tools/gen_voice.py
       - run: |
+          mkdir -p samples
+          for l in he en; do
+            curl -s -m 30 -H "Referer: https://www.oref.org.il/" -H "X-Requested-With: XMLHttpRequest" -A "Mozilla/5.0" \
+              "https://alerts-history.oref.org.il/Shared/Ajax/GetDistricts.aspx?lang=$l" -o samples/districts_$l.json || true
+            ls -la samples/districts_$l.json; head -c 300 samples/districts_$l.json; echo
+          done
           git config user.name bot && git config user.email bot@users.noreply.github.com
-          git add app/src/main/assets/voice
-          git commit -m "Avri 2 voice clips [skip ci]" && git push origin HEAD:v1.23-work
+          git add samples && git commit -m "districts [skip ci]" && git push
