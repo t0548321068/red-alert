@@ -278,7 +278,8 @@ class AlertActivity : Activity() {
         if (names.length() == 0) return null
         val web = android.webkit.WebView(this).apply {
             settings.javaScriptEnabled = true
-            setBackgroundColor(Color.parseColor("#0F1720"))
+            // שקוף עד שהמפה מוכנה - רואים את צבע ההתרעה, לא מלבן כהה
+            setBackgroundColor(Color.TRANSPARENT)
             isVerticalScrollBarEnabled = false; isHorizontalScrollBarEnabled = false
             // הנתונים עוברים בכתובת - המפה נפתחת ישר במצב הקטן על אזור ההתרעה
             val me = try { Weather.lastLocation(this@AlertActivity) } catch (_: Exception) { null }
