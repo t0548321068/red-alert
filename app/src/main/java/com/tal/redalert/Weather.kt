@@ -31,6 +31,25 @@ object Weather {
             .maxByOrNull { it.time }
     }
 
+    /** מיקום מהרשת (סלולר / Wi-Fi) - כמעט בלי סוללה. null אם אין */
+    @SuppressLint("MissingPermission")
+    fun networkLocation(c: Context, done: (Location?) -> Unit) {
+        val lm = c.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        if (!lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) { done(null); return }
+        val main = Handler(Looper.getMainLooper())
+        var finished = false
+        fun finish(l: Location?) { if (!finished) { finished = true; done(l) } }
+        try {
+            if (Build.VERSION.SDK_INT >= 30) {
+                lm.getCurrentLocation(LocationManager.NETWORK_PROVIDER, null, c.mainExecutor) { finish(it) }
+            } else {
+                @Suppress("DEPRECATION")
+                lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, { finish(it) }, Looper.getMainLooper())
+            }
+        } catch (_: Exception) { finish(null); return }
+        main.postDelayed({ finish(null) }, 15_000)
+    }
+
     /**
      * מיקום בדיוק המרבי שהמכשיר מסוגל לו:
      * - אוסף מיקומים מכל המקורות ומחכה עד שהדיוק מפסיק להשתפר (עד 30 שניות)

@@ -49,12 +49,25 @@ class TzofarSource(
     }
 
     @Volatile private var running = false
-    private var ws: WebSocket? = null
+    @Volatile private var ws: WebSocket? = null
     private val seenIds = LinkedHashSet<String>()
 
     fun start() {
         running = true
         connect()
+    }
+
+    @Volatile private var open = false
+    @Volatile private var lastMsg = 0L
+
+    /** מהשומר: אם החיבור נפל (או שקט חשוד מעל 3 דקות) - מתחברים מחדש מיד */
+    fun ensureConnected() {
+        if (!running) return
+        if (!open || System.currentTimeMillis() - lastMsg > 3 * 60 * 1000L) {
+            try { ws?.cancel() } catch (_: Exception) { }
+            open = false
+            connect()
+        }
     }
 
     fun stop() {
@@ -71,16 +84,21 @@ class TzofarSource(
             .header("User-Agent", "Mozilla/5.0 (Linux; Android) RedAlert")
             .build()
         ws = client.newWebSocket(req, object : WebSocketListener() {
-            override fun onOpen(webSocket: WebSocket, response: Response) = SourceHealth.setOpen("tzofar", true)
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                open = true; lastMsg = System.currentTimeMillis(); SourceHealth.setOpen("tzofar", true)
+            }
             override fun onMessage(webSocket: WebSocket, text: String) {
+                lastMsg = System.currentTimeMillis()
                 SourceHealth.ok("tzofar")
                 try { parse(JSONObject(text)) } catch (_: Exception) { }
             }
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                SourceHealth.setOpen("tzofar", false); retry()
+                if (webSocket !== ws) return
+                open = false; SourceHealth.setOpen("tzofar", false); retry()
             }
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                SourceHealth.setOpen("tzofar", false); retry()
+                if (webSocket !== ws) return
+                open = false; SourceHealth.setOpen("tzofar", false); retry()
             }
         })
     }
