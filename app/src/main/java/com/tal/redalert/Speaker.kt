@@ -116,40 +116,42 @@ class Speaker(private val c: Context) {
 
     private fun has(path: String) = try { c.assets.openFd(path).close(); true } catch (_: Exception) { false }
 
+    /** שם אזור בעברית → קובץ (voice/areas/<שם באנגלית>.mp3) */
+    private val index: Map<String, String> by lazy {
+        try {
+            val o = org.json.JSONObject(c.assets.open("voice/index.json").bufferedReader().use { it.readText() })
+            o.keys().asSequence().associateWith { "voice/" + o.getString(it) }
+        } catch (_: Exception) { emptyMap() }
+    }
+
     /** סוג → אזורים (עד 4, ואם יש עוד "ואזורים נוספים") → זמן להגעה */
     private fun clipsFor(title: String, areas: List<String>, shelter: Int?): List<String> {
         val level = AlertService.levelOf(title)
         val t = when {
-            level == AlertService.LEVEL_END -> "t_end"
-            level == AlertService.LEVEL_PRE -> "t_pre"
-            title.contains("טילים") || title.contains("רקטות") -> "t_rockets"
-            title.contains("כלי טיס") -> "t_uav"
-            title.contains("מחבלים") -> "t_terror"
-            title.contains("רעידת") -> "t_quake"
-            title.contains("צונאמי") -> "t_tsunami"
-            title.contains("חומרים מסוכנים") -> "t_hazmat"
-            title.contains("רדיולוג") -> "t_radio"
-            title.contains("קונבנציונלי") -> "t_nonconv"
-            else -> "t_generic"
+            level == AlertService.LEVEL_END -> "event_ended"
+            level == AlertService.LEVEL_PRE -> "early_warning"
+            title.contains("טילים") || title.contains("רקטות") -> "rockets"
+            title.contains("כלי טיס") -> "hostile_aircraft"
+            title.contains("מחבלים") -> "terrorist_infiltration"
+            title.contains("רעידת") -> "earthquake"
+            title.contains("צונאמי") -> "tsunami"
+            title.contains("חומרים מסוכנים") -> "hazardous_materials"
+            title.contains("רדיולוג") -> "radiological"
+            title.contains("קונבנציונלי") -> "nonconventional"
+            else -> "red_alert"
         }
-        val out = mutableListOf("voice/$t.mp3")
-        val names = areas.flatMap { raw ->
-            val p = "voice/a_${key(raw)}.mp3"
-            if (has(p)) listOf(raw) else AreaData.match(c, raw).take(1)
-        }.distinct()
-        val shown = if (names.size <= 5) names else names.take(4)
-        shown.forEach { n -> "voice/a_${key(n)}.mp3".let { if (has(it)) out += it } }
-        if (names.size > shown.size) out += "voice/more.mp3"
+        val first = "voice/phrases/$t.mp3"
+        val out = mutableListOf(first)
+        val files = areas.mapNotNull { raw -> index[raw] ?: AreaData.match(c, raw).firstNotNullOfOrNull { index[it] } }.distinct()
+        val shown = if (files.size <= 5) files else files.take(4)
+        out += shown
+        if (files.size > shown.size) out += "voice/phrases/more_areas.mp3"
         if (level == AlertService.LEVEL_ALERT && shelter != null) {
             val s = listOf(0, 15, 30, 45, 60, 90).minByOrNull { Math.abs(it - shelter) }
-            if (s != null) out += "voice/s_$s.mp3"
+            out += "voice/phrases/" + when (s) { 0 -> "time_immediate"; 15 -> "time_15s"; 30 -> "time_30s"
+                45 -> "time_45s"; 60 -> "time_1min"; else -> "time_1_5min" } + ".mp3"
         }
-        return out.filter { has(it) }.takeIf { it.isNotEmpty() && it.first() == "voice/$t.mp3" } ?: emptyList()
-    }
-
-    private fun key(s: String): String {
-        val h = java.security.MessageDigest.getInstance("SHA-1").digest(s.toByteArray(Charsets.UTF_8))
-        return h.joinToString("") { "%02x".format(it) }.take(12)
+        return out.filter { has(it) }.takeIf { it.isNotEmpty() && it.first() == first } ?: emptyList()
     }
 
     fun shutdown() { stopClips(); try { tts.shutdown() } catch (_: Exception) { } }
