@@ -221,8 +221,6 @@
     if (map.tap) map.tap.disable();
   }
   function miniShow(names, level, lat, lon) {
-    // חושף את המפה אחרי שהיא מוצבת - גם אם משהו כאן נכשל
-    setTimeout(function () { document.getElementById('map').style.opacity = 1; }, 80);
     alertLayer.clearLayers();
     var color = COLORS[level] || COLORS[0], pts = [];
     names.forEach(function (n) {
@@ -237,12 +235,26 @@
       L.circleMarker([lat, lon], { radius: 7, color: '#fff', weight: 3, fillColor: '#0A84FF', fillOpacity: 1, interactive: false }).addTo(alertLayer);
       if (pts.length && L.latLngBounds(pts).getCenter().distanceTo([lat, lon]) < 20000) fit.push([lat, lon]);
     }
-    // זום קרוב - שאזור ההתרעה ימלא את המפה
-    // בלי אנימציית זום (היא מנפחת את הנקודות בפתיחה) - קופץ ישר למקום
-    map.invalidateSize(false);
-    if (pts.length) map.fitBounds(fit, { padding: [14, 14], maxZoom: 15, animate: false });
-    syncLabels();
+    MINI_FIT = pts.length ? fit : null;
+    miniFit(0);
   }
+  // זום קרוב על אזור ההתרעה, בלי אנימציה. מחכה עד שלמפה יש גודל אמיתי
+  // (אם מתמקדים לפני כן - יוצאת כל הארץ), ורק אז מציג אותה
+  var MINI_FIT = null;
+  function miniFit(tries) {
+    var el = document.getElementById('map');
+    map.invalidateSize(false);
+    var s = map.getSize();
+    if ((s.x < 50 || s.y < 50) && tries < 40) { setTimeout(function () { miniFit(tries + 1); }, 50); return; }
+    if (MINI_FIT) map.fitBounds(MINI_FIT, { padding: [14, 14], maxZoom: 15, animate: false });
+    syncLabels();
+    el.style.opacity = 1;
+  }
+  window.addEventListener('resize', function () {
+    if (document.body.classList.contains('mini') && MINI_FIT) {
+      map.invalidateSize(false); map.fitBounds(MINI_FIT, { padding: [14, 14], maxZoom: 15, animate: false });
+    }
+  });
 
   // מצויר מיד, עוד לפני שהאפליקציה שולחת נתונים
   drawBase(); syncLabels();
