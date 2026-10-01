@@ -133,9 +133,22 @@ class MainActivity : Activity() {
     }
 
     private val ui = Handler(Looper.getMainLooper())
+    /**
+     * השעון: קל ומהיר, מתוזמן קודם כל - כך שתקלה או עיכוב בשאר המסך לא עוצרים את השניות וההבהוב.
+     * רץ כל חצי שנייה (שנייה מלאה + אמצע השנייה להבהוב הנקודתיים).
+     */
     private val tick = object : Runnable {
         override fun run() {
-            updateClock()
+            ui.removeCallbacks(this)
+            val ms = System.currentTimeMillis() % 1000
+            ui.postDelayed(this, if (ms < 500) 500 - ms else 1000 - ms)
+            try { updateClock() } catch (_: Exception) { }
+            // שאר המסך - פעם בשנייה (בתחילת השנייה), ובנפרד מהשעון
+            if (ms < 500) ui.post(slowTick)
+        }
+    }
+    private val slowTick = Runnable {
+        try {
             updateIndicators()
             updateWeather()
             updateStatusLine()
@@ -143,13 +156,8 @@ class MainActivity : Activity() {
             val key = "${Prefs.enabled(this@MainActivity)}|${Prefs.history(this@MainActivity).firstOrNull()?.ts}|" +
                 Prefs.nearbyAreas(this@MainActivity).joinToString()   // גם כשהאזורים הקרובים משתנים
             if (key != lastHistoryKey) { lastHistoryKey = key; refresh() }
-            val ms = System.currentTimeMillis() % 1000
-            ui.postDelayed(this, 1000 - ms)
-            // הבהוב הנקודתיים: עוד עדכון באמצע השנייה
-            if (Prefs.blinkColon(this@MainActivity) && ms < 500) ui.postDelayed(halfTick, 500 - ms)
-        }
+        } catch (_: Exception) { }
     }
-    private val halfTick = Runnable { updateClock() }
 
     /** "מוגן · 8/8 מקורות · עדכון אחרון לפני 2 שניות" */
     private fun updateStatusLine() {
@@ -401,7 +409,7 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
-        ui.removeCallbacks(tick); ui.removeCallbacks(halfTick)
+        ui.removeCallbacks(tick); ui.removeCallbacks(slowTick)
         super.onPause()
     }
 
