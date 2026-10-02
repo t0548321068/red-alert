@@ -332,8 +332,14 @@ class MainActivity : Activity() {
         clockCard.addView(protRow, 0, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(4) })
         circle = FrameLayout(this).apply {
             clipToOutline = true
-            addView(sweep, FrameLayout.LayoutParams(dp(140), -1, Gravity.LEFT))
+            // פס האור בגובה 0 בהתחלה - אחרת (match_parent) הוא מותח את הכרטיס לכל המסך
+            addView(sweep, FrameLayout.LayoutParams(dp(140), 0, Gravity.LEFT))
             addView(clockCard, FrameLayout.LayoutParams(-1, -2))
+        }
+        // הגובה של פס האור = הגובה של כרטיס השעון
+        clockCard.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+            val lp = sweep.layoutParams
+            if (v.height > 0 && lp.height != v.height) { lp.height = v.height; sweep.layoutParams = lp }
         }
         // מצב שקט - מוצג רק כשהוא פעיל עכשיו
         quietLine = text("", 12f, C.ORANGE).apply {
