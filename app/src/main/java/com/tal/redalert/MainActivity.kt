@@ -881,15 +881,22 @@ class MainActivity : Activity() {
 
     /** חיווי: אייקון למעלה, טקסט מתחת */
     private fun indicator(icon: Int, onClick: (() -> Unit)?) = text("", 12f, Color.parseColor("#E6E6E6")).apply {
-        setCompoundDrawablesRelativeWithIntrinsicBounds(0, icon, 0, 0)
+        setIndIcon(this, icon)
         compoundDrawablePadding = dp(4)
         gravity = Gravity.CENTER
         if (onClick != null) setOnClickListener { onClick() }
     }
 
+    /** אייקון החיווי - מעט גדול מהגודל המקורי */
+    private fun setIndIcon(v: TextView, icon: Int) {
+        val d = getDrawable(icon)?.mutate() ?: return
+        d.setBounds(0, 0, (d.intrinsicWidth * 1.15f).toInt(), (d.intrinsicHeight * 1.15f).toInt())
+        v.setCompoundDrawablesRelative(null, d, null, null)
+    }
+
     /** האייקון בצבע המצב, הטקסט תמיד לבן-אפור */
     private fun setInd(v: TextView, icon: Int, label: String, color: Int) {
-        v.setCompoundDrawablesRelativeWithIntrinsicBounds(0, icon, 0, 0)
+        setIndIcon(v, icon)
         v.compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color)
         v.text = label
     }
