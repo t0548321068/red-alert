@@ -53,6 +53,9 @@ class MainActivity : Activity() {
     }
 
     private lateinit var circle: FrameLayout
+    private lateinit var shieldIcon: android.widget.ImageView
+    private lateinit var circleLabel: TextView
+    private lateinit var circleHint: TextView
     private lateinit var sweep: View               // פס האור שעובר על הכרטיס
     private var sweepAnim: android.animation.ObjectAnimator? = null
     private lateinit var chips: LinearLayout
@@ -148,12 +151,26 @@ class MainActivity : Activity() {
     private val slowTick = Runnable {
         try {
             updateIndicators()
+            updateStatusLine()
             updateWeather()
             // שאר המסך מתעדכן רק כשמשהו השתנה
             val key = "${Prefs.enabled(this@MainActivity)}|${Prefs.history(this@MainActivity).firstOrNull()?.ts}|" +
                 Prefs.nearbyAreas(this@MainActivity).joinToString()   // גם כשהאזורים הקרובים משתנים
             if (key != lastHistoryKey) { lastHistoryKey = key; refresh() }
         } catch (_: Exception) { }
+    }
+
+    /** ליד "מוגן": מתי התקבל מידע לאחרונה מהמקורות */
+    private fun updateStatusLine() {
+        if (!Prefs.enabled(this)) { circleHint.text = ""; return }
+        val last = SourceHealth.lastAny()
+        val age = if (last == 0L) -1L else (System.currentTimeMillis() - last) / 1000
+        circleHint.text = "· " + when {
+            age < 0 -> "מתחבר…"
+            age <= 1 -> "עכשיו"
+            age < 60 -> "לפני $age שנ׳"
+            else -> "לפני ${age / 60} דק׳"
+        }
     }
 
     private fun updateClock() {
@@ -304,6 +321,15 @@ class MainActivity : Activity() {
                 intArrayOf(Color.TRANSPARENT, Color.parseColor("#30FFFFFF"), Color.TRANSPARENT))
         }
         clockCard.background = null
+        // בראש כרטיס השעון: מגן + "מוגן"/"לא מוגן" + עדכון אחרון (מה שהיה בכרטיס מוגן)
+        shieldIcon = android.widget.ImageView(this)
+        circleLabel = text("מוגן", 17f, Color.WHITE, bold = true)
+        circleHint = text("", 12f, Color.parseColor("#CCFFFFFF"))
+        val protRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        protRow.addView(shieldIcon, LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(6) })
+        protRow.addView(circleLabel)
+        protRow.addView(circleHint, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
+        clockCard.addView(protRow, 0, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(4) })
         circle = FrameLayout(this).apply {
             clipToOutline = true
             addView(sweep, FrameLayout.LayoutParams(dp(140), -1, Gravity.LEFT))
@@ -421,8 +447,12 @@ class MainActivity : Activity() {
         circle.background = if (on) GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 intArrayOf(Color.parseColor("#1B5E20"), Color.parseColor("#388E3C"))).apply { cornerRadius = dp(24).toFloat() }
             else graphite(24)
+        shieldIcon.setImageResource(if (on) R.drawable.ic_shield_check else R.drawable.ic_shield_outline)
+        circleLabel.text = if (on) "מוגן" else "לא מוגן"
+        circleLabel.setTextColor(if (on) Color.WHITE else Color.parseColor("#AAAAAA"))
         setSweep(on)
         updateIndicators()
+        updateStatusLine()
 
         renderChips()
         renderHistory()
