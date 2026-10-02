@@ -452,17 +452,17 @@ class MainActivity : Activity() {
         val muted = Color.parseColor("#AAAAAA")
         val light = Color.parseColor("#E6FFFFFF")
 
-        // המיקום שלי
+        // מיקום נוכחי
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(dp(16), dp(14), dp(16), dp(14))   // רקע כמו שאר הכרטיסים (של הכרטיס עצמו)
         }
-        top.addView(text("המיקום שלי", 12f, muted))
-        top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 20f, Color.WHITE, bold = true)
+        top.addView(text("מיקום נוכחי", 15f, muted))
+        top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 24f, Color.WHITE, bold = true)
             .apply { setPadding(0, dp(2), 0, 0) })
         val sec = if (nearOn && near.isNotEmpty()) AreaData.shelterSeconds(this, near.take(1)) else null
-        if (sec != null) top.addView(text("⏱ זמן התגוננות: ${AreaData.shelterText(sec)}", 12f, light)
+        if (sec != null) top.addView(text("⏱ זמן התגוננות: ${AreaData.shelterText(sec)}", 15f, light)
             .apply { setPadding(0, dp(2), 0, 0) })
         for (i in 0 until top.childCount) (top.getChildAt(i) as? TextView)?.gravity = Gravity.CENTER
         chips.addView(top)
