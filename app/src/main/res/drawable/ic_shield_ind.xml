@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- מגן בקו עם וי - מוגן -->
+<!-- מגן בקו, ובתוכו מגן מלא עם וי חלול - מוגן -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="18dp" android:height="18dp"
     android:viewportWidth="24" android:viewportHeight="24">
     <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2" android:strokeLineJoin="round"
         android:pathData="M12,2.5l7.5,2.8v5.7c0,4.7 -3.3,8.9 -7.5,10.4c-4.2,-1.5 -7.5,-5.7 -7.5,-10.4V5.3z"/>
-    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2" android:strokeLineCap="round" android:strokeLineJoin="round"
-        android:pathData="M8.5,12l2.5,2.5 4.5,-5"/>
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+        android:pathData="M12,6.8l4.3,1.6v3.2c0,2.7 -1.9,5 -4.3,5.9c-2.4,-0.9 -4.3,-3.2 -4.3,-5.9v-3.2z M9.7,11.9 L11.3,13.5 L14.4,10.2 L15.3,11.0 L11.3,15.2 L8.8,12.7 Z"/>
 </vector>
