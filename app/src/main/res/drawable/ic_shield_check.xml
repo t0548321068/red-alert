@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- מגן עם וי - מוגן -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF" android:pathData="M12,2l8,3v6c0,5 -3.5,9.5 -8,11c-4.5,-1.5 -8,-6 -8,-11V5z"/>
+    <path android:strokeColor="#FF2E7D32" android:strokeWidth="2.4" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M8,12l3,3 5,-6"/>
+</vector>
