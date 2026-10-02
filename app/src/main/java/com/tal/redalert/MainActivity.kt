@@ -261,7 +261,9 @@ class MainActivity : Activity() {
         // כרטיס חיווים מעל השעון: רשת / מיקום / מקורות - שלוש עמודות שוות
         val status = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(6), dp(7), dp(6), dp(7))
+            // האייקונים הוגדלו - הריפוד קטן באותה מידה, כדי שגובה השורה יישאר כמו קודם
+            val padV = ((7f - 22f * (1.3f - 1.15f) / 2f) * resources.displayMetrics.density).toInt()
+            setPadding(dp(6), padV, dp(6), padV)
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 intArrayOf(Color.parseColor("#232526"), Color.parseColor("#414345"))).apply {
                 cornerRadius = dp(18).toFloat()
