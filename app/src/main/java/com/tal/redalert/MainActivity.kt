@@ -960,7 +960,7 @@ class MainActivity : Activity() {
     private fun updateIndicators() {
         updateFeed()
         if (Prefs.enabled(this)) setInd(protInd, R.drawable.ic_shield_ind, "מוגן", C.GREEN)
-        else setInd(protInd, R.drawable.ic_shield_ind, "לא מוגן", C.RED)
+        else setInd(protInd, R.drawable.ic_shield_ind_off, "לא מוגן", C.RED)
         if (Prefs.isQuietNow(this)) {
             quietLine.text = "🌙 שעות שקט עד ${hhmm(Prefs.quietTo(this))} · מקדימה וסיום בשקט"
             quietLine.setTextColor(C.ORANGE)
