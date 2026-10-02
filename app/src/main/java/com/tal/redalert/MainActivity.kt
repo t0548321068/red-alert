@@ -314,14 +314,14 @@ class MainActivity : Activity() {
         // עיגול הפעלה/כיבוי
         // כרטיס מוגן: נקודה + "מוגן" + עדכון אחרון, ומתג בצד. לחיצה בכל מקום מפעילה/מכבה
         circleIcon = View(this)
-        circleLabel = text("מוגן", 24f, Color.WHITE, bold = true)
+        circleLabel = text("מוגן", 21f, Color.WHITE, bold = true)
         circleHint = text("", 12f, Color.parseColor("#AAAAAA"))
         val titleRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         titleRow.addView(circleIcon, LinearLayout.LayoutParams(dp(12), dp(12)).apply { marginEnd = dp(8) })
         titleRow.addView(circleLabel)
         val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         texts.addView(titleRow)
-        texts.addView(circleHint, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(4) })
+        texts.addView(circleHint, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(1) })
         switchKnob = View(this).apply {
             background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) }
         }
@@ -330,13 +330,18 @@ class MainActivity : Activity() {
         }
         circle = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(20), dp(10), dp(20), dp(10))
+            setPadding(dp(20), dp(2), dp(20), dp(2))
             background = graphite(18)
             addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
             addView(circleGlow, LinearLayout.LayoutParams(dp(62), dp(34)))
             setOnClickListener { toggle() }
         }
-        col.addView(circle, LinearLayout.LayoutParams(-1, dp(76)).apply { topMargin = dp(GAP) })
+        col.addView(circle, LinearLayout.LayoutParams(-1, dp(56)).apply { topMargin = dp(GAP) })
+        // כרטיס מוגן באותו גובה בדיוק כמו שורת החיוויים
+        status.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+            val lp = circle.layoutParams
+            if (v.height > 0 && lp.height != v.height) { lp.height = v.height; circle.layoutParams = lp }
+        }
         // מצב שקט - מוצג רק כשהוא פעיל עכשיו
         quietLine = text("", 12f, C.ORANGE).apply {
             gravity = Gravity.CENTER
