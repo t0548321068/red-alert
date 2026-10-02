@@ -884,7 +884,8 @@ class MainActivity : Activity() {
     /** חיווי: אייקון למעלה, טקסט מתחת */
     private fun indicator(icon: Int, onClick: (() -> Unit)?) = text("", 12f, Color.parseColor("#E6E6E6")).apply {
         setIndIcon(this, icon)
-        compoundDrawablePadding = dp(4)
+        // האייקון גדל ב-15%, והרווח שמתחת לו קטן באותה מידה - גובה השורה לא משתנה
+        compoundDrawablePadding = (dp(4) - (dp(18) * 0.15f).toInt()).coerceAtLeast(0)
         gravity = Gravity.CENTER
         if (onClick != null) setOnClickListener { onClick() }
     }
@@ -892,7 +893,7 @@ class MainActivity : Activity() {
     /** אייקון החיווי - מעט גדול מהגודל המקורי */
     private fun setIndIcon(v: TextView, icon: Int) {
         val d = getDrawable(icon)?.mutate() ?: return
-        d.setBounds(0, 0, (d.intrinsicWidth * 1.3f).toInt(), (d.intrinsicHeight * 1.3f).toInt())
+        d.setBounds(0, 0, (d.intrinsicWidth * 1.45f).toInt(), (d.intrinsicHeight * 1.45f).toInt())
         v.setCompoundDrawablesRelative(null, d, null, null)
     }
 
