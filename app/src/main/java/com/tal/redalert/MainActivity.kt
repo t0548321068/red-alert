@@ -890,7 +890,7 @@ class MainActivity : Activity() {
     /** אייקון החיווי - מעט גדול מהגודל המקורי */
     private fun setIndIcon(v: TextView, icon: Int) {
         val d = getDrawable(icon)?.mutate() ?: return
-        d.setBounds(0, 0, (d.intrinsicWidth * 1.15f).toInt(), (d.intrinsicHeight * 1.15f).toInt())
+        d.setBounds(0, 0, (d.intrinsicWidth * 1.3f).toInt(), (d.intrinsicHeight * 1.3f).toInt())
         v.setCompoundDrawablesRelative(null, d, null, null)
     }
 
