@@ -69,6 +69,7 @@ class MainActivity : Activity() {
     private lateinit var feedLine: TextView
     private var feedText = ""
     private lateinit var netInd: TextView
+    private lateinit var protInd: TextView   // מוגן / לא מוגן
     private lateinit var locInd: TextView
     private lateinit var srvInd: TextView
     private var weatherAt = 0L
@@ -271,6 +272,7 @@ class MainActivity : Activity() {
         }
         // בלי לחיצה על החיווים (רק 7 הלחיצות הנסתרות על הגרסה נשארו)
         netInd = indicator(R.drawable.ic_globe, null)
+        protInd = indicator(R.drawable.ic_shield_ind, null)   // בלי לחיצה - שלא יכבה בטעות
         locInd = indicator(R.drawable.ic_location) { onLocationIndicator() }   // לחיצה: רענון מיקום
         srvInd = indicator(R.drawable.ic_antenna) { showSourcesInfo() }   // לחיצה: רשימת המקורות
         // גרסה: 7 לחיצות מהירות - פותח את אפשרות הבטא (מוסתרת משאר המשתמשים)
@@ -287,7 +289,7 @@ class MainActivity : Activity() {
         }
         setInd(verInd, R.drawable.ic_info, "v${Updater.currentVersion(this)}" +
             if (Updater.isBetaBuild(this) && !Updater.currentVersion(this).endsWith("b")) "b" else "", C.MUTED)
-        listOf(netInd, locInd, srvInd, verInd).forEachIndexed { i, v ->
+        listOf(protInd, netInd, locInd, srvInd, verInd).forEachIndexed { i, v ->
             if (i > 0) status.addView(View(this).apply { setBackgroundColor(Color.parseColor("#22FFFFFF")) },
                 LinearLayout.LayoutParams(dp(1), dp(26)))
             status.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
@@ -957,6 +959,8 @@ class MainActivity : Activity() {
 
     private fun updateIndicators() {
         updateFeed()
+        if (Prefs.enabled(this)) setInd(protInd, R.drawable.ic_shield_ind, "מוגן", C.GREEN)
+        else setInd(protInd, R.drawable.ic_shield_ind, "לא מוגן", C.RED)
         if (Prefs.isQuietNow(this)) {
             quietLine.text = "🌙 שעות שקט עד ${hhmm(Prefs.quietTo(this))} · מקדימה וסיום בשקט"
             quietLine.setTextColor(C.ORANGE)
