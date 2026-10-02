@@ -52,10 +52,10 @@ class MainActivity : Activity() {
         }
     }
 
-    private lateinit var circle: LinearLayout
-    private lateinit var circleGlow: FrameLayout   // המתג
-    private lateinit var switchKnob: View
-    private lateinit var circleIcon: View          // הנקודה
+    private lateinit var circle: FrameLayout
+    private lateinit var shieldIcon: android.widget.ImageView
+    private lateinit var sweep: View               // פס האור שעובר על הכרטיס
+    private var sweepAnim: android.animation.ObjectAnimator? = null
     private lateinit var circleLabel: TextView
     private lateinit var circleHint: TextView
     private lateinit var chips: LinearLayout
@@ -167,10 +167,10 @@ class MainActivity : Activity() {
         val ago = when {
             age < 0 -> "מתחבר…"
             age <= 1 -> "עכשיו"
-            age < 60 -> "לפני $age שניות"
+            age < 60 -> "לפני $age שנ׳"
             else -> "לפני ${age / 60} דק׳"
         }
-        circleHint.text = "עדכון אחרון: $ago"
+        circleHint.text = ago   // קצר - שלא יעלה על "מוגן" שבמרכז
     }
 
     private fun updateClock() {
@@ -311,29 +311,23 @@ class MainActivity : Activity() {
             background = GradientDrawable().apply { cornerRadius = dp(10).toFloat(); setColor(C.CARD) }
         }
 
-        // עיגול הפעלה/כיבוי
-        // כרטיס מוגן: נקודה + "מוגן" + עדכון אחרון, ומתג בצד. לחיצה בכל מקום מפעילה/מכבה
-        circleIcon = View(this)
+        // כרטיס מוגן: רקע ירוק, מגן עם וי ו"מוגן" במרכז, ופס אור שעובר לאט מצד לצד (מראה שהאפליקציה פועלת).
+        // כבוי: אפור, מגן ריק, "לא מוגן". לחיצה בכל מקום מפעילה/מכבה
+        shieldIcon = android.widget.ImageView(this)
         circleLabel = text("מוגן", 21f, Color.WHITE, bold = true)
-        circleHint = text("", 12f, Color.parseColor("#AAAAAA"))
-        val titleRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        titleRow.addView(circleIcon, LinearLayout.LayoutParams(dp(12), dp(12)).apply { marginEnd = dp(8) })
-        titleRow.addView(circleLabel)
-        val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        texts.addView(titleRow)
-        texts.addView(circleHint, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(1) })
-        switchKnob = View(this).apply {
-            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) }
+        circleHint = text("", 11f, Color.parseColor("#CCFFFFFF"))
+        val center = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        center.addView(shieldIcon, LinearLayout.LayoutParams(dp(28), dp(28)).apply { marginEnd = dp(10) })
+        center.addView(circleLabel)
+        sweep = View(this).apply {
+            background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.TRANSPARENT, Color.parseColor("#38FFFFFF"), Color.TRANSPARENT))
         }
-        circleGlow = FrameLayout(this).apply {
-            addView(switchKnob, FrameLayout.LayoutParams(dp(28), dp(28)).apply { setMargins(dp(3), dp(3), dp(3), dp(3)) })
-        }
-        circle = LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(20), dp(2), dp(20), dp(2))
-            background = graphite(18)
-            addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(circleGlow, LinearLayout.LayoutParams(dp(62), dp(34)))
+        circle = FrameLayout(this).apply {
+            clipToOutline = true
+            addView(sweep, FrameLayout.LayoutParams(dp(120), -1, Gravity.LEFT))
+            addView(center, FrameLayout.LayoutParams(-1, -1))
+            addView(circleHint, FrameLayout.LayoutParams(-2, -2, Gravity.LEFT or Gravity.CENTER_VERTICAL).apply { leftMargin = dp(16) })
             setOnClickListener { toggle() }
         }
         col.addView(circle, LinearLayout.LayoutParams(-1, dp(56)).apply { topMargin = dp(GAP) })
@@ -403,6 +397,7 @@ class MainActivity : Activity() {
             if (!Prefs.enabled(this)) ui.post { toggle() }
         }
         super.onResume()
+        sweepAnim?.resume()
         // רשת ביטחון: אם ההאזנה אמורה לפעול - לוודא שהשירות באמת רץ (בטוח לקרוא גם אם כבר רץ)
         if (Prefs.enabled(this)) AlertService.start(this)
         ui.post(tick)
@@ -417,6 +412,7 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         ui.removeCallbacks(tick); ui.removeCallbacks(slowTick)
+        sweepAnim?.pause()   // פס האור לא רץ כשהאפליקציה ברקע
         super.onPause()
     }
 
@@ -428,22 +424,34 @@ class MainActivity : Activity() {
         refresh()
     }
 
+    /** פס האור על כרטיס מוגן - רץ רק כשמוגן ורק כשהמסך מוצג */
+    private fun setSweep(on: Boolean) {
+        sweep.visibility = if (on) View.VISIBLE else View.GONE
+        if (!on) { sweepAnim?.cancel(); sweepAnim = null; return }
+        if (sweepAnim != null) return
+        circle.post {
+            if (sweepAnim != null || !Prefs.enabled(this)) return@post
+            val w = circle.width.toFloat(); val sw = dp(120).toFloat()
+            sweepAnim = android.animation.ObjectAnimator.ofFloat(sweep, "translationX", w, -sw)   // מימין לשמאל.apply {
+                duration = 2800
+                startDelay = 400
+                repeatCount = android.animation.ValueAnimator.INFINITE
+                interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+                start()
+            }
+        }
+    }
+
     private fun refresh() {
         val on = Prefs.enabled(this)
         val color = if (on) C.GREEN else C.OFF
-        // עיגול מלא: צבע בהיר במרכז שמתכהה לקצוות, כיתוב לבן מודגש
-        val green = Color.parseColor("#30D158")
-        circleIcon.background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL; setColor(if (on) green else Color.parseColor("#8E8E93"))
-        }
-        circleLabel.text = if (on) "מוגן" else "כבוי"
-        circleGlow.background = GradientDrawable().apply {
-            cornerRadius = dp(17).toFloat(); setColor(if (on) green else Color.parseColor("#5A5A5E"))
-        }
-        // מתג דולק: הידית בצד השמאלי (כמו מתג אנדרואיד בעברית)
-        (switchKnob.layoutParams as FrameLayout.LayoutParams).gravity =
-            Gravity.CENTER_VERTICAL or (if (on) Gravity.LEFT else Gravity.RIGHT)
-        switchKnob.requestLayout()
+        circle.background = if (on) GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.parseColor("#1B5E20"), Color.parseColor("#388E3C"))).apply { cornerRadius = dp(18).toFloat() }
+            else graphite(18)
+        shieldIcon.setImageResource(if (on) R.drawable.ic_shield_check else R.drawable.ic_shield_outline)
+        circleLabel.text = if (on) "מוגן" else "לא מוגן"
+        circleLabel.setTextColor(if (on) Color.WHITE else Color.parseColor("#AAAAAA"))
+        setSweep(on)
         updateStatusLine()
 
         renderChips()
