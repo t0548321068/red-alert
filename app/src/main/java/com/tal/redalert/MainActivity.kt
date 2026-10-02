@@ -841,7 +841,7 @@ class MainActivity : Activity() {
         return listOf(
             Row("🎨", "ערכת צבעים", { Prefs.THEME_NAMES[Prefs.themeMode(this)] }) { chooseTheme() },
             Row("🕐", "שעון ותאריך", { "" }) { showClockSettings() },
-            Row("🌤", "מזג אוויר", { if (Prefs.showWeather(this)) weatherLabel(Prefs.weatherMinutes(this)) else "מוסתר" }) {
+            Row("🌤", "מזג אוויר", { if (Prefs.showWeather(this)) "" else "מוסתר" }) {
                 Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true) },
             Row("👋", "ברכה", { if (Prefs.showGreeting(this)) "מוצג" else "מוסתר" }) {
                 Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock() }
