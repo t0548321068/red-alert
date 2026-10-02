@@ -432,7 +432,7 @@ class MainActivity : Activity() {
         circle.post {
             if (sweepAnim != null || !Prefs.enabled(this)) return@post
             val w = circle.width.toFloat(); val sw = dp(120).toFloat()
-            sweepAnim = android.animation.ObjectAnimator.ofFloat(sweep, "translationX", w, -sw)   // מימין לשמאל.apply {
+            sweepAnim = android.animation.ObjectAnimator.ofFloat(sweep, "translationX", w, -sw).apply {   // מימין לשמאל
                 duration = 2800
                 startDelay = 400
                 repeatCount = android.animation.ValueAnimator.INFINITE
