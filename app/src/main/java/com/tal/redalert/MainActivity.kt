@@ -237,10 +237,10 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             typeface = Typeface.create("sans-serif", Typeface.BOLD)
         }
-        clockDay = text("", 14f, C.TEXT).apply {
+        clockDay = text("", 16f, C.TEXT).apply {
             gravity = Gravity.CENTER
         }
-        greeting = text("", 16f, C.TEXT).apply { gravity = Gravity.CENTER }
+        greeting = text("", 18f, C.TEXT).apply { gravity = Gravity.CENTER }
         // כרטיס השעון: רקע גרפיט, הכל ממורכז, טקסט לבן
         val clockCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -253,7 +253,7 @@ class MainActivity : Activity() {
         val white = Color.WHITE
         val soft = Color.parseColor("#E6FFFFFF")
         greeting.setTextColor(soft)
-        clockTime.setTextColor(white); clockTime.textSize = 52f
+        clockTime.setTextColor(white); clockTime.textSize = 58f
         clockDay.setTextColor(soft)
         clockCard.addView(greeting)
         clockCard.addView(clockTime)
@@ -294,7 +294,7 @@ class MainActivity : Activity() {
             status.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
         }
         col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
-        weatherLine = text("", 14f, C.TEXT).apply {
+        weatherLine = text("", 16f, C.TEXT).apply {
             gravity = Gravity.CENTER
         }
         weatherLine.setTextColor(soft)
@@ -321,10 +321,10 @@ class MainActivity : Activity() {
         clockCard.background = null
         // בראש כרטיס השעון: מגן + "מוגן"/"לא מוגן" + עדכון אחרון (מה שהיה בכרטיס מוגן)
         shieldIcon = android.widget.ImageView(this)
-        circleLabel = text("מוגן", 17f, Color.WHITE, bold = true)
-        circleHint = text("", 12f, Color.parseColor("#CCFFFFFF"))
+        circleLabel = text("מוגן", 19f, Color.WHITE, bold = true)
+        circleHint = text("", 14f, Color.parseColor("#CCFFFFFF"))
         val protRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
-        protRow.addView(shieldIcon, LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(6) })
+        protRow.addView(shieldIcon, LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginEnd = dp(6) })
         protRow.addView(circleLabel)
         protRow.addView(circleHint, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
         clockCard.addView(protRow, 0, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(4) })
