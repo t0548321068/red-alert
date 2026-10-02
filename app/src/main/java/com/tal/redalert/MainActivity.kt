@@ -163,7 +163,7 @@ class MainActivity : Activity() {
     /** ליד "מוגן": מתי התקבל מידע לאחרונה מהמקורות */
     private fun updateStatusLine() {
         if (!Prefs.enabled(this)) { circleHint.text = ""; return }
-        val last = SourceHealth.lastAny()
+        val last = SourceHealth.lastData()   // מידע שהתקבל בפועל - לא "עכשיו" קבוע בגלל חיבור פתוח
         val age = if (last == 0L) -1L else (System.currentTimeMillis() - last) / 1000
         circleHint.text = "· " + when {
             age < 0 -> "מתחבר…"
