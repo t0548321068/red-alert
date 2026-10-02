@@ -53,11 +53,8 @@ class MainActivity : Activity() {
     }
 
     private lateinit var circle: FrameLayout
-    private lateinit var shieldIcon: android.widget.ImageView
     private lateinit var sweep: View               // פס האור שעובר על הכרטיס
     private var sweepAnim: android.animation.ObjectAnimator? = null
-    private lateinit var circleLabel: TextView
-    private lateinit var circleHint: TextView
     private lateinit var chips: LinearLayout
     private lateinit var historyBox: LinearLayout
     private lateinit var clockTime: TextView
@@ -152,26 +149,11 @@ class MainActivity : Activity() {
         try {
             updateIndicators()
             updateWeather()
-            updateStatusLine()
             // שאר המסך מתעדכן רק כשמשהו השתנה
             val key = "${Prefs.enabled(this@MainActivity)}|${Prefs.history(this@MainActivity).firstOrNull()?.ts}|" +
                 Prefs.nearbyAreas(this@MainActivity).joinToString()   // גם כשהאזורים הקרובים משתנים
             if (key != lastHistoryKey) { lastHistoryKey = key; refresh() }
         } catch (_: Exception) { }
-    }
-
-    /** "מוגן · 8/8 מקורות · עדכון אחרון לפני 2 שניות" */
-    private fun updateStatusLine() {
-        if (!Prefs.enabled(this)) { circleHint.text = "לחיצה להפעלה"; return }
-        val last = SourceHealth.lastAny()
-        val age = if (last == 0L) -1L else (System.currentTimeMillis() - last) / 1000
-        val ago = when {
-            age < 0 -> "מתחבר…"
-            age <= 1 -> "עכשיו"
-            age < 60 -> "לפני $age שנ׳"
-            else -> "לפני ${age / 60} דק׳"
-        }
-        circleHint.text = ago   // קצר - שלא יעלה על "מוגן" שבמרכז
     }
 
     private fun updateClock() {
@@ -272,7 +254,9 @@ class MainActivity : Activity() {
         }
         // בלי לחיצה על החיווים (רק 7 הלחיצות הנסתרות על הגרסה נשארו)
         netInd = indicator(R.drawable.ic_globe, null)
-        protInd = indicator(R.drawable.ic_shield_ind, null)   // בלי לחיצה - שלא יכבה בטעות
+        protInd = indicator(R.drawable.ic_shield_ind) { toggle() }.apply {   // כפתור: הפעלה / כיבוי
+            background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(Color.parseColor("#14FFFFFF")) }
+        }
         locInd = indicator(R.drawable.ic_location) { onLocationIndicator() }   // לחיצה: רענון מיקום
         srvInd = indicator(R.drawable.ic_antenna) { showSourcesInfo() }   // לחיצה: רשימת המקורות
         // גרסה: 7 לחיצות מהירות - פותח את אפשרות הבטא (מוסתרת משאר המשתמשים)
@@ -313,30 +297,17 @@ class MainActivity : Activity() {
             background = GradientDrawable().apply { cornerRadius = dp(10).toFloat(); setColor(C.CARD) }
         }
 
-        // כרטיס מוגן: רקע ירוק, מגן עם וי ו"מוגן" במרכז, ופס אור שעובר לאט מצד לצד (מראה שהאפליקציה פועלת).
-        // כבוי: אפור, מגן ריק, "לא מוגן". לחיצה בכל מקום מפעילה/מכבה
-        shieldIcon = android.widget.ImageView(this)
-        circleLabel = text("מוגן", 21f, Color.WHITE, bold = true)
-        circleHint = text("", 11f, Color.parseColor("#CCFFFFFF"))
-        val center = LinearLayout(this).apply { gravity = Gravity.CENTER }
-        center.addView(shieldIcon, LinearLayout.LayoutParams(dp(28), dp(28)).apply { marginEnd = dp(10) })
-        center.addView(circleLabel)
+        // כרטיס השעון הוא גם מצב ההגנה: ירוק עם פס אור שעובר לאט כשמוגן, גרפיט כשלא.
+        // הפעלה/כיבוי - מהחיווי "מוגן" בשורת החיוויים
         sweep = View(this).apply {
             background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.TRANSPARENT, Color.parseColor("#38FFFFFF"), Color.TRANSPARENT))
+                intArrayOf(Color.TRANSPARENT, Color.parseColor("#30FFFFFF"), Color.TRANSPARENT))
         }
+        clockCard.background = null
         circle = FrameLayout(this).apply {
             clipToOutline = true
-            addView(sweep, FrameLayout.LayoutParams(dp(120), -1, Gravity.LEFT))
-            addView(center, FrameLayout.LayoutParams(-1, -1))
-            addView(circleHint, FrameLayout.LayoutParams(-2, -2, Gravity.LEFT or Gravity.CENTER_VERTICAL).apply { leftMargin = dp(16) })
-            setOnClickListener { toggle() }
-        }
-        col.addView(circle, LinearLayout.LayoutParams(-1, dp(56)).apply { topMargin = dp(GAP) })
-        // כרטיס מוגן באותו גובה בדיוק כמו שורת החיוויים
-        status.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
-            val lp = circle.layoutParams
-            if (v.height > 0 && lp.height != v.height) { lp.height = v.height; circle.layoutParams = lp }
+            addView(sweep, FrameLayout.LayoutParams(dp(140), -1, Gravity.LEFT))
+            addView(clockCard, FrameLayout.LayoutParams(-1, -2))
         }
         // מצב שקט - מוצג רק כשהוא פעיל עכשיו
         quietLine = text("", 12f, C.ORANGE).apply {
@@ -344,8 +315,8 @@ class MainActivity : Activity() {
             setOnClickListener { showQuietHours() }
         }
         col.addView(quietLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
-        // כרטיס השעה ומזג האוויר - מתחת לכפתור מוגן
-        col.addView(clockCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
+        // כרטיס השעה ומזג האוויר (וגם מצב ההגנה)
+        col.addView(circle, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
 
         // האזורים שלי
         // אזורי התרעה: אזור לפי מיקום + אזורים נוספים
@@ -448,13 +419,10 @@ class MainActivity : Activity() {
         val on = Prefs.enabled(this)
         val color = if (on) C.GREEN else C.OFF
         circle.background = if (on) GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.parseColor("#1B5E20"), Color.parseColor("#388E3C"))).apply { cornerRadius = dp(18).toFloat() }
-            else graphite(18)
-        shieldIcon.setImageResource(if (on) R.drawable.ic_shield_check else R.drawable.ic_shield_outline)
-        circleLabel.text = if (on) "מוגן" else "לא מוגן"
-        circleLabel.setTextColor(if (on) Color.WHITE else Color.parseColor("#AAAAAA"))
+                intArrayOf(Color.parseColor("#1B5E20"), Color.parseColor("#388E3C"))).apply { cornerRadius = dp(24).toFloat() }
+            else graphite(24)
         setSweep(on)
-        updateStatusLine()
+        updateIndicators()
 
         renderChips()
         renderHistory()
