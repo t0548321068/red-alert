@@ -532,8 +532,16 @@ class AlertService : Service() {
                     awake(40_000)
                     Weather.networkLocation(this) { net ->
                         val prev = lastGps
-                        val needGps = net == null || prev == null || net.accuracy > 150f || net.distanceTo(prev) > 300f
-                        if (needGps) Weather.freshLocation(this) { loc -> if (loc != null) { lastGps = loc; useLocation(loc) } }
+                        // מיקום מהרשת שנופל באזור אחר מהמיקום המדויק הקודם (למשל שכונה סמוכה) - בודקים עם GPS
+                        // לפני שמחליפים אזור. כך GPS נדלק רק כשבאמת יש ספק, לא כל 5 דקות
+                        val nearBorder = net != null && prev != null && net.accuracy > 30f && try {
+                            AreaData.areasAt(this, net.latitude, net.longitude, 0.0).firstOrNull() !=
+                                AreaData.areasAt(this, prev.latitude, prev.longitude, 0.0).firstOrNull()
+                        } catch (_: Exception) { false }
+                        val needGps = net == null || prev == null || net.accuracy > 150f || net.distanceTo(prev) > 300f || nearBorder
+                        if (needGps) Weather.freshLocation(this) { loc ->
+                            if (loc != null) { val use = Weather.chooseLocation(loc); lastGps = use; useLocation(use) }
+                        }
                         else useLocation(prev!!)   // לא זזנו - המיקום המדויק הקודם עדיין נכון
                     }
                 }
