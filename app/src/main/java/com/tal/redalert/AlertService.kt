@@ -484,7 +484,7 @@ class AlertService : Service() {
         // רק לפי המיקום + האזורים שהוספתי. אף פעם לא "כל הארץ"
         val fresh = areas
             .filter { a ->
-                manual.any { f -> a.contains(f) } ||
+                manual.any { f -> AreaData.matches(this, a, f) } ||   // יישוב או אזור שלם
                     near.any { n -> n == a || n.startsWith("$a -") || a.startsWith("$n -") }
             }
             .filter { a ->
