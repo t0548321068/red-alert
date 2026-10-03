@@ -561,7 +561,7 @@ class MainActivity : Activity() {
      * מסך "התראות אחרונות": כל ההתראות שהיו בארץ (החודש האחרון, מהארכיון של פיקוד העורף),
      * בלי סינון. לחיצה על התראה - המפה על האזור שלה.
      */
-    private fun showRecent() = fullPage("📜 התראות אחרונות") { c ->
+    private fun showRecent() = fullPage("התראות אחרונות") { c ->
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(4), dp(14), dp(4))
@@ -762,9 +762,13 @@ class MainActivity : Activity() {
         val root = android.widget.FrameLayout(this).apply { setBackgroundColor(Color.parseColor("#99000000")) }
         val panelW = (resources.displayMetrics.widthPixels * 0.85f).toInt()
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(18), dp(14), dp(30)) }
-        body.addView(text("📜  התראות אחרונות", 16f, Color.WHITE, bold = true).apply {
+        body.addView(text("התראות אחרונות", 16f, Color.WHITE, bold = true).apply {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14), dp(15), dp(14), dp(15))
+            // אייקון היסטוריה (שעון עם חץ אחורה)
+            val ic = getDrawable(R.drawable.ic_history)!!.mutate().apply { setBounds(0, 0, dp(22), dp(22)) }
+            setCompoundDrawablesRelative(ic, null, null, null)
+            compoundDrawablePadding = dp(10)
             background = graphite(18)
             setOnClickListener { d.dismiss(); showRecent() }
         })
