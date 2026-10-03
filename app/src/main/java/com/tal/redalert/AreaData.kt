@@ -25,6 +25,21 @@ object AreaData {
         }.also { migunCache = it }
     }
 
+    // אזור שלם (מחוז של פיקוד העורף) לכל יישוב - מקור: oref_alert (MIT)
+    @Volatile private var districtCache: Map<String, String>? = null
+    const val DISTRICT_PREFIX = "מחוז "
+    fun districtMap(c: Context): Map<String, String> = districtCache ?: synchronized(this) {
+        districtCache ?: try {
+            val o = JSONObject(c.assets.open("districts.json").bufferedReader(Charsets.UTF_8).use { it.readText() })
+            o.keys().asSequence().associateWith { o.getString(it) }
+        } catch (_: Exception) { emptyMap() }.also { districtCache = it }
+    }
+    fun districts(c: Context): List<String> = districtMap(c).values.toSortedSet().toList()
+    /** האם אזור התרעה (מההתראה) שייך לבחירה: יישוב או "מחוז X" */
+    fun matches(c: Context, area: String, pick: String): Boolean =
+        if (pick.startsWith(DISTRICT_PREFIX)) districtMap(c)[area] == pick.removePrefix(DISTRICT_PREFIX)
+        else area.contains(pick)
+
     fun areas(c: Context): JSONObject = areasCache ?: synchronized(this) {
         // אותו קובץ משמש גם את המפה (var ALL_AREAS={...};) - מורידים את העטיפה
         areasCache ?: JSONObject(
