@@ -504,11 +504,11 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(dp(16), dp(14), dp(16), dp(14))   // רקע כמו שאר הכרטיסים (של הכרטיס עצמו)
         }
-        top.addView(text("מיקום נוכחי", 15f, muted))
-        top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 24f, Color.WHITE, bold = true)
+        top.addView(text("מיקום נוכחי", 16f, muted))
+        top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 26f, Color.WHITE, bold = true)
             .apply { setPadding(0, dp(2), 0, 0) })
         val sec = if (nearOn && near.isNotEmpty()) AreaData.shelterSeconds(this, near.take(1)) else null
-        if (sec != null) top.addView(text("⏱ זמן התגוננות: ${AreaData.shelterText(sec)}", 15f, light)
+        if (sec != null) top.addView(text("⏱ זמן התגוננות: ${AreaData.shelterText(sec)}", 16f, light)
             .apply { setPadding(0, dp(2), 0, 0) })
         for (i in 0 until top.childCount) (top.getChildAt(i) as? TextView)?.gravity = Gravity.CENTER
         chips.addView(top)
@@ -517,19 +517,19 @@ class MainActivity : Activity() {
         // אזורים נוספים
         val bottom = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), dp(8)) }
         val head = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(4), 0, dp(4)) }
-        head.addView(text("אזורים נוספים", 12f, muted), LinearLayout.LayoutParams(0, -2, 1f))
-        head.addView(text("+ הוספה", 13f, Color.parseColor("#64B5F6")).apply {
+        head.addView(text("אזורים נוספים", 15f, muted), LinearLayout.LayoutParams(0, -2, 1f))
+        head.addView(text("+ הוספה", 15f, Color.parseColor("#64B5F6")).apply {
             setPadding(dp(8), dp(2), 0, dp(2)); setOnClickListener { addCity() } })
         bottom.addView(head)
-        if (list.isEmpty()) bottom.addView(text("אין אזורים נוספים", 14f, muted).apply { setPadding(0, dp(7), 0, dp(7)) })
+        if (list.isEmpty()) bottom.addView(text("אין אזורים נוספים", 16f, muted).apply { setPadding(0, dp(7), 0, dp(7)) })
         // הרשימה נגללת: עד 4 שורות גלויות, השאר בגלילה
         val rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         list.forEachIndexed { i, city ->
             if (i > 0) rows.addView(View(this).apply { setBackgroundColor(Color.parseColor("#14FFFFFF")) },
                 LinearLayout.LayoutParams(-1, dp(1)))
             val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(8)) }
-            r.addView(text(city, 16f, Color.WHITE), LinearLayout.LayoutParams(0, -2, 1f))
-            r.addView(text("✕", 15f, muted).apply {
+            r.addView(text(city, 18f, Color.WHITE), LinearLayout.LayoutParams(0, -2, 1f))
+            r.addView(text("✕", 17f, muted).apply {
                 setPadding(dp(10), 0, dp(4), 0)
                 setOnClickListener { Prefs.setCities(this@MainActivity, Prefs.cities(this@MainActivity) - city); refresh() }
             })
@@ -538,7 +538,7 @@ class MainActivity : Activity() {
         // הרשימה נגללת כשאין לה מקום במסך
         bottom.addView(ScrollView(this).apply { addView(rows) }, LinearLayout.LayoutParams(-1, -2, 1f))
         if (list.isEmpty() && !nearOn)
-            bottom.addView(text("⚠️ אין אזורים – לא יתקבלו התראות", 13f, C.ORANGE).apply { setPadding(0, dp(4), 0, dp(4)) })
+            bottom.addView(text("⚠️ אין אזורים – לא יתקבלו התראות", 15f, C.ORANGE).apply { setPadding(0, dp(4), 0, dp(4)) })
         chips.addView(bottom, LinearLayout.LayoutParams(-1, -2, 1f))
         shelterLine.visibility = View.GONE   // הזמן מוצג עכשיו בפס המיקום
     }
