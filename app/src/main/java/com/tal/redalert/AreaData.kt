@@ -25,7 +25,7 @@ object AreaData {
         }.also { migunCache = it }
     }
 
-    // אזור שלם (מחוז של פיקוד העורף) לכל יישוב - מקור: oref_alert (MIT)
+    // אזור שלם לכל יישוב - לפי החלוקה של צופר
     @Volatile private var districtCache: Map<String, String>? = null
     const val DISTRICT_PREFIX = "מחוז "
     fun districtMap(c: Context): Map<String, String> = districtCache ?: synchronized(this) {
