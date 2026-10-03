@@ -217,6 +217,8 @@ class MainActivity : Activity() {
             setPadding(dp(8), dp(6), dp(8), dp(6))
             setOnClickListener { click() }
         }
+        // התראות אחרונות - ליד כפתור הבדיקה
+        header.addView(headIcon(R.drawable.ic_history) { showRecent() }, LinearLayout.LayoutParams(dp(42), dp(38)))
         header.addView(headIcon(R.drawable.ic_bell) { chooseTest() }, LinearLayout.LayoutParams(dp(42), dp(38)))
         header.addView(headIcon(R.drawable.ic_clock) { startActivity(Intent(this@MainActivity, ClockActivity::class.java)) },
             LinearLayout.LayoutParams(dp(42), dp(38)))
@@ -762,16 +764,6 @@ class MainActivity : Activity() {
         val root = android.widget.FrameLayout(this).apply { setBackgroundColor(Color.parseColor("#99000000")) }
         val panelW = (resources.displayMetrics.widthPixels * 0.85f).toInt()
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(18), dp(14), dp(30)) }
-        body.addView(text("התראות אחרונות", 16f, Color.WHITE, bold = true).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14), dp(15), dp(14), dp(15))
-            // אייקון היסטוריה (שעון עם חץ אחורה)
-            val ic = getDrawable(R.drawable.ic_history)!!.mutate().apply { setBounds(0, 0, dp(22), dp(22)) }
-            setCompoundDrawablesRelative(ic, null, null, null)
-            compoundDrawablePadding = dp(10)
-            background = graphite(18)
-            setOnClickListener { d.dismiss(); showRecent() }
-        })
         body.addView(text("⚙ הגדרות", 18f, Color.WHITE, bold = true).apply { setPadding(dp(4), dp(20), dp(4), 0) })
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         body.addView(content)
