@@ -317,6 +317,9 @@ class MainActivity : Activity() {
         (greeting.layoutParams as? LinearLayout.LayoutParams)?.bottomMargin = dp(6)
         clockCard.addView(haloOuter, 1, LinearLayout.LayoutParams(dp(56), dp(56)).apply { gravity = Gravity.CENTER_HORIZONTAL })
         clockCard.addView(circleLabel, 2, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(2) })
+        // רווח שווה: מ"מוגן" עד ראש הספרות של השעה = מהברכה עד העיגול של המגן.
+        // נמדד אחרי הפריסה (הספרות הגדולות מגיעות עם רווח פנימי משלהן)
+        clockCard.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> evenClockGaps() }
         circle = FrameLayout(this).apply {
             clipToOutline = true
             // פס האור בגובה 0 בהתחלה - אחרת (match_parent) הוא מותח את הכרטיס לכל המסך
@@ -414,6 +417,22 @@ class MainActivity : Activity() {
         if (on) AlertService.start(this, manual = true) else AlertService.stop(this)
         AlertWidget.updateAll(this)
         refresh()
+    }
+
+    private fun evenClockGaps() {
+        if (circleLabel.height == 0 || clockTime.height == 0) return
+        val target = if (greeting.visibility == View.VISIBLE)
+            (haloOuter.top + (haloOuter.height - dp(42)) / 2) - (greeting.top + greeting.baseline)
+        else dp(10)
+        val b = android.graphics.Rect()
+        clockTime.paint.getTextBounds("0", 0, 1, b)
+        val digitTop = clockTime.top + clockTime.baseline + b.top
+        val gap = digitTop - (circleLabel.top + circleLabel.baseline)
+        val diff = target - gap
+        if (kotlin.math.abs(diff) < 2) return
+        val lp = circleLabel.layoutParams as LinearLayout.LayoutParams
+        lp.bottomMargin += diff
+        circleLabel.post { circleLabel.layoutParams = lp }
     }
 
     /** פס האור על כרטיס מוגן - רץ רק כשמוגן ורק כשהמסך מוצג */
