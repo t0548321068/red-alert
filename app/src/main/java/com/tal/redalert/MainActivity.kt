@@ -57,8 +57,10 @@ class MainActivity : Activity() {
     private lateinit var circleLabel: TextView
     private lateinit var haloOuter: FrameLayout
     private lateinit var haloInner: FrameLayout
-    private lateinit var sweep: View               // פס האור שעובר על הכרטיס
-    private var sweepAnim: android.animation.ObjectAnimator? = null
+    private lateinit var glow: View                // זוהר מאחורי המגן
+    private lateinit var ring1: View               // גלים שיוצאים מהמגן
+    private lateinit var ring2: View
+    private val pulseAnims = mutableListOf<android.animation.Animator>()
     private lateinit var chips: LinearLayout
     private lateinit var historyBox: LinearLayout
     private lateinit var clockTime: TextView
@@ -301,11 +303,20 @@ class MainActivity : Activity() {
 
         // כרטיס השעון הוא גם מצב ההגנה: ירוק עם פס אור שעובר לאט כשמוגן, גרפיט כשלא.
         // הפעלה/כיבוי - מהחיווי "מוגן" בשורת החיוויים
-        // פס אור קטן שעובר רק על המגן (בתוך העיגול)
-        sweep = View(this).apply {
-            background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.TRANSPARENT, Color.parseColor("#66FFFFFF"), Color.TRANSPARENT))
+        // אנימציית מוגן: זוהר מאחורי המגן + שני גלים שיוצאים ממנו
+        glow = View(this).apply {
+            background = GradientDrawable().apply {
+                gradientType = GradientDrawable.RADIAL_GRADIENT
+                gradientRadius = dp(20).toFloat()
+                colors = intArrayOf(Color.parseColor("#AA69F0AE"), Color.TRANSPARENT)
+            }
+            alpha = 0f
         }
+        fun ring() = View(this).apply {
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setStroke(dp(2), Color.parseColor("#69F0AE")) }
+            alpha = 0f
+        }
+        ring1 = ring(); ring2 = ring()
         clockCard.background = null
         // בראש כרטיס השעון: מגן + "מוגן"/"לא מוגן" + עדכון אחרון (מה שהיה בכרטיס מוגן)
         // בראש הכרטיס: מגן בתוך עיגול עם הילה, ומתחתיו "מוגן" / "לא מוגן"
@@ -314,9 +325,11 @@ class MainActivity : Activity() {
         haloOuter = FrameLayout(this)
         haloInner = FrameLayout(this).apply {
             clipToOutline = true   // הפס נחתך לצורת העיגול
+            addView(glow, FrameLayout.LayoutParams(dp(40), dp(40), Gravity.CENTER))
             addView(shieldIcon, FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER))
-            addView(sweep, FrameLayout.LayoutParams(dp(16), -1, Gravity.LEFT))
         }
+        haloOuter.addView(ring1, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
+        haloOuter.addView(ring2, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
         haloOuter.addView(haloInner, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
         // סדר: ברכה למעלה, מתחתיה המגן ו"מוגן", ואז השעה
         (greeting.layoutParams as? LinearLayout.LayoutParams)?.bottomMargin = dp(6)
@@ -390,7 +403,7 @@ class MainActivity : Activity() {
             if (!Prefs.enabled(this)) ui.post { toggle() }
         }
         super.onResume()
-        sweepAnim?.resume()
+        pulseAnims.forEach { it.resume() }
         // רשת ביטחון: אם ההאזנה אמורה לפעול - לוודא שהשירות באמת רץ (בטוח לקרוא גם אם כבר רץ)
         if (Prefs.enabled(this)) AlertService.start(this)
         ui.post(tick)
@@ -405,7 +418,7 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         ui.removeCallbacks(tick); ui.removeCallbacks(slowTick)
-        sweepAnim?.pause()   // פס האור לא רץ כשהאפליקציה ברקע
+        pulseAnims.forEach { it.pause() }   // האנימציה לא רצה כשהאפליקציה ברקע
         super.onPause()
     }
 
@@ -433,20 +446,27 @@ class MainActivity : Activity() {
         circleLabel.post { circleLabel.layoutParams = lp }
     }
 
-    /** פס האור על כרטיס מוגן - רץ רק כשמוגן ורק כשהמסך מוצג */
+    /** אנימציית מוגן: זוהר שמאיר ונכבה + שני גלים - רק כשמוגן ורק כשהמסך מוצג */
     private fun setSweep(on: Boolean) {
-        sweep.visibility = if (on) View.VISIBLE else View.GONE
-        if (!on) { sweepAnim?.cancel(); sweepAnim = null; return }
-        if (sweepAnim != null) return
-        circle.post {
-            if (sweepAnim != null || !Prefs.enabled(this)) return@post
-            val w = dp(42).toFloat(); val sw = dp(16).toFloat()
-            sweepAnim = android.animation.ObjectAnimator.ofFloat(sweep, "translationX", w, -sw).apply {   // מימין לשמאל
-                duration = 3000
-                startDelay = 400
-                repeatCount = android.animation.ValueAnimator.INFINITE
-                // עובר על המגן בחצי הראשון של הזמן, ואז הפסקה עד הפעם הבאה
-                interpolator = android.animation.TimeInterpolator { t -> if (t < 0.45f) t / 0.45f else 1f }
+        if (!on) {
+            pulseAnims.forEach { it.cancel() }; pulseAnims.clear()
+            glow.alpha = 0f; ring1.alpha = 0f; ring2.alpha = 0f
+            return
+        }
+        if (pulseAnims.isNotEmpty()) return
+        val inf = android.animation.ValueAnimator.INFINITE
+        pulseAnims += android.animation.ObjectAnimator.ofFloat(glow, "alpha", 0f, 1f, 0f).apply {
+            duration = 2400; repeatCount = inf; start()
+        }
+        val max = 56f / 42f
+        listOf(ring1 to 0L, ring2 to 700L).forEach { (r, delay) ->
+            pulseAnims += android.animation.AnimatorSet().apply {
+                val sx = android.animation.ObjectAnimator.ofFloat(r, "scaleX", 1f, max).apply { repeatCount = inf }
+                val sy = android.animation.ObjectAnimator.ofFloat(r, "scaleY", 1f, max).apply { repeatCount = inf }
+                val al = android.animation.ObjectAnimator.ofFloat(r, "alpha", 0.7f, 0f).apply { repeatCount = inf }
+                playTogether(sx, sy, al)
+                duration = 2400
+                startDelay = delay
                 start()
             }
         }
