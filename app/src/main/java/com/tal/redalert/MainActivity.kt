@@ -1076,12 +1076,24 @@ class MainActivity : Activity() {
     }
 
     private fun showSourcesInfo() {
-        AlertDialog.Builder(this, dlg())
+        fun title() = "שרתי התרעות · ${SourceHealth.upCount()}/${SourceHealth.total()} מחוברים"
+        fun body() = if (Prefs.enabled(this)) SourceHealth.report() else "ההאזנה כבויה"
+        val d = AlertDialog.Builder(this, dlg())
             .setIcon(R.mipmap.ic_launcher)
-            .setTitle("שרתי התרעות · ${SourceHealth.upCount()}/${SourceHealth.total()} מחוברים")
-            .setMessage(if (Prefs.enabled(this)) SourceHealth.report() else "ההאזנה כבויה")
+            .setTitle(title())
+            .setMessage(body())
             .setPositiveButton("סגור", null)
             .show()
+        // מתעדכן בלייב כל שנייה כל עוד החלון פתוח
+        val live = object : Runnable {
+            override fun run() {
+                if (!d.isShowing) return
+                d.setTitle(title()); d.setMessage(body())
+                ui.postDelayed(this, 1000)
+            }
+        }
+        ui.postDelayed(live, 1000)
+        d.setOnDismissListener { ui.removeCallbacks(live) }
     }
 
     // ---- מה חדש ----
