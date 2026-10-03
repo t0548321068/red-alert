@@ -21,6 +21,22 @@ object Weather {
 
     data class Now(val temp: Int, val code: Int, val isDay: Boolean, val place: String, val accuracy: Int = 0)
 
+    // המיקום המדויק האחרון (עד 30 מ׳) - שמיקום גס מהרשת לא ידרוס אותו
+    @Volatile private var precise: Location? = null
+
+    /**
+     * בוחר באיזה מיקום להשתמש לאזורים:
+     * מיקום מדויק נשמר. מיקום גס (מעל 50 מ׳) לא מחליף מיקום מדויק מ-10 הדקות האחרונות,
+     * אלא אם הוא מראה שזזנו רחוק (יותר מהסטייה שלו + 500 מ׳).
+     */
+    fun chooseLocation(loc: Location): Location {
+        if (loc.accuracy in 0.1f..30f) { precise = loc; return loc }
+        val p = precise ?: return loc
+        val fresh = System.currentTimeMillis() - p.time < 10 * 60 * 1000L
+        val movedFar = loc.distanceTo(p) > loc.accuracy + 500f
+        return if (loc.accuracy > 50f && fresh && !movedFar) p else loc
+    }
+
     /** מיקום אחרון שידוע למכשיר - גיבוי אם אין מיקום עדכני */
     @SuppressLint("MissingPermission")
     fun lastLocation(c: Context): Location? {

@@ -1491,7 +1491,8 @@ class MainActivity : Activity() {
     private fun refreshNearby() {
         if (!Prefs.nearMe(this) || checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) !=
             android.content.pm.PackageManager.PERMISSION_GRANTED) return
-        Weather.freshLocation(this) { loc ->
+        Weather.freshLocation(this) { got ->
+            val loc = got?.let { Weather.chooseLocation(it) }   // מיקום גס לא דורס מיקום מדויק
             if (loc != null) Thread {
                 try {
                     Prefs.addVisits(this, AreaData.areasAt(this, loc.latitude, loc.longitude, 0.0), System.currentTimeMillis())
