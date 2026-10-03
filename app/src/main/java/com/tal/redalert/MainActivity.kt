@@ -713,7 +713,7 @@ class MainActivity : Activity() {
                 val name = getItem(position) ?: ""
                 v.findViewById<TextView>(android.R.id.text1).text = name
                 v.findViewById<TextView>(android.R.id.text2).apply {
-                    text = dmap[name]?.let { "אזור $it" } ?: ""
+                    text = dmap[name] ?: ""
                     setTextColor(Color.parseColor("#9E9E9E"))
                 }
                 return v
