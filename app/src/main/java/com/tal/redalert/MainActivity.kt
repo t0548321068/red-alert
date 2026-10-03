@@ -55,7 +55,8 @@ class MainActivity : Activity() {
     private lateinit var circle: FrameLayout
     private lateinit var shieldIcon: android.widget.ImageView
     private lateinit var circleLabel: TextView
-    private lateinit var circleHint: TextView
+    private lateinit var haloOuter: FrameLayout
+    private lateinit var haloInner: FrameLayout
     private lateinit var sweep: View               // פס האור שעובר על הכרטיס
     private var sweepAnim: android.animation.ObjectAnimator? = null
     private lateinit var chips: LinearLayout
@@ -151,26 +152,12 @@ class MainActivity : Activity() {
     private val slowTick = Runnable {
         try {
             updateIndicators()
-            updateStatusLine()
             updateWeather()
             // שאר המסך מתעדכן רק כשמשהו השתנה
             val key = "${Prefs.enabled(this@MainActivity)}|${Prefs.history(this@MainActivity).firstOrNull()?.ts}|" +
                 Prefs.nearbyAreas(this@MainActivity).joinToString()   // גם כשהאזורים הקרובים משתנים
             if (key != lastHistoryKey) { lastHistoryKey = key; refresh() }
         } catch (_: Exception) { }
-    }
-
-    /** ליד "מוגן": מתי התקבל מידע לאחרונה מהמקורות */
-    private fun updateStatusLine() {
-        if (!Prefs.enabled(this)) { circleHint.text = ""; return }
-        val last = SourceHealth.lastData()   // מידע שהתקבל בפועל - לא "עכשיו" קבוע בגלל חיבור פתוח
-        val age = if (last == 0L) -1L else (System.currentTimeMillis() - last) / 1000
-        circleHint.text = "· " + when {
-            age < 0 -> "מתחבר…"
-            age <= 1 -> "עכשיו"
-            age < 60 -> "לפני $age שנ׳"
-            else -> "לפני ${age / 60} דק׳"
-        }
     }
 
     private fun updateClock() {
@@ -316,18 +303,18 @@ class MainActivity : Activity() {
         // הפעלה/כיבוי - מהחיווי "מוגן" בשורת החיוויים
         sweep = View(this).apply {
             background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.TRANSPARENT, Color.parseColor("#30FFFFFF"), Color.TRANSPARENT))
+                intArrayOf(Color.TRANSPARENT, Color.parseColor("#1869F0AE"), Color.TRANSPARENT))
         }
         clockCard.background = null
         // בראש כרטיס השעון: מגן + "מוגן"/"לא מוגן" + עדכון אחרון (מה שהיה בכרטיס מוגן)
+        // בראש הכרטיס: מגן בתוך עיגול עם הילה, ומתחתיו "מוגן" / "לא מוגן"
         shieldIcon = android.widget.ImageView(this)
-        circleLabel = text("מוגן", 19f, Color.WHITE, bold = true)
-        circleHint = text("", 14f, Color.parseColor("#CCFFFFFF"))
-        val protRow = LinearLayout(this).apply { gravity = Gravity.CENTER }
-        protRow.addView(shieldIcon, LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginEnd = dp(6) })
-        protRow.addView(circleLabel)
-        protRow.addView(circleHint, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
-        clockCard.addView(protRow, 0, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(4) })
+        circleLabel = text("מוגן", 22f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER }
+        haloOuter = FrameLayout(this)
+        haloInner = FrameLayout(this).apply { addView(shieldIcon, FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER)) }
+        haloOuter.addView(haloInner, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
+        clockCard.addView(haloOuter, 0, LinearLayout.LayoutParams(dp(56), dp(56)).apply { gravity = Gravity.CENTER_HORIZONTAL })
+        clockCard.addView(circleLabel, 1, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(2) })
         circle = FrameLayout(this).apply {
             clipToOutline = true
             // פס האור בגובה 0 בהתחלה - אחרת (match_parent) הוא מותח את הכרטיס לכל המסך
@@ -448,15 +435,15 @@ class MainActivity : Activity() {
     private fun refresh() {
         val on = Prefs.enabled(this)
         val color = if (on) C.GREEN else C.OFF
-        circle.background = if (on) GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.parseColor("#1B5E20"), Color.parseColor("#388E3C"))).apply { cornerRadius = dp(24).toFloat() }
-            else graphite(24)
-        shieldIcon.setImageResource(if (on) R.drawable.ic_shield_check else R.drawable.ic_shield_outline)
+        // כרטיס כהה, מסגרת ירוקה כשמוגן / אפורה כשלא
+        circle.background = graphite(24).apply { setStroke(dp(2), Color.parseColor(if (on) "#4CAF50" else "#555555")) }
+        shieldIcon.setImageResource(if (on) R.drawable.ic_shield_green else R.drawable.ic_shield_outline)
+        haloOuter.background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(if (on) "#0F69F0AE" else "#00000000")) }
+        haloInner.background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(if (on) "#2469F0AE" else "#10FFFFFF")) }
         circleLabel.text = if (on) "מוגן" else "לא מוגן"
-        circleLabel.setTextColor(if (on) Color.WHITE else Color.parseColor("#AAAAAA"))
+        circleLabel.setTextColor(Color.parseColor(if (on) "#69F0AE" else "#AAAAAA"))
         setSweep(on)
         updateIndicators()
-        updateStatusLine()
 
         renderChips()
         renderHistory()
