@@ -657,59 +657,45 @@ class MainActivity : Activity() {
             .show()
     }
 
-    /** אזורים שלמים: רשימה עם חיפוש, "בחר הכל" ותיבות סימון */
+    /** אזורים שלמים: אותו חלון כמו של היישובים - חיפוש, רשימה, לחיצה מוסיפה */
     private fun addDistricts() {
         val all = AreaData.districts(this)
-        val picked = Prefs.cities(this).filter { it.startsWith(AreaData.DISTRICT_PREFIX) }
-            .map { it.removePrefix(AreaData.DISTRICT_PREFIX) }.toMutableSet()
-        val input = EditText(this).apply { hint = "חיפוש…"; setSingleLine() }
-        val shown = ArrayList<String>()
-        val adapter = android.widget.ArrayAdapter<String>(this, android.R.layout.simple_list_item_multiple_choice, shown)
-        val listView = android.widget.ListView(this).apply {
-            this.adapter = adapter
-            choiceMode = android.widget.ListView.CHOICE_MODE_MULTIPLE
+        val input = EditText(this).apply {
+            hint = "חיפוש אזור, לדוגמה: שפלה"
+            setSingleLine()
         }
-        val ALL = "בחר הכל"
-        fun sync() {
-            for (i in 0 until shown.size) listView.setItemChecked(i,
-                if (shown[i] == ALL) all.all { it in picked } else shown[i] in picked)
+        val results = android.widget.ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, ArrayList())
+        val listView = android.widget.ListView(this).apply { adapter = results }
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), 0)
+            addView(input)
+            addView(listView, LinearLayout.LayoutParams(-1, dp(300)))
         }
         fun filter(q: String) {
-            shown.clear()
             val t = q.trim()
-            if (t.isEmpty()) shown.add(ALL)
-            shown.addAll(all.filter { t.isEmpty() || it.contains(t) })
-            adapter.notifyDataSetChanged(); sync()
-        }
-        listView.setOnItemClickListener { _, _, pos, _ ->
-            val v = shown[pos]
-            if (v == ALL) { if (all.all { it in picked }) picked.clear() else picked.addAll(all) }
-            else if (!picked.add(v)) picked.remove(v)
-            sync()
+            val mine = Prefs.cities(this)
+            val found = all.filter { (AreaData.DISTRICT_PREFIX + it) !in mine && (t.isEmpty() || it.contains(t)) }
+                .sortedBy { if (t.isNotEmpty() && it.startsWith(t)) 0 else 1 }
+            results.clear(); results.addAll(found); results.notifyDataSetChanged()
         }
         input.addTextChangedListener(object : android.text.TextWatcher {
             override fun afterTextChanged(e: android.text.Editable?) { filter(e.toString()) }
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
             override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
         })
-        val box = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(8), dp(20), 0)
-            addView(input)
-            addView(listView, LinearLayout.LayoutParams(-1, dp(380)))
-        }
         filter("")
-        AlertDialog.Builder(this, dlg())
+        val d = AlertDialog.Builder(this, dlg())
             .setIcon(R.mipmap.ic_launcher)
-            .setTitle("אזורים שלמים")
+            .setTitle("הוספת אזור שלם")
             .setView(box)
-            .setPositiveButton("אישור") { _, _ ->
-                val others = Prefs.cities(this).filterNot { it.startsWith(AreaData.DISTRICT_PREFIX) }
-                Prefs.setCities(this, others + all.filter { it in picked }.map { AreaData.DISTRICT_PREFIX + it })
-                refresh()
-            }
-            .setNegativeButton("ביטול", null)
+            .setNegativeButton("סגירה", null)
             .show()
+        listView.setOnItemClickListener { _, _, pos, _ ->
+            val v = AreaData.DISTRICT_PREFIX + (results.getItem(pos) ?: return@setOnItemClickListener)
+            if (v !in Prefs.cities(this)) { Prefs.setCities(this, Prefs.cities(this) + v); refresh() }
+            d.dismiss()
+        }
     }
 
     /** הוספת אזור: חיפוש (גם חלקי) ברשימת אזורי ההתרעה הרשמיים, לחיצה על תוצאה מוסיפה */
