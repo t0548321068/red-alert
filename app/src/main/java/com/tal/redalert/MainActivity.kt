@@ -227,7 +227,7 @@ class MainActivity : Activity() {
         clockDay = text("", 16f, C.TEXT).apply {
             gravity = Gravity.CENTER
         }
-        greeting = text("", 18f, C.TEXT).apply { gravity = Gravity.CENTER }
+        greeting = text("", 20f, C.TEXT).apply { gravity = Gravity.CENTER }
         // כרטיס השעון: רקע גרפיט, הכל ממורכז, טקסט לבן
         val clockCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -313,8 +313,10 @@ class MainActivity : Activity() {
         haloOuter = FrameLayout(this)
         haloInner = FrameLayout(this).apply { addView(shieldIcon, FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER)) }
         haloOuter.addView(haloInner, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
-        clockCard.addView(haloOuter, 0, LinearLayout.LayoutParams(dp(56), dp(56)).apply { gravity = Gravity.CENTER_HORIZONTAL })
-        clockCard.addView(circleLabel, 1, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(2) })
+        // סדר: ברכה למעלה, מתחתיה המגן ו"מוגן", ואז השעה
+        (greeting.layoutParams as? LinearLayout.LayoutParams)?.bottomMargin = dp(6)
+        clockCard.addView(haloOuter, 1, LinearLayout.LayoutParams(dp(56), dp(56)).apply { gravity = Gravity.CENTER_HORIZONTAL })
+        clockCard.addView(circleLabel, 2, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(2) })
         circle = FrameLayout(this).apply {
             clipToOutline = true
             // פס האור בגובה 0 בהתחלה - אחרת (match_parent) הוא מותח את הכרטיס לכל המסך
