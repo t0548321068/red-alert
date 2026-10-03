@@ -661,7 +661,7 @@ class MainActivity : Activity() {
     private fun addDistricts() {
         val all = AreaData.districts(this)
         val input = EditText(this).apply {
-            hint = "חיפוש אזור, לדוגמה: שפלה"
+            hint = "חיפוש יישוב/אזור"
             setSingleLine()
         }
         val results = android.widget.ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, ArrayList())
@@ -675,7 +675,10 @@ class MainActivity : Activity() {
         fun filter(q: String) {
             val t = q.trim()
             val mine = Prefs.cities(this)
-            val found = all.filter { (AreaData.DISTRICT_PREFIX + it) !in mine && (t.isEmpty() || it.contains(t)) }
+            // גם לפי שם יישוב: מראה את האזור שהיישוב שייך אליו
+            val bySettlement = if (t.isEmpty()) emptySet() else
+                AreaData.districtMap(this).filterKeys { it.contains(t) }.values.toSet()
+            val found = all.filter { (AreaData.DISTRICT_PREFIX + it) !in mine && (t.isEmpty() || it.contains(t) || it in bySettlement) }
                 .sortedBy { if (t.isNotEmpty() && it.startsWith(t)) 0 else 1 }
             results.clear(); results.addAll(found); results.notifyDataSetChanged()
         }
