@@ -297,7 +297,7 @@ class MainActivity : Activity() {
             isSelected = true
             gravity = Gravity.CENTER
             setPadding(dp(12), dp(20), dp(12), dp(20))   // פיד ארצי - כרטיס גבוה יותר
-            background = GradientDrawable().apply { cornerRadius = dp(10).toFloat(); setColor(C.CARD) }
+            background = graphite(20)   // כמו שאר הכרטיסים
         }
 
         // כרטיס השעון הוא גם מצב ההגנה: ירוק עם פס אור שעובר לאט כשמוגן, גרפיט כשלא.
