@@ -1018,7 +1018,7 @@ class MainActivity : Activity() {
         else setInd(locInd, R.drawable.ic_location, "כבוי", C.MUTED)
 
         if (!Prefs.enabled(this)) {
-            setInd(srvInd, R.drawable.ic_antenna, "לא מחובר", C.MUTED)
+            setInd(srvInd, R.drawable.ic_antenna, "לא מחובר", C.MUTED); blinkServer(false)
         } else {
             val up = SourceHealth.upCount(); val all = SourceHealth.total()
             val connecting = up < all && SourceHealth.anyConnecting()   // אחרי הפעלה/עדכון - עוד מתחברים
@@ -1032,6 +1032,23 @@ class MainActivity : Activity() {
                 else -> "לא מחובר"
             }
             setInd(srvInd, R.drawable.ic_antenna, label, color)
+            blinkServer(connecting)
+        }
+    }
+
+    /** "מתחבר…" מהבהב עד שהמקורות מחוברים */
+    private var srvBlink: android.animation.ObjectAnimator? = null
+    private fun blinkServer(on: Boolean) {
+        if (on && srvBlink == null) {
+            srvBlink = android.animation.ObjectAnimator.ofFloat(srvInd, "alpha", 1f, 0.25f).apply {
+                duration = 500
+                repeatCount = android.animation.ValueAnimator.INFINITE
+                repeatMode = android.animation.ValueAnimator.REVERSE
+                start()
+            }
+        } else if (!on && srvBlink != null) {
+            srvBlink?.cancel(); srvBlink = null
+            srvInd.alpha = 1f
         }
     }
 
