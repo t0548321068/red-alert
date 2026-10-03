@@ -1370,7 +1370,7 @@ class MainActivity : Activity() {
             |
             |📜 רישיונות:
             |• מפה: Leaflet (BSD-2)
-            |• גבולות אזורים, זמני הגעה ואזורים שלמים: oref_alert (MIT)
+            |• גבולות אזורים וזמני הגעה: oref_alert (MIT)
             |• רשת: OkHttp (Apache 2.0)
             |• מזג אוויר: Open-Meteo · שמות מקומות: OpenStreetMap
             |
