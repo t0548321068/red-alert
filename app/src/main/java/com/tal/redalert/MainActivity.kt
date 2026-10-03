@@ -1021,13 +1021,14 @@ class MainActivity : Activity() {
             setInd(srvInd, R.drawable.ic_antenna, "לא מחובר", C.MUTED)
         } else {
             val up = SourceHealth.upCount(); val all = SourceHealth.total()
+            val connecting = up < all && SourceHealth.anyConnecting()   // אחרי הפעלה/עדכון - עוד מתחברים
             val color = when {
-                up < all && SourceHealth.anyConnecting() -> C.MUTED   // אחרי הפעלה/עדכון - עוד מתחברים
+                connecting -> C.ORANGE
                 up == 0 -> C.RED; up < all / 2 -> C.ORANGE; else -> C.GREEN
             }
             val label = when {
+                connecting -> "מתחבר…"
                 up > 0 -> "מחובר לשרת"
-                SourceHealth.anyConnecting() -> "מתחבר…"
                 else -> "לא מחובר"
             }
             setInd(srvInd, R.drawable.ic_antenna, label, color)
