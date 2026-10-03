@@ -210,14 +210,16 @@ class MainActivity : Activity() {
         // מספר הגרסה עבר לכרטיס החיווים - כאן רק מרווח
         header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         // כפתור בדיקה אחד: בוחרים מקדימה / ירי / סיום
-        header.addView(text("🔔", 20f, C.MUTED).apply {
-            setPadding(dp(8), dp(4), dp(8), dp(4))
-            setOnClickListener { chooseTest() }
-        })
-        header.addView(text("🕰", 20f, C.MUTED).apply {
-            setPadding(dp(8), dp(4), dp(8), dp(4))
-            setOnClickListener { startActivity(Intent(this@MainActivity, ClockActivity::class.java)) }
-        })
+        // אייקונים בקו (באותו סגנון כמו החיוויים) במקום אמוג'י
+        fun headIcon(res: Int, click: () -> Unit) = android.widget.ImageView(this).apply {
+            setImageResource(res)
+            imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT)
+            setPadding(dp(8), dp(6), dp(8), dp(6))
+            setOnClickListener { click() }
+        }
+        header.addView(headIcon(R.drawable.ic_bell) { chooseTest() }, LinearLayout.LayoutParams(dp(42), dp(38)))
+        header.addView(headIcon(R.drawable.ic_clock) { startActivity(Intent(this@MainActivity, ClockActivity::class.java)) },
+            LinearLayout.LayoutParams(dp(42), dp(38)))
         col.addView(header)
 
         // שעון
