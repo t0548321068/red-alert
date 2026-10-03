@@ -500,13 +500,13 @@ class MainActivity : Activity() {
         val muted = Color.parseColor("#AAAAAA")
         val light = Color.parseColor("#E6FFFFFF")
 
-        // מיקום נוכחי
+        // אזור התרעה (לפי המיקום)
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(dp(16), dp(14), dp(16), dp(14))   // רקע כמו שאר הכרטיסים (של הכרטיס עצמו)
         }
-        top.addView(text("מיקום נוכחי", 16f, muted))
+        top.addView(text("אזור התרעה", 16f, muted))
         top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 26f, Color.WHITE, bold = true)
             .apply { setPadding(0, dp(2), 0, 0) })
         val sec = if (nearOn && near.isNotEmpty()) AreaData.shelterSeconds(this, near.take(1)) else null
