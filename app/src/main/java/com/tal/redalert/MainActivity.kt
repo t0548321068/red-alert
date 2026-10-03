@@ -523,7 +523,7 @@ class MainActivity : Activity() {
         val head = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(4), 0, dp(4)) }
         head.addView(text("אזורים נוספים", 15f, muted), LinearLayout.LayoutParams(0, -2, 1f))
         head.addView(text("+ הוספה", 15f, Color.parseColor("#64B5F6")).apply {
-            setPadding(dp(8), dp(2), 0, dp(2)); setOnClickListener { addCity() } })
+            setPadding(dp(8), dp(2), 0, dp(2)); setOnClickListener { chooseAddType() } })
         bottom.addView(head)
         if (list.isEmpty()) bottom.addView(text("אין אזורים נוספים", 16f, muted).apply { setPadding(0, dp(7), 0, dp(7)) })
         // הרשימה נגללת: עד 4 שורות גלויות, השאר בגלילה
@@ -645,6 +645,71 @@ class MainActivity : Activity() {
             key(k) -> "אתמול"
             else -> "%02d/%02d".format(e.get(java.util.Calendar.DAY_OF_MONTH), e.get(java.util.Calendar.MONTH) + 1)
         }
+    }
+
+    /** הוספה: יישוב בודד (חיפוש) או אזור שלם (מחוז של פיקוד העורף) */
+    private fun chooseAddType() {
+        AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
+            .setTitle("הוספת אזור התרעה")
+            .setItems(arrayOf("יישוב", "אזור שלם")) { _, i -> if (i == 0) addCity() else addDistricts() }
+            .setNegativeButton("ביטול", null)
+            .show()
+    }
+
+    /** אזורים שלמים: רשימה עם חיפוש, "בחר הכל" ותיבות סימון */
+    private fun addDistricts() {
+        val all = AreaData.districts(this)
+        val picked = Prefs.cities(this).filter { it.startsWith(AreaData.DISTRICT_PREFIX) }
+            .map { it.removePrefix(AreaData.DISTRICT_PREFIX) }.toMutableSet()
+        val input = EditText(this).apply { hint = "חיפוש…"; setSingleLine() }
+        val shown = ArrayList<String>()
+        val adapter = android.widget.ArrayAdapter<String>(this, android.R.layout.simple_list_item_multiple_choice, shown)
+        val listView = android.widget.ListView(this).apply {
+            this.adapter = adapter
+            choiceMode = android.widget.ListView.CHOICE_MODE_MULTIPLE
+        }
+        val ALL = "בחר הכל"
+        fun sync() {
+            for (i in 0 until shown.size) listView.setItemChecked(i,
+                if (shown[i] == ALL) all.all { it in picked } else shown[i] in picked)
+        }
+        fun filter(q: String) {
+            shown.clear()
+            val t = q.trim()
+            if (t.isEmpty()) shown.add(ALL)
+            shown.addAll(all.filter { t.isEmpty() || it.contains(t) })
+            adapter.notifyDataSetChanged(); sync()
+        }
+        listView.setOnItemClickListener { _, _, pos, _ ->
+            val v = shown[pos]
+            if (v == ALL) { if (all.all { it in picked }) picked.clear() else picked.addAll(all) }
+            else if (!picked.add(v)) picked.remove(v)
+            sync()
+        }
+        input.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(e: android.text.Editable?) { filter(e.toString()) }
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+        })
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), 0)
+            addView(input)
+            addView(listView, LinearLayout.LayoutParams(-1, dp(380)))
+        }
+        filter("")
+        AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
+            .setTitle("אזורים שלמים")
+            .setView(box)
+            .setPositiveButton("אישור") { _, _ ->
+                val others = Prefs.cities(this).filterNot { it.startsWith(AreaData.DISTRICT_PREFIX) }
+                Prefs.setCities(this, others + all.filter { it in picked }.map { AreaData.DISTRICT_PREFIX + it })
+                refresh()
+            }
+            .setNegativeButton("ביטול", null)
+            .show()
     }
 
     /** הוספת אזור: חיפוש (גם חלקי) ברשימת אזורי ההתרעה הרשמיים, לחיצה על תוצאה מוסיפה */
@@ -1303,7 +1368,7 @@ class MainActivity : Activity() {
             |
             |📜 רישיונות:
             |• מפה: Leaflet (BSD-2)
-            |• גבולות אזורים וזמני הגעה: oref_alert (MIT)
+            |• גבולות אזורים, זמני הגעה ואזורים שלמים: oref_alert (MIT)
             |• רשת: OkHttp (Apache 2.0)
             |• מזג אוויר: Open-Meteo · שמות מקומות: OpenStreetMap
             |
