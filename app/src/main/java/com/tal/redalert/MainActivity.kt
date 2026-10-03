@@ -702,24 +702,38 @@ class MainActivity : Activity() {
     private fun addCity() {
         val all = AreaData.areas(this).keys().asSequence().toList().sorted()
         val input = EditText(this).apply {
-            hint = "חיפוש אזור, לדוגמה: תל אב"
+            hint = "חיפוש יישוב, לדוגמה: תל אב"
             setSingleLine()
         }
-        val results = android.widget.ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, ArrayList())
+        // כל שורה: שם היישוב, ומתחתיו שם האזור השלם שהוא שייך אליו
+        val dmap = AreaData.districtMap(this)
+        val results = object : android.widget.ArrayAdapter<String>(this, android.R.layout.simple_list_item_2, android.R.id.text1, ArrayList()) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val v = super.getView(position, convertView, parent)
+                val name = getItem(position) ?: ""
+                v.findViewById<TextView>(android.R.id.text1).text = name
+                v.findViewById<TextView>(android.R.id.text2).apply {
+                    text = dmap[name]?.let { "אזור $it" } ?: ""
+                    setTextColor(Color.parseColor("#9E9E9E"))
+                }
+                return v
+            }
+        }
         val listView = android.widget.ListView(this).apply { adapter = results }
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(8), dp(20), 0)
             addView(input)
-            addView(listView, LinearLayout.LayoutParams(-1, dp(300)))
+            addView(listView, LinearLayout.LayoutParams(-1, dp(360)))
         }
         fun filter(q: String) {
             val t = q.trim()
             val k = Prefs.areaKey(t)
             val mine = Prefs.cities(this)
-            val found = if (t.isEmpty()) emptyList() else all.filter {
-                it !in mine && (it.contains(t) || (k.isNotEmpty() && Prefs.areaKey(it).contains(k)))
-            }.sortedBy { if (it.startsWith(t)) 0 else 1 }.take(200)
+            // בלי חיפוש - כל הרשימה
+            val found = all.filter {
+                it !in mine && (t.isEmpty() || it.contains(t) || (k.isNotEmpty() && Prefs.areaKey(it).contains(k)))
+            }.sortedBy { if (t.isNotEmpty() && it.startsWith(t)) 0 else 1 }
             results.clear(); results.addAll(found); results.notifyDataSetChanged()
         }
         input.addTextChangedListener(object : android.text.TextWatcher {
@@ -729,10 +743,11 @@ class MainActivity : Activity() {
         })
         val d = AlertDialog.Builder(this, dlg())
             .setIcon(R.mipmap.ic_launcher)
-            .setTitle("הוספת אזור התרעה")
+            .setTitle("הוספת יישוב")
             .setView(box)
             .setNegativeButton("סגירה", null)
             .show()
+        filter("")
         listView.setOnItemClickListener { _, _, pos, _ ->
             val v = results.getItem(pos) ?: return@setOnItemClickListener
             if (v !in Prefs.cities(this)) { Prefs.setCities(this, Prefs.cities(this) + v); refresh() }
