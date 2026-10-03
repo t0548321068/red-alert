@@ -58,8 +58,7 @@ class MainActivity : Activity() {
     private lateinit var haloOuter: FrameLayout
     private lateinit var haloInner: FrameLayout
     private lateinit var glow: View                // זוהר מאחורי המגן
-    private lateinit var ring1: View               // גלים שיוצאים מהמגן
-    private lateinit var ring2: View
+    private lateinit var ring1: View               // גל רדאר שיוצא מהמגן
     private val pulseAnims = mutableListOf<android.animation.Animator>()
     private lateinit var chips: LinearLayout
     private lateinit var historyBox: LinearLayout
@@ -303,7 +302,7 @@ class MainActivity : Activity() {
 
         // כרטיס השעון הוא גם מצב ההגנה: ירוק עם פס אור שעובר לאט כשמוגן, גרפיט כשלא.
         // הפעלה/כיבוי - מהחיווי "מוגן" בשורת החיוויים
-        // אנימציית מוגן: זוהר מאחורי המגן + שני גלים שיוצאים ממנו
+        // אנימציית מוגן: זוהר מאחורי המגן + גל רדאר שיוצא ממנו
         glow = View(this).apply {
             background = GradientDrawable().apply {
                 gradientType = GradientDrawable.RADIAL_GRADIENT
@@ -316,7 +315,7 @@ class MainActivity : Activity() {
             background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setStroke(dp(2), Color.parseColor("#69F0AE")) }
             alpha = 0f
         }
-        ring1 = ring(); ring2 = ring()
+        ring1 = ring()
         clockCard.background = null
         // בראש כרטיס השעון: מגן + "מוגן"/"לא מוגן" + עדכון אחרון (מה שהיה בכרטיס מוגן)
         // בראש הכרטיס: מגן בתוך עיגול עם הילה, ומתחתיו "מוגן" / "לא מוגן"
@@ -329,7 +328,6 @@ class MainActivity : Activity() {
             addView(shieldIcon, FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER))
         }
         haloOuter.addView(ring1, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
-        haloOuter.addView(ring2, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
         haloOuter.addView(haloInner, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
         // סדר: ברכה למעלה, מתחתיה המגן ו"מוגן", ואז השעה
         (greeting.layoutParams as? LinearLayout.LayoutParams)?.bottomMargin = dp(6)
@@ -450,25 +448,27 @@ class MainActivity : Activity() {
     private fun setSweep(on: Boolean) {
         if (!on) {
             pulseAnims.forEach { it.cancel() }; pulseAnims.clear()
-            glow.alpha = 0f; ring1.alpha = 0f; ring2.alpha = 0f
+            glow.alpha = 0f; ring1.alpha = 0f
             return
         }
         if (pulseAnims.isNotEmpty()) return
-        val inf = android.animation.ValueAnimator.INFINITE
-        pulseAnims += android.animation.ObjectAnimator.ofFloat(glow, "alpha", 0f, 1f, 0f).apply {
-            duration = 2400; repeatCount = inf; start()
-        }
+        // מחזור אחד מתואם: המגן מאיר, ובשיא הזוהר יוצא ממנו גל רדאר אחד שמתרחב ונעלם בזמן שהזוהר דועך
         val max = 56f / 42f
-        listOf(ring1 to 0L, ring2 to 700L).forEach { (r, delay) ->
-            pulseAnims += android.animation.AnimatorSet().apply {
-                val sx = android.animation.ObjectAnimator.ofFloat(r, "scaleX", 1f, max).apply { repeatCount = inf }
-                val sy = android.animation.ObjectAnimator.ofFloat(r, "scaleY", 1f, max).apply { repeatCount = inf }
-                val al = android.animation.ObjectAnimator.ofFloat(r, "alpha", 0.7f, 0f).apply { repeatCount = inf }
-                playTogether(sx, sy, al)
-                duration = 2400
-                startDelay = delay
-                start()
+        pulseAnims += android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 2600
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            interpolator = android.view.animation.LinearInterpolator()
+            addUpdateListener { va ->
+                val t = va.animatedValue as Float
+                glow.alpha = if (t < 0.35f) t / 0.35f else (1f - (t - 0.35f) / 0.45f).coerceAtLeast(0f)
+                val r = (t - 0.3f) / 0.6f
+                if (r in 0f..1f) {
+                    val e = 1f - (1f - r) * (1f - r)   // מאט לקראת הסוף
+                    ring1.scaleX = 1f + (max - 1f) * e; ring1.scaleY = ring1.scaleX
+                    ring1.alpha = 0.75f * (1f - r)
+                } else ring1.alpha = 0f
             }
+            start()
         }
     }
 
