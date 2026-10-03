@@ -301,9 +301,10 @@ class MainActivity : Activity() {
 
         // כרטיס השעון הוא גם מצב ההגנה: ירוק עם פס אור שעובר לאט כשמוגן, גרפיט כשלא.
         // הפעלה/כיבוי - מהחיווי "מוגן" בשורת החיוויים
+        // פס אור קטן שעובר רק על המגן (בתוך העיגול)
         sweep = View(this).apply {
             background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.TRANSPARENT, Color.parseColor("#1869F0AE"), Color.TRANSPARENT))
+                intArrayOf(Color.TRANSPARENT, Color.parseColor("#66FFFFFF"), Color.TRANSPARENT))
         }
         clockCard.background = null
         // בראש כרטיס השעון: מגן + "מוגן"/"לא מוגן" + עדכון אחרון (מה שהיה בכרטיס מוגן)
@@ -311,7 +312,11 @@ class MainActivity : Activity() {
         shieldIcon = android.widget.ImageView(this)
         circleLabel = text("מוגן", 22f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER }
         haloOuter = FrameLayout(this)
-        haloInner = FrameLayout(this).apply { addView(shieldIcon, FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER)) }
+        haloInner = FrameLayout(this).apply {
+            clipToOutline = true   // הפס נחתך לצורת העיגול
+            addView(shieldIcon, FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER))
+            addView(sweep, FrameLayout.LayoutParams(dp(16), -1, Gravity.LEFT))
+        }
         haloOuter.addView(haloInner, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
         // סדר: ברכה למעלה, מתחתיה המגן ו"מוגן", ואז השעה
         (greeting.layoutParams as? LinearLayout.LayoutParams)?.bottomMargin = dp(6)
@@ -322,14 +327,7 @@ class MainActivity : Activity() {
         clockCard.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> evenClockGaps() }
         circle = FrameLayout(this).apply {
             clipToOutline = true
-            // פס האור בגובה 0 בהתחלה - אחרת (match_parent) הוא מותח את הכרטיס לכל המסך
-            addView(sweep, FrameLayout.LayoutParams(dp(140), 0, Gravity.LEFT))
             addView(clockCard, FrameLayout.LayoutParams(-1, -2))
-        }
-        // הגובה של פס האור = הגובה של כרטיס השעון
-        clockCard.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
-            val lp = sweep.layoutParams
-            if (v.height > 0 && lp.height != v.height) { lp.height = v.height; sweep.layoutParams = lp }
         }
         // מצב שקט - מוצג רק כשהוא פעיל עכשיו
         quietLine = text("", 12f, C.ORANGE).apply {
@@ -442,12 +440,13 @@ class MainActivity : Activity() {
         if (sweepAnim != null) return
         circle.post {
             if (sweepAnim != null || !Prefs.enabled(this)) return@post
-            val w = circle.width.toFloat(); val sw = dp(120).toFloat()
+            val w = dp(42).toFloat(); val sw = dp(16).toFloat()
             sweepAnim = android.animation.ObjectAnimator.ofFloat(sweep, "translationX", w, -sw).apply {   // מימין לשמאל
-                duration = 2800
+                duration = 3000
                 startDelay = 400
                 repeatCount = android.animation.ValueAnimator.INFINITE
-                interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+                // עובר על המגן בחצי הראשון של הזמן, ואז הפסקה עד הפעם הבאה
+                interpolator = android.animation.TimeInterpolator { t -> if (t < 0.45f) t / 0.45f else 1f }
                 start()
             }
         }
