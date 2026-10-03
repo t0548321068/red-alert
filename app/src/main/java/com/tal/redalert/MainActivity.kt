@@ -661,7 +661,7 @@ class MainActivity : Activity() {
     private fun addDistricts() {
         val all = AreaData.districts(this)
         val input = EditText(this).apply {
-            hint = "חיפוש יישוב/אזור"
+            hint = "חיפוש אזור"
             setSingleLine()
         }
         val results = android.widget.ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, ArrayList())
@@ -705,7 +705,7 @@ class MainActivity : Activity() {
     private fun addCity() {
         val all = AreaData.areas(this).keys().asSequence().toList().sorted()
         val input = EditText(this).apply {
-            hint = "חיפוש יישוב/אזור"
+            hint = "חיפוש יישוב"
             setSingleLine()
         }
         // כל שורה: שם היישוב, ומתחתיו שם האזור השלם שהוא שייך אליו
