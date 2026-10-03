@@ -532,7 +532,7 @@ class MainActivity : Activity() {
             if (i > 0) rows.addView(View(this).apply { setBackgroundColor(Color.parseColor("#14FFFFFF")) },
                 LinearLayout.LayoutParams(-1, dp(1)))
             val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(8)) }
-            r.addView(text(city, 18f, Color.WHITE), LinearLayout.LayoutParams(0, -2, 1f))
+            r.addView(text(city.removePrefix(AreaData.DISTRICT_PREFIX), 18f, Color.WHITE), LinearLayout.LayoutParams(0, -2, 1f))
             r.addView(text("✕", 17f, muted).apply {
                 setPadding(dp(10), 0, dp(4), 0)
                 setOnClickListener { Prefs.setCities(this@MainActivity, Prefs.cities(this@MainActivity) - city); refresh() }
