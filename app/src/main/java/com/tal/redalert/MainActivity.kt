@@ -702,7 +702,7 @@ class MainActivity : Activity() {
     private fun addCity() {
         val all = AreaData.areas(this).keys().asSequence().toList().sorted()
         val input = EditText(this).apply {
-            hint = "חיפוש יישוב, לדוגמה: תל אב"
+            hint = "חיפוש יישוב/אזור"
             setSingleLine()
         }
         // כל שורה: שם היישוב, ומתחתיו שם האזור השלם שהוא שייך אליו
@@ -732,7 +732,8 @@ class MainActivity : Activity() {
             val mine = Prefs.cities(this)
             // בלי חיפוש - כל הרשימה
             val found = all.filter {
-                it !in mine && (t.isEmpty() || it.contains(t) || (k.isNotEmpty() && Prefs.areaKey(it).contains(k)))
+                it !in mine && (t.isEmpty() || it.contains(t) || (k.isNotEmpty() && Prefs.areaKey(it).contains(k)) ||
+                    (dmap[it]?.contains(t) == true))   // גם לפי שם האזור
             }.sortedBy { if (t.isNotEmpty() && it.startsWith(t)) 0 else 1 }
             results.clear(); results.addAll(found); results.notifyDataSetChanged()
         }
