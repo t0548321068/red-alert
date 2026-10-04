@@ -40,6 +40,8 @@ object AreaData {
     fun matches(c: Context, area: String, pick: String): Boolean =
         if (pick == DISTRICT_PREFIX + ALL_COUNTRY) true   // כל הארץ - כל התרעה
         else if (pick.startsWith(DISTRICT_PREFIX)) districtMap(c)[area] == pick.removePrefix(DISTRICT_PREFIX)
+        // "כל הארץ" ו"ברחבי הארץ" - אותו דבר (פיקוד העורף משתמש בשניהם)
+        else if (pick == ALL_COUNTRY) area == ALL_COUNTRY || area == "ברחבי הארץ"
         else area.contains(pick)
 
     fun areas(c: Context): JSONObject = areasCache ?: synchronized(this) {
