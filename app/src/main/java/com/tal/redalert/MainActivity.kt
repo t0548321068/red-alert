@@ -703,7 +703,8 @@ class MainActivity : Activity() {
 
     /** הוספת אזור: חיפוש (גם חלקי) ברשימת אזורי ההתרעה הרשמיים, לחיצה על תוצאה מוסיפה */
     private fun addCity() {
-        val all = AreaData.areas(this).keys().asSequence().toList().sorted()
+        // "ברחבי הארץ" מאוחד עם "כל הארץ" - מוצג פעם אחת
+        val all = AreaData.areas(this).keys().asSequence().filter { it != "ברחבי הארץ" }.toList().sorted()
         val input = EditText(this).apply {
             hint = "חיפוש יישוב"
             setSingleLine()
