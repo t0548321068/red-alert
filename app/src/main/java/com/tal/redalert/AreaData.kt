@@ -28,6 +28,7 @@ object AreaData {
     // אזור שלם לכל יישוב - לפי החלוקה של צופר
     @Volatile private var districtCache: Map<String, String>? = null
     const val DISTRICT_PREFIX = "מחוז "
+    const val ALL_COUNTRY = "כל הארץ"
     fun districtMap(c: Context): Map<String, String> = districtCache ?: synchronized(this) {
         districtCache ?: try {
             val o = JSONObject(c.assets.open("districts.json").bufferedReader(Charsets.UTF_8).use { it.readText() })
@@ -37,7 +38,8 @@ object AreaData {
     fun districts(c: Context): List<String> = districtMap(c).values.toSortedSet().toList()
     /** האם אזור התרעה (מההתראה) שייך לבחירה: יישוב או "מחוז X" */
     fun matches(c: Context, area: String, pick: String): Boolean =
-        if (pick.startsWith(DISTRICT_PREFIX)) districtMap(c)[area] == pick.removePrefix(DISTRICT_PREFIX)
+        if (pick == DISTRICT_PREFIX + ALL_COUNTRY) true   // כל הארץ - כל התרעה
+        else if (pick.startsWith(DISTRICT_PREFIX)) districtMap(c)[area] == pick.removePrefix(DISTRICT_PREFIX)
         else area.contains(pick)
 
     fun areas(c: Context): JSONObject = areasCache ?: synchronized(this) {
