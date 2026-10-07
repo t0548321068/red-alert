@@ -231,6 +231,17 @@ object Prefs {
     fun themeMode(c: Context) = sp(c).getInt("themeMode", if (sp(c).getBoolean("dark", true)) 0 else 1)
     fun setThemeMode(c: Context, v: Int) = sp(c).edit().putInt("themeMode", v).commit()
     val THEME_NAMES = arrayOf("כהה", "בהירה", "לפי המערכת")
+
+    /** סוג תצוגת התרעה: 0 מסך מלא · 1 פופ-אפ · 2 כרטיס מעל השעון · 3 ממוזער */
+    val ALERT_STYLES = arrayOf("מסך מלא", "פופ-אפ", "כרטיס מעל השעון", "ממוזער")
+    fun alertStyle(c: Context) = sp(c).getInt("alertStyle", 0)
+    fun setAlertStyle(c: Context, v: Int) = sp(c).edit().putInt("alertStyle", v).apply()
+
+    /** ההתרעה הפעילה (לכרטיס מעל השעון): title, body, level, shelter, firedAt, source */
+    fun setActiveAlert(c: Context, j: org.json.JSONObject?) =
+        sp(c).edit().putString("activeAlert", j?.toString() ?: "").apply()
+    fun activeAlert(c: Context): org.json.JSONObject? =
+        try { sp(c).getString("activeAlert", "")?.takeIf { it.isNotEmpty() }?.let { org.json.JSONObject(it) } } catch (_: Exception) { null }
     fun darkTheme(c: Context) = when (themeMode(c)) {
         1 -> false
         2 -> (c.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
