@@ -75,8 +75,10 @@ class AlertActivity : Activity() {
         val title = intent.getStringExtra("title") ?: "צבע אדום"
         // התרעה מקדימה: למעלה "מבזק פיקוד העורף" / "התרעה מקדימה", והנוסח המלא + ההנחיה מתחת למפה
         val pre = level == AlertService.LEVEL_PRE
-        val headTitle = if (pre) "מבזק פיקוד העורף" else title
-        val headNote = if (pre) "התרעה מקדימה" else note
+        val end = level == AlertService.LEVEL_END
+        // סיום אירוע: למעלה "עדכון פיקוד העורף" / "האירוע הסתיים", וההנחיה מתחת למפה (כמו בכתום)
+        val headTitle = if (pre) "מבזק פיקוד העורף" else if (end) "עדכון פיקוד העורף" else title
+        val headNote = if (pre) "התרעה מקדימה" else if (end) "האירוע הסתיים" else note
 
         val map = miniMap(level)
         val titleView = LinearLayout(this).apply {
@@ -103,6 +105,13 @@ class AlertActivity : Activity() {
         root.addView(titleView)
         if (map != null) root.addView(map, LinearLayout.LayoutParams(-1, (resources.displayMetrics.heightPixels * 0.34f).toInt()))
 
+        if (end) root.addView(TextView(this).apply {
+            text = note   // "ניתן לצאת מהמרחב המוגן"
+            textSize = 19f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            setPadding(dpx(16), dpx(14), dpx(16), 0)
+        })
         if (pre) {
             // מתחת למפה: נוסח ההתרעה (למשל "בדקות הקרובות צפויות להתקבל התרעות באזורך") ומה לעשות
             if (title.isNotBlank() && title != "התרעה מקדימה") root.addView(TextView(this).apply {
