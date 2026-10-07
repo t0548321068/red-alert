@@ -73,6 +73,10 @@ class AlertActivity : Activity() {
             // בכוונה בלי סגירה בלחיצה על המסך - כדי שלא ייסגר בטעות
         }
         val title = intent.getStringExtra("title") ?: "צבע אדום"
+        // התרעה מקדימה: למעלה "מבזק פיקוד העורף" / "התרעה מקדימה", והנוסח המלא + ההנחיה מתחת למפה
+        val pre = level == AlertService.LEVEL_PRE
+        val headTitle = if (pre) "מבזק פיקוד העורף" else title
+        val headNote = if (pre) "התרעה מקדימה" else note
 
         val map = miniMap(level)
         val titleView = LinearLayout(this).apply {
@@ -80,7 +84,7 @@ class AlertActivity : Activity() {
             gravity = Gravity.CENTER
             setPadding(dpx(16), dpx(36), dpx(16), dpx(14))
             addView(TextView(this@AlertActivity).apply {
-                text = title
+                text = headTitle
                 textSize = 28f
                 setTextColor(Color.WHITE)
                 typeface = Typeface.DEFAULT_BOLD
@@ -88,7 +92,7 @@ class AlertActivity : Activity() {
             })
             // מתחת לכותרת: מה לעשות
             addView(TextView(this@AlertActivity).apply {
-                text = note
+                text = headNote
                 textSize = 20f
                 setTextColor(Color.WHITE)
                 gravity = Gravity.CENTER
@@ -98,6 +102,25 @@ class AlertActivity : Activity() {
         // הכותרת למעלה, והמפה מתחתיה (לא מוסתרת)
         root.addView(titleView)
         if (map != null) root.addView(map, LinearLayout.LayoutParams(-1, (resources.displayMetrics.heightPixels * 0.34f).toInt()))
+
+        if (pre) {
+            // מתחת למפה: נוסח ההתרעה (למשל "בדקות הקרובות צפויות להתקבל התרעות באזורך") ומה לעשות
+            if (title.isNotBlank() && title != "התרעה מקדימה") root.addView(TextView(this).apply {
+                text = title
+                textSize = 19f
+                setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER
+                setPadding(dpx(16), dpx(14), dpx(16), 0)
+            })
+            root.addView(TextView(this).apply {
+                text = "התקרבו למרחב המוגן"
+                textSize = 21f
+                setTextColor(Color.WHITE)
+                typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                setPadding(dpx(16), dpx(6), dpx(16), 0)
+            })
+        }
 
         // זמן התגוננות - ממורכז מתחת למפה
         if (level == AlertService.LEVEL_ALERT && shelterSec >= 0) {
