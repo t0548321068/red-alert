@@ -370,41 +370,32 @@ class MainActivity : Activity() {
                 insets
             }
         }
-        // תפריט תחתון צף: ראשי · התרעות · שעון · הגדרות (לפי המידות של inv-bottom-nav)
+        // תפריט תחתון צף: ראשי · התרעות · שעון · הגדרות
         val nav = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
-            setPaddingRelative(dp(5), dp(4), dp(5) + dp(6), dp(4))   // +6 מפצה על החפיפה של הלשונית האחרונה
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#3A3A3E")); cornerRadius = dp(32).toFloat()
-                setStroke(dp(1), Color.parseColor("#1FFFFFFF"))
-            }
-            elevation = dp(6).toFloat()
+            setPadding(dp(3), dp(3), dp(3), dp(3))
+            background = GradientDrawable().apply { setColor(Color.parseColor("#3A3A3E")); cornerRadius = dp(24).toFloat() }
         }
-        // רוחב לשונית: (רוחב המסך - 32 - 10 + 24) / 5, לכל היותר 83
-        val screenDp = resources.displayMetrics.widthPixels / resources.displayMetrics.density
-        val tabW = dp(((screenDp - 32 - 10 + 24) / 5).coerceAtMost(83f).toInt())
         fun tab(icon: Int, label: String, on: Boolean, click: () -> Unit) = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(4), dp(7), dp(4), dp(7))
-            if (on) background = GradientDrawable().apply { setColor(Color.parseColor("#55555B")); cornerRadius = dp(24).toFloat() }
+            gravity = Gravity.CENTER
+            // גלולה רחבה (64x42) כמו בתפריט של סמסונג
+            if (on) background = GradientDrawable().apply { setColor(Color.parseColor("#55555B")); cornerRadius = dp(21).toFloat() }
             val c = if (on) Color.WHITE else Color.parseColor("#AAAAAA")
             addView(android.widget.ImageView(this@MainActivity).apply {
                 setImageResource(icon); imageTintList = android.content.res.ColorStateList.valueOf(c)
             }, LinearLayout.LayoutParams(dp(20), dp(20)))
-            addView(text(label, 11f, c, bold = on).apply { gravity = Gravity.CENTER; includeFontPadding = false; setSingleLine() },
-                LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(2) })
+            addView(text(label, 11f, c, bold = on).apply { gravity = Gravity.CENTER; includeFontPadding = false; setPadding(0, dp(1), 0, 0) })
             setOnClickListener { click() }
         }
-        // חפיפה של 6 בין הלשוניות
-        val tabLp = { LinearLayout.LayoutParams(tabW, -2).apply { marginEnd = -dp(6) } }
+        val tabLp = { LinearLayout.LayoutParams(dp(64), dp(42)) }
         nav.addView(tab(R.drawable.ic_home, "ראשי", true) { }, tabLp())
         nav.addView(tab(R.drawable.ic_history, "התרעות", false) { showRecent() }, tabLp())
         nav.addView(tab(R.drawable.ic_clock, "שעון", false) { startActivity(Intent(this, ClockActivity::class.java)) }, tabLp())
         nav.addView(tab(R.drawable.ic_gear, "הגדרות", false) { showSettings() }, tabLp())
-        scroll.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(10) })
+        scroll.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(12) })
         // מקום לתפריט מתחת לפיד
-        col.setPadding(col.paddingLeft, col.paddingTop, col.paddingRight, dp(GAP) + dp(70))
+        col.setPadding(col.paddingLeft, col.paddingTop, col.paddingRight, dp(GAP) + dp(84))
         setContentView(scroll)
         askPermissions()
         showWhatsNewIfUpdated()
