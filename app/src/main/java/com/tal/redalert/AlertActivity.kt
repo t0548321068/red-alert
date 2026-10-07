@@ -153,7 +153,11 @@ class AlertActivity : Activity() {
             isVerticalScrollBarEnabled = false
             if (chips.childCount > 0) addView(chips, ViewGroup.LayoutParams(-1, -2))
         }
-        root.addView(chipsScroll, LinearLayout.LayoutParams(-1, 0, 1f).apply {
+        // האזורים יושבים בתחתית השטח הפנוי - צמודים למקור ולכפתורים (נגללים אם יש הרבה)
+        val chipsBox = android.widget.FrameLayout(this).apply {
+            addView(chipsScroll, android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
+        }
+        root.addView(chipsBox, LinearLayout.LayoutParams(-1, 0, 1f).apply {
             setMargins(dpx(14), dpx(10), dpx(14), 0)
         })
 
