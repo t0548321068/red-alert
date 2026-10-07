@@ -54,7 +54,7 @@ object MiniOverlay {
             else -> "#D50000"
         }
 
-        // סגנון One UI: גלולה - אייקון בעיגול · כותרת + אזור · זמן התגוננות + טיימר · ✕ בעיגול
+        // סגנון One UI: גלולה - כותרת + אזור · זמן התגוננות + טיימר · ✕ בעיגול
         fun circle(icon: Int, size: Int) = android.widget.FrameLayout(app).apply {
             background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#38000000")) }
             addView(android.widget.ImageView(app).apply { setImageResource(icon) },
@@ -104,7 +104,6 @@ object MiniOverlay {
             background = GradientDrawable().apply { cornerRadius = dp(28).toFloat(); setColor(Color.parseColor(color)) }
                 .also { bg = it }
             elevation = dp(6).toFloat()
-            addView(circle(R.drawable.ic_warning, 38), LinearLayout.LayoutParams(dp(38), dp(38)))
             addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
             addView(timerBox)
             addView(closeX, LinearLayout.LayoutParams(dp(34), dp(34)))
