@@ -19,30 +19,32 @@ class AlertActivity : Activity() {
     private var shelterSec = -1
     private var firedAt = 0L
 
-    private var stay: TextView? = null
+    private var cdLabel: TextView? = null
 
     private val tick = object : Runnable {
         override fun run() {
             val now = System.currentTimeMillis()
-            countdown?.let { cd ->
-                val left = shelterSec - ((now - firedAt) / 1000).toInt()
-                cd.text = when {
-                    shelterSec <= 0 -> "מיידי"
-                    left > 0 -> "%d:%02d".format(left / 60, left % 60)
-                    else -> "0:00"
-                }
+            val cd = countdown ?: return
+            // זמן ההגעה; כשנגמר - השעון הגדול עובר לזמן השהייה במרחב המוגן
+            val enterEnd = firedAt + shelterSec.coerceAtLeast(0) * 1000L
+            if (now < enterEnd) {
+                val left = ((enterEnd - now) / 1000).toInt()
+                cdLabel?.text = "זמן התגוננות"
+                cd.textSize = 48f
+                cd.text = "%d:%02d".format(left / 60, left % 60)
+                ui.postDelayed(this, 250); return
             }
-            // טיימר שהייה: 10 דקות מהירי
-            stay?.let { st ->
-                // 10 הדקות מתחילות רק אחרי שנגמר הזמן להגעה
-                val enterEnd = firedAt + shelterSec.coerceAtLeast(0) * 1000L
-                if (now < enterEnd) { st.text = ""; ui.postDelayed(this, 250); return }
-                val left = ((enterEnd + Prefs.STAY_MS - now) / 1000).toInt()
-                st.text = if (left > 0) "נשארים במרחב המוגן: %d:%02d".format(left / 60, left % 60)
-                          else "ממתינים להודעת סיום אירוע"
-                if (left > 0) { ui.postDelayed(this, 250); return }
+            val left = ((enterEnd + Prefs.STAY_MS - now) / 1000).toInt()
+            if (left > 0) {
+                cdLabel?.text = "נשארים במרחב המוגן"
+                cd.textSize = 48f
+                cd.text = "%d:%02d".format(left / 60, left % 60)
+                ui.postDelayed(this, 250)
+            } else {
+                cdLabel?.text = ""
+                cd.textSize = 20f
+                cd.text = "ממתינים להודעת סיום אירוע"
             }
-            if (countdown != null && shelterSec > 0 && now - firedAt < shelterSec * 1000L) ui.postDelayed(this, 250)
         }
     }
 
@@ -130,15 +132,15 @@ class AlertActivity : Activity() {
             })
         }
 
-        // זמן התגוננות - ממורכז מתחת למפה
-        if (level == AlertService.LEVEL_ALERT && shelterSec >= 0) {
-            root.addView(TextView(this).apply {
-                text = "זמן התגוננות"
+        // זמן התגוננות, ואחריו זמן השהייה במרחב המוגן - ממורכז מתחת למפה
+        if (level == AlertService.LEVEL_ALERT) {
+            cdLabel = TextView(this).apply {
                 textSize = 14f
                 setTextColor(Color.WHITE)
                 gravity = Gravity.CENTER
                 setPadding(0, dpx(14), 0, 0)
-            })
+            }
+            root.addView(cdLabel)
             countdown = TextView(this).apply {
                 textSize = 48f
                 setTextColor(Color.WHITE)
@@ -147,17 +149,6 @@ class AlertActivity : Activity() {
                 includeFontPadding = false
             }
             root.addView(countdown)
-        }
-
-        if (level == AlertService.LEVEL_ALERT) {
-            stay = TextView(this).apply {
-                textSize = 17f
-                setTextColor(Color.WHITE)
-                typeface = Typeface.DEFAULT_BOLD
-                gravity = Gravity.CENTER
-                setPadding(0, dpx(4), 0, 0)
-            }
-            root.addView(stay)
         }
 
         // אזורים כתגיות - בכרטיס שנגלל אם יש הרבה
