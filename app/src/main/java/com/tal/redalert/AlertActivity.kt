@@ -82,16 +82,12 @@ open class AlertActivity : Activity() {
             // בכוונה בלי סגירה בלחיצה על המסך - כדי שלא ייסגר בטעות
         }
 
-        // כותרת: משולש אזהרה + סוג ההתרעה, ומתחת מה לעשות
+        // כותרת: סוג ההתרעה, ומתחת מה לעשות
         val titleView = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(dpx(16), dpx(if (popup) 16 else 36), dpx(16), dpx(if (popup) 10 else 14))
-            val row = LinearLayout(this@AlertActivity).apply { gravity = Gravity.CENTER }
-            row.addView(ImageView(this@AlertActivity).apply { setImageResource(R.drawable.ic_warning) },
-                LinearLayout.LayoutParams(dpx(if (popup) 22 else 26), dpx(if (popup) 22 else 26)).apply { marginEnd = dpx(8) })
-            row.addView(tv(headTitle, if (popup) 22f else 28f, bold = true))
-            addView(row)
+            addView(tv(headTitle, if (popup) 22f else 28f, bold = true))
             addView(tv(headNote, if (popup) 16f else 20f).apply { setPadding(0, dpx(2), 0, 0) })
         }
         root.addView(titleView)
