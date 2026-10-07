@@ -183,11 +183,7 @@ class MainActivity : Activity() {
             alertCard.background = GradientDrawable().apply {
                 setColor(Color.parseColor(AlertUi.color(level))); cornerRadius = dp(28).toFloat() }
             val (t1, t2) = AlertUi.head(j.optString("title"), level)
-            val row = LinearLayout(this).apply { gravity = Gravity.CENTER }
-            row.addView(android.widget.ImageView(this).apply { setImageResource(R.drawable.ic_warning) },
-                LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginEnd = dp(8) })
-            row.addView(text(t1, 19f, Color.WHITE, bold = true))
-            alertCard.addView(row)
+            alertCard.addView(text(t1, 19f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER })
             alertCard.addView(text(t2, 14f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER })
             alertCardLabel = null; alertCardTimer = null
             if (level == AlertService.LEVEL_ALERT) {
