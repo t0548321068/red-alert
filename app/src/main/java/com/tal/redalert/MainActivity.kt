@@ -373,26 +373,26 @@ class MainActivity : Activity() {
         // תפריט תחתון צף: ראשי · התרעות · שעון · הגדרות
         val nav = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(5), dp(5), dp(5), dp(5))
-            background = pill()
-            elevation = dp(8).toFloat()
+            setPadding(dp(3), dp(3), dp(3), dp(3))
+            background = GradientDrawable().apply { setColor(Color.parseColor("#3A3A3E")); cornerRadius = dp(24).toFloat() }
         }
         fun tab(icon: Int, label: String, on: Boolean, click: () -> Unit) = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(dp(14), dp(6), dp(14), dp(6))
-            if (on) background = GradientDrawable().apply { setColor(Color.parseColor("#29FFFFFF")); cornerRadius = dp(26).toFloat() }
+            // גלולה רחבה (64x42) כמו בתפריט של סמסונג
+            if (on) background = GradientDrawable().apply { setColor(Color.parseColor("#55555B")); cornerRadius = dp(21).toFloat() }
             val c = if (on) Color.WHITE else Color.parseColor("#AAAAAA")
             addView(android.widget.ImageView(this@MainActivity).apply {
                 setImageResource(icon); imageTintList = android.content.res.ColorStateList.valueOf(c)
-            }, LinearLayout.LayoutParams(dp(22), dp(22)))
-            addView(text(label, 11f, c, bold = on).apply { gravity = Gravity.CENTER })
+            }, LinearLayout.LayoutParams(dp(20), dp(20)))
+            addView(text(label, 11f, c, bold = on).apply { gravity = Gravity.CENTER; includeFontPadding = false; setPadding(0, dp(1), 0, 0) })
             setOnClickListener { click() }
         }
-        nav.addView(tab(R.drawable.ic_home, "ראשי", true) { })
-        nav.addView(tab(R.drawable.ic_history, "התרעות", false) { showRecent() })
-        nav.addView(tab(R.drawable.ic_clock, "שעון", false) { startActivity(Intent(this, ClockActivity::class.java)) })
-        nav.addView(tab(R.drawable.ic_gear, "הגדרות", false) { showSettings() })
+        val tabLp = { LinearLayout.LayoutParams(dp(64), dp(42)) }
+        nav.addView(tab(R.drawable.ic_home, "ראשי", true) { }, tabLp())
+        nav.addView(tab(R.drawable.ic_history, "התרעות", false) { showRecent() }, tabLp())
+        nav.addView(tab(R.drawable.ic_clock, "שעון", false) { startActivity(Intent(this, ClockActivity::class.java)) }, tabLp())
+        nav.addView(tab(R.drawable.ic_gear, "הגדרות", false) { showSettings() }, tabLp())
         scroll.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(12) })
         // מקום לתפריט מתחת לפיד
         col.setPadding(col.paddingLeft, col.paddingTop, col.paddingRight, dp(GAP) + dp(84))
