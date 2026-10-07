@@ -113,10 +113,9 @@ class AlertActivity : Activity() {
                 setPadding(dpx(16), dpx(14), dpx(16), 0)
             })
             root.addView(TextView(this).apply {
-                text = "התקרבו למרחב המוגן"
-                textSize = 21f
+                text = "במקרה של קבלת התרעה, יש להיכנס למרחב המוגן ולשהות בו עד לקבלת הנחיה מפורשת"
+                textSize = 19f   // אותו גודל כמו הנוסח שמעליו
                 setTextColor(Color.WHITE)
-                typeface = Typeface.DEFAULT_BOLD
                 gravity = Gravity.CENTER
                 setPadding(dpx(16), dpx(6), dpx(16), 0)
             })
