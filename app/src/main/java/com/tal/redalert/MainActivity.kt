@@ -201,28 +201,17 @@ class MainActivity : Activity() {
 
         // כותרת + גלגל שיניים
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        // ☰ פותח את התפריט הצידי (התראות אחרונות + הגדרות)
-        header.addView(text("☰", 24f, C.TEXT).apply {
-            setPadding(dp(4), dp(2), dp(4), dp(2))
-            setOnClickListener { showSettings() }
-        })
-        header.addView(text("צבע אדום", 22f, C.TEXT, bold = true).apply { setPadding(dp(8), 0, dp(8), 0) })
-        // מספר הגרסה עבר לכרטיס החיווים - כאן רק מרווח
+        header.addView(text("צבע אדום", 24f, C.TEXT, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) })
         header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
-        // כפתור בדיקה אחד: בוחרים מקדימה / ירי / סיום
-        // אייקונים בקו (באותו סגנון כמו החיוויים) במקום אמוג'י
-        fun headIcon(res: Int, click: () -> Unit) = android.widget.ImageView(this).apply {
-            setImageResource(res)
-            imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT)
-            setPadding(dp(8), dp(6), dp(8), dp(6))
-            setOnClickListener { click() }
-        }
-        // התראות אחרונות - ליד כפתור הבדיקה
-        header.addView(headIcon(R.drawable.ic_history) { showRecent() }, LinearLayout.LayoutParams(dp(42), dp(38)))
-        header.addView(headIcon(R.drawable.ic_bell) { chooseTest() }, LinearLayout.LayoutParams(dp(42), dp(38)))
-        header.addView(headIcon(R.drawable.ic_clock) { startActivity(Intent(this@MainActivity, ClockActivity::class.java)) },
-            LinearLayout.LayoutParams(dp(42), dp(38)))
-        col.addView(header)
+        // כפתור בדיקה בעיגול צף (שאר הכפתורים עברו לתפריט התחתון)
+        header.addView(android.widget.ImageView(this).apply {
+            setImageResource(R.drawable.ic_bell)
+            imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#3A3A3E")) }
+            setOnClickListener { chooseTest() }
+        }, LinearLayout.LayoutParams(dp(46), dp(46)))
+        col.addView(header, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
 
         // שעון
         clockTime = text("", 44f, C.TEXT).apply {
@@ -256,10 +245,7 @@ class MainActivity : Activity() {
             // האייקונים הוגדלו - הריפוד קטן באותה מידה, כדי שגובה השורה יישאר כמו קודם
             val padV = ((7f - 22f * (1.3f - 1.15f) / 2f) * resources.displayMetrics.density).toInt()
             setPadding(dp(6), padV, dp(6), padV)
-            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.parseColor("#232526"), Color.parseColor("#414345"))).apply {
-                cornerRadius = dp(18).toFloat()
-            }
+            background = graphite(28)
         }
         // בלי לחיצה על החיווים (רק 7 הלחיצות הנסתרות על הגרסה נשארו)
         netInd = indicator(R.drawable.ic_globe, null)
@@ -384,6 +370,32 @@ class MainActivity : Activity() {
                 insets
             }
         }
+        // תפריט תחתון צף: ראשי · התרעות · שעון · הגדרות
+        val nav = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(5), dp(5), dp(5), dp(5))
+            background = pill()
+            elevation = dp(8).toFloat()
+        }
+        fun tab(icon: Int, label: String, on: Boolean, click: () -> Unit) = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(14), dp(6), dp(14), dp(6))
+            if (on) background = GradientDrawable().apply { setColor(Color.parseColor("#29FFFFFF")); cornerRadius = dp(26).toFloat() }
+            val c = if (on) Color.WHITE else Color.parseColor("#AAAAAA")
+            addView(android.widget.ImageView(this@MainActivity).apply {
+                setImageResource(icon); imageTintList = android.content.res.ColorStateList.valueOf(c)
+            }, LinearLayout.LayoutParams(dp(22), dp(22)))
+            addView(text(label, 11f, c, bold = on).apply { gravity = Gravity.CENTER })
+            setOnClickListener { click() }
+        }
+        nav.addView(tab(R.drawable.ic_home, "ראשי", true) { })
+        nav.addView(tab(R.drawable.ic_history, "התרעות", false) { showRecent() })
+        nav.addView(tab(R.drawable.ic_clock, "שעון", false) { startActivity(Intent(this, ClockActivity::class.java)) })
+        nav.addView(tab(R.drawable.ic_gear, "הגדרות", false) { showSettings() })
+        scroll.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(12) })
+        // מקום לתפריט מתחת לפיד
+        col.setPadding(col.paddingLeft, col.paddingTop, col.paddingRight, dp(GAP) + dp(84))
         setContentView(scroll)
         askPermissions()
         showWhatsNewIfUpdated()
@@ -522,8 +534,8 @@ class MainActivity : Activity() {
         val bottom = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), dp(8)) }
         val head = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(4), 0, dp(4)) }
         head.addView(text("אזורים נוספים", 15f, muted), LinearLayout.LayoutParams(0, -2, 1f))
-        head.addView(text("+ הוספה", 15f, Color.parseColor("#64B5F6")).apply {
-            setPadding(dp(8), dp(2), 0, dp(2)); setOnClickListener { chooseAddType() } })
+        head.addView(text("+ הוספה", 14f, Color.WHITE).apply {
+            setPadding(dp(14), dp(6), dp(14), dp(6)); background = pill(); setOnClickListener { chooseAddType() } })
         bottom.addView(head)
         if (list.isEmpty()) bottom.addView(text("אין אזורים נוספים", 16f, muted).apply { setPadding(0, dp(7), 0, dp(7)) })
         // הרשימה נגללת: עד 4 שורות גלויות, השאר בגלילה
@@ -764,8 +776,11 @@ class MainActivity : Activity() {
 
     private class Row(val icon: String, val title: String, val value: () -> String, val action: () -> Unit)
 
-    private fun graphite(radius: Int) = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-        intArrayOf(Color.parseColor("#232526"), Color.parseColor("#414345"))).apply { cornerRadius = dp(radius).toFloat() }
+    // סגנון One UI: כרטיס אפור כהה אחיד עם פינות מעוגלות מאוד
+    private fun graphite(@Suppress("UNUSED_PARAMETER") radius: Int) = GradientDrawable().apply {
+        setColor(Color.parseColor("#1B1B1D")); cornerRadius = dp(28).toFloat() }
+    /** גלולה צפה (כפתורים) */
+    private fun pill() = GradientDrawable().apply { setColor(Color.parseColor("#3A3A3E")); cornerRadius = dp(30).toFloat() }
 
     /** מסך מלא (על כל המסך) עם כותרת וחץ חזרה; build בונה את התוכן, ונבנה מחדש כשחוזרים אליו */
     private fun fullPage(title: String, build: (LinearLayout) -> Unit) {
