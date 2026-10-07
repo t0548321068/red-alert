@@ -1,259 +1,229 @@
 package com.tal.redalert
 
 import android.app.Activity
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
-/** מסך מלא שקופץ בזמן התראה - עם ספירה לאחור לכניסה למרחב המוגן */
-class AlertActivity : Activity() {
+/** מסך שקופץ בזמן התראה - מסך מלא, או פופ-אפ באמצע המסך (AlertPopupActivity) */
+open class AlertActivity : Activity() {
+
+    /** פופ-אפ: כרטיס באמצע המסך מעל מה שפתוח */
+    protected open val popup = false
 
     private val ui = Handler(Looper.getMainLooper())
     private var countdown: TextView? = null
+    private var cdLabel: TextView? = null
     private var shelterSec = -1
     private var firedAt = 0L
-
-    private var cdLabel: TextView? = null
+    private var level = AlertService.LEVEL_ALERT
 
     private val tick = object : Runnable {
         override fun run() {
-            val now = System.currentTimeMillis()
             val cd = countdown ?: return
-            // זמן ההגעה; כשנגמר - השעון הגדול עובר לזמן השהייה במרחב המוגן
-            val enterEnd = firedAt + shelterSec.coerceAtLeast(0) * 1000L
-            if (now < enterEnd) {
-                val left = ((enterEnd - now) / 1000).toInt()
-                cdLabel?.text = "זמן התגוננות"
-                cd.textSize = 48f
-                cd.text = "%d:%02d".format(left / 60, left % 60)
-                ui.postDelayed(this, 250); return
-            }
-            val left = ((enterEnd + Prefs.STAY_MS - now) / 1000).toInt()
-            if (left > 0) {
-                cdLabel?.text = "נשארים במרחב המוגן"
-                cd.textSize = 48f
-                cd.text = "%d:%02d".format(left / 60, left % 60)
-                ui.postDelayed(this, 250)
-            } else {
-                cdLabel?.text = ""
-                cd.textSize = 20f
-                cd.text = "ממתינים להודעת סיום אירוע"
-            }
+            val t = AlertUi.timer(level, shelterSec, firedAt) ?: return
+            cdLabel?.text = t.first
+            cdLabel?.visibility = if (t.first.isEmpty()) View.GONE else View.VISIBLE
+            cd.textSize = if (t.first.isEmpty()) 20f else if (popup) 42f else 52f
+            cd.text = t.second
+            if (t.first.isNotEmpty()) ui.postDelayed(this, 250)
         }
+    }
+
+    private fun card(alpha: String = "#38000000", r: Int = 28) = GradientDrawable().apply {
+        setColor(Color.parseColor(alpha)); cornerRadius = dpx(r).toFloat()
+    }
+
+    private fun tv(t: String, size: Float, bold: Boolean = false) = TextView(this).apply {
+        text = t; textSize = size; setTextColor(Color.WHITE); gravity = Gravity.CENTER
+        if (bold) typeface = Typeface.DEFAULT_BOLD
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        MiniOverlay.hide(this)   // המסך המלא חזר - בלי החלון הקטן
+        MiniOverlay.hide(this)   // המסך חזר - בלי החלון הקטן
         // מופיע מעל מסך הנעילה ומדליק את המסך
         if (android.os.Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true) }
         @Suppress("DEPRECATION")
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
             android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
             android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
-        val level = intent.getIntExtra("level", AlertService.LEVEL_ALERT)
+        level = intent.getIntExtra("level", AlertService.LEVEL_ALERT)
         shelterSec = intent.getIntExtra("shelter", -1)
         firedAt = intent.getLongExtra("firedAt", System.currentTimeMillis())
         // מצב שבת: המסך נסגר לבד אחרי דקה
         val autoClose = intent.getLongExtra("autoCloseMs", 0L)
         if (autoClose > 0) ui.postDelayed({ finish() }, (firedAt + autoClose - System.currentTimeMillis()).coerceAtLeast(1000L))
 
-        val (bg, note) = when (level) {
-            AlertService.LEVEL_PRE -> "#F08C00" to "היו בקרבת מרחב מוגן"
-            AlertService.LEVEL_END -> "#2E7D32" to "ניתן לצאת מהמרחב המוגן"
-            else -> "#D50000" to "היכנסו למרחב המוגן"
-        }
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor(bg))
-            // בכוונה בלי סגירה בלחיצה על המסך - כדי שלא ייסגר בטעות
-        }
+        val bg = Color.parseColor(AlertUi.color(level))
         val title = intent.getStringExtra("title") ?: "צבע אדום"
-        // התרעה מקדימה: למעלה "מבזק פיקוד העורף" / "התרעה מקדימה", והנוסח המלא + ההנחיה מתחת למפה
         val pre = level == AlertService.LEVEL_PRE
         val end = level == AlertService.LEVEL_END
-        // סיום אירוע: למעלה "עדכון פיקוד העורף" / "האירוע הסתיים", וההנחיה מתחת למפה (כמו בכתום)
-        val headTitle = if (pre) "מבזק פיקוד העורף" else if (end) "עדכון פיקוד העורף" else title
-        val headNote = if (pre) "התרעה מקדימה" else if (end) "האירוע הסתיים" else note
+        val (headTitle, headNote) = AlertUi.head(title, level)
 
-        val map = miniMap(level)
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            if (popup) {
+                background = GradientDrawable().apply { setColor(bg); cornerRadius = dpx(28).toFloat() }
+                clipToOutline = true
+                elevation = dpx(16).toFloat()
+            } else setBackgroundColor(bg)
+            // בכוונה בלי סגירה בלחיצה על המסך - כדי שלא ייסגר בטעות
+        }
+
+        // כותרת: משולש אזהרה + סוג ההתרעה, ומתחת מה לעשות
         val titleView = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(dpx(16), dpx(36), dpx(16), dpx(14))
-            addView(TextView(this@AlertActivity).apply {
-                text = headTitle
-                textSize = 28f
-                setTextColor(Color.WHITE)
-                typeface = Typeface.DEFAULT_BOLD
-                gravity = Gravity.CENTER
-            })
-            // מתחת לכותרת: מה לעשות
-            addView(TextView(this@AlertActivity).apply {
-                text = headNote
-                textSize = 20f
-                setTextColor(Color.WHITE)
-                gravity = Gravity.CENTER
-                setPadding(0, dpx(2), 0, 0)
-            })
+            setPadding(dpx(16), dpx(if (popup) 16 else 36), dpx(16), dpx(if (popup) 10 else 14))
+            val row = LinearLayout(this@AlertActivity).apply { gravity = Gravity.CENTER }
+            row.addView(ImageView(this@AlertActivity).apply { setImageResource(R.drawable.ic_warning) },
+                LinearLayout.LayoutParams(dpx(if (popup) 22 else 26), dpx(if (popup) 22 else 26)).apply { marginEnd = dpx(8) })
+            row.addView(tv(headTitle, if (popup) 22f else 28f, bold = true))
+            addView(row)
+            addView(tv(headNote, if (popup) 16f else 20f).apply { setPadding(0, dpx(2), 0, 0) })
         }
-        // הכותרת למעלה, והמפה מתחתיה (לא מוסתרת)
         root.addView(titleView)
-        if (map != null) root.addView(map, LinearLayout.LayoutParams(-1, (resources.displayMetrics.heightPixels * 0.34f).toInt()))
-
-        if (end) root.addView(TextView(this).apply {
-            text = note   // "ניתן לצאת מהמרחב המוגן"
-            textSize = 19f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            setPadding(dpx(16), dpx(14), dpx(16), 0)
-        })
-        if (pre) {
-            // מתחת למפה: נוסח ההתרעה (למשל "בדקות הקרובות צפויות להתקבל התרעות באזורך") ומה לעשות
-            if (title.isNotBlank() && title != "התרעה מקדימה") root.addView(TextView(this).apply {
-                text = title
-                textSize = 19f
-                setTextColor(Color.WHITE)
-                gravity = Gravity.CENTER
-                setPadding(dpx(16), dpx(14), dpx(16), 0)
-            })
-            root.addView(TextView(this).apply {
-                text = "במקרה של קבלת התרעה, יש להיכנס למרחב המוגן ולשהות בו עד לקבלת הנחיה מפורשת"
-                textSize = 19f   // אותו גודל כמו הנוסח שמעליו
-                setTextColor(Color.WHITE)
-                gravity = Gravity.CENTER
-                setPadding(dpx(16), dpx(6), dpx(16), 0)
-            })
+        miniMap(level)?.let { map ->
+            val h = if (popup) dpx(170) else (resources.displayMetrics.heightPixels * 0.34f).toInt()
+            root.addView(map, LinearLayout.LayoutParams(-1, h))
         }
 
-        // זמן התגוננות, ואחריו זמן השהייה במרחב המוגן - ממורכז מתחת למפה
+        if (end) root.addView(tv("ניתן לצאת מהמרחב המוגן", 19f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
+        if (pre) {
+            // מתחת למפה: נוסח ההתרעה ומה לעשות
+            if (title.isNotBlank() && title != "התרעה מקדימה")
+                root.addView(tv(title, 19f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
+            root.addView(tv("במקרה של קבלת התרעה, יש להיכנס למרחב המוגן ולשהות בו עד לקבלת הנחיה מפורשת", 19f)
+                .apply { setPadding(dpx(16), dpx(6), dpx(16), 0) })
+        }
+
+        // כרטיס הטיימר: זמן התגוננות -> נשארים במרחב המוגן
+        var timerCard: LinearLayout? = null
         if (level == AlertService.LEVEL_ALERT) {
-            cdLabel = TextView(this).apply {
-                textSize = 14f
-                setTextColor(Color.WHITE)
+            timerCard = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(0, dpx(14), 0, 0)
+                background = card(r = if (popup) 22 else 28)
+                setPadding(dpx(12), dpx(10), dpx(12), dpx(12))
             }
-            root.addView(cdLabel)
-            countdown = TextView(this).apply {
-                textSize = 48f
-                setTextColor(Color.WHITE)
+            cdLabel = tv("", 13f)
+            countdown = tv("", if (popup) 42f else 52f).apply {
                 typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-                gravity = Gravity.CENTER
                 includeFontPadding = false
             }
-            root.addView(countdown)
+            timerCard.addView(cdLabel)
+            timerCard.addView(countdown)
+            root.addView(timerCard, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(10), dpx(10), dpx(10), 0) })
         }
 
-        // אזורים כתגיות - בכרטיס שנגלל אם יש הרבה
-        val chips = Flow(this, dpx(6)).apply {
-            setPadding(dpx(10), dpx(10), dpx(10), dpx(10))
-            background = android.graphics.drawable.GradientDrawable().apply {
-                cornerRadius = dpx(18).toFloat()
-                setColor(Color.parseColor("#33000000"))
-            }
-        }
+        // אזורים כתגיות + מקור ההתרעה
+        val chips = Flow(this, dpx(6))
         (intent.getStringExtra("body") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach { a ->
-            chips.addView(TextView(this).apply {
-                text = a
-                textSize = 15f
-                setTextColor(Color.WHITE)
-                setPadding(dpx(12), dpx(5), dpx(12), dpx(5))
-                background = android.graphics.drawable.GradientDrawable().apply {
-                    cornerRadius = dpx(14).toFloat()
-                    setColor(Color.parseColor("#38FFFFFF"))
-                }
+            chips.addView(tv(a, 14f).apply {
+                setPadding(dpx(12), dpx(4), dpx(12), dpx(4))
+                background = card("#33FFFFFF", 14)
             })
         }
         val chipsScroll = android.widget.ScrollView(this).apply {
             isVerticalScrollBarEnabled = false
             if (chips.childCount > 0) addView(chips, ViewGroup.LayoutParams(-1, -2))
         }
-        // האזורים יושבים בתחתית השטח הפנוי - צמודים למקור ולכפתורים (נגללים אם יש הרבה)
-        val chipsBox = android.widget.FrameLayout(this).apply {
-            addView(chipsScroll, android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
+        val srcView = intent.getStringExtra("source")?.takeIf { it.isNotEmpty() }?.let { src ->
+            tv("מקור ההתרעה: $src", 13f).apply { setTextColor(Color.parseColor("#E6FFFFFF")); setPadding(0, dpx(6), 0, 0) }
         }
-        root.addView(chipsBox, LinearLayout.LayoutParams(-1, 0, 1f).apply {
-            setMargins(dpx(14), dpx(10), dpx(14), 0)
-        })
+        if (popup && timerCard != null) {
+            // בפופ-אפ: האזורים והמקור בתוך כרטיס הטיימר
+            timerCard.addView(chipsScroll, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dpx(6) })
+            srcView?.let { timerCard.addView(it) }
+        } else {
+            val areaCard = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = card(r = if (popup) 22 else 28)
+                setPadding(dpx(12), dpx(10), dpx(12), dpx(10))
+                addView(chipsScroll, LinearLayout.LayoutParams(-1, -2))
+                srcView?.let { addView(it) }
+            }
+            if (popup) root.addView(areaCard, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(10), dpx(10), dpx(10), 0) })
+            else {
+                // האזורים יושבים בתחתית השטח הפנוי - צמודים לכפתורים (נגללים אם יש הרבה)
+                val box = FrameLayout(this).apply {
+                    addView(areaCard, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
+                }
+                root.addView(box, LinearLayout.LayoutParams(-1, 0, 1f).apply { setMargins(dpx(10), dpx(10), dpx(10), 0) })
+            }
+        }
 
-        intent.getStringExtra("source")?.takeIf { it.isNotEmpty() }?.let { src ->
-            root.addView(TextView(this).apply {
-                text = "מקור ההתרעה: $src"
-                textSize = 13f
-                setTextColor(Color.parseColor("#DDFFFFFF"))
+        // כפתורים: השתק · הנחיות · סגור (אייקון מעל הכיתוב)
+        val buttons = LinearLayout(this).apply { setPadding(dpx(10), dpx(10), dpx(10), dpx(if (popup) 12 else 16)) }
+        fun btn(icon: Int, label: String, click: (TextView) -> Unit): LinearLayout {
+            val l = tv(label, 13f)
+            return LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(0, dpx(8), 0, 0)
-            })
-        }
-
-        // כפתורים: השתקה · הנחיות · מזעור · סגירה בהחלקה
-        val buttons = LinearLayout(this).apply {
-            gravity = Gravity.CENTER
-            setPadding(dpx(8), dpx(14), dpx(8), 0)
-        }
-        fun btn(label: String) = TextView(this).apply {
-            text = label
-            textSize = 16f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            setPadding(dpx(14), dpx(9), dpx(14), dpx(9))
-            background = android.graphics.drawable.GradientDrawable().apply {
-                cornerRadius = dpx(24).toFloat()
-                setStroke(dpx(2), Color.WHITE)
-                setColor(Color.parseColor("#33FFFFFF"))
+                setPadding(0, dpx(9), 0, dpx(9))
+                background = card("#40000000", 24)
+                addView(ImageView(this@AlertActivity).apply { setImageResource(icon) }, LinearLayout.LayoutParams(dpx(20), dpx(20)))
+                addView(l, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dpx(3) })
+                setOnClickListener { click(l) }
             }
         }
-        val mute = btn("🔇 השתק").apply {
-            setOnClickListener {
-                AlertService.silence(this@AlertActivity)
-                text = "🔇 הושתק"
-                alpha = 0.6f
-            }
-        }
-        // הנחיות - מה לעשות לפי סוג האיום
         val tips = Guidance.forTitle(title)
-        val guide = btn("ℹ️ הנחיות").apply {
-            setOnClickListener {
-                android.app.AlertDialog.Builder(this@AlertActivity)
-                    .setTitle("הנחיות")
-                    .setMessage(tips.joinToString("\n") { "• $it" })
-                    .setPositiveButton("סגור", null)
-                    .show()
-            }
+        val list = mutableListOf(
+            btn(R.drawable.ic_volume_off, "השתק") { l ->
+                AlertService.silence(this); l.text = "הושתק"; l.alpha = 0.6f
+            })
+        if (tips.isNotEmpty()) list += btn(R.drawable.ic_info_line, "הנחיות") {
+            android.app.AlertDialog.Builder(this)
+                .setTitle("הנחיות")
+                .setMessage(tips.joinToString("\n") { "• $it" })
+                .setPositiveButton("סגור", null)
+                .show()
         }
-        // מזער: חלון קטן למעלה עם הספירה, והמסך המלא נסגר
-        val mini = btn("▭ מזער").apply {
-            setOnClickListener {
-                if (MiniOverlay.canShow(this@AlertActivity)) MiniOverlay.show(this@AlertActivity, intent)
-                else android.widget.Toast.makeText(this@AlertActivity,
-                    "לחלון קטן צריך הרשאת \"הצגה מעל אפליקציות אחרות\"", android.widget.Toast.LENGTH_LONG).show()
-                finish()
-            }
+        list += btn(R.drawable.ic_close, "סגור") { close() }
+        list.forEachIndexed { i, b ->
+            buttons.addView(b, LinearLayout.LayoutParams(0, -2, 1f).apply { if (i > 0) marginStart = dpx(8) })
         }
-        buttons.addView(mute)
-        if (tips.isNotEmpty()) buttons.addView(guide, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dpx(8) })
-        buttons.addView(mini, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dpx(8) })
         root.addView(buttons)
 
-        // סגירה: החלקה של הכפתור עד הסוף (לא נסגר בנגיעה בטעות)
-        root.addView(slideToClose(), LinearLayout.LayoutParams(-1, dpx(60)).apply {
-            setMargins(dpx(16), dpx(14), dpx(16), dpx(20))
-        })
-        // שלא יוסתר מאחורי כפתורי הניווט / שורת המצב של הטלפון
-        root.setOnApplyWindowInsetsListener { v, ins ->
-            @Suppress("DEPRECATION")
-            v.setPadding(0, 0, 0, ins.systemWindowInsetBottom)
-            titleView.setPadding(dpx(16), ins.systemWindowInsetTop + dpx(12), dpx(16), dpx(14))
-            ins
+        if (popup) {
+            // כרטיס באמצע המסך, מעל מה שפתוח (הרקע מוחשך)
+            val frame = FrameLayout(this).apply {
+                addView(root, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER).apply { setMargins(dpx(14), dpx(24), dpx(14), dpx(24)) })
+            }
+            setContentView(frame)
+        } else {
+            // שלא יוסתר מאחורי כפתורי הניווט / שורת המצב של הטלפון
+            root.setOnApplyWindowInsetsListener { v, ins ->
+                @Suppress("DEPRECATION")
+                v.setPadding(0, 0, 0, ins.systemWindowInsetBottom)
+                titleView.setPadding(dpx(16), ins.systemWindowInsetTop + dpx(12), dpx(16), dpx(14))
+                ins
+            }
+            setContentView(root)
         }
-        setContentView(root)
+    }
+
+    /** סגירה: השתקה, ובמסך הראשי נשאר כרטיס ההתרעה מעל השעון */
+    private fun close() {
+        AlertService.silence(this)
+        MiniOverlay.hide(this)
+        try {
+            startActivity(Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+        } catch (_: Exception) { }
+        finish()
     }
 
     /** שורות של תגיות שנשברות לשורה הבאה (מימין לשמאל), ממורכזות */
@@ -316,68 +286,13 @@ class AlertActivity : Activity() {
         return web
     }
 
-    /** פס "החלק לסגירה": גוררים את העיגול לצד השני */
-    @android.annotation.SuppressLint("ClickableViewAccessibility")
-    private fun slideToClose(): android.view.View {
-        val track = android.widget.FrameLayout(this).apply {
-            background = android.graphics.drawable.GradientDrawable().apply {
-                cornerRadius = dpx(32).toFloat()
-                setColor(Color.parseColor("#33FFFFFF"))
-                setStroke(dpx(2), Color.WHITE)
-            }
-            layoutDirection = android.view.View.LAYOUT_DIRECTION_LTR
-        }
-        val label = TextView(this).apply {
-            // החיצים מבודדים משמאל-לימין - כדי שלא יתהפכו בטקסט העברי ויצביעו לכיוון ההחלקה
-            text = "\u2066›››\u2069  החלק לסגירה  \u2066›››\u2069"
-            setTextColor(Color.WHITE); textSize = 16f; gravity = Gravity.CENTER
-        }
-        track.addView(label, android.widget.FrameLayout.LayoutParams(-1, -1))
-        val size = dpx(48)   // פס בגובה 60 - רווח 6 מכל הצדדים
-        val knob = TextView(this).apply {
-            text = "✕"; textSize = 22f; gravity = Gravity.CENTER
-            setTextColor(Color.parseColor("#D50000"))
-            background = android.graphics.drawable.GradientDrawable().apply {
-                shape = android.graphics.drawable.GradientDrawable.OVAL; setColor(Color.WHITE)
-            }
-        }
-        track.addView(knob, android.widget.FrameLayout.LayoutParams(size, size).apply {
-            gravity = Gravity.CENTER_VERTICAL or Gravity.START; leftMargin = dpx(6)
-        })
-        var downX = 0f
-        knob.setOnTouchListener { v, e ->
-            val max = (track.width - size - dpx(12)).toFloat()
-            when (e.actionMasked) {
-                android.view.MotionEvent.ACTION_DOWN -> { downX = e.rawX - v.translationX; true }
-                android.view.MotionEvent.ACTION_MOVE -> {
-                    v.translationX = (e.rawX - downX).coerceIn(0f, max)
-                    label.alpha = 1f - v.translationX / max
-                    true
-                }
-                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
-                    if (v.translationX > max * 0.85f) {
-                        AlertService.silence(this)
-                        MiniOverlay.hide(this)
-                        finish()
-                    } else {
-                        v.animate().translationX(0f).setDuration(200).start()
-                        label.animate().alpha(1f).setDuration(200).start()
-                    }
-                    true
-                }
-                else -> false
-            }
-        }
-        return track
-    }
-
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        android.widget.Toast.makeText(this, "לסגירה: החלק את הכפתור · למזעור: ▭ מזער", android.widget.Toast.LENGTH_SHORT).show()
+        android.widget.Toast.makeText(this, "לסגירה: ✕ סגור", android.widget.Toast.LENGTH_SHORT).show()
     }
 
     /** התראה חדשה כשהמסך כבר פתוח - מציגים אותה */
-    override fun onNewIntent(i: android.content.Intent) {
+    override fun onNewIntent(i: Intent) {
         super.onNewIntent(i)
         setIntent(i)
         recreate()
@@ -391,5 +306,16 @@ class AlertActivity : Activity() {
     override fun onPause() {
         ui.removeCallbacks(tick)
         super.onPause()
+    }
+}
+
+/** פופ-אפ: אותו תוכן בכרטיס באמצע המסך */
+class AlertPopupActivity : AlertActivity() {
+    override val popup = true
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        window.setDimAmount(0.6f)
     }
 }

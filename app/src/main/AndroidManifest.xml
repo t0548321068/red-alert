@@ -56,6 +56,16 @@
             android:excludeFromRecents="true"
             android:launchMode="singleTop" />
 
+        <!-- פופ-אפ: כרטיס התרעה באמצע המסך, מעל מה שפתוח -->
+        <activity
+            android:name=".AlertPopupActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <service
             android:name=".AlertService"
             android:exported="false"

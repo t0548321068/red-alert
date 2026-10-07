@@ -154,11 +154,73 @@ class MainActivity : Activity() {
         try {
             updateIndicators()
             updateWeather()
+            updateAlertCard()
             // שאר המסך מתעדכן רק כשמשהו השתנה
             val key = "${Prefs.enabled(this@MainActivity)}|${Prefs.history(this@MainActivity).firstOrNull()?.ts}|" +
                 Prefs.nearbyAreas(this@MainActivity).joinToString()   // גם כשהאזורים הקרובים משתנים
             if (key != lastHistoryKey) { lastHistoryKey = key; refresh() }
         } catch (_: Exception) { }
+    }
+
+    private lateinit var alertCard: LinearLayout
+    private var alertCardKey = ""
+    private var alertCardTimer: TextView? = null
+    private var alertCardLabel: TextView? = null
+
+    /** כרטיס ההתרעה מעל השעון: נבנה כשההתרעה משתנה, והטיימר מתעדכן כל שנייה */
+    private fun updateAlertCard() {
+        val j = Prefs.activeAlert(this)
+        val level = j?.optInt("level") ?: 0
+        val firedAt = j?.optLong("firedAt") ?: 0L
+        if (j == null || AlertUi.expired(level, firedAt)) {
+            if (alertCard.visibility != View.GONE) alertCard.visibility = View.GONE
+            alertCardKey = ""; return
+        }
+        val key = j.toString()
+        if (key != alertCardKey) {
+            alertCardKey = key
+            alertCard.removeAllViews()
+            alertCard.background = GradientDrawable().apply {
+                setColor(Color.parseColor(AlertUi.color(level))); cornerRadius = dp(28).toFloat() }
+            val (t1, t2) = AlertUi.head(j.optString("title"), level)
+            val row = LinearLayout(this).apply { gravity = Gravity.CENTER }
+            row.addView(android.widget.ImageView(this).apply { setImageResource(R.drawable.ic_warning) },
+                LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginEnd = dp(8) })
+            row.addView(text(t1, 19f, Color.WHITE, bold = true))
+            alertCard.addView(row)
+            alertCard.addView(text(t2, 14f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER })
+            alertCardLabel = null; alertCardTimer = null
+            if (level == AlertService.LEVEL_ALERT) {
+                alertCardLabel = text("", 12f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER; setPadding(0, dp(4), 0, 0) }
+                alertCardTimer = text("", 44f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER; includeFontPadding = false }
+                alertCard.addView(alertCardLabel); alertCard.addView(alertCardTimer)
+            }
+            val body = j.optString("body")
+            if (body.isNotEmpty()) alertCard.addView(text(body, 12f, Color.WHITE).apply {
+                gravity = Gravity.CENTER; maxLines = 2; ellipsize = TextUtils.TruncateAt.END
+                setPadding(dp(10), dp(3), dp(10), dp(3))
+                background = GradientDrawable().apply { setColor(Color.parseColor("#33FFFFFF")); cornerRadius = dp(14).toFloat() }
+            }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(6) })
+            val src = j.optString("source")
+            if (src.isNotEmpty()) alertCard.addView(text("מקור ההתרעה: $src", 12f, Color.parseColor("#E6FFFFFF"))
+                .apply { gravity = Gravity.CENTER; setPadding(0, dp(5), 0, 0) })
+            alertCard.visibility = View.VISIBLE
+        }
+        AlertUi.timer(level, j.optInt("shelter", -1), firedAt)?.let { (lbl, t) ->
+            alertCardLabel?.text = lbl
+            alertCardLabel?.visibility = if (lbl.isEmpty()) View.GONE else View.VISIBLE
+            alertCardTimer?.textSize = if (lbl.isEmpty()) 18f else 44f
+            alertCardTimer?.text = t
+        }
+    }
+
+    /** לחיצה על הכרטיס - מסך ההתרעה המלא */
+    private fun openActiveAlert() {
+        val j = Prefs.activeAlert(this) ?: return
+        startActivity(Intent(this, AlertActivity::class.java)
+            .putExtra("title", j.optString("title")).putExtra("body", j.optString("body"))
+            .putExtra("level", j.optInt("level")).putExtra("shelter", j.optInt("shelter", -1))
+            .putExtra("firedAt", j.optLong("firedAt")).putExtra("source", j.optString("source")))
     }
 
     private fun updateClock() {
@@ -336,6 +398,15 @@ class MainActivity : Activity() {
             setOnClickListener { showQuietHours() }
         }
         col.addView(quietLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        // כרטיס התרעה פעילה - מעל השעון (מוסתר כשאין התרעה)
+        alertCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            visibility = View.GONE
+            setOnClickListener { openActiveAlert() }
+        }
+        col.addView(alertCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
         // כרטיס השעה ומזג האוויר (וגם מצב ההגנה)
         col.addView(circle, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
 
@@ -979,6 +1050,7 @@ class MainActivity : Activity() {
     private fun displayRows(): List<Row> {
         return listOf(
             Row("🎨", "ערכת צבעים", { Prefs.THEME_NAMES[Prefs.themeMode(this)] }) { chooseTheme() },
+            Row("🚨", "סוג תצוגת התרעה", { Prefs.ALERT_STYLES[Prefs.alertStyle(this)] }) { chooseAlertStyle() },
             Row("🕐", "שעון ותאריך", { "" }) { showClockSettings() },
             Row("🌤", "מזג אוויר", { if (Prefs.showWeather(this)) "" else "מוסתר" }) {
                 Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true) },
@@ -1003,6 +1075,15 @@ class MainActivity : Activity() {
             Row("ℹ️", "אודות", { "" }) { showAbout() }
         ) + (if (beta) listOf(Row("🧪", "גרסאות בטא", { if (Prefs.betaUpdates(this)) "מקבל ✓" else "כבוי" }) { showBeta() })
              else emptyList())
+    }
+
+    private fun chooseAlertStyle() {
+        AlertDialog.Builder(this, dlg())
+            .setTitle("סוג תצוגת התרעה")
+            .setSingleChoiceItems(Prefs.ALERT_STYLES, Prefs.alertStyle(this)) { d, i ->
+                d.dismiss(); Prefs.setAlertStyle(this, i)
+            }
+            .show()
     }
 
     private fun chooseTheme() {
