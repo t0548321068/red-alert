@@ -574,9 +574,15 @@ class AlertService : Service() {
         val shabbat = Shabbat.active(this)
         val quiet = !shabbat && level != LEVEL_ALERT && Prefs.isQuietNow(this)
         val shelterSec = shelter ?: if (level == LEVEL_ALERT) AreaData.shelterSeconds(this, areas) else null
-        val full = Intent(this, AlertActivity::class.java)
+        // סוג התצוגה מההגדרות (במצב שבת - תמיד מסך מלא)
+        val style = if (shabbat) 0 else Prefs.alertStyle(this)
+        val now0 = System.currentTimeMillis()
+        // לכרטיס מעל השעון במסך הראשי (מוצג עד סוף האירוע, גם אחרי סגירת המסך)
+        Prefs.setActiveAlert(this, org.json.JSONObject().put("title", title).put("body", body).put("level", level)
+            .put("shelter", shelterSec ?: -1).put("firedAt", now0).put("source", srcName))
+        val full = Intent(this, if (style == 1) AlertPopupActivity::class.java else AlertActivity::class.java)
             .putExtra("title", title).putExtra("body", body).putExtra("level", level)
-            .putExtra("shelter", shelterSec ?: -1).putExtra("firedAt", System.currentTimeMillis())
+            .putExtra("shelter", shelterSec ?: -1).putExtra("firedAt", now0)
             .putExtra("source", srcName)
             .putExtra("autoCloseMs", if (shabbat) 60_000L else 0L)
             .putExtra("mapAreas", (mapAreas ?: areas).joinToString(", "))   // בבדיקה: המפה מראה את האזורים שלי
@@ -616,9 +622,21 @@ class AlertService : Service() {
         // בבדיקה (האפליקציה בחזית) או עם הרשאת "הצגה מעל אפליקציות אחרות"
         if (!quiet) wakeScreen()
         val screenOff = !(getSystemService(POWER_SERVICE) as PowerManager).isInteractive
+        val canShow = forceScreen || shabbat || screenOff || android.provider.Settings.canDrawOverlays(this)
         if (toMini) main.post { MiniOverlay.showEnd(body) }
-        else if (!quiet && (forceScreen || shabbat || screenOff || android.provider.Settings.canDrawOverlays(this))) {
-            try { startActivity(full) } catch (_: Exception) { }
+        else if (!quiet && canShow) {
+            when {
+                // מסך כבוי/נעול: חלון ממוזער וכרטיס לא נראים שם - מסך מלא
+                screenOff || style <= 1 -> try { startActivity(full) } catch (_: Exception) { }
+                // כרטיס מעל השעון: פותחים את המסך הראשי
+                style == 2 -> try {
+                    startActivity(Intent(this, MainActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+                } catch (_: Exception) { }
+                // ממוזער: החלון הקטן למעלה (בלי הרשאה - מסך מלא)
+                else -> if (MiniOverlay.canShow(this)) main.post { MiniOverlay.show(this, full) }
+                        else try { startActivity(full) } catch (_: Exception) { }
+            }
         }
 
         // ספירה לאחור בווידג'ט הגדול

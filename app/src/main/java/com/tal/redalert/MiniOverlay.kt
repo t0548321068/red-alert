@@ -26,6 +26,7 @@ object MiniOverlay {
     private var labelV: TextView? = null
     private var areaV: TextView? = null
     private var timerV: TextView? = null
+    private var timerLabelV: TextView? = null
 
     fun isShowing() = view != null
 
@@ -53,41 +54,60 @@ object MiniOverlay {
             else -> "#D50000"
         }
 
-        // שורה 1: סוג ההתראה · שורה 2: האזור
+        // סגנון One UI: גלולה - אייקון בעיגול · כותרת + אזור · זמן התגוננות + טיימר · ✕ בעיגול
+        fun circle(icon: Int, size: Int) = android.widget.FrameLayout(app).apply {
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#38000000")) }
+            addView(android.widget.ImageView(app).apply { setImageResource(icon) },
+                android.widget.FrameLayout.LayoutParams(dp(size / 2), dp(size / 2), Gravity.CENTER))
+        }
         val label = TextView(app).apply {
-            setTextColor(Color.WHITE); textSize = 15f
+            setTextColor(Color.WHITE); textSize = 15f; typeface = android.graphics.Typeface.DEFAULT_BOLD
             maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
         }
         val areaLine = TextView(app).apply {
-            text = area; setTextColor(Color.parseColor("#E6FFFFFF")); textSize = 13f
+            text = area; setTextColor(Color.parseColor("#E6FFFFFF")); textSize = 12f
             maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
             visibility = if (area.isEmpty()) View.GONE else View.VISIBLE
         }
         val texts = LinearLayout(app).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(8), dp(8), dp(8))
+            setPadding(dp(10), 0, dp(6), 0)
             addView(label); addView(areaLine)
         }
         // הספירה - תמיד גלויה, גם כשהאזור ארוך
-        val timer = TextView(app).apply {
-            setTextColor(Color.WHITE); textSize = 18f
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
-            setPadding(dp(6), 0, dp(4), 0)
+        val timerLabel = TextView(app).apply {
+            setTextColor(Color.parseColor("#E6FFFFFF")); textSize = 10f; gravity = Gravity.CENTER
         }
-        val closeX = TextView(app).apply {
-            text = "✕"; setTextColor(Color.WHITE); textSize = 18f
-            setPadding(dp(12), dp(8), dp(14), dp(8))
-            setOnClickListener { hide(app) }
+        val timer = TextView(app).apply {
+            setTextColor(Color.WHITE); textSize = 19f; gravity = Gravity.CENTER
+            typeface = android.graphics.Typeface.DEFAULT_BOLD; includeFontPadding = false
+        }
+        val timerBox = LinearLayout(app).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+            setPadding(dp(4), 0, dp(8), 0)
+            addView(timerLabel); addView(timer)
+        }
+        val closeX = circle(R.drawable.ic_close, 34).apply {
+            setOnClickListener {
+                hide(app)
+                // אחרי סגירה - במסך הראשי נשאר כרטיס ההתרעה מעל השעון
+                try {
+                    app.startActivity(Intent(app, MainActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+                } catch (_: Exception) { }
+            }
         }
         val bar = LinearLayout(app).apply {
             gravity = Gravity.CENTER_VERTICAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
-            background = GradientDrawable().apply { cornerRadius = dp(22).toFloat(); setColor(Color.parseColor(color)) }
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            background = GradientDrawable().apply { cornerRadius = dp(28).toFloat(); setColor(Color.parseColor(color)) }
                 .also { bg = it }
             elevation = dp(6).toFloat()
+            addView(circle(R.drawable.ic_warning, 38), LinearLayout.LayoutParams(dp(38), dp(38)))
             addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(timer)
-            addView(closeX)
+            addView(timerBox)
+            addView(closeX, LinearLayout.LayoutParams(dp(34), dp(34)))
             setOnClickListener {
                 hide(app)
                 app.startActivity(Intent(full).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -105,7 +125,7 @@ object MiniOverlay {
         }
         try { wm.addView(bar, lp) } catch (_: Exception) { return }
         view = bar
-        labelV = label; areaV = areaLine; timerV = timer
+        labelV = label; areaV = areaLine; timerV = timer; timerLabelV = timerLabel
 
         val t = object : Runnable {
             override fun run() {
@@ -114,11 +134,12 @@ object MiniOverlay {
                 val stayEnd = enterEnd + Prefs.STAY_MS
                 // ספירה לכניסה (אדום) -> שהייה במרחב המוגן (כתום) -> ממתינים לסיום (כתום). ירוק רק בהודעת סיום
                 when {
-                    level != AlertService.LEVEL_ALERT -> { label.text = title; timer.text = "" }
-                    shelter > 0 && now < enterEnd -> { label.text = "🚨 $title"; timer.text = mmss(enterEnd - now); bg?.setColor(Color.parseColor(RED)) }
-                    now < stayEnd -> { label.text = "⏳ נשארים במרחב המוגן"; timer.text = mmss(stayEnd - now); bg?.setColor(Color.parseColor(ORANGE)) }
-                    else -> { label.text = "⏳ ממתינים להודעת סיום"; timer.text = ""; bg?.setColor(Color.parseColor(ORANGE)) }
+                    level != AlertService.LEVEL_ALERT -> { label.text = title; timer.text = ""; timerLabel.text = "" }
+                    shelter > 0 && now < enterEnd -> { label.text = title; timerLabel.text = "זמן התגוננות"; timer.text = mmss(enterEnd - now); bg?.setColor(Color.parseColor(RED)) }
+                    now < stayEnd -> { label.text = title; timerLabel.text = "נשארים במרחב המוגן"; timer.text = mmss(stayEnd - now); bg?.setColor(Color.parseColor(ORANGE)) }
+                    else -> { label.text = "ממתינים להודעת סיום"; timerLabel.text = ""; timer.text = ""; bg?.setColor(Color.parseColor(ORANGE)) }
                 }
+                timerBox.visibility = if (timer.text.isEmpty()) View.GONE else View.VISIBLE
                 if (level == AlertService.LEVEL_ALERT && now < stayEnd) ui.postDelayed(this, 500)
             }
         }
@@ -133,14 +154,15 @@ object MiniOverlay {
         if (view == null) return
         tick?.let { ui.removeCallbacks(it) }; tick = null
         bg?.setColor(Color.parseColor(GREEN))
-        labelV?.text = "✅ האירוע הסתיים – ניתן לצאת"
-        timerV?.text = ""
+        labelV?.text = "האירוע הסתיים – ניתן לצאת"
+        timerV?.text = ""; timerLabelV?.text = ""
+        (timerV?.parent as? View)?.visibility = View.GONE
         if (area.isNotEmpty()) { areaV?.text = area; areaV?.visibility = View.VISIBLE }
     }
 
     fun hide(c: Context) {
         tick?.let { ui.removeCallbacks(it) }; tick = null
-        bg = null; labelV = null; areaV = null; timerV = null
+        bg = null; labelV = null; areaV = null; timerV = null; timerLabelV = null
         val v = view ?: return
         view = null
         try { (c.applicationContext.getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(v) } catch (_: Exception) { }
