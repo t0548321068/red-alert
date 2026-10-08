@@ -495,8 +495,8 @@ class MainActivity : Activity() {
         // חפיפה של 6 בין הלשוניות
         val tabLp = { LinearLayout.LayoutParams(tabW, -2).apply { marginEnd = -dp(6) } }
         nav.addView(tab(R.drawable.ic_home, "ראשי", true) { }, tabLp())
-        nav.addView(tab(R.drawable.ic_history, "התרעות", false) { showRecent() }, tabLp())
-        nav.addView(tab(R.drawable.ic_clock, "שעון", false) { startActivity(Intent(this, ClockActivity::class.java)) }, tabLp())
+        nav.addView(tab(R.drawable.ic_nav_alerts, "התרעות", false) { showRecent() }, tabLp())
+        nav.addView(tab(R.drawable.ic_nav_clock, "שעון", false) { startActivity(Intent(this, ClockActivity::class.java)) }, tabLp())
         nav.addView(tab(R.drawable.ic_gear, "הגדרות", false) { showSettings() }, tabLp())
         scroll.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(10) })
         // מקום לתפריט מתחת לפיד
