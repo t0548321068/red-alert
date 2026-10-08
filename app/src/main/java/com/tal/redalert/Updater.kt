@@ -39,10 +39,10 @@ object Updater {
     /** הגרסה הכי מתאימה להתקנה: יציבה חדשה, או (אם ביקשו) בטא חדשה */
     private fun best(c: Context): Update? {
         val cur = currentVersion(c)
-        fetch(API)?.let { (ver, url, _) ->
+        (cheapStable() ?: fetch(API))?.let { (ver, url, _) ->
             if (isNewer(ver, cur)) return Update(ver, ver, url)
         }
-        if (Prefs.betaUpdates(c)) fetch(BETA_API)?.let { (ver, url, build) ->
+        if (Prefs.betaUpdates(c)) (cheapBeta() ?: fetch(BETA_API))?.let { (ver, url, build) ->
             if (build > buildNumber(c) && !isNewer(cur, ver)) return Update(if (ver.endsWith("b")) "$ver (בטא)" else "$ver בטא $build", "beta-$build", url)
         }
         return null
@@ -74,6 +74,32 @@ object Updater {
         if (Prefs.skippedVersion(c) == u.key) return null
         return u.label
     }
+
+    private const val REPO = "https://github.com/t0548321068/red-alert/releases"
+
+    /**
+     * בדיקה "זולה" דרך האתר של GitHub (לא דרך ה-API) - לא נספרת במגבלת 60 הבדיקות לשעה.
+     * גרסה יציבה: לאן מפנה /releases/latest. אם נכשל - חוזרים ל-API.
+     */
+    private fun cheapStable(): Triple<String, String, Int>? = try {
+        val conn = URL("$REPO/latest").openConnection() as HttpURLConnection
+        conn.instanceFollowRedirects = false
+        conn.connectTimeout = 8000; conn.readTimeout = 8000
+        val loc = try { conn.getHeaderField("Location") } finally { conn.disconnect() }
+        val tag = loc?.substringAfterLast("/tag/", "")?.takeIf { it.isNotEmpty() }
+        tag?.let { Triple(it.removePrefix("v"), "$REPO/download/$it/red-alert.apk", 0) }
+    } catch (_: Exception) { null }
+
+    /** בטא: שם קובץ ה-APK ברשימת הקבצים כולל גרסה ומספר בנייה (red-alert-1.37.1b-500.apk) */
+    private fun cheapBeta(): Triple<String, String, Int>? = try {
+        val conn = URL("$REPO/expanded_assets/beta").openConnection() as HttpURLConnection
+        conn.connectTimeout = 8000; conn.readTimeout = 8000
+        val html = try { if (conn.responseCode != 200) "" else conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) } }
+                   finally { conn.disconnect() }
+        Regex("red-alert-([\\w.]+)-(\\d+)\\.apk").find(html)?.let { m ->
+            Triple(m.groupValues[1], "$REPO/download/beta/${m.value}", m.groupValues[2].toInt())
+        }
+    } catch (_: Exception) { null }
 
     /** (גרסה, קישור ל-APK, מספר בנייה) */
     private fun fetch(api: String): Triple<String, String, Int>? {
