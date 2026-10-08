@@ -240,6 +240,9 @@ object Prefs {
     /** ההתרעה הפעילה (לכרטיס מעל השעון): title, body, level, shelter, firedAt, source */
     fun setActiveAlert(c: Context, j: org.json.JSONObject?) =
         sp(c).edit().putString("activeAlert", j?.toString() ?: "").apply()
+    /** ההתרעה שהכרטיס שלה הוסתר ב-✕ (לפי זמן הירי) */
+    fun alertDismissed(c: Context) = sp(c).getLong("alertDismissed", 0L)
+    fun setAlertDismissed(c: Context, firedAt: Long) = sp(c).edit().putLong("alertDismissed", firedAt).apply()
     fun activeAlert(c: Context): org.json.JSONObject? =
         try { sp(c).getString("activeAlert", "")?.takeIf { it.isNotEmpty() }?.let { org.json.JSONObject(it) } } catch (_: Exception) { null }
     fun darkTheme(c: Context) = when (themeMode(c)) {

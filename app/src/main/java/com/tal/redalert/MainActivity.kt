@@ -163,6 +163,7 @@ class MainActivity : Activity() {
     }
 
     private lateinit var alertCard: LinearLayout
+    private lateinit var alertWrap: FrameLayout
     private lateinit var areasSlot: FrameLayout
 
     /** כשכרטיס ההתרעה מוצג - האזורים בגובה מלא והמסך נגלל; בלעדיו - האזורים ממלאים את מה שנשאר */
@@ -180,8 +181,8 @@ class MainActivity : Activity() {
         val j = Prefs.activeAlert(this)
         val level = j?.optInt("level") ?: 0
         val firedAt = j?.optLong("firedAt") ?: 0L
-        if (j == null || AlertUi.expired(level, firedAt)) {
-            if (alertCard.visibility != View.GONE) alertCard.visibility = View.GONE
+        if (j == null || AlertUi.expired(level, firedAt) || Prefs.alertDismissed(this) == firedAt) {
+            if (alertWrap.visibility != View.GONE) alertWrap.visibility = View.GONE
             setScrollMode(false)
             alertCardKey = ""; return
         }
@@ -209,7 +210,7 @@ class MainActivity : Activity() {
             val src = j.optString("source")
             if (src.isNotEmpty()) alertCard.addView(text("מקור ההתרעה: $src", 12f, Color.parseColor("#E6FFFFFF"))
                 .apply { gravity = Gravity.CENTER; setPadding(0, dp(5), 0, 0) })
-            alertCard.visibility = View.VISIBLE
+            alertWrap.visibility = View.VISIBLE
             setScrollMode(true)
         }
         AlertUi.timer(level, j.optInt("shelter", -1), firedAt)?.let { (lbl, t) ->
@@ -409,10 +410,23 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(dp(16), dp(14), dp(16), dp(14))
-            visibility = View.GONE
             setOnClickListener { openActiveAlert() }
         }
-        col.addView(alertCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
+        // ✕ בפינה: מסתיר את הכרטיס עד ההתרעה הבאה
+        alertWrap = FrameLayout(this).apply {
+            visibility = View.GONE
+            addView(alertCard, FrameLayout.LayoutParams(-1, -2))
+            addView(android.widget.ImageView(this@MainActivity).apply {
+                setImageResource(R.drawable.ic_close)
+                setPadding(dp(8), dp(8), dp(8), dp(8))
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#40000000")) }
+                setOnClickListener {
+                    Prefs.activeAlert(this@MainActivity)?.let { Prefs.setAlertDismissed(this@MainActivity, it.optLong("firedAt")) }
+                    updateAlertCard()
+                }
+            }, FrameLayout.LayoutParams(dp(32), dp(32), Gravity.TOP or Gravity.END).apply { setMargins(dp(12), dp(12), dp(12), 0) })
+        }
+        col.addView(alertWrap, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
         // כרטיס השעה ומזג האוויר (וגם מצב ההגנה)
         col.addView(circle, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
 
