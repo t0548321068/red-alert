@@ -611,9 +611,7 @@ class AlertService : Service() {
         if (!quiet && !toMini) nb.setFullScreenIntent(fullPi, true)
         // ספירה לאחור ישר בשורת ההתראות
         // ספירה לאחור גדולה בתוך ההתראה הקופצת
-        if (level == LEVEL_ALERT && shelterSec != null && shelterSec > 0) {
-            countdownView(nb, title, body, "זמן להגעה למרחב המוגן", shelterSec * 1000L, 0xFFD50000.toInt())
-        }
+        // (בלי תצוגת טיימר מיוחדת - נראית כמו שאר ההתראות)
         val n = nb.build()
         if (!quiet && level != LEVEL_END) overrideDnd()
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n)
@@ -708,8 +706,6 @@ class AlertService : Service() {
             .setContentIntent(stayNotifPi)
             .setAutoCancel(true)
             .setTimeoutAfter(stayEnd - System.currentTimeMillis())
-        countdownView(n, "⏳ נשארים במרחב המוגן", "$stayTitle · $stayBody", "זמן מומלץ במרחב המוגן",
-            stayEnd - System.currentTimeMillis(), 0xFFB45309.toInt())
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n.build())
     }
 
