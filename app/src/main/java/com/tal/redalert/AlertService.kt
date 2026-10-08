@@ -389,7 +389,9 @@ class AlertService : Service() {
         Thread.sleep(60_000)
         while (running) {
             notifyIfNewVersion()
-            Thread.sleep(6 * 60 * 60 * 1000L)   // כל 6 שעות (וגם בכל פתיחה של האפליקציה)
+            // כל 15 דקות של זמן ער - לא מעיר את הטלפון (כשהוא ישן, הספירה עוצרת),
+            // והבדיקה דרך האתר של GitHub, בלי מגבלת ה-API
+            Thread.sleep(15 * 60 * 1000L)
         }
     }
 

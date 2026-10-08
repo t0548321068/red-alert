@@ -323,15 +323,18 @@ class MainActivity : Activity() {
         srvInd = indicator(R.drawable.ic_antenna) { showSourcesInfo() }   // לחיצה: רשימת המקורות
         // גרסה: 7 לחיצות מהירות - פותח את אפשרות הבטא (מוסתרת משאר המשתמשים)
         var taps = 0; var lastTap = 0L
+        // לחיצה: בדיקת עדכונים (רצה כשמפסיקים ללחוץ - כדי ש-7 לחיצות לבטא לא יבדקו 7 פעמים)
+        val checkUpdates = Runnable { Updater.check(this@MainActivity, silent = false) }
         val verInd = indicator(R.drawable.ic_info) {
             val now = System.currentTimeMillis()
             taps = if (now - lastTap < 1500) taps + 1 else 1
             lastTap = now
+            ui.removeCallbacks(checkUpdates)
             if (taps >= 7 && !Prefs.betaUnlocked(this@MainActivity) && Prefs.betaAllowed(this@MainActivity)) {
                 Prefs.setBetaUnlocked(this@MainActivity, true)
                 android.widget.Toast.makeText(this@MainActivity, "🧪 גרסאות בטא נפתחו (⚙)",
                     android.widget.Toast.LENGTH_SHORT).show()
-            }
+            } else ui.postDelayed(checkUpdates, 1200)
         }
         setInd(verInd, R.drawable.ic_info, "v${Updater.currentVersion(this)}" +
             if (Updater.isBetaBuild(this) && !Updater.currentVersion(this).endsWith("b")) "b" else "", C.MUTED)
