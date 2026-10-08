@@ -163,6 +163,14 @@ class MainActivity : Activity() {
     }
 
     private lateinit var alertCard: LinearLayout
+    private lateinit var areasSlot: FrameLayout
+
+    /** כשכרטיס ההתרעה מוצג - האזורים בגובה מלא והמסך נגלל; בלעדיו - האזורים ממלאים את מה שנשאר */
+    private fun setScrollMode(on: Boolean) {
+        val lp = areasSlot.layoutParams as LinearLayout.LayoutParams
+        val h = if (on) -2 else 0; val w = if (on) 0f else 1f
+        if (lp.height != h || lp.weight != w) { lp.height = h; lp.weight = w; areasSlot.layoutParams = lp }
+    }
     private var alertCardKey = ""
     private var alertCardTimer: TextView? = null
     private var alertCardLabel: TextView? = null
@@ -174,6 +182,7 @@ class MainActivity : Activity() {
         val firedAt = j?.optLong("firedAt") ?: 0L
         if (j == null || AlertUi.expired(level, firedAt)) {
             if (alertCard.visibility != View.GONE) alertCard.visibility = View.GONE
+            setScrollMode(false)
             alertCardKey = ""; return
         }
         val key = j.toString()
@@ -201,6 +210,7 @@ class MainActivity : Activity() {
             if (src.isNotEmpty()) alertCard.addView(text("מקור ההתרעה: $src", 12f, Color.parseColor("#E6FFFFFF"))
                 .apply { gravity = Gravity.CENTER; setPadding(0, dp(5), 0, 0) })
             alertCard.visibility = View.VISIBLE
+            setScrollMode(true)
         }
         AlertUi.timer(level, j.optInt("shelter", -1), firedAt)?.let { (lbl, t) ->
             alertCardLabel?.text = lbl
@@ -418,7 +428,7 @@ class MainActivity : Activity() {
         shelterLine = text("", 13f, Color.parseColor("#E6FFFFFF"))
         areasCard.addView(shelterLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         // המסך לא נגלל: אזורי ההתרעה תופסים את מה שנשאר (לכל היותר), והרשימה שבתוכם נגללת
-        val areasSlot = FrameLayout(this).apply {
+        areasSlot = FrameLayout(this).apply {
             addView(areasCard, FrameLayout.LayoutParams(-1, -2, Gravity.TOP))
         }
         col.addView(areasSlot, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(GAP) })
@@ -430,7 +440,12 @@ class MainActivity : Activity() {
         col.addView(feedLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
 
         val scroll = FrameLayout(this).apply {
-            addView(col, FrameLayout.LayoutParams(-1, -1))
+            // נגלל כשאין מקום (למשל כשכרטיס ההתרעה מוצג מעל השעון)
+            addView(ScrollView(this@MainActivity).apply {
+                isFillViewport = true
+                isVerticalScrollBarEnabled = false
+                addView(col, ViewGroup.LayoutParams(-1, -2))
+            }, FrameLayout.LayoutParams(-1, -1))
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")
                 v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
