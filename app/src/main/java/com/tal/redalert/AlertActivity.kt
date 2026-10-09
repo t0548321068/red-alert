@@ -108,7 +108,7 @@ open class AlertActivity : Activity() {
         // אזורים כתגיות + מקור ההתרעה - מתחת למפה, בגדול
         val chips = Flow(this, dpx(8))
         (intent.getStringExtra("body") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach { a ->
-            chips.addView(tv(a, if (popup) 16f else 18f, bold = true).apply {
+            chips.addView(tv(a, if (popup) 19f else 22f, bold = true).apply {
                 setPadding(dpx(14), dpx(6), dpx(14), dpx(6))
                 background = card("#33FFFFFF", 18)
             })
@@ -128,8 +128,8 @@ open class AlertActivity : Activity() {
         if (chips.childCount > 0) {
             val areaCard = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                background = card(r = if (popup) 22 else 28)
-                setPadding(dpx(12), dpx(10), dpx(12), dpx(10))
+                // בלי כרטיס מסביב - רק התגיות
+                setPadding(dpx(6), 0, dpx(6), 0)
                 addView(chipsScroll, LinearLayout.LayoutParams(-1, -2))
             }
             root.addView(areaCard, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(10), dpx(10), dpx(10), 0) })
