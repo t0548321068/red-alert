@@ -953,78 +953,76 @@ class MainActivity : Activity() {
             .show()
     }
 
+    /** צבע העיגול של כל אייקון בהגדרות (סגנון One UI) */
+    private fun iconColor(icon: String) = Color.parseColor(when (icon) {
+        "🎨" -> "#7E57C2"; "🚨", "📍", "🆕" -> "#E53935"; "🕐", "📱", "⬆️" -> "#1E88E5"
+        "🌤", "🔔" -> "#FB8C00"; "👋", "🔋" -> "#43A047"; "📳" -> "#8E24AA"
+        "🗣", "🧪" -> "#00897B"; "🌙" -> "#3949AB"; "🔕" -> "#6D4C41"; "🕯" -> "#F9A825"
+        else -> "#546E7A"
+    })
+
+    /** הגדרות בסגנון One UI: עמוד מלא, כותרת גדולה, כל הקבוצות פתוחות */
     private fun showSettings() {
-        val d = android.app.Dialog(this, android.R.style.Theme_Translucent_NoTitleBar)
-        val root = android.widget.FrameLayout(this).apply { setBackgroundColor(Color.parseColor("#99000000")) }
-        val panelW = (resources.displayMetrics.widthPixels * 0.85f).toInt()
-        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(18), dp(14), dp(30)) }
-        body.addView(text("⚙ הגדרות", 18f, Color.WHITE, bold = true).apply { setPadding(dp(4), dp(20), dp(4), 0) })
-        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        body.addView(content)
-        val panel = ScrollView(this).apply {
-            setBackgroundColor(Color.parseColor("#111111"))
+        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
+        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val page = ScrollView(this).apply {
+            setBackgroundColor(Color.BLACK)
             layoutDirection = View.LAYOUT_DIRECTION_RTL
-            elevation = dp(12).toFloat()
-            isClickable = true
             addView(body)
         }
-        root.addView(panel, android.widget.FrameLayout.LayoutParams(panelW, -1, Gravity.END))
-        // המגירה לא נכנסת מתחת לשורת הסטטוס / סרגל הניווט של הטלפון
-        val statusH = resources.getIdentifier("status_bar_height", "dimen", "android").let { if (it > 0) resources.getDimensionPixelSize(it) else dp(24) }
-        body.setPadding(dp(14), statusH + dp(14), dp(14), dp(30))
-        root.setOnApplyWindowInsetsListener { _, insets ->
+        page.setOnApplyWindowInsetsListener { v, insets ->
             @Suppress("DEPRECATION")
-            body.setPadding(dp(14), maxOf(insets.systemWindowInsetTop, statusH) + dp(14), dp(14), insets.systemWindowInsetBottom + dp(30))
+            v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
             insets
         }
-        root.layoutDirection = View.LAYOUT_DIRECTION_LTR   // END = ימין
-        root.setOnClickListener { close(d, panel, panelW) }
-
         val cats = listOf(
-            Triple("🎨", "תצוגה", { displayRows() }),
-            Triple("🔔", "התראות", { alertsRows() }),
-            Triple("📱", "הרשאות וטלפון", { phoneRows() }),
-            Triple("ℹ️", "כללי", { generalRows() })
+            "תצוגה" to { displayRows() },
+            "התראות" to { alertsRows() },
+            "הרשאות וטלפון" to { phoneRows() },
+            "כללי" to { generalRows() }
         )
         fun rebuild() {
-            content.removeAllViews()
-            cats.forEachIndexed { idx, (icon, title, rows) ->
-                val card = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = graphite(18) }
-                val head = LinearLayout(this).apply {
-                    gravity = Gravity.CENTER_VERTICAL
-                    setPadding(dp(14), dp(15), dp(14), dp(15))
-                    setOnClickListener { openCat = if (openCat == idx) -1 else idx; rebuild() }
+            body.removeAllViews()
+            body.addView(text("הגדרות", 32f, Color.WHITE, bold = true).apply { setPadding(dp(24), dp(64), dp(24), dp(16)) })
+            cats.forEach { (title, rows) ->
+                body.addView(text(title, 13f, Color.parseColor("#999999")).apply { setPadding(dp(28), dp(14), dp(28), dp(6)) })
+                val card = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    background = graphite(28)
+                    clipToOutline = true
                 }
-                head.addView(text(icon, 20f, Color.WHITE), LinearLayout.LayoutParams(dp(36), -2))
-                head.addView(text(title, 16f, Color.WHITE, bold = true), LinearLayout.LayoutParams(0, -2, 1f))
-                head.addView(text(if (openCat == idx) "▲" else "▼", 13f, Color.parseColor("#AAAAAA")))
-                card.addView(head)
-                if (openCat == idx) rows().forEach { r ->
-                    card.addView(View(this).apply { setBackgroundColor(Color.parseColor("#14FFFFFF")) }, LinearLayout.LayoutParams(-1, dp(1)))
+                val list = rows()
+                list.forEachIndexed { i, r ->
+                    if (i > 0) card.addView(View(this).apply { setBackgroundColor(Color.parseColor("#262628")) },
+                        LinearLayout.LayoutParams(-1, dp(1)))
                     val row = LinearLayout(this).apply {
                         gravity = Gravity.CENTER_VERTICAL
-                        setPadding(dp(14), dp(12), dp(14), dp(12))
+                        setPadding(dp(16), dp(12), dp(16), dp(12))
                         setOnClickListener { r.action(); rebuild() }
                     }
-                    row.addView(text(r.icon, 16f, Color.WHITE), LinearLayout.LayoutParams(dp(32), -2))
-                    row.addView(text(r.title, 14f, Color.WHITE), LinearLayout.LayoutParams(0, -2, 1f))
-                    row.addView(text(r.value(), 12f, Color.parseColor("#AAAAAA")))
+                    row.addView(text(r.icon, 16f, Color.WHITE).apply {
+                        gravity = Gravity.CENTER
+                        background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(iconColor(r.icon)) }
+                    }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(14) })
+                    val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+                    texts.addView(text(r.title, 16f, Color.WHITE))
+                    val v = r.value()
+                    if (v.isNotEmpty()) texts.addView(text(v, 12f, Color.parseColor("#5AA9FF")))
+                    row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
                     card.addView(row)
                 }
-                content.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+                body.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), 0) })
             }
+            body.addView(View(this), LinearLayout.LayoutParams(-1, dp(30)))
         }
         rebuild()
-        d.setContentView(root)
+        d.setContentView(page)
         d.window?.setLayout(-1, -1)
+        @Suppress("DEPRECATION")
+        d.window?.statusBarColor = Color.BLACK
         // חוזרים מחלון של הגדרה - מעדכנים את המצבים
         d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
-        d.setOnKeyListener { _, k, e ->
-            if (k == android.view.KeyEvent.KEYCODE_BACK && e.action == android.view.KeyEvent.ACTION_UP) { close(d, panel, panelW); true } else false
-        }
-        panel.translationX = panelW.toFloat()
         d.show()
-        panel.animate().translationX(0f).setDuration(220).start()
     }
 
     private fun close(d: android.app.Dialog, panel: View, w: Int) {
