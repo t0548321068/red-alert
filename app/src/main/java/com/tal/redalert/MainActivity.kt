@@ -689,6 +689,7 @@ class MainActivity : Activity() {
         d.window?.setLayout(-1, -1)
         @Suppress("DEPRECATION")
         d.window?.statusBarColor = Color.BLACK
+        edgeToEdge(d)
         d.show()
     }
 
@@ -1107,6 +1108,7 @@ class MainActivity : Activity() {
         d.window?.setLayout(-1, -1)
         @Suppress("DEPRECATION")
         d.window?.statusBarColor = Color.BLACK
+        edgeToEdge(d)
         // חוזרים מחלון של הגדרה - מעדכנים את המצבים
         d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
         d.show()
@@ -1161,6 +1163,19 @@ class MainActivity : Activity() {
     }
 
     companion object { private var reopenDisplay = false }
+
+    /**
+     * עמודים שנפתחים כחלון (הגדרות, התרעות, תצוגה) - מצוירים מתחת לשורת המצב ולסרגל הניווט כמו המסך הראשי,
+     * כדי שהתפריט התחתון יישב בדיוק באותו מקום בכל המסכים (בלי לזוז במעבר בין לשוניות)
+     */
+    private fun edgeToEdge(d: android.app.Dialog) {
+        val w = d.window ?: return
+        if (Build.VERSION.SDK_INT >= 30) w.setDecorFitsSystemWindows(false)
+        else @Suppress("DEPRECATION") { w.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN }
+        @Suppress("DEPRECATION")
+        w.navigationBarColor = Color.TRANSPARENT
+    }
 
     /** כיתוב ממורכז + כפתור בחירה עגול (מתחת לתצוגה מקדימה) */
     private fun addLabelRadio(parent: LinearLayout, label: String, sel: Boolean) {
@@ -1334,6 +1349,7 @@ class MainActivity : Activity() {
         d.window?.setLayout(-1, -1)
         @Suppress("DEPRECATION")
         d.window?.statusBarColor = Color.BLACK
+        edgeToEdge(d)
         // חוזרים מחלון בחירה - מעדכנים את המצבים
         d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
         d.show()
