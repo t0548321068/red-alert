@@ -1246,6 +1246,16 @@ class MainActivity : Activity() {
     private fun setTheme(d: android.app.Dialog, mode: Int, rebuild: () -> Unit) {
         if (Prefs.themeMode(this) == mode) return
         Prefs.setThemeMode(this, mode)
+        // עמוד התצוגה מתחלף מיד לצבעים החדשים; שאר האפליקציה - ביציאה מהעמוד
+        C.apply(Prefs.darkTheme(this))
+        (d.window?.decorView?.findViewWithTag<View>("displayPage"))?.setBackgroundColor(C.BG)
+        @Suppress("DEPRECATION")
+        d.window?.statusBarColor = C.BG
+        if (Build.VERSION.SDK_INT >= 30) {
+            val light = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            d.window?.insetsController?.setSystemBarsAppearance(if (C.LIGHT) light else 0, light)
+        }
         rebuild()
     }
 
@@ -1254,6 +1264,7 @@ class MainActivity : Activity() {
         val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(30)) }
         val page = ScrollView(this).apply {
+            tag = "displayPage"
             setBackgroundColor(C.BG)
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             addView(body)
