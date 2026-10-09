@@ -92,7 +92,18 @@ class ClockActivity : Activity() {
         val root = FrameLayout(this).apply {
             setBackgroundColor(Color.BLACK)
             addView(box, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER))
-            setOnClickListener { finish() }   // לחיצה - יציאה
+        }
+        // תפריט תחתון: מוצג בלחיצה על המסך ונעלם אחרי 5 שניות (שלא ייצרב במסך העמום)
+        val nav = NavBar.build(this, 2) { i ->
+            finish()
+            if (i > 0) startActivity(android.content.Intent(this, MainActivity::class.java)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT).putExtra("tab", i))
+        }.apply { visibility = View.GONE }
+        val hideNav = Runnable { nav.visibility = View.GONE }
+        root.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = 40 })
+        root.setOnClickListener {
+            nav.visibility = if (nav.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+            ui.removeCallbacks(hideNav); if (nav.visibility == View.VISIBLE) ui.postDelayed(hideNav, 5000)
         }
         setContentView(root)
     }
