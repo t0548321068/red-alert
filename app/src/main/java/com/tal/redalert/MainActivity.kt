@@ -1231,7 +1231,7 @@ class MainActivity : Activity() {
                 orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.parseColor(red))
                 addView(View(this@MainActivity).apply { background = rect("#B3FFFFFF", 3) },
                     LinearLayout.LayoutParams(-1, dp(7)).apply { setMargins(dp(10), dp(8), dp(10), dp(4)) })
-                addView(View(this@MainActivity).apply { setBackgroundColor(Color.parseColor("#333333")) }, LinearLayout.LayoutParams(-1, dp(30)))
+                addView(View(this@MainActivity).apply { setBackgroundColor(Color.parseColor(if (C.LIGHT) "#BDBDC2" else "#333333")) }, LinearLayout.LayoutParams(-1, dp(30)))   // המפה
                 addView(View(this@MainActivity).apply { background = rect("#40000000", 5) },
                     LinearLayout.LayoutParams(-1, dp(18)).apply { setMargins(dp(8), dp(6), dp(8), 0) })
             }, FrameLayout.LayoutParams(-1, -1))
