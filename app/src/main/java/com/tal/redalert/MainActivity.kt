@@ -476,6 +476,8 @@ class MainActivity : Activity() {
         setContentView(scroll)
         askPermissions()
         showWhatsNewIfUpdated()
+        // אחרי החלפת ערכת צבעים (האפליקציה נטענת מחדש) - חוזרים לעמוד התצוגה
+        if (reopenDisplay) { reopenDisplay = false; ui.post { showSettings(); showDisplay() } }
         // טעינת נתוני האזורים ברקע, כדי שהמסך לא ייתקע בפעם הראשונה
         Thread { try { AreaData.areas(this) } catch (_: Exception) { } }.start()
     }
@@ -1158,6 +1160,60 @@ class MainActivity : Activity() {
         )
     }
 
+    companion object { private var reopenDisplay = false }
+
+    /** כיתוב ממורכז + כפתור בחירה עגול (מתחת לתצוגה מקדימה) */
+    private fun addLabelRadio(parent: LinearLayout, label: String, sel: Boolean) {
+        parent.addView(text(label, 13f, if (sel) Color.parseColor("#5AA9FF") else Color.parseColor("#AAAAAA"), bold = sel).apply {
+            gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(8))
+        }, LinearLayout.LayoutParams(-1, -2))
+        parent.addView(View(this).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setStroke(dp(2), Color.parseColor(if (sel) "#3E82F7" else "#555555"))
+                if (sel) setColor(Color.parseColor("#3E82F7"))
+            }
+        }, LinearLayout.LayoutParams(dp(18), dp(18)))
+    }
+
+    /** הדמיה קטנה של סוג תצוגת ההתרעה: 0 מסך מלא · 1 פופ-אפ · 2 כרטיס · 3 ממוזער */
+    private fun alertStylePreview(kind: Int): View {
+        fun rect(c: String, r: Int) = GradientDrawable().apply { setColor(Color.parseColor(c)); cornerRadius = dp(r).toFloat() }
+        val f = FrameLayout(this).apply { background = rect("#2B2B2E", 10); clipToOutline = true }
+        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(5), dp(5), dp(5), dp(5)) }
+        listOf(10, 20, 30, 20).forEach { h -> list.addView(View(this).apply { background = rect("#3E3E42", 4) },
+            LinearLayout.LayoutParams(-1, dp(h)).apply { bottomMargin = dp(4) }) }
+        f.addView(list, FrameLayout.LayoutParams(-1, -1))
+        val red = "#D50000"
+        when (kind) {
+            0 -> f.addView(LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.parseColor(red))
+                addView(View(this@MainActivity).apply { background = rect("#B3FFFFFF", 3) },
+                    LinearLayout.LayoutParams(-1, dp(7)).apply { setMargins(dp(10), dp(8), dp(10), dp(4)) })
+                addView(View(this@MainActivity).apply { setBackgroundColor(Color.parseColor("#333333")) }, LinearLayout.LayoutParams(-1, dp(30)))
+                addView(View(this@MainActivity).apply { background = rect("#40000000", 5) },
+                    LinearLayout.LayoutParams(-1, dp(18)).apply { setMargins(dp(8), dp(6), dp(8), 0) })
+            }, FrameLayout.LayoutParams(-1, -1))
+            1 -> {
+                f.addView(View(this).apply { setBackgroundColor(Color.parseColor("#80000000")) }, FrameLayout.LayoutParams(-1, -1))
+                f.addView(View(this).apply { background = rect(red, 8) },
+                    FrameLayout.LayoutParams(-1, dp(52), Gravity.CENTER).apply { setMargins(dp(6), 0, dp(6), 0) })
+            }
+            2 -> f.addView(View(this).apply { background = rect(red, 6) },
+                FrameLayout.LayoutParams(-1, dp(22), Gravity.TOP).apply { setMargins(dp(5), dp(16), dp(5), 0) })
+            else -> f.addView(View(this).apply { background = rect(red, 5) },
+                FrameLayout.LayoutParams(-1, dp(10), Gravity.TOP).apply { setMargins(dp(4), dp(4), dp(4), 0) })
+        }
+        return f
+    }
+
+    private fun setTheme(d: android.app.Dialog, mode: Int) {
+        if (Prefs.themeMode(this) == mode) return
+        Prefs.setThemeMode(this, mode)
+        reopenDisplay = true
+        d.dismiss(); recreate()
+    }
+
     /** עמוד "תצוגה" בסגנון One UI (כמו בהגדרות של סמסונג) */
     private fun showDisplay() {
         val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
@@ -1203,12 +1259,7 @@ class MainActivity : Activity() {
         fun rebuild() {
             body.removeAllViews()
             // כותרת עם חזרה
-            body.addView(LinearLayout(this).apply {
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(18), dp(14), dp(18), dp(14))
-                addView(text("›", 26f, Color.WHITE).apply { setPadding(0, 0, dp(10), dp(4)); setOnClickListener { d.dismiss() } })
-                addView(text("תצוגה", 20f, Color.WHITE, bold = true))
-            })
+            body.addView(text("תצוגה", 20f, Color.WHITE, bold = true).apply { setPadding(dp(24), dp(14), dp(24), dp(14)) })
             // ערכת צבעים: תצוגה מקדימה חשוך / בהיר + "לפי המערכת"
             val mode = Prefs.themeMode(this)
             val theme = card()
@@ -1227,35 +1278,37 @@ class MainActivity : Activity() {
                     }
                 }
                 addView(box, LinearLayout.LayoutParams(dp(76), dp(150)))
-                addView(text(label, 14f, if (sel) blue else Color.parseColor("#AAAAAA"), bold = sel).apply { setPadding(0, dp(8), 0, dp(8)) })
-                addView(View(this@MainActivity).apply {
-                    background = GradientDrawable().apply {
-                        shape = GradientDrawable.OVAL
-                        setStroke(dp(2), Color.parseColor(if (sel) "#3E82F7" else "#555555"))
-                        if (sel) setColor(Color.parseColor("#3E82F7"))
-                    }
-                }, LinearLayout.LayoutParams(dp(18), dp(18)))
-                setOnClickListener { if (Prefs.themeMode(this@MainActivity) != value) { Prefs.setThemeMode(this@MainActivity, value); d.dismiss(); recreate() } }
+                addLabelRadio(this, label, sel)
+                setOnClickListener { setTheme(d, value) }
             }
             val sys = mode == 2
             pick.addView(preview(false, "חשוך", !sys && mode == 0, 0), LinearLayout.LayoutParams(0, -2, 1f))
             pick.addView(preview(true, "בהיר", !sys && mode == 1, 1), LinearLayout.LayoutParams(0, -2, 1f))
             theme.addView(pick)
             divider(theme)
-            row(theme, "לפי המערכת", on = sys) { Prefs.setThemeMode(this, if (sys) 0 else 2); d.dismiss(); recreate() }
+            row(theme, "לפי המערכת", on = sys) { setTheme(d, if (sys) 0 else 2) }
             addCard(theme)
             note("כשמופעל - בהיר או חשוך לפי הגדרת הטלפון")
-            // סוג תצוגת התרעה
+            // סוג תצוגת התרעה: הדמיה קטנה של כל סוג + בחירה
             val style = card()
-            row(style, "סוג תצוגת התרעה", Prefs.ALERT_STYLES[Prefs.alertStyle(this)]) { chooseAlertStyle() }
+            style.addView(text("סוג תצוגת התרעה", 16f, Color.WHITE).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+            val opts = LinearLayout(this).apply { setPadding(dp(6), dp(10), dp(6), dp(16)) }
+            listOf("מסך מלא", "פופ-אפ", "כרטיס", "ממוזער").forEachIndexed { i, label ->
+                val sel = Prefs.alertStyle(this) == i
+                opts.addView(LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER_HORIZONTAL
+                    addView(alertStylePreview(i), LinearLayout.LayoutParams(dp(58), dp(116)))
+                    addLabelRadio(this, label, sel)
+                    setOnClickListener { Prefs.setAlertStyle(this@MainActivity, i); rebuild() }
+                }, LinearLayout.LayoutParams(0, -2, 1f))
+            }
+            style.addView(opts)
             addCard(style)
-            note("איך ההתרעה מוצגת: מסך מלא, פופ-אפ, כרטיס מעל השעון או ממוזער")
-            // שעון ותאריך
-            val clock = card()
-            row(clock, "שעון ותאריך") { showClockSettings() }
-            addCard(clock)
-            // מזג אוויר + ברכה
+            // שעון ותאריך, מזג אוויר וברכה - בכרטיס אחד
             val more = card()
+            row(more, "שעון ותאריך") { showClockSettings() }
+            divider(more)
             row(more, "מזג אוויר", on = Prefs.showWeather(this)) {
                 Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); rebuild() }
             divider(more)
