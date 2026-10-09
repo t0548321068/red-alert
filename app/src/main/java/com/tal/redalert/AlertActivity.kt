@@ -163,7 +163,7 @@ open class AlertActivity : Activity() {
             root.addView(timerCard, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(10), dpx(4), dpx(10), 0) })
         }
 
-        if (!popup) root.addView(View(this), LinearLayout.LayoutParams(-1, 0, 1f))   // שטח פנוי מעל הכפתורים
+        root.addView(View(this), LinearLayout.LayoutParams(-1, 0, 1f))   // שטח פנוי מעל הכפתורים (גם בפופאפ - כדי שכולם באותו גובה)
         srcView?.let { root.addView(it, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(16), dpx(8), dpx(16), 0) }) }   // מקור ההתרעה - מעל הכפתורים
 
         // כפתורים: השתק · הנחיות · סגור (אייקון מעל הכיתוב)
@@ -201,7 +201,10 @@ open class AlertActivity : Activity() {
         if (popup) {
             // כרטיס באמצע המסך, מעל מה שפתוח (הרקע מוחשך)
             val frame = FrameLayout(this).apply {
-                addView(root, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER).apply { setMargins(dpx(14), dpx(24), dpx(14), dpx(24)) })
+                // גובה אחיד לפופאפ בכל סוגי ההתרעות (אדום/כתום/ירוק)
+                val popupH = minOf(dpx(if (Prefs.alertMap(this@AlertActivity)) 560 else 390),
+                    resources.displayMetrics.heightPixels - dpx(48))
+                addView(root, FrameLayout.LayoutParams(-1, popupH, Gravity.CENTER).apply { setMargins(dpx(14), dpx(24), dpx(14), dpx(24)) })
             }
             setContentView(frame)
         } else {
