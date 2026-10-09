@@ -1213,12 +1213,19 @@ class MainActivity : Activity() {
     /** הדמיה קטנה של סוג תצוגת ההתרעה: 0 מסך מלא · 1 פופ-אפ · 2 כרטיס · 3 ממוזער */
     private fun alertStylePreview(kind: Int): View {
         fun rect(c: String, r: Int) = GradientDrawable().apply { setColor(Color.parseColor(c)); cornerRadius = dp(r).toFloat() }
-        val f = FrameLayout(this).apply { background = rect("#2B2B2E", 10); clipToOutline = true }
-        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(5), dp(5), dp(5), dp(5)) }
-        listOf(10, 20, 30, 20).forEach { h -> list.addView(View(this).apply { background = rect("#3E3E42", 4) },
-            LinearLayout.LayoutParams(-1, dp(h)).apply { bottomMargin = dp(4) }) }
-        f.addView(list, FrameLayout.LayoutParams(-1, -1))
+        // בהיר / חשוך לפי ערכת הצבעים
+        val bg = if (C.LIGHT) "#D9D9DC" else "#2B2B2E"
+        val block = if (C.LIGHT) "#BDBDC2" else "#3E3E42"
         val red = "#D50000"
+        val f = FrameLayout(this).apply { background = rect(bg, 10); clipToOutline = true }
+        // רשימת כרטיסים עם רווח שווה; בכרטיס/ממוזער - ההתרעה היא אחד הכרטיסים ברשימה
+        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(5), dp(5), dp(5), dp(5)) }
+        listOf(10, 20, 30, 20).forEachIndexed { i, h ->
+            val isAlert = (kind == 3 && i == 0) || (kind == 2 && i == 1)
+            list.addView(View(this).apply { background = rect(if (isAlert) red else block, 4) },
+                LinearLayout.LayoutParams(-1, dp(h)).apply { bottomMargin = dp(4) })
+        }
+        f.addView(list, FrameLayout.LayoutParams(-1, -1))
         when (kind) {
             0 -> f.addView(LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.parseColor(red))
@@ -1228,14 +1235,8 @@ class MainActivity : Activity() {
                 addView(View(this@MainActivity).apply { background = rect("#40000000", 5) },
                     LinearLayout.LayoutParams(-1, dp(18)).apply { setMargins(dp(8), dp(6), dp(8), 0) })
             }, FrameLayout.LayoutParams(-1, -1))
-            1 -> {
-                f.addView(View(this).apply { background = rect(red, 8) },
-                    FrameLayout.LayoutParams(-1, dp(52), Gravity.CENTER).apply { setMargins(dp(6), 0, dp(6), 0) })
-            }
-            2 -> f.addView(View(this).apply { background = rect(red, 6) },
-                FrameLayout.LayoutParams(-1, dp(22), Gravity.TOP).apply { setMargins(dp(5), dp(16), dp(5), 0) })
-            else -> f.addView(View(this).apply { background = rect(red, 5) },
-                FrameLayout.LayoutParams(-1, dp(10), Gravity.TOP).apply { setMargins(dp(4), dp(4), dp(4), 0) })
+            1 -> f.addView(View(this).apply { background = rect(red, 8) },
+                FrameLayout.LayoutParams(-1, dp(52), Gravity.CENTER).apply { setMargins(dp(6), 0, dp(6), 0) })
         }
         return f
     }
