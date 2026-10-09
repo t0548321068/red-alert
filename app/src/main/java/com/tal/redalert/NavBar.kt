@@ -12,15 +12,15 @@ import android.widget.TextView
 /** התפריט התחתון - משותף למסך הראשי, להגדרות, להתרעות ולשעון */
 object NavBar {
     /** תפריט תחתון צף (sel = הלשונית הנבחרת): ראשי · התרעות · שעון · הגדרות */
-    fun build(c: Context, sel: Int, onTab: (Int) -> Unit): LinearLayout {
+    fun build(c: Context, sel: Int, light: Boolean = false, onTab: (Int) -> Unit): LinearLayout {
         fun dp(v: Int) = (v * c.resources.displayMetrics.density).toInt()
         // תפריט תחתון צף: ראשי · התרעות · שעון · הגדרות (לפי המידות של inv-bottom-nav)
         val nav = LinearLayout(c).apply {
             gravity = Gravity.CENTER_VERTICAL
             setPaddingRelative(dp(5), dp(4), dp(5) + dp(6), dp(4))   // +6 מפצה על החפיפה של הלשונית האחרונה
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#3A3A3E")); cornerRadius = dp(32).toFloat()
-                setStroke(dp(1), Color.parseColor("#1FFFFFFF"))
+                setColor(Color.parseColor(if (light) "#E3E3E8" else "#3A3A3E")); cornerRadius = dp(32).toFloat()
+                setStroke(dp(1), Color.parseColor(if (light) "#1F000000" else "#1FFFFFFF"))
             }
             elevation = dp(6).toFloat()
             clipToPadding = false   // הלשונית האחרונה חופפת 6 לתוך הריפוד - שלא תיחתך
@@ -32,8 +32,8 @@ object NavBar {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(dp(4), dp(7), dp(4), dp(7))
-            if (on) background = GradientDrawable().apply { setColor(Color.parseColor("#55555B")); cornerRadius = dp(24).toFloat() }
-            val col = if (on) Color.WHITE else Color.parseColor("#AAAAAA")
+            if (on) background = GradientDrawable().apply { setColor(Color.parseColor(if (light) "#C7C7CC" else "#55555B")); cornerRadius = dp(24).toFloat() }
+            val col = if (light) Color.parseColor(if (on) "#1C1C1E" else "#6E6E73") else if (on) Color.WHITE else Color.parseColor("#AAAAAA")
             addView(ImageView(c).apply {
                 setImageResource(icon); imageTintList = android.content.res.ColorStateList.valueOf(col)
             }, LinearLayout.LayoutParams(dp(20), dp(20)))

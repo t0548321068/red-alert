@@ -33,6 +33,8 @@ class MainActivity : Activity() {
         var BG = 0; var CARD = 0; var CHIP = 0; var TEXT = 0; var MUTED = 0
         var GREEN = 0; var GREEN_BG = 0; var OFF = 0; var OFF_BG = 0
         var BLUE = 0; var RED = 0; var ORANGE = 0; var END = 0
+        var CARD2 = 0; var PILL = 0; var DIV = 0; var SEPV = 0; var SOFT = 0; var MUTED2 = 0; var LINE = 0; var LINE2 = 0
+        var LIGHT = false
 
         fun apply(dark: Boolean) {
             fun c(d: String, l: String) = Color.parseColor(if (dark) d else l)
@@ -49,6 +51,15 @@ class MainActivity : Activity() {
             RED = c("#FF3B30", "#E0352B")
             ORANGE = c("#FF9F0A", "#E08600")
             END = c("#2E7D32", "#2E7D32")
+            CARD2 = c("#1B1B1D", "#FFFFFF")      // כרטיסים (One UI)
+            PILL = c("#3A3A3E", "#E3E3E8")       // גלולות / כפתורים צפים
+            DIV = c("#2A2A2C", "#E0E0E5")        // קו בין שורות
+            SEPV = c("#3A3A3C", "#D1D1D6")       // קו לפני מתג
+            SOFT = c("#E6FFFFFF", "#CC1C1C1E")   // טקסט משני רך
+            MUTED2 = c("#AAAAAA", "#6E6E73")     // טקסט אפור
+            LINE = c("#14FFFFFF", "#14000000")
+            LINE2 = c("#22FFFFFF", "#22000000")
+            LIGHT = !dark
         }
     }
 
@@ -115,7 +126,7 @@ class MainActivity : Activity() {
                     val hint = if (hasPrecise()) "" else " (לחץ למיקום מדויק)"
                     weatherLine.text = listOf("$icon ${w.temp}°", w.place)
                         .filter { it.isNotBlank() }.joinToString(" · ") + hint
-                    weatherLine.setTextColor(Color.parseColor("#E6FFFFFF"))
+                    weatherLine.setTextColor(C.SOFT)
                     weatherAccuracy = w.accuracy
                 }
             }.start()
@@ -275,9 +286,9 @@ class MainActivity : Activity() {
         // כפתור בדיקה בעיגול צף (שאר הכפתורים עברו לתפריט התחתון)
         header.addView(android.widget.ImageView(this).apply {
             setImageResource(R.drawable.ic_bell)
-            imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+            imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT)
             setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#3A3A3E")) }
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(C.PILL) }
             setOnClickListener { chooseTest() }
         }, LinearLayout.LayoutParams(dp(46), dp(46)))
         col.addView(header, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
@@ -300,8 +311,8 @@ class MainActivity : Activity() {
                 cornerRadius = dp(24).toFloat()
             }
         }
-        val white = Color.WHITE
-        val soft = Color.parseColor("#E6FFFFFF")
+        val white = C.TEXT
+        val soft = C.SOFT
         greeting.setTextColor(soft)
         clockTime.setTextColor(white); clockTime.textSize = 58f
         clockDay.setTextColor(soft)
@@ -339,7 +350,7 @@ class MainActivity : Activity() {
         setInd(verInd, R.drawable.ic_info, "v${Updater.currentVersion(this)}" +
             if (Updater.isBetaBuild(this) && !Updater.currentVersion(this).endsWith("b")) "b" else "", C.MUTED)
         listOf(protInd, netInd, locInd, srvInd, verInd).forEachIndexed { i, v ->
-            if (i > 0) status.addView(View(this).apply { setBackgroundColor(Color.parseColor("#22FFFFFF")) },
+            if (i > 0) status.addView(View(this).apply { setBackgroundColor(C.LINE2) },
                 LinearLayout.LayoutParams(dp(1), dp(26)))
             status.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
         }
@@ -382,7 +393,7 @@ class MainActivity : Activity() {
         // בראש כרטיס השעון: מגן + "מוגן"/"לא מוגן" + עדכון אחרון (מה שהיה בכרטיס מוגן)
         // בראש הכרטיס: מגן בתוך עיגול עם הילה, ומתחתיו "מוגן" / "לא מוגן"
         shieldIcon = android.widget.ImageView(this)
-        circleLabel = text("מוגן", 22f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER }
+        circleLabel = text("מוגן", 22f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER }
         haloOuter = FrameLayout(this)
         haloInner = FrameLayout(this).apply {
             clipToOutline = true   // הפס נחתך לצורת העיגול
@@ -442,7 +453,7 @@ class MainActivity : Activity() {
         }
         chips = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         areasCard.addView(chips, LinearLayout.LayoutParams(-1, -2, 1f))
-        shelterLine = text("", 13f, Color.parseColor("#E6FFFFFF"))
+        shelterLine = text("", 13f, C.SOFT)
         areasCard.addView(shelterLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         // המסך לא נגלל: אזורי ההתרעה תופסים את מה שנשאר (לכל היותר), והרשימה שבתוכם נגללת
         areasSlot = FrameLayout(this).apply {
@@ -592,8 +603,8 @@ class MainActivity : Activity() {
         val list = Prefs.cities(this)
         val nearOn = Prefs.nearMe(this)
         val near = if (nearOn) Prefs.nearbyAreas(this) else emptyList()
-        val muted = Color.parseColor("#AAAAAA")
-        val light = Color.parseColor("#E6FFFFFF")
+        val muted = C.MUTED2
+        val light = C.SOFT
 
         // אזור התרעה (לפי המיקום)
         val top = LinearLayout(this).apply {
@@ -602,30 +613,30 @@ class MainActivity : Activity() {
             setPadding(dp(16), dp(14), dp(16), dp(14))   // רקע כמו שאר הכרטיסים (של הכרטיס עצמו)
         }
         top.addView(text("אזור התרעה", 16f, muted))
-        top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 26f, Color.WHITE, bold = true)
+        top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 26f, C.TEXT, bold = true)
             .apply { setPadding(0, dp(2), 0, 0) })
         val sec = if (nearOn && near.isNotEmpty()) AreaData.shelterSeconds(this, near.take(1)) else null
         if (sec != null) top.addView(text("⏱ זמן התגוננות: ${AreaData.shelterText(sec)}", 16f, light)
             .apply { setPadding(0, dp(2), 0, 0) })
         for (i in 0 until top.childCount) (top.getChildAt(i) as? TextView)?.gravity = Gravity.CENTER
         chips.addView(top)
-        chips.addView(View(this).apply { setBackgroundColor(Color.parseColor("#14FFFFFF")) }, LinearLayout.LayoutParams(-1, dp(1)))
+        chips.addView(View(this).apply { setBackgroundColor(C.LINE) }, LinearLayout.LayoutParams(-1, dp(1)))
 
         // אזורים נוספים
         val bottom = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), dp(8)) }
         val head = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(4), 0, dp(4)) }
         head.addView(text("אזורים נוספים", 15f, muted), LinearLayout.LayoutParams(0, -2, 1f))
-        head.addView(text("+ הוספה", 14f, Color.WHITE).apply {
+        head.addView(text("+ הוספה", 14f, C.TEXT).apply {
             setPadding(dp(14), dp(6), dp(14), dp(6)); background = pill(); setOnClickListener { chooseAddType() } })
         bottom.addView(head)
         if (list.isEmpty()) bottom.addView(text("אין אזורים נוספים", 16f, muted).apply { setPadding(0, dp(7), 0, dp(7)) })
         // הרשימה נגללת: עד 4 שורות גלויות, השאר בגלילה
         val rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         list.forEachIndexed { i, city ->
-            if (i > 0) rows.addView(View(this).apply { setBackgroundColor(Color.parseColor("#14FFFFFF")) },
+            if (i > 0) rows.addView(View(this).apply { setBackgroundColor(C.LINE) },
                 LinearLayout.LayoutParams(-1, dp(1)))
             val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(8)) }
-            r.addView(text(city.removePrefix(AreaData.DISTRICT_PREFIX), 18f, Color.WHITE), LinearLayout.LayoutParams(0, -2, 1f))
+            r.addView(text(city.removePrefix(AreaData.DISTRICT_PREFIX), 18f, C.TEXT), LinearLayout.LayoutParams(0, -2, 1f))
             r.addView(text("✕", 17f, muted).apply {
                 setPadding(dp(10), 0, dp(4), 0)
                 setOnClickListener { Prefs.setCities(this@MainActivity, Prefs.cities(this@MainActivity) - city); refresh() }
@@ -644,7 +655,7 @@ class MainActivity : Activity() {
     private fun renderHistory() {
         historyBox.removeAllViews()
         val e = Prefs.history(this).firstOrNull()
-        val muted = Color.parseColor("#AAAAAA")
+        val muted = C.MUTED2
         historyBox.addView(text(
             if (e == null) "אין התראות עדיין"
             else (if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title) +
@@ -661,7 +672,7 @@ class MainActivity : Activity() {
         val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val page = ScrollView(this).apply {
-            setBackgroundColor(Color.BLACK)
+            setBackgroundColor(C.BG)
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             addView(body)
         }
@@ -670,12 +681,12 @@ class MainActivity : Activity() {
             v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
             insets
         }
-        body.addView(text(title, 30f, Color.WHITE, bold = true).apply { setPadding(dp(24), dp(64), dp(24), dp(12)) })
+        body.addView(text(title, 30f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(64), dp(24), dp(12)) })
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         body.addView(content)
         body.addView(View(this), LinearLayout.LayoutParams(-1, dp(90)))   // מקום לתפריט התחתון
         build(content)
-        val frame = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
+        val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
         frame.addView(page, FrameLayout.LayoutParams(-1, -1))
         val nav = bottomNav(navTab) { i -> d.dismiss(); openTab(i) }
         frame.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(10) })
@@ -688,7 +699,7 @@ class MainActivity : Activity() {
         d.setContentView(frame)
         d.window?.setLayout(-1, -1)
         @Suppress("DEPRECATION")
-        d.window?.statusBarColor = Color.BLACK
+        d.window?.statusBarColor = C.BG
         edgeToEdge(d)
         d.show()
     }
@@ -697,7 +708,7 @@ class MainActivity : Activity() {
     private fun showRecent() = onePage("התראות אחרונות", 1) { c ->
         val cached = archiveCache
         if (cached != null) { fillRecent(c, cached); return@onePage }
-        val loading = text("טוען את כל ההתראות…", 14f, Color.parseColor("#999999")).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) }
+        val loading = text("טוען את כל ההתראות…", 14f, C.MUTED2).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) }
         c.addView(loading)
         Thread {
             val list = try { OrefArchive.fetch() } catch (_: Exception) { emptyList() }
@@ -711,7 +722,7 @@ class MainActivity : Activity() {
     }
 
     private fun fillRecent(c: LinearLayout, items: List<Prefs.Entry>) {
-        val muted = Color.parseColor("#999999")
+        val muted = C.MUTED2
         if (items.isEmpty()) {
             c.addView(text("אין התראות עדיין", 14f, muted).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) })
             return
@@ -724,7 +735,7 @@ class MainActivity : Activity() {
                 clipToOutline = true
             }
             list.forEachIndexed { i, e ->
-                if (i > 0) card.addView(View(this).apply { setBackgroundColor(Color.parseColor("#262628")) },
+                if (i > 0) card.addView(View(this).apply { setBackgroundColor(C.DIV) },
                     LinearLayout.LayoutParams(-1, dp(1)))
                 val row = LinearLayout(this).apply {
                     gravity = Gravity.CENTER_VERTICAL
@@ -746,7 +757,7 @@ class MainActivity : Activity() {
                         FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))
                 }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(12) })
                 val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-                texts.addView(text(if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title, 15f, Color.WHITE))
+                texts.addView(text(if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title, 15f, C.TEXT))
                 texts.addView(text(e.body, 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
                 row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
                 row.addView(text(if (e.ts > 0) java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
@@ -764,7 +775,7 @@ class MainActivity : Activity() {
     private fun fillHistory(historyBox: LinearLayout, count: Int,
                             source: List<Prefs.Entry> = Prefs.history(this), national: Boolean = false) {
         val items = source.take(count)
-        val muted = Color.parseColor("#AAAAAA")
+        val muted = C.MUTED2
         if (items.isEmpty()) {
             historyBox.addView(text("אין התראות עדיין", 14f, muted).apply { setPadding(0, dp(8), 0, dp(10)) })
             return
@@ -791,7 +802,7 @@ class MainActivity : Activity() {
             }, LinearLayout.LayoutParams(dp(4), dp(34)).apply { marginEnd = dp(10) })
             val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
             val shortTitle = if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title
-            texts.addView(text(shortTitle, 15f, Color.WHITE))
+            texts.addView(text(shortTitle, 15f, C.TEXT))
             texts.addView(text(e.body, 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
             row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
             // שעה, ומתחת: היום / אתמול / תאריך
@@ -803,7 +814,7 @@ class MainActivity : Activity() {
             } else whenCol.addView(text(e.time.take(5), 12f, muted))
             row.addView(whenCol, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
             historyBox.addView(row)
-            if (i < items.size - 1) historyBox.addView(View(this).apply { setBackgroundColor(Color.parseColor("#14FFFFFF")) },
+            if (i < items.size - 1) historyBox.addView(View(this).apply { setBackgroundColor(C.LINE) },
                 LinearLayout.LayoutParams(-1, dp(1)))
         }
     }
@@ -941,9 +952,9 @@ class MainActivity : Activity() {
 
     // סגנון One UI: כרטיס אפור כהה אחיד עם פינות מעוגלות מאוד
     private fun graphite(@Suppress("UNUSED_PARAMETER") radius: Int) = GradientDrawable().apply {
-        setColor(Color.parseColor("#1B1B1D")); cornerRadius = dp(28).toFloat() }
+        setColor(C.CARD2); cornerRadius = dp(28).toFloat() }
     /** גלולה צפה (כפתורים) */
-    private fun pill() = GradientDrawable().apply { setColor(Color.parseColor("#3A3A3E")); cornerRadius = dp(30).toFloat() }
+    private fun pill() = GradientDrawable().apply { setColor(C.PILL); cornerRadius = dp(30).toFloat() }
 
     /** מסך מלא (על כל המסך) עם כותרת וחץ חזרה; build בונה את התוכן, ונבנה מחדש כשחוזרים אליו */
     private fun fullPage(title: String, navTab: Int = -1, build: (LinearLayout) -> Unit) {
@@ -1027,7 +1038,7 @@ class MainActivity : Activity() {
         else -> "#546E7A"
     })
 
-    private fun bottomNav(sel: Int, onTab: (Int) -> Unit) = NavBar.build(this, sel, onTab)
+    private fun bottomNav(sel: Int, onTab: (Int) -> Unit) = NavBar.build(this, sel, C.LIGHT, onTab)
 
     /** מעבר ללשונית מהתפריט התחתון (0 = המסך הראשי עצמו) */
     private fun openTab(i: Int) {
@@ -1043,7 +1054,7 @@ class MainActivity : Activity() {
         val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val page = ScrollView(this).apply {
-            setBackgroundColor(Color.BLACK)
+            setBackgroundColor(C.BG)
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             addView(body)
         }
@@ -1060,9 +1071,9 @@ class MainActivity : Activity() {
         )
         fun rebuild() {
             body.removeAllViews()
-            body.addView(text("הגדרות", 32f, Color.WHITE, bold = true).apply { setPadding(dp(24), dp(64), dp(24), dp(16)) })
+            body.addView(text("הגדרות", 32f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(64), dp(24), dp(16)) })
             cats.forEach { (title, rows) ->
-                body.addView(text(title, 13f, Color.parseColor("#999999")).apply { setPadding(dp(28), dp(14), dp(28), dp(6)) })
+                body.addView(text(title, 13f, C.MUTED2).apply { setPadding(dp(28), dp(14), dp(28), dp(6)) })
                 val card = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
                     background = graphite(28)
@@ -1070,7 +1081,7 @@ class MainActivity : Activity() {
                 }
                 val list = rows()
                 list.forEachIndexed { i, r ->
-                    if (i > 0) card.addView(View(this).apply { setBackgroundColor(Color.parseColor("#262628")) },
+                    if (i > 0) card.addView(View(this).apply { setBackgroundColor(C.DIV) },
                         LinearLayout.LayoutParams(-1, dp(1)))
                     val row = LinearLayout(this).apply {
                         gravity = Gravity.CENTER_VERTICAL
@@ -1082,7 +1093,7 @@ class MainActivity : Activity() {
                         background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(iconColor(r.icon)) }
                     }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(14) })
                     val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-                    texts.addView(text(r.title, 16f, Color.WHITE))
+                    texts.addView(text(r.title, 16f, C.TEXT))
                     val v = r.value()
                     if (v.isNotEmpty()) texts.addView(text(v, 12f, Color.parseColor("#5AA9FF")))
                     row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
@@ -1094,7 +1105,7 @@ class MainActivity : Activity() {
         }
         rebuild()
         // התפריט התחתון נשאר גם בהגדרות
-        val frame = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
+        val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
         frame.addView(page, FrameLayout.LayoutParams(-1, -1))
         val nav = bottomNav(3) { i -> d.dismiss(); openTab(i) }
         frame.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(10) })
@@ -1107,7 +1118,7 @@ class MainActivity : Activity() {
         d.setContentView(frame)
         d.window?.setLayout(-1, -1)
         @Suppress("DEPRECATION")
-        d.window?.statusBarColor = Color.BLACK
+        d.window?.statusBarColor = C.BG
         edgeToEdge(d)
         // חוזרים מחלון של הגדרה - מעדכנים את המצבים
         d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
@@ -1133,12 +1144,12 @@ class MainActivity : Activity() {
                     setPadding(0, dp(13), 0, dp(13))
                     setOnClickListener { r.action() }
                 }
-                row.addView(text(r.icon, 17f, Color.WHITE), LinearLayout.LayoutParams(dp(32), -2))
-                row.addView(text(r.title, 15f, Color.WHITE), LinearLayout.LayoutParams(0, -2, 1f))
-                row.addView(text(r.value(), 13f, Color.parseColor("#AAAAAA")))
+                row.addView(text(r.icon, 17f, C.TEXT), LinearLayout.LayoutParams(dp(32), -2))
+                row.addView(text(r.title, 15f, C.TEXT), LinearLayout.LayoutParams(0, -2, 1f))
+                row.addView(text(r.value(), 13f, C.MUTED2))
                 row.addView(text("‹", 16f, Color.parseColor("#777777")).apply { setPadding(dp(8), 0, 0, 0) })
                 card.addView(row)
-                if (i < list.size - 1) card.addView(View(this).apply { setBackgroundColor(Color.parseColor("#14FFFFFF")) },
+                if (i < list.size - 1) card.addView(View(this).apply { setBackgroundColor(C.LINE) },
                     LinearLayout.LayoutParams(-1, dp(1)))
             }
             c.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
@@ -1175,11 +1186,16 @@ class MainActivity : Activity() {
             View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN }
         @Suppress("DEPRECATION")
         w.navigationBarColor = Color.TRANSPARENT
+        if (Build.VERSION.SDK_INT >= 30 && C.LIGHT) {
+            val light = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            w.insetsController?.setSystemBarsAppearance(light, light)
+        }
     }
 
     /** כיתוב ממורכז + כפתור בחירה עגול (מתחת לתצוגה מקדימה) */
     private fun addLabelRadio(parent: LinearLayout, label: String, sel: Boolean) {
-        parent.addView(text(label, 13f, if (sel) Color.parseColor("#5AA9FF") else Color.parseColor("#AAAAAA"), bold = sel).apply {
+        parent.addView(text(label, 13f, if (sel) Color.parseColor("#5AA9FF") else C.MUTED2, bold = sel).apply {
             gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(8))
         }, LinearLayout.LayoutParams(-1, -2))
         // כפתור בחירה כמו בסמסונג: טבעת, ובנבחר - נקודה כחולה בתוכה עם רווח
@@ -1238,7 +1254,7 @@ class MainActivity : Activity() {
         val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(30)) }
         val page = ScrollView(this).apply {
-            setBackgroundColor(Color.BLACK)
+            setBackgroundColor(C.BG)
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             addView(body)
             setOnApplyWindowInsetsListener { v, insets ->
@@ -1250,26 +1266,29 @@ class MainActivity : Activity() {
         val blue = Color.parseColor("#5AA9FF")
         fun card() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = graphite(26); clipToOutline = true }
         fun addCard(c: View) = body.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(8)) })
-        fun note(t: String) = body.addView(text(t, 11f, Color.parseColor("#AAAAAA")).apply { setPadding(dp(26), 0, dp(26), dp(14)) })
+        fun note(t: String) = body.addView(text(t, 11f, C.MUTED2).apply { setPadding(dp(26), 0, dp(26), dp(14)) })
         // קו מפריד עם שוליים מהצדדים (לא מקצה לקצה), כמו בהגדרות של סמסונג
-        fun divider(c: LinearLayout) = c.addView(View(this).apply { setBackgroundColor(Color.parseColor("#2A2A2C")) },
+        fun divider(c: LinearLayout) = c.addView(View(this).apply { setBackgroundColor(C.DIV) },
             LinearLayout.LayoutParams(-1, dp(1)).apply { setMargins(dp(18), 0, dp(18), 0) })
         /** שורה: שם, מצב בכחול, ומתג (אם יש) */
-        fun row(c: LinearLayout, title: String, sub: String = "", on: Boolean? = null, sep: Boolean = true, click: () -> Unit) {
+        /** שורה: שם + מצב בכחול + מתג. open = לחיצה על השם פותחת הגדרה נוספת (והמתג לבד מדליק/מכבה) */
+        fun row(c: LinearLayout, title: String, sub: String = "", on: Boolean? = null, sep: Boolean = true,
+                open: (() -> Unit)? = null, click: () -> Unit) {
             val r = LinearLayout(this).apply {
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(18), dp(15), dp(18), dp(15))
-                setOnClickListener { click() }
+                setOnClickListener { (open ?: click)() }
             }
             val t = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-            t.addView(text(title, 16f, Color.WHITE))
+            t.addView(text(title, 16f, C.TEXT))
             if (sub.isNotEmpty()) t.addView(text(sub, 12f, blue).apply { setPadding(0, dp(2), 0, 0) })
             r.addView(t, LinearLayout.LayoutParams(0, -2, 1f))
             if (on != null) {
-                if (sep) r.addView(View(this).apply { setBackgroundColor(Color.parseColor("#3A3A3C")) },
+                if (sep) r.addView(View(this).apply { setBackgroundColor(C.SEPV) },
                     LinearLayout.LayoutParams(dp(1), dp(26)).apply { setMargins(dp(12), 0, dp(12), 0) })
                 r.addView(android.widget.Switch(this).apply {
-                    isChecked = on; isClickable = false
+                    isChecked = on
+                    if (open != null) setOnClickListener { click() } else isClickable = false
                     thumbTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
                     trackTintList = android.content.res.ColorStateList.valueOf(Color.parseColor(if (on) "#3E82F7" else "#5A5A5E"))
                     trackTintMode = android.graphics.PorterDuff.Mode.SRC
@@ -1280,7 +1299,7 @@ class MainActivity : Activity() {
         fun rebuild() {
             body.removeAllViews()
             // כותרת עם חזרה
-            body.addView(text("תצוגה", 20f, Color.WHITE, bold = true).apply { setPadding(dp(24), dp(14), dp(24), dp(14)) })
+            body.addView(text("תצוגה", 20f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(14), dp(24), dp(14)) })
             // ערכת צבעים: תצוגה מקדימה חשוך / בהיר + "לפי המערכת"
             val mode = Prefs.themeMode(this)
             val theme = card()
@@ -1312,7 +1331,7 @@ class MainActivity : Activity() {
             note("כשמופעל - בהיר או חשוך לפי הגדרת הטלפון")
             // סוג תצוגת התרעה: הדמיה קטנה של כל סוג + בחירה
             val style = card()
-            style.addView(text("סוג תצוגת התרעה", 16f, Color.WHITE).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+            style.addView(text("סוג תצוגת התרעה", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
             val opts = LinearLayout(this).apply { setPadding(dp(6), dp(10), dp(6), dp(16)) }
             listOf("מסך מלא", "פופ-אפ", "כרטיס", "ממוזער").forEachIndexed { i, label ->
                 val sel = Prefs.alertStyle(this) == i
@@ -1328,15 +1347,18 @@ class MainActivity : Activity() {
             addCard(style)
             // שעון ותאריך, מזג אוויר וברכה - בכרטיס אחד
             val more = card()
-            row(more, "שעון") { showClockSettings() }
+            row(more, "שעון", listOf(if (Prefs.showSeconds(this)) "שניות" else "", if (Prefs.blinkColon(this)) "נקודתיים מהבהבות" else "")
+                .filter { it.isNotEmpty() }.joinToString(" · ")) { showClockPage() }
             divider(more)
-            row(more, "תאריך", on = Prefs.showDate(this)) {
+            row(more, "תאריך", TimeFormat.dayOptions()[Prefs.dayStyle(this)], on = Prefs.showDate(this),
+                open = { chooseDayStyle { rebuild() } }) {
                 Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); rebuild() }
             divider(more)
-            row(more, "מזג אוויר", on = Prefs.showWeather(this)) {
+            row(more, "מזג אוויר", "עדכון " + weatherLabel(Prefs.weatherMinutes(this)), on = Prefs.showWeather(this),
+                open = { chooseWeatherInterval { rebuild() } }) {
                 Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); rebuild() }
             divider(more)
-            row(more, "ברכה", on = Prefs.showGreeting(this)) {
+            row(more, "ברכה", on = Prefs.showGreeting(this), sep = false) {
                 Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock(); rebuild() }
             addCard(more)
             note("מזג אוויר וברכה בכרטיס השעון במסך הראשי")
@@ -1348,7 +1370,7 @@ class MainActivity : Activity() {
         d.setContentView(page)
         d.window?.setLayout(-1, -1)
         @Suppress("DEPRECATION")
-        d.window?.statusBarColor = Color.BLACK
+        d.window?.statusBarColor = C.BG
         edgeToEdge(d)
         // חוזרים מחלון בחירה - מעדכנים את המצבים
         d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
@@ -1408,7 +1430,7 @@ class MainActivity : Activity() {
     // ---- חיווים ----
 
     /** חיווי: אייקון למעלה, טקסט מתחת */
-    private fun indicator(icon: Int, onClick: (() -> Unit)?) = text("", 12f, Color.parseColor("#E6E6E6")).apply {
+    private fun indicator(icon: Int, onClick: (() -> Unit)?) = text("", 12f, C.TEXT).apply {
         setIndIcon(this, icon)
         // האייקון גדל ב-15%, והרווח שמתחת לו קטן באותה מידה - גובה השורה לא משתנה
         compoundDrawablePadding = (dp(4) - (dp(18) * 0.15f).toInt()).coerceAtLeast(0)
@@ -1900,6 +1922,38 @@ class MainActivity : Activity() {
     }
 
     /** הגדרות שעה ותאריך - כל שינוי נראה מיד בשעון */
+    private fun chooseDayStyle(done: () -> Unit) {
+        AlertDialog.Builder(this, dlg())
+            .setTitle("סגנון יום")
+            .setSingleChoiceItems(TimeFormat.dayOptions(), Prefs.dayStyle(this)) { d, i ->
+                Prefs.setDayStyle(this, i); updateClock(); refresh(); d.dismiss(); done()
+            }
+            .show()
+    }
+
+    private fun chooseWeatherInterval(done: () -> Unit) {
+        val opts = intArrayOf(1, 2, 5, 10, 15, 30, 60)
+        AlertDialog.Builder(this, dlg())
+            .setTitle("עדכון מזג אוויר")
+            .setSingleChoiceItems(opts.map { weatherLabel(it) }.toTypedArray(), opts.indexOf(Prefs.weatherMinutes(this))) { d, i ->
+                Prefs.setWeatherMinutes(this, opts[i]); d.dismiss(); done()
+            }
+            .show()
+    }
+
+    /** הגדרות שעון: רק שניות ונקודתיים מהבהבות */
+    private fun showClockPage() {
+        AlertDialog.Builder(this, dlg())
+            .setTitle("שעון")
+            .setMultiChoiceItems(arrayOf("שניות", "נקודתיים מהבהבות"),
+                booleanArrayOf(Prefs.showSeconds(this), Prefs.blinkColon(this))) { _, i, on ->
+                if (i == 0) { Prefs.setShowSeconds(this, on); refresh() } else Prefs.setBlinkColon(this, on)
+                updateClock()
+            }
+            .setPositiveButton("סגור", null)
+            .show()
+    }
+
     private fun showClockSettings() {
         val items = arrayOf(
             "ערכת צבעים: " + Prefs.THEME_NAMES[Prefs.themeMode(this)],
