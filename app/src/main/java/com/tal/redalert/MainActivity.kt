@@ -981,107 +981,147 @@ class MainActivity : Activity() {
     private var openCat = -1
 
     /** הגדרות: מגירה שנפתחת מצד ימין, כל קטגוריה נפתחת/נסגרת במקום */
-    /** מסך מצב שבת: בחירת מצב, זמני כניסה ויציאה, והסבר מה המצב עושה */
-    private fun chooseShabbat() {
+    // ---- עמודי הגדרות בסגנון One UI - אותם רכיבים כמו בעמוד "תצוגה" ----
+    private val OUI_BLUE get() = Color.parseColor("#5AA9FF")
+
+    /** עמוד מלא: כותרת קטנה למעלה (כמו "תצוגה"), build נקרא מחדש בכל rebuild */
+    private fun ouiPage(title: String, refreshOnFocus: Boolean = true, build: (LinearLayout, () -> Unit) -> Unit) {
         val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
-        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(30)) }
         val page = ScrollView(this).apply {
             setBackgroundColor(C.BG)
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             addView(body)
-        }
-        page.setOnApplyWindowInsetsListener { v, insets ->
-            @Suppress("DEPRECATION")
-            v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
-            insets
-        }
-        fun card() = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = graphite(28)
-            setPadding(dp(18), dp(14), dp(18), dp(14))
-        }
-        fun cardLp() = LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(12)) }
-        fun header(t: String) = text(t, 13f, C.MUTED2).apply { setPadding(dp(28), dp(6), dp(28), dp(6)) }
-
-        fun rebuild() {
-            body.removeAllViews()
-            body.addView(text("🕯 מצב שבת", 30f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(64), dp(24), dp(12)) })
-
-            // מצב: כבוי / דלוק / אוטומטי
-            body.addView(header("מצב"))
-            val modes = card().apply { setPadding(dp(18), dp(4), dp(18), dp(4)) }
-            listOf(Shabbat.OFF to "כבוי", Shabbat.ON to "דלוק", Shabbat.AUTO to "אוטומטי – בשבת ובחג לפי המיקום")
-                .forEachIndexed { i, (mode, label) ->
-                    val sel = Prefs.shabbatMode(this) == mode
-                    val row = LinearLayout(this).apply {
-                        gravity = Gravity.CENTER_VERTICAL
-                        setPadding(0, dp(12), 0, dp(12))
-                        setOnClickListener { Prefs.setShabbatMode(this@MainActivity, mode); rebuild() }
-                    }
-                    row.addView(text(label, 16f, C.TEXT), LinearLayout.LayoutParams(0, -2, 1f))
-                    row.addView(text(if (sel) "●" else "○", 18f, if (sel) C.BLUE else C.MUTED))
-                    if (i > 0) modes.addView(View(this).apply { setBackgroundColor(C.LINE) }, LinearLayout.LayoutParams(-1, dp(1)))
-                    modes.addView(row)
-                }
-            body.addView(modes, cardLp())
-
-            // זמני השבת / החג הקרובים
-            val fmtDay = java.text.SimpleDateFormat("EEEE, d בMMMM", java.util.Locale("iw"))
-            val fmtTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
-            val w = try { Shabbat.nextWindow(this) } catch (_: Exception) { null }
-            val now = System.currentTimeMillis()
-            body.addView(header(if (w != null && now >= w.first) "עכשיו" else "השבת הקרובה"))
-            val times = card()
-            if (w == null) times.addView(text("לא הצלחנו לחשב את הזמנים", 15f, C.MUTED))
-            else {
-                fun line(label: String, ms: Long) {
-                    val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(6), 0, dp(6)) }
-                    val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-                    col.addView(text(label, 15f, C.TEXT))
-                    col.addView(text(fmtDay.format(java.util.Date(ms)), 13f, C.MUTED))
-                    r.addView(col, LinearLayout.LayoutParams(0, -2, 1f))
-                    r.addView(text(fmtTime.format(java.util.Date(ms)), 26f, C.TEXT, bold = true))
-                    times.addView(r)
-                }
-                // מיקום (עיר) שלפיו מחושבים הזמנים
-                val cityLine = text(if (Shabbat.hasLocation(this)) "📍 …" else "📍 מרכז הארץ (אין מיקום)", 15f, C.TEXT, bold = true)
-                    .apply { setPadding(0, 0, 0, dp(6)) }
-                times.addView(cityLine)
-                (try { Weather.lastLocation(this) } catch (_: Exception) { null })?.let { loc ->
-                    Thread {
-                        val city = try { Weather.cityName(this, loc) } catch (_: Exception) { "" }
-                        runOnUiThread { cityLine.text = "📍 " + city.ifBlank { "המיקום שלך" } }
-                    }.start()
-                }
-                line("כניסה", w.first)
-                times.addView(View(this).apply { setBackgroundColor(C.LINE) }, LinearLayout.LayoutParams(-1, dp(1)).apply { setMargins(0, dp(4), 0, dp(4)) })
-                line("יציאה", w.second)
-                times.addView(text("כניסה חצי שעה לפני השקיעה, יציאה 10 דקות אחרי צאת הכוכבים",
-                    12f, C.MUTED).apply { setPadding(0, dp(8), 0, 0) })
+            setOnApplyWindowInsetsListener { v, insets ->
+                @Suppress("DEPRECATION")
+                v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
+                insets
             }
-            body.addView(times, cardLp())
-
-            // מה מצב שבת עושה
-            body.addView(header("מה מצב שבת עושה"))
-            val info = card()
-            listOf(
-                "כל התרעה נפתחת במסך מלא, גם כשהטלפון בשימוש",
-                "ההתרעה מוקראת בקול, גם אם ההקראה כבויה בהגדרות",
-                "מסך ההתרעה נסגר לבד אחרי דקה – אין צורך לגעת בטלפון",
-                "שעות שקט לא פועלות – כל התרעה נשמעת",
-                "באוטומטי: נדלק בכניסת שבת או חג ונכבה ביציאה, בלי לגעת"
-            ).forEach { info.addView(text("• $it", 15f, C.TEXT).apply { setPadding(0, dp(4), 0, dp(4)) }) }
-            body.addView(info, cardLp())
-            body.addView(View(this), LinearLayout.LayoutParams(-1, dp(24)))
+        }
+        lateinit var rebuild: () -> Unit
+        rebuild = {
+            body.removeAllViews()
+            body.addView(text(title, 20f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(14), dp(24), dp(14)) })
+            build(body, rebuild)
         }
         rebuild()
-
         d.setContentView(page)
         d.window?.setLayout(-1, -1)
         @Suppress("DEPRECATION")
         d.window?.statusBarColor = C.BG
         edgeToEdge(d)
+        if (refreshOnFocus) d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
         d.show()
+    }
+
+    private fun ouiCard() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = graphite(26); clipToOutline = true }
+    private fun ouiAdd(body: LinearLayout, c: View) =
+        body.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(8)) })
+    private fun ouiNote(body: LinearLayout, t: String) =
+        body.addView(text(t, 11f, C.MUTED2).apply { setPadding(dp(26), 0, dp(26), dp(14)) })
+    private fun ouiDivider(c: LinearLayout) = c.addView(View(this).apply { setBackgroundColor(C.DIV) },
+        LinearLayout.LayoutParams(-1, dp(1)).apply { setMargins(dp(18), 0, dp(18), 0) })
+
+    /** כפתור בחירה כמו בסמסונג: טבעת, ובנבחר נקודה כחולה */
+    private fun ouiRadio(sel: Boolean) = FrameLayout(this).apply {
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setStroke(dp(2), Color.parseColor(if (sel) "#3E82F7" else "#6E6E73"))
+        }
+        if (sel) addView(View(this@MainActivity).apply {
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#3E82F7")) }
+        }, FrameLayout.LayoutParams(dp(10), dp(10), Gravity.CENTER))
+    }
+
+    /**
+     * שורה בגובה קבוע (48, או 56 עם שורת מצב): שם, מצב בכחול מתחת,
+     * ובצד: ערך (end), כפתור בחירה (radio) או מתג (on)
+     */
+    private fun ouiRow(c: LinearLayout, title: String, sub: String = "", subColor: Int = OUI_BLUE,
+                       end: String? = null, endColor: Int = C.TEXT, endBig: Boolean = false,
+                       radio: Boolean? = null, on: Boolean? = null, click: (() -> Unit)? = null) {
+        val r = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(18), 0, dp(18), 0)
+            if (click != null) setOnClickListener { click() }
+        }
+        val t = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        t.addView(text(title, 16f, C.TEXT).apply { includeFontPadding = false })
+        if (sub.isNotEmpty()) t.addView(text(sub, 12f, subColor).apply { includeFontPadding = false; setPadding(0, dp(4), 0, 0) })
+        r.addView(t, LinearLayout.LayoutParams(0, -2, 1f))
+        if (end != null) r.addView(text(end, if (endBig) 22f else 14f, endColor, bold = endBig).apply { includeFontPadding = false },
+            LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
+        if (radio != null) r.addView(ouiRadio(radio), LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginStart = dp(10) })
+        if (on != null) r.addView(android.widget.Switch(this).apply {
+            minHeight = 0; minimumHeight = 0; setPadding(0, 0, 0, 0)
+            isChecked = on; isClickable = false
+            thumbTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+            trackTintList = android.content.res.ColorStateList.valueOf(Color.parseColor(if (on) "#3E82F7" else "#5A5A5E"))
+            trackTintMode = android.graphics.PorterDuff.Mode.SRC
+        }, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
+        c.addView(r, LinearLayout.LayoutParams(-1, dp(if (sub.isEmpty()) 48 else 56)))
+    }
+
+    /** טקסט חופשי בתוך כרטיס (הסברים, מה חדש) */
+    private fun ouiText(c: LinearLayout, t: String) =
+        c.addView(text(t, 14f, C.TEXT).apply { setPadding(dp(18), dp(12), dp(18), dp(12)); setLineSpacing(dp(3).toFloat(), 1f) })
+
+    /** מסך מצב שבת: בחירת מצב, עיר וזמני כניסה ויציאה, והסבר מה המצב עושה */
+    private fun chooseShabbat() = ouiPage("מצב שבת") { body, rebuild ->
+        // מצב
+        val modes = ouiCard()
+        listOf(Shabbat.OFF to "כבוי", Shabbat.ON to "דלוק", Shabbat.AUTO to "אוטומטי")
+            .forEachIndexed { i, (mode, label) ->
+                if (i > 0) ouiDivider(modes)
+                ouiRow(modes, label, sub = if (mode == Shabbat.AUTO) "בשבת ובחג לפי המיקום" else "",
+                    radio = Prefs.shabbatMode(this) == mode) { Prefs.setShabbatMode(this, mode); rebuild() }
+            }
+        ouiAdd(body, modes)
+        ouiNote(body, "באוטומטי מצב השבת נדלק בכניסה ונכבה ביציאה, בלי לגעת")
+
+        // זמנים
+        val fmtDay = java.text.SimpleDateFormat("EEEE, d בMMMM", java.util.Locale("iw"))
+        val fmtTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
+        val w = try { Shabbat.nextWindow(this) } catch (_: Exception) { null }
+        val times = ouiCard()
+        val now = System.currentTimeMillis()
+        times.addView(text(if (w != null && now >= w.first) "השבת עכשיו" else "השבת הקרובה", 16f, C.TEXT)
+            .apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+        // מיקום (עיר) שלפיו מחושבים הזמנים - נטען ברקע
+        val hasLoc = Shabbat.hasLocation(this)
+        ouiRow(times, "מיקום", sub = if (hasLoc) "…" else "מרכז הארץ (אין מיקום)")
+        if (hasLoc) {
+            val row = times.getChildAt(times.childCount - 1) as LinearLayout
+            val subView = (row.getChildAt(0) as LinearLayout).getChildAt(1) as TextView
+            (try { Weather.lastLocation(this) } catch (_: Exception) { null })?.let { loc ->
+                Thread {
+                    val city = try { Weather.cityName(this, loc) } catch (_: Exception) { "" }
+                    runOnUiThread { subView.text = city.ifBlank { "המיקום שלך" } }
+                }.start()
+            }
+        }
+        if (w == null) { ouiDivider(times); ouiRow(times, "לא הצלחנו לחשב את הזמנים") }
+        else {
+            ouiDivider(times)
+            ouiRow(times, "כניסה", sub = fmtDay.format(java.util.Date(w.first)), subColor = C.MUTED,
+                end = fmtTime.format(java.util.Date(w.first)), endBig = true)
+            ouiDivider(times)
+            ouiRow(times, "יציאה", sub = fmtDay.format(java.util.Date(w.second)), subColor = C.MUTED,
+                end = fmtTime.format(java.util.Date(w.second)), endBig = true)
+        }
+        ouiAdd(body, times)
+        ouiNote(body, "כניסה חצי שעה לפני השקיעה, יציאה 10 דקות אחרי צאת הכוכבים")
+
+        // מה מצב שבת עושה
+        val info = ouiCard()
+        info.addView(text("מה מצב שבת עושה", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), 0) })
+        ouiText(info, listOf(
+            "כל התרעה נפתחת במסך מלא, גם כשהטלפון בשימוש",
+            "ההתרעה מוקראת בקול, גם אם ההקראה כבויה בהגדרות",
+            "מסך ההתרעה נסגר לבד אחרי דקה – אין צורך לגעת בטלפון",
+            "שעות שקט לא פועלות – כל התרעה נשמעת"
+        ).joinToString("\n") { "• $it" })
+        ouiAdd(body, info)
     }
 
     private fun chooseTest() {
@@ -1524,8 +1564,11 @@ class MainActivity : Activity() {
         val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
         val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
         return listOf(
-            Perm("📱", "מסך מלא בהתראה", "התרעה נפתחת על כל המסך גם כשהטלפון בשימוש",
-                Settings.canDrawOverlays(this)) { openFullScreenSettings() },
+            Perm("📱", "מסך מלא בהתראה", when {
+                    !overlayAllowed() -> "חסר: הצגה מעל אפליקציות אחרות"
+                    !fullScreenIntentAllowed() -> "חסר: התראות במסך מלא"
+                    else -> "התרעה נפתחת על כל המסך גם כשהטלפון בשימוש"
+                }, fullScreenOk()) { openFullScreenSettings() },
             Perm("🔋", "חיסכון בסוללה", "האפליקציה לא נעצרת ברקע",
                 pm.isIgnoringBatteryOptimizations(packageName)) { openBatterySettings() },
             Perm("🔔", "התראות בטלפון", "התראות האפליקציה מופעלות",
@@ -1533,58 +1576,16 @@ class MainActivity : Activity() {
         )
     }
 
-    /** מסך הרשאות: כל הרשאה עם מצב (תקין / דורש טיפול), לחיצה פותחת את ההגדרה בטלפון */
-    private fun showPermissions() {
-        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
-        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val page = ScrollView(this).apply {
-            setBackgroundColor(C.BG)
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            addView(body)
+    /** מסך הרשאות: כל הרשאה עם מצב, לחיצה פותחת את ההגדרה בטלפון */
+    private fun showPermissions() = ouiPage("הרשאות") { body, _ ->
+        val card = ouiCard()
+        permissionItems().forEachIndexed { i, p ->
+            if (i > 0) ouiDivider(card)
+            ouiRow(card, p.title, sub = p.note, subColor = C.MUTED,
+                end = if (p.ok) "תקין" else "דורש טיפול", endColor = if (p.ok) C.GREEN else C.RED) { p.open() }
         }
-        page.setOnApplyWindowInsetsListener { v, insets ->
-            @Suppress("DEPRECATION")
-            v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
-            insets
-        }
-        fun rebuild() {
-            body.removeAllViews()
-            body.addView(text("🛡 הרשאות", 30f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(64), dp(24), dp(12)) })
-            val card = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                background = graphite(28)
-                setPadding(dp(18), dp(4), dp(18), dp(4))
-            }
-            permissionItems().forEachIndexed { i, p ->
-                if (i > 0) card.addView(View(this).apply { setBackgroundColor(C.LINE) }, LinearLayout.LayoutParams(-1, dp(1)))
-                val row = LinearLayout(this).apply {
-                    gravity = Gravity.CENTER_VERTICAL
-                    setPadding(0, dp(12), 0, dp(12))
-                    setOnClickListener { p.open() }
-                }
-                row.addView(text(p.icon, 20f, C.TEXT).apply { setPadding(0, 0, 0, 0) },
-                    LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(12) })
-                val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-                col.addView(text(p.title, 16f, C.TEXT))
-                col.addView(text(p.note, 12f, C.MUTED))
-                row.addView(col, LinearLayout.LayoutParams(0, -2, 1f))
-                row.addView(text(if (p.ok) "תקין ✓" else "דורש טיפול", 14f, if (p.ok) C.GREEN else C.RED),
-                    LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
-                card.addView(row)
-            }
-            body.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(12)) })
-            body.addView(text("לחיצה על הרשאה פותחת את ההגדרה בטלפון", 12f, C.MUTED).apply { setPadding(dp(28), 0, dp(28), dp(24)) })
-        }
-        rebuild()
-        // חוזרים מהגדרות הטלפון - מעדכנים את המצב
-        d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
-
-        d.setContentView(page)
-        d.window?.setLayout(-1, -1)
-        @Suppress("DEPRECATION")
-        d.window?.statusBarColor = C.BG
-        edgeToEdge(d)
-        d.show()
+        ouiAdd(body, card)
+        ouiNote(body, "לחיצה על הרשאה פותחת את ההגדרה בטלפון")
     }
 
     private fun generalRows(): List<Row> {
@@ -1819,82 +1820,36 @@ class MainActivity : Activity() {
     }
 
     /** מסך עדכונים: גרסה מותקנת + בדיקה, גרסאות בטא (למי שנפתח לו), ומה חדש */
-    private fun showUpdates() {
-        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
-        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val page = ScrollView(this).apply {
-            setBackgroundColor(C.BG)
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            addView(body)
-        }
-        page.setOnApplyWindowInsetsListener { v, insets ->
-            @Suppress("DEPRECATION")
-            v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
-            insets
-        }
-        fun card() = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = graphite(28)
-            setPadding(dp(18), dp(14), dp(18), dp(14))
-        }
-        fun cardLp() = LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(12)) }
-        fun header(t: String) = text(t, 13f, C.MUTED2).apply { setPadding(dp(28), dp(6), dp(28), dp(6)) }
+    private fun showUpdates() = ouiPage("עדכונים") { body, rebuild ->
+        val ver = ouiCard()
+        ouiRow(ver, "גרסה מותקנת", end = "v" + Updater.versionLabel(this), endColor = C.MUTED)
+        ouiDivider(ver)
+        // אותה בדיקה בדיוק כמו לחיצה על הגרסה בשורת החיווי
+        ouiRow(ver, "בדיקת עדכונים", sub = "בדיקה והתקנה של גרסה חדשה") { Updater.check(this, silent = false) }
+        ouiAdd(body, ver)
+        ouiNote(body, "מהעדכון השני ההתקנה אוטומטית, בלי ללחוץ התקן")
 
-        fun rebuild() {
-            body.removeAllViews()
-            body.addView(text("⬆️ עדכונים", 30f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(64), dp(24), dp(12)) })
-
-            // גרסה מותקנת + כפתור בדיקה (אותה בדיקה בדיוק כמו לחיצה על הגרסה בשורת החיווי)
-            body.addView(header("גרסה מותקנת"))
-            val ver = card()
-            ver.addView(text("v" + Updater.versionLabel(this), 26f, C.TEXT, bold = true))
-            ver.addView(text("בדוק עכשיו", 16f, C.BLUE, bold = true).apply {
-                gravity = Gravity.CENTER
-                setPadding(0, dp(12), 0, dp(12))
-                background = GradientDrawable().apply { cornerRadius = dp(18).toFloat(); setColor(C.CHIP) }
-                setOnClickListener { Updater.check(this@MainActivity, silent = false) }
-            }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
-            body.addView(ver, cardLp())
-
-            // גרסאות בטא - רק למי שפתח אותן (7 לחיצות על הגרסה)
-            if (Prefs.betaUnlocked(this) || Prefs.betaUpdates(this)) {
-                val on = Prefs.betaUpdates(this)
-                body.addView(header("גרסאות בטא"))
-                val beta = card()
-                val row = LinearLayout(this).apply {
-                    gravity = Gravity.CENTER_VERTICAL
-                    setOnClickListener {
-                        Prefs.setBetaUpdates(this@MainActivity, !on)
-                        Prefs.setSkippedVersion(this@MainActivity, "")
-                        if (Prefs.enabled(this@MainActivity)) AlertService.reloadPush(this@MainActivity)
-                        if (on) Prefs.setBetaUnlocked(this@MainActivity, false)   // כיבוי - האפשרות חוזרת להיות מוסתרת
-                        else Updater.check(this@MainActivity, silent = false)
-                        rebuild()
-                    }
-                }
-                row.addView(text("🧪 קבלת גרסאות בטא", 16f, C.TEXT), LinearLayout.LayoutParams(0, -2, 1f))
-                row.addView(text(if (on) "פעיל ✓" else "כבוי", 15f, if (on) C.GREEN else C.MUTED))
-                beta.addView(row)
-                beta.addView(text("גרסאות ניסיון לפני שהן משוחררות לכולם. יכולות להיות בהן תקלות.\nמזהה מכשיר: ${Prefs.deviceCode(this)}",
-                    12f, C.MUTED).apply { setPadding(0, dp(8), 0, 0) })
-                body.addView(beta, cardLp())
+        // גרסאות בטא - רק למי שפתח אותן (7 לחיצות על הגרסה)
+        if (Prefs.betaUnlocked(this) || Prefs.betaUpdates(this)) {
+            val on = Prefs.betaUpdates(this)
+            val beta = ouiCard()
+            ouiRow(beta, "גרסאות בטא", sub = if (on) "מקבל גרסאות ניסיון" else "כבוי", on = on) {
+                Prefs.setBetaUpdates(this, !on)
+                Prefs.setSkippedVersion(this, "")
+                if (Prefs.enabled(this)) AlertService.reloadPush(this)
+                if (on) Prefs.setBetaUnlocked(this, false)   // כיבוי - האפשרות חוזרת להיות מוסתרת
+                else Updater.check(this, silent = false)
+                rebuild()
             }
-
-            // מה חדש בגרסה המותקנת
-            body.addView(header("מה חדש"))
-            val news = card()
-            news.addView(text(whatsNewText(null) ?: "אין פירוט לגרסה הזו", 15f, C.TEXT))
-            body.addView(news, cardLp())
-            body.addView(View(this), LinearLayout.LayoutParams(-1, dp(24)))
+            ouiAdd(body, beta)
+            ouiNote(body, "גרסאות לפני שהן משוחררות לכולם · מזהה מכשיר: ${Prefs.deviceCode(this)}")
         }
-        rebuild()
 
-        d.setContentView(page)
-        d.window?.setLayout(-1, -1)
-        @Suppress("DEPRECATION")
-        d.window?.statusBarColor = C.BG
-        edgeToEdge(d)
-        d.show()
+        // מה חדש בגרסה המותקנת
+        val news = ouiCard()
+        news.addView(text("מה חדש", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), 0) })
+        ouiText(news, whatsNewText(null) ?: "אין פירוט לגרסה הזו")
+        ouiAdd(body, news)
     }
 
     private fun hhmm(min: Int) = "%02d:%02d".format(min / 60, min % 60)
@@ -2285,9 +2240,26 @@ class MainActivity : Activity() {
     }
 
     @SuppressLint("BatteryLife")
+    /**
+     * סוללה: אם עוד לא מוחרגת - בקשת המערכת. אם כבר מוחרגת (או שהבקשה לא נפתחת, כמו בחלק ממכשירי סמסונג)
+     * - פרטי האפליקציה, שם "סוללה" ← "ללא הגבלה". כך לחיצה תמיד פותחת משהו
+     */
     private fun openBatterySettings() {
-        startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-            .setData(Uri.parse("package:$packageName")))
+        val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+        if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+            try {
+                startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                    .setData(Uri.parse("package:$packageName")))
+                return
+            } catch (_: Exception) { }
+        }
+        openAppDetails()
+    }
+
+    private fun openAppDetails() {
+        try {
+            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:$packageName")))
+        } catch (_: Exception) { }
     }
 
     private fun openNotificationSettings() {
@@ -2332,22 +2304,37 @@ class MainActivity : Activity() {
             .show()
     }
 
+    /**
+     * "הצגה מעל אפליקציות אחרות". canDrawOverlays לפעמים מחזיר "לא" גם כשמופעל (במיוחד מיד אחרי
+     * שחוזרים מההגדרות) - לכן בודקים גם ישירות בהרשאות המערכת (AppOps)
+     */
+    private fun overlayAllowed(): Boolean {
+        if (Settings.canDrawOverlays(this)) return true
+        return try {
+            val ops = getSystemService(APP_OPS_SERVICE) as android.app.AppOpsManager
+            @Suppress("DEPRECATION")
+            ops.checkOpNoThrow(android.app.AppOpsManager.OPSTR_SYSTEM_ALERT_WINDOW,
+                android.os.Process.myUid(), packageName) == android.app.AppOpsManager.MODE_ALLOWED
+        } catch (_: Exception) { false }
+    }
+
+    /** הרשאת התראה במסך מלא (אנדרואיד 14 ומעלה) */
+    private fun fullScreenIntentAllowed(): Boolean =
+        Build.VERSION.SDK_INT < 34 || (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).canUseFullScreenIntent()
+
+    /** מסך מלא תקין רק כששתי ההרשאות מופעלות */
+    private fun fullScreenOk() = overlayAllowed() && fullScreenIntentAllowed()
+
     private fun openFullScreenSettings() {
-        // "הצגה מעל אפליקציות אחרות" - מאפשר לקפוץ במסך מלא גם כשהטלפון בשימוש
-        if (!Settings.canDrawOverlays(this)) {
+        // קודם מה שחסר: הצגה מעל אפליקציות, ואז התראה במסך מלא.
+        // אם הכל מופעל - חוזרים למסך "הצגה מעל אפליקציות" (ולא להגדרות ההתראות)
+        if (!overlayAllowed() || fullScreenIntentAllowed()) {
             startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
                 .setData(Uri.parse("package:$packageName")))
             return
         }
-        if (Build.VERSION.SDK_INT >= 34) {
-            val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            if (!nm.canUseFullScreenIntent()) {
-                startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
-                    .setData(Uri.parse("package:$packageName")))
-                return
-            }
-        }
-        openNotificationSettings()
+        startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
+            .setData(Uri.parse("package:$packageName")))
     }
 }
 
