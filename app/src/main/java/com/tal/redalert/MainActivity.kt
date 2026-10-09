@@ -477,7 +477,7 @@ class MainActivity : Activity() {
         askPermissions()
         showWhatsNewIfUpdated()
         // אחרי החלפת ערכת צבעים (האפליקציה נטענת מחדש) - חוזרים לעמוד התצוגה
-        if (reopenDisplay) { reopenDisplay = false; ui.post { showSettings(); showDisplay() } }
+        if (reopenDisplay) { reopenDisplay = false; ui.post { showSettings() } }
         // טעינת נתוני האזורים ברקע, כדי שהמסך לא ייתקע בפעם הראשונה
         Thread { try { AreaData.areas(this) } catch (_: Exception) { } }.start()
     }
@@ -1167,13 +1167,16 @@ class MainActivity : Activity() {
         parent.addView(text(label, 13f, if (sel) Color.parseColor("#5AA9FF") else Color.parseColor("#AAAAAA"), bold = sel).apply {
             gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(8))
         }, LinearLayout.LayoutParams(-1, -2))
-        parent.addView(View(this).apply {
+        // כפתור בחירה כמו בסמסונג: טבעת, ובנבחר - נקודה כחולה בתוכה עם רווח
+        parent.addView(FrameLayout(this).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setStroke(dp(2), Color.parseColor(if (sel) "#3E82F7" else "#555555"))
-                if (sel) setColor(Color.parseColor("#3E82F7"))
+                setStroke(dp(2), Color.parseColor(if (sel) "#3E82F7" else "#6E6E73"))
             }
-        }, LinearLayout.LayoutParams(dp(18), dp(18)))
+            if (sel) addView(View(this@MainActivity).apply {
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#3E82F7")) }
+            }, FrameLayout.LayoutParams(dp(10), dp(10), Gravity.CENTER))
+        }, LinearLayout.LayoutParams(dp(20), dp(20)))
     }
 
     /** הדמיה קטנה של סוג תצוגת ההתרעה: 0 מסך מלא · 1 פופ-אפ · 2 כרטיס · 3 ממוזער */
@@ -1207,11 +1210,12 @@ class MainActivity : Activity() {
         return f
     }
 
-    private fun setTheme(d: android.app.Dialog, mode: Int) {
+    /** ערכת הצבעים נשמרת מיד, ומוחלת (טעינה מחדש) רק ביציאה מעמוד התצוגה - בלי קפיצות בזמן הבחירה */
+    private var themeAtOpen = -1
+    private fun setTheme(d: android.app.Dialog, mode: Int, rebuild: () -> Unit) {
         if (Prefs.themeMode(this) == mode) return
         Prefs.setThemeMode(this, mode)
-        reopenDisplay = true
-        d.dismiss(); recreate()
+        rebuild()
     }
 
     /** עמוד "תצוגה" בסגנון One UI (כמו בהגדרות של סמסונג) */
@@ -1281,14 +1285,14 @@ class MainActivity : Activity() {
                 }
                 addView(box, LinearLayout.LayoutParams(dp(76), dp(150)))
                 addLabelRadio(this, label, sel)
-                setOnClickListener { setTheme(d, value) }
+                setOnClickListener { setTheme(d, value) { rebuild() } }
             }
             val sys = mode == 2
             pick.addView(preview(false, "חשוך", !sys && mode == 0, 0), LinearLayout.LayoutParams(0, -2, 1f))
             pick.addView(preview(true, "בהיר", !sys && mode == 1, 1), LinearLayout.LayoutParams(0, -2, 1f))
             theme.addView(pick)
             divider(theme)
-            row(theme, "לפי המערכת", on = sys, sep = false) { setTheme(d, if (sys) 0 else 2) }
+            row(theme, "לפי המערכת", on = sys, sep = false) { setTheme(d, if (sys) 0 else 2) { rebuild() } }
             addCard(theme)
             note("כשמופעל - בהיר או חשוך לפי הגדרת הטלפון")
             // סוג תצוגת התרעה: הדמיה קטנה של כל סוג + בחירה
@@ -1322,7 +1326,10 @@ class MainActivity : Activity() {
             addCard(more)
             note("מזג אוויר וברכה בכרטיס השעון במסך הראשי")
         }
+        themeAtOpen = Prefs.themeMode(this)
         rebuild()
+        // יציאה מהעמוד: אם ערכת הצבעים השתנתה - טוענים מחדש וחוזרים להגדרות
+        d.setOnDismissListener { if (Prefs.themeMode(this) != themeAtOpen) { reopenDisplay = true; recreate() } }
         d.setContentView(page)
         d.window?.setLayout(-1, -1)
         @Suppress("DEPRECATION")
