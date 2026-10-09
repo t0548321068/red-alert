@@ -32,11 +32,12 @@ class AlertWidget : AppWidgetProvider() {
         fun setAlertBox(v: RemoteViews, j: org.json.JSONObject?, box: Int, icon: Int, title: Int, note: Int, area: Int) {
             if (j == null) { v.setViewVisibility(box, android.view.View.GONE); return }
             val level = j.optInt("level")
-            val (bg, ic) = when (level) {
-                AlertService.LEVEL_PRE -> R.drawable.widget_pre_bg to R.drawable.ic_list_pre
-                AlertService.LEVEL_END -> R.drawable.widget_end_bg to R.drawable.ic_list_end
-                else -> R.drawable.widget_alert_bg to R.drawable.ic_list_siren
+            val bg = when (level) {
+                AlertService.LEVEL_PRE -> R.drawable.widget_pre_bg
+                AlertService.LEVEL_END -> R.drawable.widget_end_bg
+                else -> R.drawable.widget_alert_bg
             }
+            val ic = AlertUi.icon(j.optString("title"), level)
             val (t1, t2) = AlertUi.head(j.optString("title"), level)
             v.setViewVisibility(box, android.view.View.VISIBLE)
             v.setInt(box, "setBackgroundResource", bg)

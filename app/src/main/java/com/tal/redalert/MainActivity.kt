@@ -205,11 +205,7 @@ class MainActivity : Activity() {
                 setColor(Color.parseColor(AlertUi.color(level))); cornerRadius = dp(28).toFloat() }
             val (t1, t2) = AlertUi.head(j.optString("title"), level)
             // אייקון מעל הכותרת לפי סוג ההתרעה
-            val icon = when (level) {
-                AlertService.LEVEL_PRE -> R.drawable.ic_list_pre
-                AlertService.LEVEL_END -> R.drawable.ic_list_end
-                else -> R.drawable.ic_list_siren
-            }
+            val icon = AlertUi.icon(j.optString("title"), level)
             alertCard.addView(android.widget.ImageView(this).apply { setImageResource(icon) },
                 LinearLayout.LayoutParams(dp(30), dp(30)).apply { gravity = Gravity.CENTER_HORIZONTAL })
             alertCard.addView(text(t1, 19f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER })
@@ -754,11 +750,12 @@ class MainActivity : Activity() {
                             .putExtra("focus", e.body).putExtra("focusTs", e.ts).putExtra("focusAll", true))
                     }
                 }
-                val (col, icon) = when (e.level) {
-                    AlertService.LEVEL_PRE -> "#F08C00" to R.drawable.ic_list_pre
-                    AlertService.LEVEL_END -> "#2E7D32" to R.drawable.ic_list_end
-                    else -> "#E53935" to R.drawable.ic_list_siren
+                val col = when (e.level) {
+                    AlertService.LEVEL_PRE -> "#F08C00"
+                    AlertService.LEVEL_END -> "#2E7D32"
+                    else -> "#E53935"
                 }
+                val icon = AlertUi.icon(e.title, e.level)
                 row.addView(FrameLayout(this).apply {
                     background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(col)) }
                     addView(android.widget.ImageView(this@MainActivity).apply { setImageResource(icon) },
