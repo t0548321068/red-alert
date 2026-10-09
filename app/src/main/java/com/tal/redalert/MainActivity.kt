@@ -1234,7 +1234,7 @@ class MainActivity : Activity() {
         fun note(t: String) = body.addView(text(t, 11f, Color.parseColor("#AAAAAA")).apply { setPadding(dp(26), 0, dp(26), dp(14)) })
         fun divider(c: LinearLayout) = c.addView(View(this).apply { setBackgroundColor(Color.parseColor("#2A2A2C")) }, LinearLayout.LayoutParams(-1, dp(1)))
         /** שורה: שם, מצב בכחול, ומתג (אם יש) */
-        fun row(c: LinearLayout, title: String, sub: String = "", on: Boolean? = null, click: () -> Unit) {
+        fun row(c: LinearLayout, title: String, sub: String = "", on: Boolean? = null, sep: Boolean = true, click: () -> Unit) {
             val r = LinearLayout(this).apply {
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(18), dp(15), dp(18), dp(15))
@@ -1245,7 +1245,7 @@ class MainActivity : Activity() {
             if (sub.isNotEmpty()) t.addView(text(sub, 12f, blue).apply { setPadding(0, dp(2), 0, 0) })
             r.addView(t, LinearLayout.LayoutParams(0, -2, 1f))
             if (on != null) {
-                r.addView(View(this).apply { setBackgroundColor(Color.parseColor("#3A3A3C")) },
+                if (sep) r.addView(View(this).apply { setBackgroundColor(Color.parseColor("#3A3A3C")) },
                     LinearLayout.LayoutParams(dp(1), dp(26)).apply { setMargins(dp(12), 0, dp(12), 0) })
                 r.addView(android.widget.Switch(this).apply {
                     isChecked = on; isClickable = false
@@ -1286,7 +1286,7 @@ class MainActivity : Activity() {
             pick.addView(preview(true, "בהיר", !sys && mode == 1, 1), LinearLayout.LayoutParams(0, -2, 1f))
             theme.addView(pick)
             divider(theme)
-            row(theme, "לפי המערכת", on = sys) { setTheme(d, if (sys) 0 else 2) }
+            row(theme, "לפי המערכת", on = sys, sep = false) { setTheme(d, if (sys) 0 else 2) }
             addCard(theme)
             note("כשמופעל - בהיר או חשוך לפי הגדרת הטלפון")
             // סוג תצוגת התרעה: הדמיה קטנה של כל סוג + בחירה
@@ -1307,7 +1307,10 @@ class MainActivity : Activity() {
             addCard(style)
             // שעון ותאריך, מזג אוויר וברכה - בכרטיס אחד
             val more = card()
-            row(more, "שעון ותאריך") { showClockSettings() }
+            row(more, "שעון") { showClockSettings() }
+            divider(more)
+            row(more, "תאריך", on = Prefs.showDate(this)) {
+                Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); rebuild() }
             divider(more)
             row(more, "מזג אוויר", on = Prefs.showWeather(this)) {
                 Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); rebuild() }
