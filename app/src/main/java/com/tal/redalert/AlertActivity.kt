@@ -35,7 +35,7 @@ open class AlertActivity : Activity() {
             val t = AlertUi.timer(level, shelterSec, firedAt) ?: return
             cdLabel?.text = t.first
             cdLabel?.visibility = if (t.first.isEmpty()) View.GONE else View.VISIBLE
-            cd.textSize = if (t.first.isEmpty()) 20f else if (popup) 42f else 52f
+            cd.textSize = if (t.first.isEmpty()) 20f else if (popup) 32f else 38f
             cd.text = t.second
             if (t.first.isNotEmpty()) ui.postDelayed(this, 250)
         }
@@ -93,12 +93,9 @@ open class AlertActivity : Activity() {
                 end -> R.drawable.ic_list_end
                 else -> R.drawable.ic_list_siren
             }
-            val circle = dpx(if (popup) 52 else 68)
-            addView(FrameLayout(this@AlertActivity).apply {
-                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(0x33FFFFFF) }
-                addView(ImageView(this@AlertActivity).apply { setImageResource(icon) },
-                    FrameLayout.LayoutParams(circle * 55 / 100, circle * 55 / 100, Gravity.CENTER))
-            }, LinearLayout.LayoutParams(circle, circle).apply { bottomMargin = dpx(8) })
+            val size = dpx(if (popup) 34 else 44)
+            addView(ImageView(this@AlertActivity).apply { setImageResource(icon) },
+                LinearLayout.LayoutParams(size, size).apply { bottomMargin = dpx(8) })
             addView(tv(headTitle, if (popup) 22f else 28f, bold = true))
             addView(tv(headNote, if (popup) 16f else 20f).apply { setPadding(0, dpx(2), 0, 0) })
         }
@@ -124,10 +121,10 @@ open class AlertActivity : Activity() {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 background = card(r = if (popup) 22 else 28)
-                setPadding(dpx(12), dpx(10), dpx(12), dpx(12))
+                setPadding(dpx(12), dpx(6), dpx(12), dpx(8))
             }
             cdLabel = tv("", 13f)
-            countdown = tv("", if (popup) 42f else 52f).apply {
+            countdown = tv("", if (popup) 32f else 38f).apply {
                 typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
                 includeFontPadding = false
             }
