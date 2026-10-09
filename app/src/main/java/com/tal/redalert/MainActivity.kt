@@ -1232,7 +1232,9 @@ class MainActivity : Activity() {
         fun card() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = graphite(26); clipToOutline = true }
         fun addCard(c: View) = body.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(8)) })
         fun note(t: String) = body.addView(text(t, 11f, Color.parseColor("#AAAAAA")).apply { setPadding(dp(26), 0, dp(26), dp(14)) })
-        fun divider(c: LinearLayout) = c.addView(View(this).apply { setBackgroundColor(Color.parseColor("#2A2A2C")) }, LinearLayout.LayoutParams(-1, dp(1)))
+        // קו מפריד עם שוליים מהצדדים (לא מקצה לקצה), כמו בהגדרות של סמסונג
+        fun divider(c: LinearLayout) = c.addView(View(this).apply { setBackgroundColor(Color.parseColor("#2A2A2C")) },
+            LinearLayout.LayoutParams(-1, dp(1)).apply { setMargins(dp(18), 0, dp(18), 0) })
         /** שורה: שם, מצב בכחול, ומתג (אם יש) */
         fun row(c: LinearLayout, title: String, sub: String = "", on: Boolean? = null, sep: Boolean = true, click: () -> Unit) {
             val r = LinearLayout(this).apply {
