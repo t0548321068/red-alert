@@ -23,6 +23,7 @@ object NavBar {
                 setStroke(dp(1), Color.parseColor("#1FFFFFFF"))
             }
             elevation = dp(6).toFloat()
+            clipToPadding = false   // הלשונית האחרונה חופפת 6 לתוך הריפוד - שלא תיחתך
         }
         // רוחב לשונית: (רוחב המסך - 32 - 10 + 24) / 5, לכל היותר 83
         val screenDp = c.resources.displayMetrics.widthPixels / c.resources.displayMetrics.density
