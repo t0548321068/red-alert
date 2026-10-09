@@ -241,7 +241,7 @@ class AlertService : Service() {
         // השירות רק עכשיו עלה, ולא בלחיצה ידנית - התראה "מאזין" עם המנגינה
         if (fresh) {
             fresh = false
-            if (intent?.getBooleanExtra("manual", false) != true) playAppChime()   // רק מנגינה - בלי התראה כפולה של "צבע אדום פעיל"
+            // בלי מנגינה ובלי התראה כשההאזנה חוזרת לבד (אחרי עדכון / הדלקת הטלפון)
         }
         if (intent?.action == ACTION_WATCHDOG) { onWatchdog(); return START_STICKY }
         if (intent?.action == ACTION_PUSH) {
