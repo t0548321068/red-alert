@@ -87,6 +87,18 @@ open class AlertActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(dpx(16), dpx(if (popup) 16 else 36), dpx(16), dpx(if (popup) 10 else 14))
+            // אייקון מעל הכותרת לפי סוג ההתרעה (אותם אייקונים כמו ברשימת ההתרעות)
+            val icon = when {
+                pre -> R.drawable.ic_list_pre
+                end -> R.drawable.ic_list_end
+                else -> R.drawable.ic_list_siren
+            }
+            val circle = dpx(if (popup) 52 else 68)
+            addView(FrameLayout(this@AlertActivity).apply {
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(0x33FFFFFF) }
+                addView(ImageView(this@AlertActivity).apply { setImageResource(icon) },
+                    FrameLayout.LayoutParams(circle * 55 / 100, circle * 55 / 100, Gravity.CENTER))
+            }, LinearLayout.LayoutParams(circle, circle).apply { bottomMargin = dpx(8) })
             addView(tv(headTitle, if (popup) 22f else 28f, bold = true))
             addView(tv(headNote, if (popup) 16f else 20f).apply { setPadding(0, dpx(2), 0, 0) })
         }
