@@ -35,7 +35,7 @@ open class AlertActivity : Activity() {
             val t = AlertUi.timer(level, shelterSec, firedAt) ?: return
             cdLabel?.text = t.first
             cdLabel?.visibility = if (t.first.isEmpty()) View.GONE else View.VISIBLE
-            cd.textSize = if (t.first.isEmpty()) 20f else if (popup) 32f else 38f
+            cd.textSize = if (t.first.isEmpty()) 20f else 38f
             cd.text = t.second
             if (t.first.isNotEmpty()) ui.postDelayed(this, 250)
         }
@@ -124,7 +124,7 @@ open class AlertActivity : Activity() {
                 setPadding(dpx(12), 0, dpx(12), 0)
             }
             cdLabel = tv("", 13f)
-            countdown = tv("", if (popup) 32f else 38f).apply {
+            countdown = tv("", 38f).apply {
                 typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
                 includeFontPadding = false
             }
