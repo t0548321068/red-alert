@@ -654,26 +654,107 @@ class MainActivity : Activity() {
      * מסך "התראות אחרונות": כל ההתראות שהיו בארץ (החודש האחרון, מהארכיון של פיקוד העורף),
      * בלי סינון. לחיצה על התראה - המפה על האזור שלה.
      */
-    private fun showRecent() = fullPage("התראות אחרונות", navTab = 1) { c ->
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(4), dp(14), dp(4))
-            background = graphite(20)
+    /** עמוד בסגנון One UI: כותרת גדולה, תוכן נגלל, והתפריט התחתון (navTab = הלשונית הנבחרת) */
+    private fun onePage(title: String, navTab: Int, build: (LinearLayout) -> Unit) {
+        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
+        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val page = ScrollView(this).apply {
+            setBackgroundColor(Color.BLACK)
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            addView(body)
         }
-        c.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        page.setOnApplyWindowInsetsListener { v, insets ->
+            @Suppress("DEPRECATION")
+            v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
+            insets
+        }
+        body.addView(text(title, 30f, Color.WHITE, bold = true).apply { setPadding(dp(24), dp(64), dp(24), dp(12)) })
+        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        body.addView(content)
+        body.addView(View(this), LinearLayout.LayoutParams(-1, dp(90)))   // מקום לתפריט התחתון
+        build(content)
+        val frame = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
+        frame.addView(page, FrameLayout.LayoutParams(-1, -1))
+        val nav = bottomNav(navTab) { i -> d.dismiss(); openTab(i) }
+        frame.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(10) })
+        frame.setOnApplyWindowInsetsListener { _, insets ->
+            @Suppress("DEPRECATION")
+            (nav.layoutParams as FrameLayout.LayoutParams).bottomMargin = insets.systemWindowInsetBottom + dp(10)
+            nav.requestLayout()
+            page.dispatchApplyWindowInsets(insets)
+        }
+        d.setContentView(frame)
+        d.window?.setLayout(-1, -1)
+        @Suppress("DEPRECATION")
+        d.window?.statusBarColor = Color.BLACK
+        d.show()
+    }
+
+    /** התראות אחרונות בסגנון One UI: מחולקות לימים, כל יום בכרטיס */
+    private fun showRecent() = onePage("התראות אחרונות", 1) { c ->
         val cached = archiveCache
-        if (cached != null) { fillHistory(card, Int.MAX_VALUE, cached, national = true); return@fullPage }
-        card.addView(text("טוען את כל ההתראות…", 14f, Color.parseColor("#AAAAAA")).apply { setPadding(0, dp(12), 0, dp(12)) })
+        if (cached != null) { fillRecent(c, cached); return@onePage }
+        val loading = text("טוען את כל ההתראות…", 14f, Color.parseColor("#999999")).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) }
+        c.addView(loading)
         Thread {
             val list = try { OrefArchive.fetch() } catch (_: Exception) { emptyList() }
                 .ifEmpty { Prefs.feed(this) }   // אין חיבור לארכיון - מה שהאפליקציה שמרה
             runOnUiThread {
                 archiveCache = list
-                card.removeAllViews()
-                fillHistory(card, Int.MAX_VALUE, list, national = true)
+                c.removeAllViews()
+                fillRecent(c, list)
             }
         }.start()
     }
+
+    private fun fillRecent(c: LinearLayout, items: List<Prefs.Entry>) {
+        val muted = Color.parseColor("#999999")
+        if (items.isEmpty()) {
+            c.addView(text("אין התראות עדיין", 14f, muted).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) })
+            return
+        }
+        items.groupBy { if (it.ts > 0) dayLabel(it.ts) else "" }.forEach { (day, list) ->
+            if (day.isNotEmpty()) c.addView(text(day, 13f, muted).apply { setPadding(dp(28), dp(14), dp(28), dp(6)) })
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = graphite(28)
+                clipToOutline = true
+            }
+            list.forEachIndexed { i, e ->
+                if (i > 0) card.addView(View(this).apply { setBackgroundColor(Color.parseColor("#262628")) },
+                    LinearLayout.LayoutParams(-1, dp(1)))
+                val row = LinearLayout(this).apply {
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(16), dp(12), dp(16), dp(12))
+                    // לחיצה: המפה על האזורים של ההתראה
+                    setOnClickListener {
+                        startActivity(Intent(this@MainActivity, MapActivity::class.java)
+                            .putExtra("focus", e.body).putExtra("focusTs", e.ts).putExtra("focusAll", true))
+                    }
+                }
+                val (col, icon) = when (e.level) {
+                    AlertService.LEVEL_PRE -> "#F08C00" to R.drawable.ic_list_pre
+                    AlertService.LEVEL_END -> "#2E7D32" to R.drawable.ic_list_end
+                    else -> "#E53935" to R.drawable.ic_list_siren
+                }
+                row.addView(FrameLayout(this).apply {
+                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(col)) }
+                    addView(android.widget.ImageView(this@MainActivity).apply { setImageResource(icon) },
+                        FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))
+                }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(12) })
+                val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+                texts.addView(text(if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title, 15f, Color.WHITE))
+                texts.addView(text(e.body, 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
+                row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
+                row.addView(text(if (e.ts > 0) java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
+                    .format(java.util.Date(e.ts)) else e.time.take(5), 12f, muted),
+                    LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
+                card.addView(row)
+            }
+            c.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), 0) })
+        }
+    }
+
     /** נטען פעם אחת לכל פתיחה של האפליקציה */
     private var archiveCache: List<Prefs.Entry>? = null
 
