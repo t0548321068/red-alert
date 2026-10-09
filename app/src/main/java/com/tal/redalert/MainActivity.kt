@@ -214,18 +214,18 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams(dp(30), dp(30)).apply { gravity = Gravity.CENTER_HORIZONTAL })
             alertCard.addView(text(t1, 19f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER })
             alertCard.addView(text(t2, 14f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER })
+            val body = j.optString("body")
+            if (body.isNotEmpty()) alertCard.addView(text(body, 12f, Color.WHITE).apply {
+                gravity = Gravity.CENTER; maxLines = 2; ellipsize = TextUtils.TruncateAt.END
+                setPadding(dp(10), dp(3), dp(10), dp(3))
+                background = GradientDrawable().apply { setColor(Color.parseColor("#33FFFFFF")); cornerRadius = dp(14).toFloat() }
+            }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(6); bottomMargin = dp(2) })
             alertCardLabel = null; alertCardTimer = null
             if (level == AlertService.LEVEL_ALERT) {
                 alertCardLabel = text("", 13f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER; setPadding(0, dp(4), 0, 0) }
                 alertCardTimer = text("", 38f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER; includeFontPadding = false }
                 alertCard.addView(alertCardLabel); alertCard.addView(alertCardTimer)
             }
-            val body = j.optString("body")
-            if (body.isNotEmpty()) alertCard.addView(text(body, 12f, Color.WHITE).apply {
-                gravity = Gravity.CENTER; maxLines = 2; ellipsize = TextUtils.TruncateAt.END
-                setPadding(dp(10), dp(3), dp(10), dp(3))
-                background = GradientDrawable().apply { setColor(Color.parseColor("#33FFFFFF")); cornerRadius = dp(14).toFloat() }
-            }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(6) })
             val src = j.optString("source")
             if (src.isNotEmpty()) alertCard.addView(text("מקור ההתרעה: $src", 12f, Color.parseColor("#E6FFFFFF"))
                 .apply { gravity = Gravity.CENTER; setPadding(0, dp(5), 0, 0) })
@@ -735,7 +735,7 @@ class MainActivity : Activity() {
             c.addView(text("אין התראות עדיין", 14f, muted).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) })
             return
         }
-        items.groupBy { if (it.ts > 0) dayLabel(it.ts) else "" }.forEach { (day, list) ->
+        items.groupBy { if (it.ts > 0) fullDayLabel(it.ts) else "" }.forEach { (day, list) ->
             if (day.isNotEmpty()) c.addView(text(day, 13f, muted).apply { setPadding(dp(28), dp(14), dp(28), dp(6)) })
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -768,7 +768,7 @@ class MainActivity : Activity() {
                 texts.addView(text(if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title, 15f, C.TEXT))
                 texts.addView(text(e.body, 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
                 row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
-                row.addView(text(if (e.ts > 0) java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
+                row.addView(text(if (e.ts > 0) java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
                     .format(java.util.Date(e.ts)) else e.time.take(5), 12f, muted),
                     LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
                 card.addView(row)
@@ -779,53 +779,6 @@ class MainActivity : Activity() {
 
     /** נטען פעם אחת לכל פתיחה של האפליקציה */
     private var archiveCache: List<Prefs.Entry>? = null
-
-    private fun fillHistory(historyBox: LinearLayout, count: Int,
-                            source: List<Prefs.Entry> = Prefs.history(this), national: Boolean = false) {
-        val items = source.take(count)
-        val muted = C.MUTED2
-        if (items.isEmpty()) {
-            historyBox.addView(text("אין התראות עדיין", 14f, muted).apply { setPadding(0, dp(8), 0, dp(10)) })
-            return
-        }
-        items.forEachIndexed { i, e ->
-            val row = LinearLayout(this).apply {
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dp(10), 0, dp(10))
-                // לחיצה: המפה על האזורים של ההתראה
-                setOnClickListener {
-                    startActivity(Intent(this@MainActivity, MapActivity::class.java)
-                        .putExtra("focus", e.body).putExtra("focusTs", e.ts)
-                        .putExtra("focusAll", national))
-                }
-            }
-            val barColor = when (e.level) {
-                AlertService.LEVEL_PRE -> Color.parseColor("#F08C00")
-                AlertService.LEVEL_END -> C.GREEN
-                else -> C.RED
-            }
-            // פס צבע לפי סוג ההתראה
-            row.addView(View(this).apply {
-                background = GradientDrawable().apply { cornerRadius = dp(2).toFloat(); setColor(barColor) }
-            }, LinearLayout.LayoutParams(dp(4), dp(34)).apply { marginEnd = dp(10) })
-            val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-            val shortTitle = if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title
-            texts.addView(text(shortTitle, 15f, C.TEXT))
-            texts.addView(text(e.body, 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
-            row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
-            // שעה, ומתחת: היום / אתמול / תאריך
-            val whenCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.END }
-            if (e.ts > 0) {
-                whenCol.addView(text(java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
-                    .format(java.util.Date(e.ts)), 12f, muted))
-                whenCol.addView(text(dayLabel(e.ts), 12f, muted))
-            } else whenCol.addView(text(e.time.take(5), 12f, muted))
-            row.addView(whenCol, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
-            historyBox.addView(row)
-            if (i < items.size - 1) historyBox.addView(View(this).apply { setBackgroundColor(C.LINE) },
-                LinearLayout.LayoutParams(-1, dp(1)))
-        }
-    }
 
     /** "היום" / "אתמול" / תאריך */
     private fun dayLabel(ts: Long): String {
@@ -839,6 +792,32 @@ class MainActivity : Activity() {
             key(k) -> "אתמול"
             else -> "%02d/%02d".format(e.get(java.util.Calendar.DAY_OF_MONTH), e.get(java.util.Calendar.MONTH) + 1)
         }
+    }
+
+    /** כותרת יום ב"התרעות אחרונות": כינוי (היום / אתמול / שלשום / לפני שבוע...) + תאריך מלא */
+    private fun fullDayLabel(ts: Long): String {
+        val date = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US).format(java.util.Date(ts))
+        fun midnight(ms: Long) = java.util.Calendar.getInstance().apply {
+            timeInMillis = ms
+            set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        // הפרש בימים קלנדריים (עיגול - בגלל מעבר שעון קיץ/חורף)
+        val days = Math.round((midnight(System.currentTimeMillis()) - midnight(ts)) / 86_400_000.0).toInt()
+        val nick = when {
+            days <= 0 -> "היום"
+            days == 1 -> "אתמול"
+            days == 2 -> "שלשום"
+            days < 7 -> ""
+            days < 14 -> "לפני שבוע"
+            days < 21 -> "לפני שבועיים"
+            days < 30 -> "לפני 3 שבועות"
+            days < 60 -> "לפני חודש"
+            days < 90 -> "לפני חודשיים"
+            days < 120 -> "לפני 3 חודשים"
+            else -> ""
+        }
+        return if (nick.isEmpty()) date else "$nick · $date"
     }
 
     /** הוספה: יישוב בודד (חיפוש) או אזור שלם (מחוז של פיקוד העורף) */
@@ -1528,18 +1507,6 @@ class MainActivity : Activity() {
             feedLine.text = t
             feedLine.setTextColor(if (t.startsWith("🇮🇱")) C.MUTED else C.TEXT)
         }
-    }
-
-    private fun showFeed() {
-        AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("🇮🇱 פיד ארצי · 24 שעות")
-            .setMessage(FeedText.day(this))
-            .setNeutralButton("היסטוריה מלאה") { _, _ ->
-                startActivity(Intent(this, HistoryActivity::class.java))
-            }
-            .setPositiveButton("סגור", null)
-            .show()
     }
 
     private fun updateIndicators() {

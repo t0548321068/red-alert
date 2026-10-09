@@ -213,7 +213,6 @@ object Prefs {
 
     // ---- ספירה לאחור פעילה (לווידג'ט) ----
     fun countdownUntil(c: Context) = sp(c).getLong("cdUntil", 0L)
-    fun countdownTitle(c: Context) = sp(c).getString("cdTitle", "") ?: ""
     fun setCountdown(c: Context, until: Long, title: String) =
         sp(c).edit().putLong("cdUntil", until).putString("cdTitle", title).commit()
 
