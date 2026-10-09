@@ -1050,7 +1050,7 @@ class MainActivity : Activity() {
             insets
         }
         val cats = listOf(
-            "תצוגה" to { displayRows() },
+            "תצוגה" to { listOf(Row("🎨", "תצוגה", { "ערכת צבעים · סוג תצוגת התרעה · שעון" }) { showDisplay() }) },
             "התראות" to { alertsRows() },
             "הרשאות וטלפון" to { phoneRows() },
             "כללי" to { generalRows() }
@@ -1156,6 +1156,122 @@ class MainActivity : Activity() {
             Row("🔕", "עקיפת נא לא להפריע", { dndState() }) { showDnd() },
             Row("🕯", "מצב שבת", { Shabbat.label(Prefs.shabbatMode(this)) }) { chooseShabbat() }
         )
+    }
+
+    /** עמוד "תצוגה" בסגנון One UI (כמו בהגדרות של סמסונג) */
+    private fun showDisplay() {
+        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
+        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(30)) }
+        val page = ScrollView(this).apply {
+            setBackgroundColor(Color.BLACK)
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            addView(body)
+            setOnApplyWindowInsetsListener { v, insets ->
+                @Suppress("DEPRECATION")
+                v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
+                insets
+            }
+        }
+        val blue = Color.parseColor("#5AA9FF")
+        fun card() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = graphite(26); clipToOutline = true }
+        fun addCard(c: View) = body.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(8)) })
+        fun note(t: String) = body.addView(text(t, 11f, Color.parseColor("#AAAAAA")).apply { setPadding(dp(26), 0, dp(26), dp(14)) })
+        fun divider(c: LinearLayout) = c.addView(View(this).apply { setBackgroundColor(Color.parseColor("#2A2A2C")) }, LinearLayout.LayoutParams(-1, dp(1)))
+        /** שורה: שם, מצב בכחול, ומתג (אם יש) */
+        fun row(c: LinearLayout, title: String, sub: String = "", on: Boolean? = null, click: () -> Unit) {
+            val r = LinearLayout(this).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(18), dp(15), dp(18), dp(15))
+                setOnClickListener { click() }
+            }
+            val t = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            t.addView(text(title, 16f, Color.WHITE))
+            if (sub.isNotEmpty()) t.addView(text(sub, 12f, blue).apply { setPadding(0, dp(2), 0, 0) })
+            r.addView(t, LinearLayout.LayoutParams(0, -2, 1f))
+            if (on != null) {
+                r.addView(View(this).apply { setBackgroundColor(Color.parseColor("#3A3A3C")) },
+                    LinearLayout.LayoutParams(dp(1), dp(26)).apply { setMargins(dp(12), 0, dp(12), 0) })
+                r.addView(android.widget.Switch(this).apply {
+                    isChecked = on; isClickable = false
+                    thumbTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+                    trackTintList = android.content.res.ColorStateList.valueOf(Color.parseColor(if (on) "#3E82F7" else "#5A5A5E"))
+                    trackTintMode = android.graphics.PorterDuff.Mode.SRC
+                })
+            }
+            c.addView(r)
+        }
+        fun rebuild() {
+            body.removeAllViews()
+            // כותרת עם חזרה
+            body.addView(LinearLayout(this).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(18), dp(14), dp(18), dp(14))
+                addView(text("›", 26f, Color.WHITE).apply { setPadding(0, 0, dp(10), dp(4)); setOnClickListener { d.dismiss() } })
+                addView(text("תצוגה", 20f, Color.WHITE, bold = true))
+            })
+            // ערכת צבעים: תצוגה מקדימה חשוך / בהיר + "לפי המערכת"
+            val mode = Prefs.themeMode(this)
+            val theme = card()
+            val pick = LinearLayout(this).apply { gravity = Gravity.CENTER; setPadding(dp(10), dp(20), dp(10), dp(16)) }
+            fun preview(light: Boolean, label: String, sel: Boolean, value: Int) = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                val box = LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(dp(6), dp(6), dp(6), dp(6))
+                    background = GradientDrawable().apply { setColor(Color.parseColor(if (light) "#D9D9DC" else "#2B2B2E")); cornerRadius = dp(12).toFloat() }
+                    listOf(12, 26, 40, 26).forEach { h ->
+                        addView(View(this@MainActivity).apply {
+                            background = GradientDrawable().apply { setColor(Color.parseColor(if (light) "#BDBDC2" else "#3E3E42")); cornerRadius = dp(6).toFloat() }
+                        }, LinearLayout.LayoutParams(-1, dp(h)).apply { bottomMargin = dp(5) })
+                    }
+                }
+                addView(box, LinearLayout.LayoutParams(dp(76), dp(150)))
+                addView(text(label, 14f, if (sel) blue else Color.parseColor("#AAAAAA"), bold = sel).apply { setPadding(0, dp(8), 0, dp(8)) })
+                addView(View(this@MainActivity).apply {
+                    background = GradientDrawable().apply {
+                        shape = GradientDrawable.OVAL
+                        setStroke(dp(2), Color.parseColor(if (sel) "#3E82F7" else "#555555"))
+                        if (sel) setColor(Color.parseColor("#3E82F7"))
+                    }
+                }, LinearLayout.LayoutParams(dp(18), dp(18)))
+                setOnClickListener { if (Prefs.themeMode(this@MainActivity) != value) { Prefs.setThemeMode(this@MainActivity, value); d.dismiss(); recreate() } }
+            }
+            val sys = mode == 2
+            pick.addView(preview(false, "חשוך", !sys && mode == 0, 0), LinearLayout.LayoutParams(0, -2, 1f))
+            pick.addView(preview(true, "בהיר", !sys && mode == 1, 1), LinearLayout.LayoutParams(0, -2, 1f))
+            theme.addView(pick)
+            divider(theme)
+            row(theme, "לפי המערכת", on = sys) { Prefs.setThemeMode(this, if (sys) 0 else 2); d.dismiss(); recreate() }
+            addCard(theme)
+            note("כשמופעל - בהיר או חשוך לפי הגדרת הטלפון")
+            // סוג תצוגת התרעה
+            val style = card()
+            row(style, "סוג תצוגת התרעה", Prefs.ALERT_STYLES[Prefs.alertStyle(this)]) { chooseAlertStyle() }
+            addCard(style)
+            note("איך ההתרעה מוצגת: מסך מלא, פופ-אפ, כרטיס מעל השעון או ממוזער")
+            // שעון ותאריך
+            val clock = card()
+            row(clock, "שעון ותאריך") { showClockSettings() }
+            addCard(clock)
+            // מזג אוויר + ברכה
+            val more = card()
+            row(more, "מזג אוויר", on = Prefs.showWeather(this)) {
+                Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); rebuild() }
+            divider(more)
+            row(more, "ברכה", on = Prefs.showGreeting(this)) {
+                Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock(); rebuild() }
+            addCard(more)
+            note("מזג אוויר וברכה בכרטיס השעון במסך הראשי")
+        }
+        rebuild()
+        d.setContentView(page)
+        d.window?.setLayout(-1, -1)
+        @Suppress("DEPRECATION")
+        d.window?.statusBarColor = Color.BLACK
+        // חוזרים מחלון בחירה - מעדכנים את המצבים
+        d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
+        d.show()
     }
 
     private fun displayRows(): List<Row> {
