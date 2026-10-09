@@ -184,6 +184,9 @@ object Weather {
      * "שכונה, עיר" - קודם מ-OpenStreetMap (מחזיר שכונות בארץ באופן עקבי),
      * ואם אין תשובה - מהטלפון
      */
+    /** שם העיר בלבד (בלי שכונה) - קריאת רשת, להריץ מחוץ ל-UI thread */
+    fun cityName(c: Context, loc: Location): String = placeName(c, loc).substringAfterLast(", ")
+
     @Suppress("DEPRECATION")
     private fun placeName(c: Context, loc: Location): String {
         try {

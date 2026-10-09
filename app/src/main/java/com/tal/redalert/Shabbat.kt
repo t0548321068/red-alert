@@ -33,6 +33,29 @@ object Shabbat {
         return if (isHoly(day)) tzeit(day, lat, lon) else null
     }
 
+    /** השבת/החג הנוכחי או הקרוב: (כניסה, יציאה) לפי המיקום - כמו שמצב השבת האוטומטי משתמש */
+    fun nextWindow(c: Context, now: Long = System.currentTimeMillis()): Pair<Long, Long>? {
+        val (lat, lon) = where(c)
+        val base = cal(now)
+        for (i in -1..60) {
+            val day = (base.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, i) }
+            val prev = (day.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, -1) }
+            if (!isHoly(day) || isHoly(prev)) continue          // תחילת רצף של ימים קדושים
+            val start = sunset(prev, lat, lon, 90.833) - CANDLE_MIN * 60_000
+            var last = day
+            while (true) {
+                val next = (last.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 1) }
+                if (isHoly(next)) last = next else break        // חג שצמוד לשבת - יציאה אחת בסוף
+            }
+            val end = tzeit(last, lat, lon)
+            if (end > now) return start to end
+        }
+        return null
+    }
+
+    /** האם יש מיקום שמור (אחרת הזמנים לפי מרכז הארץ) */
+    fun hasLocation(c: Context): Boolean = try { Weather.lastLocation(c) != null } catch (_: Exception) { false }
+
     private fun where(c: Context): Pair<Double, Double> {
         val l = try { Weather.lastLocation(c) } catch (_: Exception) { null }
         return if (l != null) l.latitude to l.longitude else 31.78 to 35.0   // ברירת מחדל: מרכז הארץ
