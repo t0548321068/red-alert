@@ -348,7 +348,7 @@ class MainActivity : Activity() {
             if (!inSeries) Updater.check(this@MainActivity, silent = false)
             if (taps >= 7 && !Prefs.betaUnlocked(this@MainActivity) && Prefs.betaAllowed(this@MainActivity)) {
                 Prefs.setBetaUnlocked(this@MainActivity, true)
-                android.widget.Toast.makeText(this@MainActivity, "🧪 גרסאות בטא נפתחו (⚙)",
+                android.widget.Toast.makeText(this@MainActivity, "🧪 גרסאות בטא נפתחו (⚙ ← בדיקת עדכונים)",
                     android.widget.Toast.LENGTH_SHORT).show()
             }
         }
@@ -981,15 +981,107 @@ class MainActivity : Activity() {
     private var openCat = -1
 
     /** הגדרות: מגירה שנפתחת מצד ימין, כל קטגוריה נפתחת/נסגרת במקום */
+    /** מסך מצב שבת: בחירת מצב, זמני כניסה ויציאה, והסבר מה המצב עושה */
     private fun chooseShabbat() {
-        AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("🕯 מצב שבת")
-            .setSingleChoiceItems(arrayOf("כבוי", "דלוק", "אוטומטי – בשבת ובחג לפי המיקום"), Prefs.shabbatMode(this)) { d, i ->
-                Prefs.setShabbatMode(this, i); d.dismiss()
+        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
+        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val page = ScrollView(this).apply {
+            setBackgroundColor(C.BG)
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            addView(body)
+        }
+        page.setOnApplyWindowInsetsListener { v, insets ->
+            @Suppress("DEPRECATION")
+            v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
+            insets
+        }
+        fun card() = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = graphite(28)
+            setPadding(dp(18), dp(14), dp(18), dp(14))
+        }
+        fun cardLp() = LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(12)) }
+        fun header(t: String) = text(t, 13f, C.MUTED2).apply { setPadding(dp(28), dp(6), dp(28), dp(6)) }
+
+        fun rebuild() {
+            body.removeAllViews()
+            body.addView(text("🕯 מצב שבת", 30f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(64), dp(24), dp(12)) })
+
+            // מצב: כבוי / דלוק / אוטומטי
+            body.addView(header("מצב"))
+            val modes = card().apply { setPadding(dp(18), dp(4), dp(18), dp(4)) }
+            listOf(Shabbat.OFF to "כבוי", Shabbat.ON to "דלוק", Shabbat.AUTO to "אוטומטי – בשבת ובחג לפי המיקום")
+                .forEachIndexed { i, (mode, label) ->
+                    val sel = Prefs.shabbatMode(this) == mode
+                    val row = LinearLayout(this).apply {
+                        gravity = Gravity.CENTER_VERTICAL
+                        setPadding(0, dp(12), 0, dp(12))
+                        setOnClickListener { Prefs.setShabbatMode(this@MainActivity, mode); rebuild() }
+                    }
+                    row.addView(text(label, 16f, C.TEXT), LinearLayout.LayoutParams(0, -2, 1f))
+                    row.addView(text(if (sel) "●" else "○", 18f, if (sel) C.BLUE else C.MUTED))
+                    if (i > 0) modes.addView(View(this).apply { setBackgroundColor(C.LINE) }, LinearLayout.LayoutParams(-1, dp(1)))
+                    modes.addView(row)
+                }
+            body.addView(modes, cardLp())
+
+            // זמני השבת / החג הקרובים
+            val fmtDay = java.text.SimpleDateFormat("EEEE, d בMMMM", java.util.Locale("iw"))
+            val fmtTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
+            val w = try { Shabbat.nextWindow(this) } catch (_: Exception) { null }
+            val now = System.currentTimeMillis()
+            body.addView(header(if (w != null && now >= w.first) "עכשיו" else "השבת הקרובה"))
+            val times = card()
+            if (w == null) times.addView(text("לא הצלחנו לחשב את הזמנים", 15f, C.MUTED))
+            else {
+                fun line(label: String, ms: Long) {
+                    val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(6), 0, dp(6)) }
+                    val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+                    col.addView(text(label, 15f, C.TEXT))
+                    col.addView(text(fmtDay.format(java.util.Date(ms)), 13f, C.MUTED))
+                    r.addView(col, LinearLayout.LayoutParams(0, -2, 1f))
+                    r.addView(text(fmtTime.format(java.util.Date(ms)), 26f, C.TEXT, bold = true))
+                    times.addView(r)
+                }
+                // מיקום (עיר) שלפיו מחושבים הזמנים
+                val cityLine = text(if (Shabbat.hasLocation(this)) "📍 …" else "📍 מרכז הארץ (אין מיקום)", 15f, C.TEXT, bold = true)
+                    .apply { setPadding(0, 0, 0, dp(6)) }
+                times.addView(cityLine)
+                (try { Weather.lastLocation(this) } catch (_: Exception) { null })?.let { loc ->
+                    Thread {
+                        val city = try { Weather.cityName(this, loc) } catch (_: Exception) { "" }
+                        runOnUiThread { cityLine.text = "📍 " + city.ifBlank { "המיקום שלך" } }
+                    }.start()
+                }
+                line("כניסה", w.first)
+                times.addView(View(this).apply { setBackgroundColor(C.LINE) }, LinearLayout.LayoutParams(-1, dp(1)).apply { setMargins(0, dp(4), 0, dp(4)) })
+                line("יציאה", w.second)
+                times.addView(text("כניסה חצי שעה לפני השקיעה, יציאה 10 דקות אחרי צאת הכוכבים",
+                    12f, C.MUTED).apply { setPadding(0, dp(8), 0, 0) })
             }
-            .setNegativeButton("סגור", null)
-            .show()
+            body.addView(times, cardLp())
+
+            // מה מצב שבת עושה
+            body.addView(header("מה מצב שבת עושה"))
+            val info = card()
+            listOf(
+                "כל התרעה נפתחת במסך מלא, גם כשהטלפון בשימוש",
+                "ההתרעה מוקראת בקול, גם אם ההקראה כבויה בהגדרות",
+                "מסך ההתרעה נסגר לבד אחרי דקה – אין צורך לגעת בטלפון",
+                "שעות שקט לא פועלות – כל התרעה נשמעת",
+                "באוטומטי: נדלק בכניסת שבת או חג ונכבה ביציאה, בלי לגעת"
+            ).forEach { info.addView(text("• $it", 15f, C.TEXT).apply { setPadding(0, dp(4), 0, dp(4)) }) }
+            body.addView(info, cardLp())
+            body.addView(View(this), LinearLayout.LayoutParams(-1, dp(24)))
+        }
+        rebuild()
+
+        d.setContentView(page)
+        d.window?.setLayout(-1, -1)
+        @Suppress("DEPRECATION")
+        d.window?.statusBarColor = C.BG
+        edgeToEdge(d)
+        d.show()
     }
 
     private fun chooseTest() {
@@ -1063,7 +1155,7 @@ class MainActivity : Activity() {
         val cats = listOf(
             "תצוגה" to { listOf(Row("🎨", "תצוגה", { "ערכת צבעים · סוג תצוגת התרעה · שעון" }) { showDisplay() }) },
             "התראות" to { alertsRows() },
-            "הרשאות וטלפון" to { phoneRows() },
+            "הרשאות" to { phoneRows() },
             "כללי" to { generalRows() }
         )
         fun rebuild() {
@@ -1418,22 +1510,89 @@ class MainActivity : Activity() {
         )
     }
 
-    private fun phoneRows(): List<Row> {
+    /** הרשאות: שורה אחת שפותחת מסך עם כל ההרשאות והמצב של כל אחת */
+    private fun phoneRows(): List<Row> = listOf(
+        Row("🛡", "הרשאות", {
+            val bad = permissionItems().count { !it.ok }
+            if (bad == 0) "הכל תקין ✓" else "$bad דורש טיפול"
+        }) { showPermissions() }
+    )
+
+    private class Perm(val icon: String, val title: String, val note: String, val ok: Boolean, val open: () -> Unit)
+
+    private fun permissionItems(): List<Perm> {
+        val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+        val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
         return listOf(
-            Row("📱", "מסך מלא בהתראה", { if (Settings.canDrawOverlays(this)) "פעיל ✓" else "לא פעיל" }) { openFullScreenSettings() },
-            Row("🔋", "חיסכון בסוללה", { "" }) { openBatterySettings() },
-            Row("⚙️", "הגדרות התראות בטלפון", { "" }) { openNotificationSettings() }
+            Perm("📱", "מסך מלא בהתראה", "התרעה נפתחת על כל המסך גם כשהטלפון בשימוש",
+                Settings.canDrawOverlays(this)) { openFullScreenSettings() },
+            Perm("🔋", "חיסכון בסוללה", "האפליקציה לא נעצרת ברקע",
+                pm.isIgnoringBatteryOptimizations(packageName)) { openBatterySettings() },
+            Perm("🔔", "התראות בטלפון", "התראות האפליקציה מופעלות",
+                nm.areNotificationsEnabled()) { openNotificationSettings() }
         )
     }
 
+    /** מסך הרשאות: כל הרשאה עם מצב (תקין / דורש טיפול), לחיצה פותחת את ההגדרה בטלפון */
+    private fun showPermissions() {
+        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
+        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val page = ScrollView(this).apply {
+            setBackgroundColor(C.BG)
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            addView(body)
+        }
+        page.setOnApplyWindowInsetsListener { v, insets ->
+            @Suppress("DEPRECATION")
+            v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
+            insets
+        }
+        fun rebuild() {
+            body.removeAllViews()
+            body.addView(text("🛡 הרשאות", 30f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(64), dp(24), dp(12)) })
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = graphite(28)
+                setPadding(dp(18), dp(4), dp(18), dp(4))
+            }
+            permissionItems().forEachIndexed { i, p ->
+                if (i > 0) card.addView(View(this).apply { setBackgroundColor(C.LINE) }, LinearLayout.LayoutParams(-1, dp(1)))
+                val row = LinearLayout(this).apply {
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(0, dp(12), 0, dp(12))
+                    setOnClickListener { p.open() }
+                }
+                row.addView(text(p.icon, 20f, C.TEXT).apply { setPadding(0, 0, 0, 0) },
+                    LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(12) })
+                val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+                col.addView(text(p.title, 16f, C.TEXT))
+                col.addView(text(p.note, 12f, C.MUTED))
+                row.addView(col, LinearLayout.LayoutParams(0, -2, 1f))
+                row.addView(text(if (p.ok) "תקין ✓" else "דורש טיפול", 14f, if (p.ok) C.GREEN else C.RED),
+                    LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
+                card.addView(row)
+            }
+            body.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(12)) })
+            body.addView(text("לחיצה על הרשאה פותחת את ההגדרה בטלפון", 12f, C.MUTED).apply { setPadding(dp(28), 0, dp(28), dp(24)) })
+        }
+        rebuild()
+        // חוזרים מהגדרות הטלפון - מעדכנים את המצב
+        d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
+
+        d.setContentView(page)
+        d.window?.setLayout(-1, -1)
+        @Suppress("DEPRECATION")
+        d.window?.statusBarColor = C.BG
+        edgeToEdge(d)
+        d.show()
+    }
+
     private fun generalRows(): List<Row> {
-        val beta = Prefs.betaUnlocked(this) || Prefs.betaUpdates(this)
         return listOf(
-            Row("⬆️", "בדיקת עדכונים", { "v" + Updater.versionLabel(this) }) { Updater.check(this, silent = false) },
-            Row("🆕", "מה חדש", { "" }) { showWhatsNew(sinceVersion = null) },
+            // בדיקת עדכונים + בטא + מה חדש - במסך אחד
+            Row("⬆️", "בדיקת עדכונים", { "v" + Updater.versionLabel(this) }) { showUpdates() },
             Row("ℹ️", "אודות", { "" }) { showAbout() }
-        ) + (if (beta) listOf(Row("🧪", "גרסאות בטא", { if (Prefs.betaUpdates(this)) "מקבל ✓" else "כבוי" }) { showBeta() })
-             else emptyList())
+        )
     }
 
     private fun chooseAlertStyle() {
@@ -1632,27 +1791,110 @@ class MainActivity : Activity() {
         }
     }
 
-    /** sinceVersion = null: רק הגרסה הנוכחית (מההגדרות) */
-    private fun showWhatsNew(sinceVersion: String?) {
+    /** הטקסט של "מה חדש". sinceVersion = null: רק הגרסה הנוכחית */
+    private fun whatsNewText(sinceVersion: String?): String? {
         val log = try {
             org.json.JSONObject(assets.open("changelog.json").bufferedReader(Charsets.UTF_8).use { it.readText() })
-        } catch (_: Exception) { return }
+        } catch (_: Exception) { return null }
         val cur = Updater.currentVersion(this)
         val versions = log.keys().asSequence()
             .filter { v -> if (sinceVersion == null) v == cur else Updater.isNewer(v, sinceVersion) && !Updater.isNewer(v, cur) }
             .sortedWith { a, b -> if (Updater.isNewer(a, b)) -1 else if (a == b) 0 else 1 }
             .toList()
-        if (versions.isEmpty()) return
-        val text = versions.joinToString("\n\n") { v ->
+        if (versions.isEmpty()) return null
+        return versions.joinToString("\n\n") { v ->
             val items = log.getJSONArray(v)
             "גרסה $v\n" + (0 until items.length()).joinToString("\n") { "• " + items.getString(it) }
         }
+    }
+
+    private fun showWhatsNew(sinceVersion: String?) {
+        val text = whatsNewText(sinceVersion) ?: return
         AlertDialog.Builder(this, dlg())
             .setIcon(R.mipmap.ic_launcher)
             .setTitle("🆕 מה חדש")
             .setMessage(text)
             .setPositiveButton("הבנתי", null)
             .show()
+    }
+
+    /** מסך עדכונים: גרסה מותקנת + בדיקה, גרסאות בטא (למי שנפתח לו), ומה חדש */
+    private fun showUpdates() {
+        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
+        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val page = ScrollView(this).apply {
+            setBackgroundColor(C.BG)
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            addView(body)
+        }
+        page.setOnApplyWindowInsetsListener { v, insets ->
+            @Suppress("DEPRECATION")
+            v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
+            insets
+        }
+        fun card() = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = graphite(28)
+            setPadding(dp(18), dp(14), dp(18), dp(14))
+        }
+        fun cardLp() = LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(12)) }
+        fun header(t: String) = text(t, 13f, C.MUTED2).apply { setPadding(dp(28), dp(6), dp(28), dp(6)) }
+
+        fun rebuild() {
+            body.removeAllViews()
+            body.addView(text("⬆️ עדכונים", 30f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(64), dp(24), dp(12)) })
+
+            // גרסה מותקנת + כפתור בדיקה (אותה בדיקה בדיוק כמו לחיצה על הגרסה בשורת החיווי)
+            body.addView(header("גרסה מותקנת"))
+            val ver = card()
+            ver.addView(text("v" + Updater.versionLabel(this), 26f, C.TEXT, bold = true))
+            ver.addView(text("בדוק עכשיו", 16f, C.BLUE, bold = true).apply {
+                gravity = Gravity.CENTER
+                setPadding(0, dp(12), 0, dp(12))
+                background = GradientDrawable().apply { cornerRadius = dp(18).toFloat(); setColor(C.CHIP) }
+                setOnClickListener { Updater.check(this@MainActivity, silent = false) }
+            }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+            body.addView(ver, cardLp())
+
+            // גרסאות בטא - רק למי שפתח אותן (7 לחיצות על הגרסה)
+            if (Prefs.betaUnlocked(this) || Prefs.betaUpdates(this)) {
+                val on = Prefs.betaUpdates(this)
+                body.addView(header("גרסאות בטא"))
+                val beta = card()
+                val row = LinearLayout(this).apply {
+                    gravity = Gravity.CENTER_VERTICAL
+                    setOnClickListener {
+                        Prefs.setBetaUpdates(this@MainActivity, !on)
+                        Prefs.setSkippedVersion(this@MainActivity, "")
+                        if (Prefs.enabled(this@MainActivity)) AlertService.reloadPush(this@MainActivity)
+                        if (on) Prefs.setBetaUnlocked(this@MainActivity, false)   // כיבוי - האפשרות חוזרת להיות מוסתרת
+                        else Updater.check(this@MainActivity, silent = false)
+                        rebuild()
+                    }
+                }
+                row.addView(text("🧪 קבלת גרסאות בטא", 16f, C.TEXT), LinearLayout.LayoutParams(0, -2, 1f))
+                row.addView(text(if (on) "פעיל ✓" else "כבוי", 15f, if (on) C.GREEN else C.MUTED))
+                beta.addView(row)
+                beta.addView(text("גרסאות ניסיון לפני שהן משוחררות לכולם. יכולות להיות בהן תקלות.\nמזהה מכשיר: ${Prefs.deviceCode(this)}",
+                    12f, C.MUTED).apply { setPadding(0, dp(8), 0, 0) })
+                body.addView(beta, cardLp())
+            }
+
+            // מה חדש בגרסה המותקנת
+            body.addView(header("מה חדש"))
+            val news = card()
+            news.addView(text(whatsNewText(null) ?: "אין פירוט לגרסה הזו", 15f, C.TEXT))
+            body.addView(news, cardLp())
+            body.addView(View(this), LinearLayout.LayoutParams(-1, dp(24)))
+        }
+        rebuild()
+
+        d.setContentView(page)
+        d.window?.setLayout(-1, -1)
+        @Suppress("DEPRECATION")
+        d.window?.statusBarColor = C.BG
+        edgeToEdge(d)
+        d.show()
     }
 
     private fun hhmm(min: Int) = "%02d:%02d".format(min / 60, min % 60)
@@ -1791,27 +2033,6 @@ class MainActivity : Activity() {
                 }
             }
             .setPositiveButton("סגור", null)
-            .show()
-    }
-
-    private fun showBeta() {
-        val on = Prefs.betaUpdates(this)
-        AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("🧪 גרסאות בטא")
-            .setMessage("קבלת גרסאות ניסיון לפני שהן משוחררות לכולם.\n" +
-                "יכולות להיות בהן תקלות. כשיוצאת גרסה רגילה חדשה – היא מותקנת כרגיל.\n\n" +
-                "מצב: " + (if (on) "מקבל גרסאות בטא ✓" else "כבוי") +
-                "\n\nמזהה מכשיר: ${Prefs.deviceCode(this)}")
-            .setPositiveButton(if (on) "כבה" else "הפעל") { _, _ ->
-                Prefs.setBetaUpdates(this, !on)
-                Prefs.setSkippedVersion(this, "")
-                if (Prefs.enabled(this)) AlertService.reloadPush(this)
-                // כיבוי - האפשרות חוזרת להיות מוסתרת
-                if (on) Prefs.setBetaUnlocked(this, false)
-                if (!on) Updater.check(this, silent = false)
-            }
-            .setNegativeButton("סגור", null)
             .show()
     }
 
