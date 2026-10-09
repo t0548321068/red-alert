@@ -88,11 +88,7 @@ open class AlertActivity : Activity() {
             gravity = Gravity.CENTER
             setPadding(dpx(16), dpx(if (popup) 16 else 36), dpx(16), dpx(if (popup) 10 else 14))
             // אייקון מעל הכותרת לפי סוג ההתרעה (אותם אייקונים כמו ברשימת ההתרעות)
-            val icon = when {
-                pre -> R.drawable.ic_list_pre
-                end -> R.drawable.ic_list_end
-                else -> R.drawable.ic_list_siren
-            }
+            val icon = AlertUi.icon(title, level)
             val size = dpx(if (popup) 34 else 44)
             addView(ImageView(this@AlertActivity).apply { setImageResource(icon) },
                 LinearLayout.LayoutParams(size, size))
