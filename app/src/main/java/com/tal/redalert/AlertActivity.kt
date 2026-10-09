@@ -105,6 +105,36 @@ open class AlertActivity : Activity() {
             root.addView(map, LinearLayout.LayoutParams(-1, h))
         }
 
+        // אזורים כתגיות + מקור ההתרעה - מתחת למפה, בגדול
+        val chips = Flow(this, dpx(8))
+        (intent.getStringExtra("body") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach { a ->
+            chips.addView(tv(a, if (popup) 16f else 18f, bold = true).apply {
+                setPadding(dpx(14), dpx(6), dpx(14), dpx(6))
+                background = card("#33FFFFFF", 18)
+            })
+        }
+        val maxH = (resources.displayMetrics.heightPixels * if (popup) 0.18f else 0.22f).toInt()
+        val chipsScroll = object : android.widget.ScrollView(this) {
+            // הרבה אזורים: גובה מוגבל ונגלל, כדי שלא ידחפו את הכפתורים מהמסך
+            override fun onMeasure(w: Int, h: Int) =
+                super.onMeasure(w, View.MeasureSpec.makeMeasureSpec(maxH, View.MeasureSpec.AT_MOST))
+        }.apply {
+            isVerticalScrollBarEnabled = false
+            if (chips.childCount > 0) addView(chips, ViewGroup.LayoutParams(-1, -2))
+        }
+        val srcView = intent.getStringExtra("source")?.takeIf { it.isNotEmpty() }?.let { src ->
+            tv("מקור ההתרעה: $src", 13f).apply { setTextColor(Color.parseColor("#E6FFFFFF")); setPadding(0, dpx(6), 0, 0) }
+        }
+        if (chips.childCount > 0) {
+            val areaCard = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = card(r = if (popup) 22 else 28)
+                setPadding(dpx(12), dpx(10), dpx(12), dpx(10))
+                addView(chipsScroll, LinearLayout.LayoutParams(-1, -2))
+            }
+            root.addView(areaCard, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(10), dpx(10), dpx(10), 0) })
+        }
+
         if (end) root.addView(tv("ניתן לצאת מהמרחב המוגן", 19f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
         if (pre) {
             // מתחת למפה: נוסח ההתרעה ומה לעשות
@@ -133,38 +163,8 @@ open class AlertActivity : Activity() {
             root.addView(timerCard, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(10), dpx(4), dpx(10), 0) })
         }
 
-        // אזורים כתגיות + מקור ההתרעה
-        val chips = Flow(this, dpx(6))
-        (intent.getStringExtra("body") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach { a ->
-            chips.addView(tv(a, 14f).apply {
-                setPadding(dpx(12), dpx(4), dpx(12), dpx(4))
-                background = card("#33FFFFFF", 14)
-            })
-        }
-        val chipsScroll = android.widget.ScrollView(this).apply {
-            isVerticalScrollBarEnabled = false
-            if (chips.childCount > 0) addView(chips, ViewGroup.LayoutParams(-1, -2))
-        }
-        val srcView = intent.getStringExtra("source")?.takeIf { it.isNotEmpty() }?.let { src ->
-            tv("מקור ההתרעה: $src", 13f).apply { setTextColor(Color.parseColor("#E6FFFFFF")); setPadding(0, dpx(6), 0, 0) }
-        }
-        run {
-            val areaCard = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                background = card(r = if (popup) 22 else 28)
-                setPadding(dpx(12), dpx(10), dpx(12), dpx(10))
-                addView(chipsScroll, LinearLayout.LayoutParams(-1, -2))
-                srcView?.let { addView(it) }
-            }
-            if (popup) root.addView(areaCard, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(10), dpx(10), dpx(10), 0) })
-            else {
-                // האזורים יושבים בתחתית השטח הפנוי - צמודים לכפתורים (נגללים אם יש הרבה)
-                val box = FrameLayout(this).apply {
-                    addView(areaCard, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
-                }
-                root.addView(box, LinearLayout.LayoutParams(-1, 0, 1f).apply { setMargins(dpx(10), dpx(10), dpx(10), 0) })
-            }
-        }
+        if (!popup) root.addView(View(this), LinearLayout.LayoutParams(-1, 0, 1f))   // שטח פנוי מעל הכפתורים
+        srcView?.let { root.addView(it, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(16), dpx(8), dpx(16), 0) }) }   // מקור ההתרעה - מעל הכפתורים
 
         // כפתורים: השתק · הנחיות · סגור (אייקון מעל הכיתוב)
         val buttons = LinearLayout(this).apply { setPadding(dpx(10), dpx(10), dpx(10), dpx(if (popup) 12 else 16)) }
