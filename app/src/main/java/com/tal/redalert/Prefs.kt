@@ -235,6 +235,9 @@ object Prefs {
     /** סוג תצוגת התרעה: 0 מסך מלא · 1 פופ-אפ · 2 כרטיס מעל השעון · 3 ממוזער */
     val ALERT_STYLES = arrayOf("מסך מלא", "פופ-אפ", "כרטיס מעל השעון", "ממוזער")
     fun alertStyle(c: Context) = sp(c).getInt("alertStyle", 0)
+    /** מפה במסך ההתרעה (מסך מלא ופופ-אפ) */
+    fun alertMap(c: Context) = sp(c).getBoolean("alertMap", true)
+    fun setAlertMap(c: Context, v: Boolean) = sp(c).edit().putBoolean("alertMap", v).apply()
     fun setAlertStyle(c: Context, v: Int) = sp(c).edit().putInt("alertStyle", v).apply()
 
     /** ההתרעה הפעילה (לכרטיס מעל השעון): title, body, level, shelter, firedAt, source */

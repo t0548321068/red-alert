@@ -705,7 +705,7 @@ class MainActivity : Activity() {
     }
 
     /** התראות אחרונות בסגנון One UI: מחולקות לימים, כל יום בכרטיס */
-    private fun showRecent() = onePage("התראות אחרונות", 1) { c ->
+    private fun showRecent() = onePage("התרעות אחרונות", 1) { c ->
         val cached = archiveCache
         if (cached != null) { fillRecent(c, cached); return@onePage }
         val loading = text("טוען את כל ההתראות…", 14f, C.MUTED2).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) }
@@ -1030,6 +1030,18 @@ class MainActivity : Activity() {
             .show()
     }
 
+    /** אייקון בקו לבן לכל שורה בהגדרות (לפי האמוג'י שלה) */
+    private fun setIcon(icon: String) = when (icon) {
+        "🎨" -> R.drawable.ic_set_palette; "🚨" -> R.drawable.ic_set_siren; "🕐" -> R.drawable.ic_set_clock
+        "🌤" -> R.drawable.ic_set_weather; "👋" -> R.drawable.ic_set_hand; "📍" -> R.drawable.ic_set_pin
+        "🔔" -> R.drawable.ic_set_bell; "📳" -> R.drawable.ic_set_vibrate; "🗣" -> R.drawable.ic_set_speech
+        "🌙" -> R.drawable.ic_set_moon; "🔕" -> R.drawable.ic_set_belloff; "🕯" -> R.drawable.ic_set_candle
+        "📱" -> R.drawable.ic_set_phone; "🔋" -> R.drawable.ic_set_battery; "⚙️" -> R.drawable.ic_set_gear
+        "⬆️" -> R.drawable.ic_set_update; "🆕" -> R.drawable.ic_set_new; "ℹ️" -> R.drawable.ic_set_info
+        "🧪" -> R.drawable.ic_set_beta
+        else -> 0
+    }
+
     /** צבע העיגול של כל אייקון בהגדרות (סגנון One UI) */
     private fun iconColor(icon: String) = Color.parseColor(when (icon) {
         "🎨" -> "#7E57C2"; "🚨", "📍", "🆕" -> "#E53935"; "🕐", "📱", "⬆️" -> "#1E88E5"
@@ -1088,9 +1100,13 @@ class MainActivity : Activity() {
                         setPadding(dp(16), dp(12), dp(16), dp(12))
                         setOnClickListener { r.action(); rebuild() }
                     }
-                    row.addView(text(r.icon, 16f, Color.WHITE).apply {
-                        gravity = Gravity.CENTER
+                    // אייקון פשוט בקו לבן בתוך עיגול צבעוני
+                    row.addView(FrameLayout(this).apply {
                         background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(iconColor(r.icon)) }
+                        val res = setIcon(r.icon)
+                        if (res != 0) addView(android.widget.ImageView(this@MainActivity).apply { setImageResource(res) },
+                            FrameLayout.LayoutParams(dp(20), dp(20), Gravity.CENTER))
+                        else addView(text(r.icon, 16f, Color.WHITE).apply { gravity = Gravity.CENTER }, FrameLayout.LayoutParams(-1, -1))
                     }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(14) })
                     val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
                     texts.addView(text(r.title, 16f, C.TEXT))
@@ -1231,12 +1247,23 @@ class MainActivity : Activity() {
                 orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.parseColor(red))
                 addView(View(this@MainActivity).apply { background = rect("#B3FFFFFF", 3) },
                     LinearLayout.LayoutParams(-1, dp(7)).apply { setMargins(dp(10), dp(8), dp(10), dp(4)) })
-                addView(View(this@MainActivity).apply { setBackgroundColor(Color.parseColor(if (C.LIGHT) "#BDBDC2" else "#333333")) }, LinearLayout.LayoutParams(-1, dp(30)))   // המפה
+                if (Prefs.alertMap(this@MainActivity))
+                    addView(View(this@MainActivity).apply { setBackgroundColor(Color.parseColor(if (C.LIGHT) "#BDBDC2" else "#333333")) }, LinearLayout.LayoutParams(-1, dp(30)))   // המפה
                 addView(View(this@MainActivity).apply { background = rect("#40000000", 5) },
                     LinearLayout.LayoutParams(-1, dp(18)).apply { setMargins(dp(8), dp(6), dp(8), 0) })
             }, FrameLayout.LayoutParams(-1, -1))
-            1 -> f.addView(View(this).apply { background = rect(red, 8) },
-                FrameLayout.LayoutParams(-1, dp(52), Gravity.CENTER).apply { setMargins(dp(6), 0, dp(6), 0) })
+            // פופ-אפ: כרטיס אדום באמצע, עם המפה בתוכו (כמו במסך המלא)
+            1 -> f.addView(LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = rect(red, 8); clipToOutline = true
+                addView(View(this@MainActivity).apply { background = rect("#B3FFFFFF", 2) },
+                    LinearLayout.LayoutParams(-1, dp(5)).apply { setMargins(dp(8), dp(6), dp(8), dp(4)) })
+                if (Prefs.alertMap(this@MainActivity))
+                    addView(View(this@MainActivity).apply { setBackgroundColor(Color.parseColor(if (C.LIGHT) "#BDBDC2" else "#333333")) },
+                        LinearLayout.LayoutParams(-1, dp(18)))
+                addView(View(this@MainActivity).apply { background = rect("#40000000", 3) },
+                    LinearLayout.LayoutParams(-1, dp(12)).apply { setMargins(dp(6), dp(5), dp(6), dp(6)) })
+            }, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER).apply { setMargins(dp(6), 0, dp(6), 0) })
         }
         return f
     }
@@ -1357,7 +1384,11 @@ class MainActivity : Activity() {
                 }, LinearLayout.LayoutParams(0, -2, 1f))
             }
             style.addView(opts)
+            divider(style)
+            row(style, "מפה במסך ההתרעה", on = Prefs.alertMap(this), sep = false) {
+                Prefs.setAlertMap(this, !Prefs.alertMap(this)); rebuild() }
             addCard(style)
+            note("המפה מוצגת במסך מלא ובפופ-אפ")
             // שעון ותאריך, מזג אוויר וברכה - בכרטיס אחד
             val more = card()
             row(more, "שעון", listOf(if (Prefs.showSeconds(this)) "שניות" else "", if (Prefs.blinkColon(this)) "נקודתיים מהבהבות" else "")
