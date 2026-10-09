@@ -211,7 +211,7 @@ class MainActivity : Activity() {
                 else -> R.drawable.ic_list_siren
             }
             alertCard.addView(android.widget.ImageView(this).apply { setImageResource(icon) },
-                LinearLayout.LayoutParams(dp(30), dp(30)).apply { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dp(4) })
+                LinearLayout.LayoutParams(dp(30), dp(30)).apply { gravity = Gravity.CENTER_HORIZONTAL })
             alertCard.addView(text(t1, 19f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER })
             alertCard.addView(text(t2, 14f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER })
             alertCardLabel = null; alertCardTimer = null

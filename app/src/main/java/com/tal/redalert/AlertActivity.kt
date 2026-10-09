@@ -95,7 +95,7 @@ open class AlertActivity : Activity() {
             }
             val size = dpx(if (popup) 34 else 44)
             addView(ImageView(this@AlertActivity).apply { setImageResource(icon) },
-                LinearLayout.LayoutParams(size, size).apply { bottomMargin = dpx(8) })
+                LinearLayout.LayoutParams(size, size))
             addView(tv(headTitle, if (popup) 22f else 28f, bold = true))
             addView(tv(headNote, if (popup) 16f else 20f).apply { setPadding(0, dpx(2), 0, 0) })
         }
@@ -120,8 +120,8 @@ open class AlertActivity : Activity() {
             timerCard = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                background = card(r = if (popup) 22 else 28)
-                setPadding(dpx(12), dpx(6), dpx(12), dpx(8))
+                // בלי כרטיס - הטיימר ישירות על הרקע
+                setPadding(dpx(12), 0, dpx(12), 0)
             }
             cdLabel = tv("", 13f)
             countdown = tv("", if (popup) 32f else 38f).apply {
@@ -130,7 +130,7 @@ open class AlertActivity : Activity() {
             }
             timerCard.addView(cdLabel)
             timerCard.addView(countdown)
-            root.addView(timerCard, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(10), dpx(10), dpx(10), 0) })
+            root.addView(timerCard, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(10), dpx(4), dpx(10), 0) })
         }
 
         // אזורים כתגיות + מקור ההתרעה
@@ -148,11 +148,7 @@ open class AlertActivity : Activity() {
         val srcView = intent.getStringExtra("source")?.takeIf { it.isNotEmpty() }?.let { src ->
             tv("מקור ההתרעה: $src", 13f).apply { setTextColor(Color.parseColor("#E6FFFFFF")); setPadding(0, dpx(6), 0, 0) }
         }
-        if (popup && timerCard != null) {
-            // בפופ-אפ: האזורים והמקור בתוך כרטיס הטיימר
-            timerCard.addView(chipsScroll, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dpx(6) })
-            srcView?.let { timerCard.addView(it) }
-        } else {
+        run {
             val areaCard = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 background = card(r = if (popup) 22 else 28)
