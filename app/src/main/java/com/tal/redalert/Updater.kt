@@ -3,10 +3,12 @@ package com.tal.redalert
 import android.app.Activity
 import android.app.AlertDialog
 import android.app.DownloadManager
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageInstaller
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -180,9 +182,15 @@ object Updater {
                     toast(app, "ההורדה נכשלה")
                     return
                 }
-                app.startActivity(Intent(Intent.ACTION_VIEW)
-                    .setDataAndType(uri, MIME)
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK))
+                // התקנה דרך PackageInstaller: מאנדרואיד 12 עדכון עצמי בלי ללחוץ "התקן"
+                // (אחרי שהאפליקציה התקינה את עצמה פעם אחת). אם נכשל - מסך ההתקנה הרגיל
+                Thread {
+                    try { installSession(app, uri) } catch (_: Exception) {
+                        app.startActivity(Intent(Intent.ACTION_VIEW)
+                            .setDataAndType(uri, MIME)
+                            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                }.start()
             }
         }
         val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
@@ -190,6 +198,30 @@ object Updater {
             app.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
         } else {
             app.registerReceiver(receiver, filter)
+        }
+    }
+
+    /** כותב את ה-APK לסשן התקנה ומאשר. התוצאה מגיעה ל-InstallResultReceiver */
+    private fun installSession(app: Context, uri: Uri) {
+        val installer = app.packageManager.packageInstaller
+        val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
+            setAppPackageName(app.packageName)
+            if (Build.VERSION.SDK_INT >= 31) setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+            if (Build.VERSION.SDK_INT >= 34) setRequestUpdateOwnership(true)
+        }
+        val id = installer.createSession(params)
+        installer.openSession(id).use { session ->
+            app.contentResolver.openInputStream(uri)!!.use { input ->
+                session.openWrite("red-alert.apk", 0, -1).use { out ->
+                    input.copyTo(out)
+                    session.fsync(out)
+                }
+            }
+            val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+                (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0)
+            val pi = PendingIntent.getBroadcast(app, id,
+                Intent(app, InstallResultReceiver::class.java), flags)
+            session.commit(pi.intentSender)
         }
     }
 
