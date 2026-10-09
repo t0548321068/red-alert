@@ -216,8 +216,8 @@ class MainActivity : Activity() {
             alertCard.addView(text(t2, 14f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER })
             alertCardLabel = null; alertCardTimer = null
             if (level == AlertService.LEVEL_ALERT) {
-                alertCardLabel = text("", 12f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER; setPadding(0, dp(4), 0, 0) }
-                alertCardTimer = text("", 44f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER; includeFontPadding = false }
+                alertCardLabel = text("", 13f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER; setPadding(0, dp(4), 0, 0) }
+                alertCardTimer = text("", 38f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER; includeFontPadding = false }
                 alertCard.addView(alertCardLabel); alertCard.addView(alertCardTimer)
             }
             val body = j.optString("body")
@@ -235,7 +235,7 @@ class MainActivity : Activity() {
         AlertUi.timer(level, j.optInt("shelter", -1), firedAt)?.let { (lbl, t) ->
             alertCardLabel?.text = lbl
             alertCardLabel?.visibility = if (lbl.isEmpty()) View.GONE else View.VISIBLE
-            alertCardTimer?.textSize = if (lbl.isEmpty()) 18f else 44f
+            alertCardTimer?.textSize = if (lbl.isEmpty()) 20f else 38f
             alertCardTimer?.text = t
         }
     }
