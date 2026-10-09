@@ -30,12 +30,4 @@ object FeedText {
         if (items.isEmpty()) return null
         return items.joinToString("     •     ") { line(c, it) }
     }
-
-    /** רשימה מלאה ל-24 השעות האחרונות */
-    fun day(c: Context): String {
-        val since = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
-        val items = Prefs.feed(c).filter { it.ts >= since }
-        if (items.isEmpty()) return "אין התראות בארץ ב־24 השעות האחרונות"
-        return items.joinToString("\n\n") { line(c, it) }
-    }
 }

@@ -701,7 +701,7 @@ class AlertService : Service() {
         if (System.currentTimeMillis() >= stayEnd) return@Runnable
         val n = Notification.Builder(this, CH_ALERT)
             .setSmallIcon(R.drawable.ic_stat_siren)
-            .setColor(0xFFB45309.toInt())
+            .setColor(0xFFD50000.toInt())
             .setContentTitle("⏳ נשארים במרחב המוגן")
             .setContentText("$stayTitle · $stayBody")
             .setOnlyAlertOnce(true)

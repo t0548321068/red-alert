@@ -31,7 +31,6 @@ object MiniOverlay {
     fun isShowing() = view != null
 
     private const val RED = "#D50000"
-    private const val ORANGE = "#B45309"   // נשארים במרחב המוגן
     private const val GREEN = "#2E7D32"    // האירוע הסתיים - ניתן לצאת
 
     fun canShow(c: Context) = Settings.canDrawOverlays(c)
@@ -61,11 +60,11 @@ object MiniOverlay {
                 android.widget.FrameLayout.LayoutParams(dp(size / 2), dp(size / 2), Gravity.CENTER))
         }
         val label = TextView(app).apply {
-            setTextColor(Color.WHITE); textSize = 15f; typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(Color.parseColor("#E6FFFFFF")); textSize = 12f   // כותרת קטנה - האזור הוא העיקר
             maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
         }
         val areaLine = TextView(app).apply {
-            text = area; setTextColor(Color.parseColor("#E6FFFFFF")); textSize = 12f
+            text = area; setTextColor(Color.WHITE); textSize = 15f; typeface = android.graphics.Typeface.DEFAULT_BOLD
             maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
             visibility = if (area.isEmpty()) View.GONE else View.VISIBLE
         }
@@ -131,12 +130,16 @@ object MiniOverlay {
                 val now = System.currentTimeMillis()
                 val enterEnd = firedAt + shelter.coerceAtLeast(0) * 1000L
                 val stayEnd = enterEnd + Prefs.STAY_MS
-                // ספירה לכניסה (אדום) -> שהייה במרחב המוגן (כתום) -> ממתינים לסיום (כתום). ירוק רק בהודעת סיום
+                // ספירה לכניסה -> שהייה במרחב המוגן -> ממתינים לסיום: הכל באדום. ירוק רק בהודעת סיום
                 when {
+                    // מקדימה / סיום: כיתוב קצר וקבוע במקום הנוסח המלא
+                    level == AlertService.LEVEL_PRE -> { label.text = "התרעה מקדימה"; timerLabel.text = ""; timer.textSize = 12f; timer.text = "בדקות הקרובות צפויות\nלהתקבל התרעות באזורך" }
+                    level == AlertService.LEVEL_END -> { label.text = "האירוע הסתיים"; timerLabel.text = ""; timer.textSize = 12f; timer.text = "ניתן לצאת\nמהמרחב המוגן" }
                     level != AlertService.LEVEL_ALERT -> { label.text = title; timer.text = ""; timerLabel.text = "" }
-                    shelter > 0 && now < enterEnd -> { label.text = title; timerLabel.text = "זמן התגוננות"; timer.text = mmss(enterEnd - now); bg?.setColor(Color.parseColor(RED)) }
-                    now < stayEnd -> { label.text = title; timerLabel.text = "נשארים במרחב המוגן"; timer.text = mmss(stayEnd - now); bg?.setColor(Color.parseColor(ORANGE)) }
-                    else -> { label.text = "ממתינים להודעת סיום"; timerLabel.text = ""; timer.text = ""; bg?.setColor(Color.parseColor(ORANGE)) }
+                    shelter > 0 && now < enterEnd -> { label.text = title; timerLabel.text = "זמן התגוננות"; timer.textSize = 19f; timer.text = mmss(enterEnd - now); bg?.setColor(Color.parseColor(RED)) }
+                    now < stayEnd -> { label.text = title; timerLabel.text = "נשארים במרחב המוגן"; timer.textSize = 19f; timer.text = mmss(stayEnd - now); bg?.setColor(Color.parseColor(RED)) }
+                    // אחרי 10 הדקות: "ממתינים להודעת סיום" בצד שמאל, במקום הטיימר
+                    else -> { label.text = title; timerLabel.text = ""; timer.textSize = 14f; timer.text = "ממתינים להודעת סיום"; bg?.setColor(Color.parseColor(RED)) }
                 }
                 timerBox.visibility = if (timer.text.isEmpty()) View.GONE else View.VISIBLE
                 if (level == AlertService.LEVEL_ALERT && now < stayEnd) ui.postDelayed(this, 500)
@@ -153,9 +156,9 @@ object MiniOverlay {
         if (view == null) return
         tick?.let { ui.removeCallbacks(it) }; tick = null
         bg?.setColor(Color.parseColor(GREEN))
-        labelV?.text = "האירוע הסתיים – ניתן לצאת"
-        timerV?.text = ""; timerLabelV?.text = ""
-        (timerV?.parent as? View)?.visibility = View.GONE
+        labelV?.text = "האירוע הסתיים"
+        timerLabelV?.text = ""; timerV?.textSize = 12f; timerV?.text = "ניתן לצאת\nמהמרחב המוגן"
+        (timerV?.parent as? View)?.visibility = View.VISIBLE
         if (area.isNotEmpty()) { areaV?.text = area; areaV?.visibility = View.VISIBLE }
     }
 

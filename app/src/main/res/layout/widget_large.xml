@@ -48,79 +48,67 @@
             android:textSize="15sp" />
     </LinearLayout>
 
-    <!-- ספירה לאחור בזמן התראה -->
+    <!-- התרעה פעילה (אדום/כתום/ירוק): אייקון, כותרת, שורה מתחתיה, מיקום, ובאדום גם ספירה -->
     <LinearLayout
-        android:id="@+id/wl_cd_box"
+        android:id="@+id/wl_pre_box"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:background="@drawable/widget_alert_bg"
+        android:background="@drawable/widget_pre_bg"
         android:gravity="center"
         android:orientation="vertical"
         android:padding="8dp"
         android:visibility="gone">
 
-        <TextView
-            android:id="@+id/wl_cd_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="ירי רקטות וטילים"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp" />
+        <ImageView
+            android:id="@+id/wl_pre_icon"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:src="@drawable/ic_list_pre" />
 
-        <Chronometer
-            android:id="@+id/wl_cd"
+        <TextView
+            android:id="@+id/wl_pre_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:text="מבזק פיקוד העורף"
             android:textColor="#FFFFFF"
-            android:textSize="34sp"
+            android:textSize="15sp"
             android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/wl_cd_note"
+            android:id="@+id/wl_pre_note"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="היכנסו למרחב המוגן"
+            android:text="התרעה מקדימה"
             android:textColor="#FFFFFF"
             android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/wl_pre_area"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/widget_chip_bg"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="2"
+            android:paddingStart="10dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="2dp"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <Chronometer
+            android:id="@+id/wl_pre_cd"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="#FFFFFF"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
     </LinearLayout>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:text="התראות אחרונות"
-        android:textColor="#8E8E93"
-        android:textSize="12sp" />
-
-    <TextView
-        android:id="@+id/wl_h1"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:ellipsize="end"
-        android:maxLines="2"
-        android:text="אין התראות עדיין"
-        android:textColor="#8E8E93"
-        android:textSize="13sp" />
-
-    <TextView
-        android:id="@+id/wl_h2"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:textSize="12sp"
-        android:visibility="gone" />
-
-    <TextView
-        android:id="@+id/wl_h3"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:textSize="12sp"
-        android:visibility="gone" />
 </LinearLayout>
