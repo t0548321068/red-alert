@@ -91,7 +91,7 @@ open class AlertActivity : Activity() {
             addView(tv(headNote, if (popup) 16f else 20f).apply { setPadding(0, dpx(2), 0, 0) })
         }
         root.addView(titleView)
-        miniMap(level)?.let { map ->
+        (if (Prefs.alertMap(this)) miniMap(level) else null)?.let { map ->   // אפשר לכבות את המפה בהגדרות
             val h = if (popup) dpx(170) else (resources.displayMetrics.heightPixels * 0.34f).toInt()
             root.addView(map, LinearLayout.LayoutParams(-1, h))
         }
