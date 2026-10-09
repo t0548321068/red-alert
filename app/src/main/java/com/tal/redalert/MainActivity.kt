@@ -1229,7 +1229,6 @@ class MainActivity : Activity() {
                     LinearLayout.LayoutParams(-1, dp(18)).apply { setMargins(dp(8), dp(6), dp(8), 0) })
             }, FrameLayout.LayoutParams(-1, -1))
             1 -> {
-                f.addView(View(this).apply { setBackgroundColor(Color.parseColor("#80000000")) }, FrameLayout.LayoutParams(-1, -1))
                 f.addView(View(this).apply { background = rect(red, 8) },
                     FrameLayout.LayoutParams(-1, dp(52), Gravity.CENTER).apply { setMargins(dp(6), 0, dp(6), 0) })
             }
@@ -1285,19 +1284,21 @@ class MainActivity : Activity() {
         /** שורה: שם + מצב בכחול + מתג. open = לחיצה על השם פותחת הגדרה נוספת (והמתג לבד מדליק/מכבה) */
         fun row(c: LinearLayout, title: String, sub: String = "", on: Boolean? = null, sep: Boolean = true,
                 open: (() -> Unit)? = null, click: () -> Unit) {
+            // גובה קבוע כמו בסמסונג: שורה רגילה 48, שורה עם מצב מתחת 56 (המתג לא מגביה)
             val r = LinearLayout(this).apply {
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(18), dp(15), dp(18), dp(15))
+                setPadding(dp(18), 0, dp(18), 0)
                 setOnClickListener { (open ?: click)() }
             }
             val t = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-            t.addView(text(title, 16f, C.TEXT))
-            if (sub.isNotEmpty()) t.addView(text(sub, 12f, blue).apply { setPadding(0, dp(2), 0, 0) })
+            t.addView(text(title, 16f, C.TEXT).apply { includeFontPadding = false })
+            if (sub.isNotEmpty()) t.addView(text(sub, 12f, blue).apply { includeFontPadding = false; setPadding(0, dp(4), 0, 0) })
             r.addView(t, LinearLayout.LayoutParams(0, -2, 1f))
             if (on != null) {
                 if (sep) r.addView(View(this).apply { setBackgroundColor(C.SEPV) },
                     LinearLayout.LayoutParams(dp(1), dp(26)).apply { setMargins(dp(12), 0, dp(12), 0) })
                 r.addView(android.widget.Switch(this).apply {
+                    minHeight = 0; minimumHeight = 0; setPadding(0, 0, 0, 0)
                     isChecked = on
                     if (open != null) setOnClickListener { click() } else isClickable = false
                     thumbTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
@@ -1305,7 +1306,7 @@ class MainActivity : Activity() {
                     trackTintMode = android.graphics.PorterDuff.Mode.SRC
                 })
             }
-            c.addView(r)
+            c.addView(r, LinearLayout.LayoutParams(-1, dp(if (sub.isEmpty()) 48 else 56)))
         }
         fun rebuild() {
             body.removeAllViews()
