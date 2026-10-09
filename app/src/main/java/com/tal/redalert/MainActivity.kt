@@ -469,11 +469,7 @@ class MainActivity : Activity() {
                 insets
             }
         }
-        val nav = bottomNav(0) { i -> when (i) {
-            1 -> showRecent()
-            2 -> startActivity(Intent(this, ClockActivity::class.java))
-            3 -> showSettings()
-        } }
+        val nav = bottomNav(0) { i -> openTab(i) }
         scroll.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(10) })
         // מקום לתפריט מתחת לפיד
         col.setPadding(col.paddingLeft, col.paddingTop, col.paddingRight, dp(GAP) + dp(70))
@@ -489,6 +485,8 @@ class MainActivity : Activity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        // לשונית שנבחרה בתפריט שבמסך השעון
+        intent.getIntExtra("tab", -1).takeIf { it > 0 }?.let { t -> intent.removeExtra("tab"); ui.post { openTab(t) } }
     }
 
     override fun onResume() {
@@ -656,7 +654,7 @@ class MainActivity : Activity() {
      * מסך "התראות אחרונות": כל ההתראות שהיו בארץ (החודש האחרון, מהארכיון של פיקוד העורף),
      * בלי סינון. לחיצה על התראה - המפה על האזור שלה.
      */
-    private fun showRecent() = fullPage("התראות אחרונות") { c ->
+    private fun showRecent() = fullPage("התראות אחרונות", navTab = 1) { c ->
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(4), dp(14), dp(4))
@@ -864,7 +862,7 @@ class MainActivity : Activity() {
     private fun pill() = GradientDrawable().apply { setColor(Color.parseColor("#3A3A3E")); cornerRadius = dp(30).toFloat() }
 
     /** מסך מלא (על כל המסך) עם כותרת וחץ חזרה; build בונה את התוכן, ונבנה מחדש כשחוזרים אליו */
-    private fun fullPage(title: String, build: (LinearLayout) -> Unit) {
+    private fun fullPage(title: String, navTab: Int = -1, build: (LinearLayout) -> Unit) {
         val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(14), dp(16), dp(30)) }
         val head = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
@@ -877,11 +875,22 @@ class MainActivity : Activity() {
         fun rebuild() { content.removeAllViews(); build(content) }
         body.addView(head)
         body.addView(content, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
-        d.setContentView(ScrollView(this).apply {
+        val sv = ScrollView(this).apply {
             setBackgroundColor(C.BG)
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             addView(body)
-        })
+        }
+        if (navTab < 0) d.setContentView(sv)
+        else {
+            // עם התפריט התחתון (התרעות אחרונות)
+            body.setPadding(body.paddingLeft, body.paddingTop, body.paddingRight, dp(100))
+            d.setContentView(FrameLayout(this).apply {
+                setBackgroundColor(C.BG)
+                addView(sv, FrameLayout.LayoutParams(-1, -1))
+                addView(bottomNav(navTab) { i -> d.dismiss(); openTab(i) },
+                    FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(18) })
+            })
+        }
         rebuild()
         // חוזרים מחלון של הגדרה - מעדכנים את המצבים
         d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
@@ -934,41 +943,15 @@ class MainActivity : Activity() {
         else -> "#546E7A"
     })
 
-    /** תפריט תחתון צף (sel = הלשונית הנבחרת): ראשי · התרעות · שעון · הגדרות */
-    private fun bottomNav(sel: Int, onTab: (Int) -> Unit): LinearLayout {
-        // תפריט תחתון צף: ראשי · התרעות · שעון · הגדרות (לפי המידות של inv-bottom-nav)
-        val nav = LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            setPaddingRelative(dp(5), dp(4), dp(5) + dp(6), dp(4))   // +6 מפצה על החפיפה של הלשונית האחרונה
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#3A3A3E")); cornerRadius = dp(32).toFloat()
-                setStroke(dp(1), Color.parseColor("#1FFFFFFF"))
-            }
-            elevation = dp(6).toFloat()
+    private fun bottomNav(sel: Int, onTab: (Int) -> Unit) = NavBar.build(this, sel, onTab)
+
+    /** מעבר ללשונית מהתפריט התחתון (0 = המסך הראשי עצמו) */
+    private fun openTab(i: Int) {
+        when (i) {
+            1 -> showRecent()
+            2 -> startActivity(Intent(this, ClockActivity::class.java))
+            3 -> showSettings()
         }
-        // רוחב לשונית: (רוחב המסך - 32 - 10 + 24) / 5, לכל היותר 83
-        val screenDp = resources.displayMetrics.widthPixels / resources.displayMetrics.density
-        val tabW = dp(((screenDp - 32 - 10 + 24) / 5).coerceAtMost(83f).toInt())
-        fun tab(icon: Int, label: String, on: Boolean, click: () -> Unit) = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(4), dp(7), dp(4), dp(7))
-            if (on) background = GradientDrawable().apply { setColor(Color.parseColor("#55555B")); cornerRadius = dp(24).toFloat() }
-            val c = if (on) Color.WHITE else Color.parseColor("#AAAAAA")
-            addView(android.widget.ImageView(this@MainActivity).apply {
-                setImageResource(icon); imageTintList = android.content.res.ColorStateList.valueOf(c)
-            }, LinearLayout.LayoutParams(dp(20), dp(20)))
-            addView(text(label, 11f, c, bold = on).apply { gravity = Gravity.CENTER; includeFontPadding = false; setSingleLine() },
-                LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(2) })
-            setOnClickListener { click() }
-        }
-        // חפיפה של 6 בין הלשוניות
-        val tabLp = { LinearLayout.LayoutParams(tabW, -2).apply { marginEnd = -dp(6) } }
-        listOf(R.drawable.ic_home to "ראשי", R.drawable.ic_nav_alerts to "התרעות",
-               R.drawable.ic_nav_clock to "שעון", R.drawable.ic_gear to "הגדרות").forEachIndexed { i, (ic, l) ->
-            nav.addView(tab(ic, l, i == sel) { if (i != sel) onTab(i) }, tabLp())
-        }
-        return nav
     }
 
     /** הגדרות בסגנון One UI: עמוד מלא, כותרת גדולה, כל הקבוצות פתוחות */
@@ -1029,13 +1012,7 @@ class MainActivity : Activity() {
         // התפריט התחתון נשאר גם בהגדרות
         val frame = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
         frame.addView(page, FrameLayout.LayoutParams(-1, -1))
-        val nav = bottomNav(3) { i ->
-            d.dismiss()
-            when (i) {
-                1 -> showRecent()
-                2 -> startActivity(Intent(this, ClockActivity::class.java))
-            }
-        }
+        val nav = bottomNav(3) { i -> d.dismiss(); openTab(i) }
         frame.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(10) })
         frame.setOnApplyWindowInsetsListener { _, insets ->
             @Suppress("DEPRECATION")
