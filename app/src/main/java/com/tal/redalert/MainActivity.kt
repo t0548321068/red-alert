@@ -204,6 +204,14 @@ class MainActivity : Activity() {
             alertCard.background = GradientDrawable().apply {
                 setColor(Color.parseColor(AlertUi.color(level))); cornerRadius = dp(28).toFloat() }
             val (t1, t2) = AlertUi.head(j.optString("title"), level)
+            // אייקון מעל הכותרת לפי סוג ההתרעה
+            val icon = when (level) {
+                AlertService.LEVEL_PRE -> R.drawable.ic_list_pre
+                AlertService.LEVEL_END -> R.drawable.ic_list_end
+                else -> R.drawable.ic_list_siren
+            }
+            alertCard.addView(android.widget.ImageView(this).apply { setImageResource(icon) },
+                LinearLayout.LayoutParams(dp(30), dp(30)).apply { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dp(4) })
             alertCard.addView(text(t1, 19f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER })
             alertCard.addView(text(t2, 14f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER })
             alertCardLabel = null; alertCardTimer = null
