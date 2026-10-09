@@ -15,6 +15,20 @@ object AlertUi {
         else -> title to "היכנסו למרחב המוגן"
     }
 
+    /** אייקון לפי סוג ההתרעה: מקדימה / סיום, ובאדום - לפי סוג האיום. לא מזוהה: צופר */
+    fun icon(title: String, level: Int): Int = when {
+        level == AlertService.LEVEL_PRE -> R.drawable.ic_list_pre
+        level == AlertService.LEVEL_END -> R.drawable.ic_list_end
+        title.contains("כלי טיס") -> R.drawable.ic_alert_aircraft
+        title.contains("מחבלים") -> R.drawable.ic_alert_infiltration
+        title.contains("רעידת אדמה") -> R.drawable.ic_alert_quake
+        title.contains("צונאמי") -> R.drawable.ic_alert_tsunami
+        title.contains("רדיולוגי") -> R.drawable.ic_alert_radio
+        title.contains("חומרים מסוכנים") || title.contains("כימי") -> R.drawable.ic_alert_hazmat
+        title.contains("רקטות") || title.contains("טילים") -> R.drawable.ic_alert_rocket
+        else -> R.drawable.ic_list_siren
+    }
+
     private fun mmss(s: Int) = "%d:%02d".format(s / 60, s % 60)
 
     /** (כיתוב, טיימר) לרמת "ירי": זמן התגוננות -> נשארים במרחב המוגן -> ממתינים לסיום. null לשאר הרמות */
