@@ -13,7 +13,7 @@ object FeedText {
 
     private fun short(title: String) = when {
         title.contains("בדקות הקרובות") -> "מקדימה"
-        title.contains("הסתיים") -> "הסתיים"
+        title.contains("הסתיים") -> "האירוע הסתיים"
         else -> title
     }
 
