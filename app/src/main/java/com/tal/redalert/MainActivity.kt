@@ -821,117 +821,188 @@ class MainActivity : Activity() {
         return if (nick.isEmpty()) date else "$nick · $date"
     }
 
-    /** הוספה: יישוב בודד (חיפוש) או אזור שלם (מחוז של פיקוד העורף) */
-    private fun chooseAddType() {
-        AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("הוספת אזור התרעה")
-            .setItems(arrayOf("יישוב", "אזור שלם")) { _, i -> if (i == 0) addCity() else addDistricts() }
-            .setNegativeButton("ביטול", null)
-            .show()
-    }
-
-    /** אזורים שלמים: אותו חלון כמו של היישובים - חיפוש, רשימה, לחיצה מוסיפה */
-    private fun addDistricts() {
-        val all = listOf(AreaData.ALL_COUNTRY) + AreaData.districts(this)   // "כל הארץ" ראשון
-        val input = EditText(this).apply {
-            hint = "חיפוש אזור"
-            setSingleLine()
-        }
-        val results = android.widget.ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, ArrayList())
-        val listView = android.widget.ListView(this).apply { adapter = results }
-        val box = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(8), dp(20), 0)
-            addView(input)
-            addView(listView, LinearLayout.LayoutParams(-1, dp(300)))
-        }
-        fun filter(q: String) {
-            val t = q.trim()
-            val mine = Prefs.cities(this)
-            // גם לפי שם יישוב: מראה את האזור שהיישוב שייך אליו
-            val bySettlement = if (t.isEmpty()) emptySet() else
-                AreaData.districtMap(this).filterKeys { it.contains(t) }.values.toSet()
-            val found = all.filter { (AreaData.DISTRICT_PREFIX + it) !in mine && (t.isEmpty() || it.contains(t) || it in bySettlement) }
-                .sortedBy { if (it == AreaData.ALL_COUNTRY) -1 else if (t.isNotEmpty() && it.startsWith(t)) 0 else 1 }
-            results.clear(); results.addAll(found); results.notifyDataSetChanged()
-        }
-        input.addTextChangedListener(object : android.text.TextWatcher {
-            override fun afterTextChanged(e: android.text.Editable?) { filter(e.toString()) }
-            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-        })
-        filter("")
-        val d = AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("הוספת אזור שלם")
-            .setView(box)
-            .setNegativeButton("סגירה", null)
-            .show()
-        listView.setOnItemClickListener { _, _, pos, _ ->
-            val v = AreaData.DISTRICT_PREFIX + (results.getItem(pos) ?: return@setOnItemClickListener)
-            if (v !in Prefs.cities(this)) { Prefs.setCities(this, Prefs.cities(this) + v); refresh() }
-            d.dismiss()
+    /** עיגול בחירה כמו בבחירת קבצים בסמסונג: טבעת, ובנבחר עיגול כחול מלא עם וי */
+    private inner class CheckDot(var on: Boolean) : View(this@MainActivity) {
+        private val d = resources.displayMetrics.density
+        private val ring = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            style = android.graphics.Paint.Style.STROKE; strokeWidth = 1.6f * d; color = Color.parseColor("#8E8E93") }
+        private val fill = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#5B8AF5") }
+        private val tick = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            style = android.graphics.Paint.Style.STROKE; strokeWidth = 2.4f * d; color = Color.BLACK   // וי שחור כמו בסמסונג
+            strokeCap = android.graphics.Paint.Cap.ROUND; strokeJoin = android.graphics.Paint.Join.ROUND }
+        override fun onDraw(c: android.graphics.Canvas) {
+            val cx = width / 2f; val cy = height / 2f; val r = minOf(width, height) / 2f - 1.5f * d
+            if (!on) { c.drawCircle(cx, cy, r, ring); return }
+            c.drawCircle(cx, cy, r, fill)
+            val p = android.graphics.Path().apply {
+                moveTo(cx - r * 0.42f, cy + r * 0.02f); lineTo(cx - r * 0.1f, cy + r * 0.34f); lineTo(cx + r * 0.44f, cy - r * 0.3f) }
+            c.drawPath(p, tick)
         }
     }
 
-    /** הוספת אזור: חיפוש (גם חלקי) ברשימת אזורי ההתרעה הרשמיים, לחיצה על תוצאה מוסיפה */
-    private fun addCity() {
-        // "ברחבי הארץ" מאוחד עם "כל הארץ" - מוצג פעם אחת
-        val all = AreaData.areas(this).keys().asSequence().filter { it != "ברחבי הארץ" }.toList().sorted()
-        val input = EditText(this).apply {
-            hint = "חיפוש יישוב"
-            setSingleLine()
-        }
-        // כל שורה: שם היישוב, ומתחתיו שם האזור השלם שהוא שייך אליו
+    /** חלון אזורים נוספים: הוספת יישוב / הוספת אזור שלם */
+    private fun showExtraAreas() = ouiPage("אזורים נוספים") { body, _ ->
+        val c = ouiCard()
+        ouiRow(c, "הוספת יישוב") { showAreaPicker(whole = false) }
+        ouiDivider(c)
+        ouiRow(c, "הוספת אזור שלם") { showAreaPicker(whole = true) }
+        ouiAdd(body, c)
+    }
+
+    /**
+     * בחירת אזורים נוספים בסגנון בחירת קבצים בסמסונג: "N נבחרו" למעלה, "הכל" (= כל הארץ) ו"ביטול",
+     * חיפוש, ורשימה עם עיגול בחירה בכל שורה.
+     * whole = בחירת אזורים שלמים (כל שורה אזור)
+     */
+    private fun showAreaPicker(whole: Boolean) {
         val dmap = AreaData.districtMap(this)
-        val results = object : android.widget.ArrayAdapter<String>(this, android.R.layout.simple_list_item_2, android.R.id.text1, ArrayList()) {
-            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val v = super.getView(position, convertView, parent)
-                val name = getItem(position) ?: ""
-                v.findViewById<TextView>(android.R.id.text1).text = name
-                v.findViewById<TextView>(android.R.id.text2).apply {
-                    text = dmap[name] ?: ""
-                    setTextColor(Color.parseColor("#9E9E9E"))
+        val sel = LinkedHashSet(Prefs.cities(this))
+        val P = AreaData.DISTRICT_PREFIX
+        val allKey = P + AreaData.ALL_COUNTRY
+        // "ברחבי הארץ" מאוחד עם "כל הארץ"
+        val all = AreaData.areas(this).keys().asSequence().filter { !AreaData.isNational(it) }.toList()
+        val districts = AreaData.districts(this)
+        var query = ""
+
+        fun covered(name: String) = allKey in sel ||
+            (if (whole) (P + name) in sel else name in sel || (P + (dmap[name] ?: "")) in sel)
+        lateinit var render: () -> Unit
+
+        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; setBackgroundColor(C.BG); layoutDirection = View.LAYOUT_DIRECTION_RTL }
+
+        // כותרת: [עיגול "הכל"] "N נבחרו"
+        val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(14), dp(20), dp(10)) }
+        val allDot = CheckDot(false)
+        top.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
+            addView(allDot, LinearLayout.LayoutParams(dp(22), dp(22)))
+            addView(text("הכל", 12f, C.TEXT).apply { setPadding(0, dp(2), 0, 0) })
+            setOnClickListener {
+                // כל הארץ מכסה הכל - שאר הבחירות מיותרות
+                if (!sel.remove(allKey)) { sel.clear(); sel.add(allKey) }
+                render()
+            }
+        }, LinearLayout.LayoutParams(dp(44), -2))
+        val count = text("", 26f, C.TEXT, bold = true)
+        top.addView(count, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(12) })
+        root.addView(top)
+
+        // חיפוש
+        val search = EditText(this).apply {
+            hint = if (whole) "חיפוש אזור" else "חיפוש יישוב"; setSingleLine(); textSize = 16f
+            setTextColor(C.TEXT); setHintTextColor(C.MUTED)
+            background = GradientDrawable().apply { setColor(C.CARD2); cornerRadius = dp(24).toFloat() }
+            setPadding(dp(20), 0, dp(20), 0)
+        }
+        root.addView(search, LinearLayout.LayoutParams(-1, dp(48)).apply { setMargins(dp(12), 0, dp(12), dp(10)) })
+
+        // הרשימה
+        val items = ArrayList<String>()
+        val adapter = object : android.widget.BaseAdapter() {
+            override fun getCount() = items.size
+            override fun getItem(p: Int) = items[p]
+            override fun getItemId(p: Int) = p.toLong()
+            override fun getView(p: Int, cv: View?, parent: ViewGroup): View {
+                val name = items[p]
+                val v = (cv as? LinearLayout) ?: LinearLayout(this@MainActivity).apply {
+                    gravity = Gravity.CENTER_VERTICAL; setPadding(dp(20), 0, dp(20), 0)
+                    minimumHeight = dp(60)
+                    addView(CheckDot(false), LinearLayout.LayoutParams(dp(22), dp(22)))
+                    // שם, לידו האזור בקטן, ובסוף השורה זמן ההתגוננות במילים - הכל בשורה אחת
+                    addView(text("", 17f, C.TEXT).apply { setSingleLine() },
+                        LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(18) })
+                    addView(text("", 13f, C.MUTED).apply { setSingleLine(); ellipsize = TextUtils.TruncateAt.END },
+                        LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(10) })
+                    addView(text("", 13f, C.MUTED).apply { setSingleLine() },
+                        LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
                 }
+                (v.getChildAt(0) as CheckDot).apply { on = covered(name); invalidate() }
+                (v.getChildAt(1) as TextView).text = name
+                (v.getChildAt(2) as TextView).text = if (whole) "" else dmap[name] ?: ""
+                val sec = if (whole) null else AreaData.shelterSeconds(this@MainActivity, name)
+                (v.getChildAt(3) as TextView).text = sec?.let { AreaData.shelterText(it) } ?: ""
                 return v
             }
         }
-        val listView = android.widget.ListView(this).apply { adapter = results }
-        val box = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(8), dp(20), 0)
-            addView(input)
-            addView(listView, LinearLayout.LayoutParams(-1, dp(360)))
+        val list = android.widget.ListView(this).apply {
+            this.adapter = adapter; divider = null; selector = android.graphics.drawable.ColorDrawable(0)
+            clipToPadding = false; setPadding(0, 0, 0, dp(120))
         }
-        fun filter(q: String) {
-            val t = q.trim()
-            val k = Prefs.areaKey(t)
-            val mine = Prefs.cities(this)
-            // בלי חיפוש - כל הרשימה
-            val found = all.filter {
-                it !in mine && (t.isEmpty() || it.contains(t) || (k.isNotEmpty() && Prefs.areaKey(it).contains(k)) ||
-                    (dmap[it]?.contains(t) == true))   // גם לפי שם האזור
-            }.sortedBy { if (t.isNotEmpty() && it.startsWith(t)) 0 else 1 }
-            results.clear(); results.addAll(found); results.notifyDataSetChanged()
+        root.addView(list, LinearLayout.LayoutParams(-1, 0, 1f))
+
+        val fill = {
+            val t = query.trim(); val k = Prefs.areaKey(t)
+            items.clear()
+            items.addAll((if (whole) districts else all).filter {
+                t.isEmpty() || it.contains(t) || (k.isNotEmpty() && Prefs.areaKey(it).contains(k))
+            }.sortedWith(compareBy<String>({ if (t.isNotEmpty() && it.startsWith(t)) 0 else 1 }, { it })))
+            adapter.notifyDataSetChanged()
         }
-        input.addTextChangedListener(object : android.text.TextWatcher {
-            override fun afterTextChanged(e: android.text.Editable?) { filter(e.toString()) }
+        render = {
+            count.text = if (sel.isEmpty()) "בחירת אזורים" else "${sel.size} נבחרו"
+            allDot.on = allKey in sel; allDot.invalidate()
+            adapter.notifyDataSetChanged()
+        }
+        list.setOnItemClickListener { _, _, p, _ ->
+            val name = items[p]
+            if (whole) {
+                // אזור שלם: מבטלים מתוך "כל הארץ" - שאר האזורים נשארים
+                if (sel.remove(allKey)) sel.addAll(districts.filter { it != name }.map { P + it })
+                else if (!sel.remove(P + name)) { sel.add(P + name); sel.removeAll { !it.startsWith(P) && dmap[it] == name } }
+            } else if (covered(name)) {
+                if (name in sel) sel.remove(name)
+                else {
+                    // מבטלים יישוב מתוך אזור שלם שנבחר - שאר היישובים נשארים מסומנים
+                    val dist = dmap[name]
+                    if (sel.remove(allKey)) sel.addAll(districts.filter { it != dist }.map { P + it })
+                    sel.remove(P + dist)
+                    sel.addAll(all.filter { dmap[it] == dist && it != name })
+                }
+            } else sel.add(name)
+            render()
+        }
+        search.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(e: android.text.Editable?) { query = e.toString(); fill() }
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
             override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
         })
-        val d = AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("הוספת יישוב")
-            .setView(box)
-            .setNegativeButton("סגירה", null)
-            .show()
-        filter("")
-        listView.setOnItemClickListener { _, _, pos, _ ->
-            val v = results.getItem(pos) ?: return@setOnItemClickListener
-            if (v !in Prefs.cities(this)) { Prefs.setCities(this, Prefs.cities(this) + v); refresh() }
-            d.dismiss()
+        fill(); render()
+
+        // גלולה צפה למטה כמו בשעון של סמסונג: ביטול | שמור
+        val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
+        frame.addView(root, FrameLayout.LayoutParams(-1, -1))
+        val save = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            // כמו בשעון של סמסונג: גלולה כהה, טקסט לבן מודגש, קו מפריד דק
+            background = GradientDrawable().apply { setColor(if (C.LIGHT) Color.parseColor("#E3E3E8") else Color.parseColor("#252525")); cornerRadius = dp(24).toFloat() }
+            addView(text("ביטול", 17f, C.TEXT, bold = true).apply {
+                gravity = Gravity.CENTER; setOnClickListener { d.dismiss() } }, LinearLayout.LayoutParams(0, -1, 1f))
+            addView(View(this@MainActivity).apply { setBackgroundColor(C.SEPV) }, LinearLayout.LayoutParams(dp(1), dp(20)))
+            addView(text("שמור", 17f, C.TEXT, bold = true).apply {
+                gravity = Gravity.CENTER
+                setOnClickListener { Prefs.setCities(this@MainActivity, sel.toList()); refresh(); d.dismiss() }
+            }, LinearLayout.LayoutParams(0, -1, 1f))
         }
+        frame.addView(save, FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.6f).toInt(), dp(46),
+            Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = navMargin() })
+        frame.setOnApplyWindowInsetsListener { _, insets ->
+            @Suppress("DEPRECATION")
+            root.setPadding(0, insets.systemWindowInsetTop, 0, 0)
+            @Suppress("DEPRECATION")
+            (save.layoutParams as FrameLayout.LayoutParams).bottomMargin = insets.systemWindowInsetBottom + dp(10)
+            save.requestLayout()
+            insets
+        }
+        d.setContentView(frame)
+        d.window?.setLayout(-1, -1)
+        @Suppress("DEPRECATION")
+        d.window?.statusBarColor = C.BG
+        edgeToEdge(d)
+        track(d)
+        d.show()
     }
 
     // ---- מסך הגדרות: כפתור לכל קטגוריה, וכל קטגוריה במסך משלה ----
@@ -1345,7 +1416,9 @@ class MainActivity : Activity() {
 
         // אזורים נוספים (עברו מהמסך הראשי): יישוב מיושר לימין ולידו האזור בקטן, ✕ להסרה
         val extra = ouiCard()
-        extra.addView(text("אזורים נוספים", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+        // לחיצה על הכותרת פותחת את חלון בחירת האזורים
+        extra.addView(text("אזורים נוספים", 16f, C.TEXT).apply {
+            setPadding(dp(18), dp(14), dp(18), dp(4)); setOnClickListener { showExtraAreas() } })
         val list = Prefs.cities(this)
         if (list.isEmpty()) ouiRow(extra, "אין אזורים נוספים", subColor = C.MUTED,
             sub = if (!Prefs.nearMe(this)) "⚠️ אין אזורים – לא יתקבלו התרעות" else "")
@@ -1367,7 +1440,7 @@ class MainActivity : Activity() {
             extra.addView(r, LinearLayout.LayoutParams(-1, dp(48)))
         }
         ouiDivider(extra)
-        ouiRow(extra, "+ הוספת אזור", subColor = C.MUTED) { chooseAddType() }
+        ouiRow(extra, "+ הוספת אזור", subColor = C.MUTED) { showExtraAreas() }
         ouiAdd(body, extra)
         // הקראה - כרטיס נפרד
         val sp = ouiCard()
