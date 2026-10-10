@@ -351,7 +351,7 @@ class MainActivity : Activity() {
             setPadding(dp(6), padV, dp(6), padV)
             background = graphite(28)
         }
-        netInd = indicator(R.drawable.ic_globe) { showNetwork() }   // לחיצה: עמוד רשת
+        netInd = indicator(R.drawable.ic_globe) { showNetworkInfo() }   // לחיצה: הודעה קצרה עם סוג החיבור
         protInd = indicator(R.drawable.ic_shield_ind) { toggle() }   // לחיצה: הפעלה / כיבוי (נראה כמו שאר החיוויים)
         locInd = indicator(R.drawable.ic_location) { onLocationIndicator() }   // לחיצה: רענון מיקום
         srvInd = indicator(R.drawable.ic_antenna) { showSourcesInfo() }   // לחיצה: רשימת המקורות
@@ -1828,66 +1828,17 @@ class MainActivity : Activity() {
         }
     }
 
-    /** עמוד רשת (לחיצה על חיווי הרשת): מצב החיבור ופרטיו - מתעדכן כל 2 שניות */
-    private fun showNetwork() = ouiPage("רשת") { body, rebuild ->
-        val cm = getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-        val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }
+    /** לחיצה על חיווי הרשת: הודעה קצרה עם סוג החיבור (כמו "מעדכן מיקום…") */
+    private fun showNetworkInfo() {
         val net = network()
-        val airplane = Settings.Global.getInt(contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) == 1
-        // כרטיס מצב: אייקון גדול בצבע המצב + האם התרעות יגיעו
-        val (state, sub, color) = when {
-            net == null -> Triple(if (airplane) "מצב טיסה – אין רשת" else "אין רשת", "התרעות לא יגיעו", C.RED)
-            !net.second -> Triple("מחובר, אבל אין אינטרנט", "התרעות לא יגיעו", C.ORANGE)
-            else -> Triple("מחובר לאינטרנט", "התרעות יגיעו", C.GREEN)
+        val msg = when {
+            net == null -> "אין רשת – התרעות לא יגיעו"
+            !net.second -> "מחובר, אבל אין אינטרנט"
+            net.first == "wifi" -> "מחובר ל-Wi-Fi"
+            net.first == "cell" -> "מחובר לנתונים ניידים"
+            else -> "מחובר לאינטרנט"
         }
-        val hero = ouiCard().apply { gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(18), dp(26), dp(18), dp(22)) }
-        hero.addView(android.widget.ImageView(this).apply {
-            setImageResource(R.drawable.ic_globe)
-            imageTintList = android.content.res.ColorStateList.valueOf(color)
-        }, LinearLayout.LayoutParams(dp(56), dp(56)).apply { bottomMargin = dp(12) })
-        hero.addView(text(state, 20f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER })
-        hero.addView(text(sub, 13f, color).apply { gravity = Gravity.CENTER; setPadding(0, dp(4), 0, 0) })
-        ouiAdd(body, hero)
-        // פרטי החיבור
-        val info = ouiCard()
-        ouiRow(info, "סוג חיבור", end = when (net?.first) { "wifi" -> "Wi-Fi"; "cell" -> "נתונים ניידים"; "other" -> "אחר"; else -> "—" })
-        ouiDivider(info)
-        ouiRow(info, "אינטרנט", end = if (net?.second == true) "פעיל" else "אין",
-            endColor = if (net?.second == true) C.GREEN else C.RED)
-        if (caps != null) {
-            val sig = if (Build.VERSION.SDK_INT >= 29) caps.signalStrength else Int.MIN_VALUE
-            if (sig != Int.MIN_VALUE) {
-                ouiDivider(info)
-                ouiRow(info, "עוצמת אות", end = when { sig >= -60 -> "חזקה"; sig >= -75 -> "בינונית"; else -> "חלשה" })
-            }
-            val kbps = caps.linkDownstreamBandwidthKbps
-            if (kbps > 0) {
-                ouiDivider(info)
-                ouiRow(info, "מהירות משוערת", end = if (kbps >= 1000) "${kbps / 1000} Mbps" else "$kbps Kbps")
-            }
-            ouiDivider(info)
-            ouiRow(info, "חיבור מוגבל", end = if (caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)) "לא" else "כן")
-            if (caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)) { ouiDivider(info); ouiRow(info, "VPN", end = "פעיל") }
-        }
-        ouiDivider(info)
-        ouiRow(info, "מצב טיסה", end = if (airplane) "פעיל" else "כבוי")
-        ouiAdd(body, info)
-        ouiNote(body, "מתעדכן אוטומטית")
-        // חלון האינטרנט של הטלפון (Wi-Fi ונתונים ניידים) בלי לצאת מהאפליקציה
-        val more = ouiCard()
-        ouiRow(more, "הגדרות רשת", "Wi-Fi · נתונים ניידים") {
-            try {
-                startActivity(Intent(if (Build.VERSION.SDK_INT >= 29) Settings.Panel.ACTION_INTERNET_CONNECTIVITY
-                                     else Settings.ACTION_WIRELESS_SETTINGS))
-            } catch (_: Exception) {
-                try { startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS)) } catch (_: Exception) { }
-            }
-        }
-        ouiAdd(body, more)
-        (body.tag as? Runnable)?.let { ui.removeCallbacks(it) }
-        val live = Runnable { if (body.isAttachedToWindow) rebuild() }
-        body.tag = live
-        ui.postDelayed(live, 2000)
+        android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
     }
 
     private fun onLocationIndicator() {
