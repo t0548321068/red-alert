@@ -988,6 +988,7 @@ class MainActivity : Activity() {
 
     /** עמוד מלא: כותרת קטנה למעלה (כמו "תצוגה"), build נקרא מחדש בכל rebuild */
     private fun ouiPage(title: String, refreshOnFocus: Boolean = true, onClose: (() -> Unit)? = null,
+                        button: Pair<String, () -> Unit>? = null,
                         build: (LinearLayout, () -> Unit) -> Unit) {
         val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(30)) }
@@ -1008,7 +1009,29 @@ class MainActivity : Activity() {
             build(body, rebuild)
         }
         rebuild()
-        d.setContentView(page)
+        if (button == null) d.setContentView(page)
+        else {
+            // כפתור כחול גדול קבוע בתחתית (כמו "בדוק אם יש עדכונים" בסמסונג)
+            body.setPadding(0, 0, 0, dp(120))
+            val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
+            frame.addView(page, FrameLayout.LayoutParams(-1, -1))
+            // מידות לפי הצילום מסמסונג: 60% רוחב, גובה 46, עיגול מלא, כחול #4C7DFF, טקסט 16 מודגש
+            val btn = text(button.first, 16f, Color.WHITE, bold = true).apply {
+                gravity = Gravity.CENTER
+                includeFontPadding = false
+                background = GradientDrawable().apply { setColor(Color.parseColor("#4C7DFF")); cornerRadius = dp(23).toFloat() }
+                setOnClickListener { button.second() }
+            }
+            frame.addView(btn, FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.6f).toInt(), dp(46),
+                Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(36) })
+            frame.setOnApplyWindowInsetsListener { _, insets ->
+                @Suppress("DEPRECATION")
+                (btn.layoutParams as FrameLayout.LayoutParams).bottomMargin = insets.systemWindowInsetBottom + dp(36)
+                btn.requestLayout()
+                page.dispatchApplyWindowInsets(insets)
+            }
+            d.setContentView(frame)
+        }
         d.window?.setLayout(-1, -1)
         @Suppress("DEPRECATION")
         d.window?.statusBarColor = C.BG
@@ -1401,9 +1424,19 @@ class MainActivity : Activity() {
      */
     private fun edgeToEdge(d: android.app.Dialog) {
         val w = d.window ?: return
+        // החלונות בנויים על ערכת "Theme.Black" הישנה - בה המערכת מציירת לשורת המצב רקע שחור משלה.
+        // בעיצוב בהיר האייקונים כהים, אז על השחור לא רואים שעה/סוללה. מבקשים לצייר את הרקע בעצמנו בצבע העמוד
+        @Suppress("DEPRECATION")
+        w.clearFlags(android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS or
+            android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION)
+        w.addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+        @Suppress("DEPRECATION")
+        w.statusBarColor = C.BG
+        w.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(C.BG))
         if (Build.VERSION.SDK_INT >= 30) w.setDecorFitsSystemWindows(false)
         else @Suppress("DEPRECATION") { w.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN }
+            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+            (if (C.LIGHT) View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR else 0) }
         @Suppress("DEPRECATION")
         w.navigationBarColor = Color.TRANSPARENT
         if (Build.VERSION.SDK_INT >= 30 && C.LIGHT) {
@@ -1857,12 +1890,18 @@ class MainActivity : Activity() {
     }
 
     /** מסך עדכונים: גרסה מותקנת + בדיקה, גרסאות בטא (למי שנפתח לו), ומה חדש */
-    private fun showUpdates() = ouiPage("עדכונים") { body, rebuild ->
+    private fun showUpdates() = ouiPage("עדכונים",
+        // אותה בדיקה בדיוק כמו לחיצה על הגרסה בשורת החיווי
+        button = "בדוק אם יש עדכונים" to { Updater.check(this, silent = false) }) { body, rebuild ->
         val ver = ouiCard()
         ouiRow(ver, "גרסה מותקנת", end = "v" + Updater.versionLabel(this), endColor = C.MUTED)
         ouiDivider(ver)
-        // אותה בדיקה בדיוק כמו לחיצה על הגרסה בשורת החיווי
-        ouiRow(ver, "בדיקת עדכונים", sub = "בדיקה והתקנה של גרסה חדשה") { Updater.check(this, silent = false) }
+        // מתי האפליקציה עודכנה לאחרונה בטלפון
+        val updatedAt = try {
+            java.text.SimpleDateFormat("dd/MM/yyyy · HH:mm", java.util.Locale.US)
+                .format(java.util.Date(packageManager.getPackageInfo(packageName, 0).lastUpdateTime))
+        } catch (_: Exception) { "" }
+        ouiRow(ver, "בדיקת עדכונים", sub = "עודכן לאחרונה: $updatedAt") { Updater.check(this, silent = false) }
         ouiAdd(body, ver)
         ouiNote(body, "מהעדכון השני ההתקנה אוטומטית, בלי ללחוץ התקן")
 
