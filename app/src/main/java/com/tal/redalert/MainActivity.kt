@@ -388,10 +388,9 @@ class MainActivity : Activity() {
 
         // פיד ארצי - פס רץ עם כל ההתראות בארץ (בלי צליל)
         feedLine = text("", 14f, C.MUTED).apply {
-            setSingleLine()
-            ellipsize = TextUtils.TruncateAt.MARQUEE
-            marqueeRepeatLimit = -1
-            isSelected = true
+            // התראה אחת בכל פעם, מתחלפות בגלילה כלפי מעלה (עד 2 שורות לכל התראה)
+            maxLines = 2
+            ellipsize = TextUtils.TruncateAt.END
             gravity = Gravity.CENTER
             setPadding(dp(12), dp(20), dp(12), dp(20))   // פיד ארצי - כרטיס גבוה יותר
             background = graphite(20)   // כמו שאר הכרטיסים
@@ -1719,6 +1718,11 @@ class MainActivity : Activity() {
                 Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock(); rebuild() }
             addCard(more)
             note("מזג אוויר וברכה בכרטיס השעון במסך הראשי")
+            // פיד ארצי - כמה זמן אחורה להציג
+            val feed = card()
+            row(feed, "פיד ארצי", FeedText.windowLabel(Prefs.feedMinutes(this))) { chooseFeedWindow { rebuild() } }
+            addCard(feed)
+            note("ההתראות בכל הארץ בתחתית המסך הראשי")
         }
         themeAtOpen = Prefs.themeMode(this)
         rebuild()
@@ -1825,13 +1829,33 @@ class MainActivity : Activity() {
         return hasLocationPerm() && lm.isLocationEnabled
     }
 
+    /** הפיד הארצי: ההתראות בחלון הזמן מההגדרות, אחת בכל פעם, מתחלפות בגלילה כלפי מעלה */
+    private var feedItems: List<String> = emptyList()
+    private var feedIdx = 0
+    private var feedTick = 0
+    private var feedWin = -1
     private fun updateFeed() {
-        val t = FeedText.latest(this) ?: "🇮🇱 פיד ארצי · אין התראות בארץ ב־30 הדקות האחרונות"
-        if (t != feedText) {           // לא לאפס את הגלילה של הפס בכל שנייה
+        val items = FeedText.recent(this)
+        val win = Prefs.feedMinutes(this)
+        if (items != feedItems || win != feedWin) {
+            feedItems = items; feedWin = win; feedIdx = 0; feedTick = 0
+            val t = items.firstOrNull() ?: "🇮🇱 פיד ארצי · אין התראות בארץ ב־${FeedText.windowLabel(Prefs.feedMinutes(this))}"
             feedText = t
             feedLine.text = t
-            feedLine.setTextColor(if (t.startsWith("🇮🇱")) C.MUTED else C.TEXT)
+            feedLine.setTextColor(if (items.isEmpty()) C.MUTED else C.TEXT)
+            return
         }
+        // כל 3 שניות - ההתראה הבאה עולה מלמטה
+        if (items.size < 2 || ++feedTick < 3) return
+        feedTick = 0
+        feedIdx = (feedIdx + 1) % items.size
+        val next = items[feedIdx]
+        val h = feedLine.height.coerceAtLeast(dp(40)) / 2f
+        feedLine.animate().translationY(-h).alpha(0f).setDuration(220).withEndAction {
+            feedText = next; feedLine.text = next
+            feedLine.translationY = h
+            feedLine.animate().translationY(0f).alpha(1f).setDuration(220).start()
+        }.start()
     }
 
     private fun updateIndicators() {
@@ -2377,6 +2401,19 @@ class MainActivity : Activity() {
     }
 
     /** עמוד מזג אוויר: הצגה + תדירות עדכון */
+    /** עמוד פיד ארצי: כמה זמן אחורה להציג - מ-30 דקות ועד 24 שעות */
+    private fun chooseFeedWindow(done: () -> Unit) = ouiPage("פיד ארצי", onClose = done) { body, rebuild ->
+        val opts = ouiCard()
+        opts.addView(text("הצגת התראות מ…", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+        FeedText.WINDOWS.forEachIndexed { i, m ->
+            if (i > 0) ouiDivider(opts)
+            ouiRow(opts, FeedText.windowLabel(m), radio = Prefs.feedMinutes(this) == m) {
+                Prefs.setFeedMinutes(this, m); updateFeed(); rebuild() }
+        }
+        ouiAdd(body, opts)
+        ouiNote(body, "ההתראות מתחלפות אחת אחרי השנייה בגלילה כלפי מעלה")
+    }
+
     private fun chooseWeatherInterval(done: () -> Unit) = ouiPage("מזג אוויר", onClose = done) { body, rebuild ->
         val show = ouiCard()
         ouiRow(show, "הצגת מזג אוויר", on = Prefs.showWeather(this)) {

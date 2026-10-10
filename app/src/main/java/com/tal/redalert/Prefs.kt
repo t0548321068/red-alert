@@ -51,6 +51,9 @@ object Prefs {
     fun weatherMinutes(c: Context) = sp(c).getInt("weatherMin", 2)
     fun setWeatherMinutes(c: Context, v: Int) = sp(c).edit().putInt("weatherMin", v).commit()
     fun setShowWeather(c: Context, v: Boolean) = sp(c).edit().putBoolean("weather", v).commit()
+    /** פיד ארצי במסך הראשי: כמה דקות אחורה להציג (30 דקות עד 24 שעות) */
+    fun feedMinutes(c: Context) = sp(c).getInt("feedMin", 30)
+    fun setFeedMinutes(c: Context, v: Int) = sp(c).edit().putInt("feedMin", v).commit()
 
     /** הגרסה האחרונה שהמשתמש ראה עליה "מה חדש" */
     fun seenVersion(c: Context) = sp(c).getString("seenVer", "") ?: ""
