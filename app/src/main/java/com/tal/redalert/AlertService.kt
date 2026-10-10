@@ -472,7 +472,9 @@ class AlertService : Service() {
         val title = if (level == LEVEL_END) "האירוע הסתיים" else rawTitle
         val now = System.currentTimeMillis()
         // בלי כפילויות בתוך ההודעה עצמה
-        val areas = rawAreas.map { it.trim() }.filter { it.isNotBlank() }.distinctBy { key(it, level) }
+        // "ברחבי הארץ" מאוחד ל"כל הארץ" - בכל מקום שמוצג (פיד, התרעות אחרונות, מסך ההתרעה)
+        val areas = rawAreas.map { it.trim() }.filter { it.isNotBlank() }.map { AreaData.unify(it) }
+            .distinctBy { key(it, level) }
 
         // פיד ארצי: כל ההתראות, לפני הסינון לפי אזורים (בלי צליל)
         val feedNew = areas.filter { a ->

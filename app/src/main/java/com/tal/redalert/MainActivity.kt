@@ -178,7 +178,13 @@ class MainActivity : Activity() {
     private lateinit var areasSlot: FrameLayout
 
     /** כשכרטיס ההתרעה מוצג - האזורים בגובה מלא והמסך נגלל; בלעדיו - האזורים ממלאים את מה שנשאר */
+    private var mainScroll: ScrollView? = null
+    /** האם המסך הראשי עצמו נגלל (רק כשכרטיס ההתרעה מוצג) */
+    private var pageScrolls = false
+
     private fun setScrollMode(on: Boolean) {
+        pageScrolls = on
+        if (!on) mainScroll?.scrollTo(0, 0)
         val lp = areasSlot.layoutParams as LinearLayout.LayoutParams
         val h = if (on) -2 else 0; val w = if (on) 0f else 1f
         if (lp.height != h || lp.weight != w) { lp.height = h; lp.weight = w; areasSlot.layoutParams = lp }
@@ -482,11 +488,17 @@ class MainActivity : Activity() {
 
         val scroll = FrameLayout(this).apply {
             // נגלל כשאין מקום (למשל כשכרטיס ההתרעה מוצג מעל השעון)
-            addView(ScrollView(this@MainActivity).apply {
+            // המסך הראשי לא נגלל - רק רשימת האזורים הנוספים. נגלל רק כשכרטיס ההתרעה מוצג מעל השעון
+            mainScroll = object : ScrollView(this@MainActivity) {
+                override fun onInterceptTouchEvent(ev: android.view.MotionEvent) = pageScrolls && super.onInterceptTouchEvent(ev)
+                @android.annotation.SuppressLint("ClickableViewAccessibility")
+                override fun onTouchEvent(ev: android.view.MotionEvent) = pageScrolls && super.onTouchEvent(ev)
+            }.apply {
                 isFillViewport = true
                 isVerticalScrollBarEnabled = false
                 addView(col, ViewGroup.LayoutParams(-1, -2))
-            }, FrameLayout.LayoutParams(-1, -1))
+            }
+            addView(mainScroll, FrameLayout.LayoutParams(-1, -1))
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")
                 v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
@@ -637,29 +649,44 @@ class MainActivity : Activity() {
 
         // אזורים נוספים
         val bottom = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), dp(8)) }
-        val head = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(4), 0, dp(4)) }
-        head.addView(text("אזורים נוספים", 15f, muted), LinearLayout.LayoutParams(0, -2, 1f))
-        head.addView(text("+ הוספה", 14f, C.TEXT).apply {
-            setPadding(dp(14), dp(6), dp(14), dp(6)); background = pill(); setOnClickListener { chooseAddType() } })
-        bottom.addView(head)
-        if (list.isEmpty()) bottom.addView(text("אין אזורים נוספים", 16f, muted).apply { setPadding(0, dp(7), 0, dp(7)) })
+        // כותרת וכיתובים ממורכזים; כפתור ההוספה למטה באמצע
+        bottom.addView(text("אזורים נוספים", 15f, muted).apply { gravity = Gravity.CENTER; setPadding(0, dp(4), 0, dp(4)) },
+            LinearLayout.LayoutParams(-1, -2))
+        if (list.isEmpty()) bottom.addView(text("אין אזורים נוספים", 16f, muted).apply {
+            gravity = Gravity.CENTER; setPadding(0, dp(7), 0, dp(7)) }, LinearLayout.LayoutParams(-1, -2))
         // הרשימה נגללת: עד 4 שורות גלויות, השאר בגלילה
         val rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         list.forEachIndexed { i, city ->
             if (i > 0) rows.addView(View(this).apply { setBackgroundColor(C.LINE) },
                 LinearLayout.LayoutParams(-1, dp(1)))
             val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(8)) }
-            r.addView(text(city.removePrefix(AreaData.DISTRICT_PREFIX), 18f, C.TEXT), LinearLayout.LayoutParams(0, -2, 1f))
+            // מיושר לימין: שם היישוב, ומתחתיו האזור שלו בקטן (אזור שלם - "כל האזור")
+            val isDistrict = city.startsWith(AreaData.DISTRICT_PREFIX)
+            val name = city.removePrefix(AreaData.DISTRICT_PREFIX)
+            val sub = if (isDistrict) "כל האזור" else AreaData.districtMap(this)[name] ?: ""
+            val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            col.addView(text(name, 18f, C.TEXT))
+            if (sub.isNotEmpty()) col.addView(text(sub, 13f, muted))
+            r.addView(col, LinearLayout.LayoutParams(0, -2, 1f))
             r.addView(text("✕", 17f, muted).apply {
-                setPadding(dp(10), 0, dp(4), 0)
+                gravity = Gravity.CENTER
+                layoutParams = LinearLayout.LayoutParams(dp(32), -2)
                 setOnClickListener { Prefs.setCities(this@MainActivity, Prefs.cities(this@MainActivity) - city); refresh() }
             })
             rows.addView(r)
         }
-        // הרשימה נגללת כשאין לה מקום במסך
-        bottom.addView(ScrollView(this).apply { addView(rows) }, LinearLayout.LayoutParams(-1, -2, 1f))
+        // הרשימה נגללת כשאין לה מקום במסך (והגלילה שלה לא "נגנבת" ע"י המסך)
+        bottom.addView(ScrollView(this).apply {
+            addView(rows)
+            isVerticalScrollBarEnabled = false
+            setOnTouchListener { v, _ -> v.parent?.requestDisallowInterceptTouchEvent(v.canScrollVertically(1) || v.canScrollVertically(-1)); false }
+        }, LinearLayout.LayoutParams(-1, -2, 1f))
         if (list.isEmpty() && !nearOn)
-            bottom.addView(text("⚠️ אין אזורים – לא יתקבלו התראות", 15f, C.ORANGE).apply { setPadding(0, dp(4), 0, dp(4)) })
+            bottom.addView(text("⚠️ אין אזורים – לא יתקבלו התראות", 15f, C.ORANGE).apply {
+                gravity = Gravity.CENTER; setPadding(0, dp(4), 0, dp(4)) }, LinearLayout.LayoutParams(-1, -2))
+        bottom.addView(text("+ הוספה", 14f, C.TEXT).apply {
+            setPadding(dp(18), dp(7), dp(18), dp(7)); background = pill(); setOnClickListener { chooseAddType() }
+        }, LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.CENTER_HORIZONTAL; topMargin = dp(6); bottomMargin = dp(4) })
         chips.addView(bottom, LinearLayout.LayoutParams(-1, -2, 1f))
         shelterLine.visibility = View.GONE   // הזמן מוצג עכשיו בפס המיקום
     }
@@ -773,7 +800,7 @@ class MainActivity : Activity() {
                 }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(12) })
                 val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
                 texts.addView(text(if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title, 15f, C.TEXT))
-                texts.addView(text(e.body, 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
+                texts.addView(text(e.body.replace("ברחבי הארץ", AreaData.ALL_COUNTRY), 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
                 row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
                 row.addView(text(if (e.ts > 0) java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
                     .format(java.util.Date(e.ts)) else e.time.take(5), 12f, muted),
@@ -1363,6 +1390,8 @@ class MainActivity : Activity() {
         val radii = Prefs.NEAR_RADII
         val cur = radii.indexOfFirst { it == Prefs.nearRadiusKm(this) }.coerceAtLeast(0)
         ouiRow(r, "מרחק", sub = Prefs.radiusLabel(radii[cur]))
+        // הכיתוב הכחול מתחת ל"מרחק" - מתעדכן תוך כדי גרירה
+        val distLabel = ((r.getChildAt(r.childCount - 1) as LinearLayout).getChildAt(0) as LinearLayout).getChildAt(1) as TextView
         ouiAdd(body, r)
         // פס בחירה בשלבים בכרטיס משלו, כמו "גודל גופן" בסמסונג: קרוב מימין, רחוק משמאל
         val bar = LinearLayout(this).apply {
@@ -1371,6 +1400,7 @@ class MainActivity : Activity() {
             setPadding(dp(20), dp(10), dp(20), dp(10))
         }
         bar.addView(StepSlider(this, radii.size, cur, C.LIGHT) { i ->
+            distLabel.text = Prefs.radiusLabel(radii[i])
             val km = radii[i]
             Prefs.setNearRadiusKm(this, km)
             // חישוב מחדש מיד לפי המיקום האחרון (אם אין - מיקום חדש)
@@ -1379,13 +1409,14 @@ class MainActivity : Activity() {
                 try { Prefs.setNearbyAreas(this, AreaData.nearby(this, last.first, last.second)) } catch (_: Exception) { }
                 runOnUiThread { rebuild() }
             }.start() else { refreshNearby(); rebuild() }
-        }, LinearLayout.LayoutParams(0, -2, 1f))   // מימין: באזורך · משמאל: 10 ק"מ
+        }.apply { onMove = { i -> distLabel.text = Prefs.radiusLabel(radii[i]) } },
+            LinearLayout.LayoutParams(0, -2, 1f))   // מימין: באזורך · משמאל: 10 ק"מ
         ouiAdd(body, bar)
         ouiNote(body, "התרעות יגיעו לאזורים שבמרחק הזה מהמיקום שלך, בנוסף לאזורים שהוספת")
 
         val near = ouiCard()
         near.addView(text("יישובים בקרבתי", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-        val list = Prefs.nearbyAreas(this)
+        val list = Prefs.nearbyAreas(this).filterNot { AreaData.isNational(it) }
         if (!Prefs.nearMe(this)) ouiRow(near, "התרעות לפי מיקום כבויות")
         else if (list.isEmpty()) ouiRow(near, "עוד לא זוהה מיקום")
         else list.forEachIndexed { i, a -> if (i > 0) ouiDivider(near); ouiRow(near, a) }
