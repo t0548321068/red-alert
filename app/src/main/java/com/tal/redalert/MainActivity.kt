@@ -847,6 +847,26 @@ class MainActivity : Activity() {
         ouiDivider(c)
         ouiRow(c, "הוספת אזור שלם") { showAreaPicker(whole = true) }
         ouiAdd(body, c)
+
+        // כרטיס האזורים שנבחרו: שם, ולידו בקטן האזור שהיישוב שייך אליו
+        val P = AreaData.DISTRICT_PREFIX
+        val dmap = AreaData.districtMap(this)
+        val chosen = ouiCard()
+        chosen.addView(text("אזורים שנבחרו", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+        val mine = Prefs.cities(this)
+        if (mine.isEmpty()) ouiRow(chosen, "לא נבחרו אזורים")
+        mine.forEachIndexed { i, city ->
+            if (i > 0) ouiDivider(chosen)
+            val isDistrict = city.startsWith(P)
+            val name = city.removePrefix(P)
+            val area = if (isDistrict) "אזור שלם" else dmap[name] ?: ""
+            val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), 0, dp(18), 0) }
+            r.addView(text(name, 16f, C.TEXT))
+            if (area.isNotEmpty()) r.addView(text(area, 12f, C.MUTED),
+                LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(12) })
+            chosen.addView(r, LinearLayout.LayoutParams(-1, dp(48)))
+        }
+        ouiAdd(body, chosen)
     }
 
     /**
@@ -863,6 +883,15 @@ class MainActivity : Activity() {
         val all = AreaData.areas(this).keys().asSequence().filter { !AreaData.isNational(it) }.toList()
         val districts = AreaData.districts(this)
         var query = ""
+        // זמן ההתגוננות של אזור שלם: מהקצר לארוך מבין היישובים שבו
+        val distTime: Map<String, String> = if (!whole) emptyMap() else
+            all.groupBy { dmap[it] }.mapNotNull { (dist, names) ->
+                val secs = names.mapNotNull { AreaData.shelterSeconds(this, it) }
+                if (dist == null || secs.isEmpty()) null else {
+                    val lo = secs.min(); val hi = secs.max()
+                    dist to (if (lo == hi) AreaData.shelterText(lo) else AreaData.shelterText(lo) + " – " + AreaData.shelterText(hi))
+                }
+            }.toMap()
 
         fun covered(name: String) = allKey in sel ||
             (if (whole) (P + name) in sel else name in sel || (P + (dmap[name] ?: "")) in sel)
@@ -908,21 +937,32 @@ class MainActivity : Activity() {
                 val name = items[p]
                 val v = (cv as? LinearLayout) ?: LinearLayout(this@MainActivity).apply {
                     gravity = Gravity.CENTER_VERTICAL; setPadding(dp(20), 0, dp(20), 0)
-                    minimumHeight = dp(60)
+                    minimumHeight = dp(66)
                     addView(CheckDot(false), LinearLayout.LayoutParams(dp(22), dp(22)))
-                    // שם, לידו האזור בקטן, ובסוף השורה זמן ההתגוננות במילים - הכל בשורה אחת
-                    addView(text("", 17f, C.TEXT).apply { setSingleLine() },
-                        LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(18) })
-                    addView(text("", 13f, C.MUTED).apply { setSingleLine(); ellipsize = TextUtils.TruncateAt.END },
-                        LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(10) })
-                    addView(text("", 13f, C.MUTED).apply { setSingleLine() },
-                        LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
+                    // שם היישוב ומתחתיו האזור; בסוף השורה "זמן התגוננות" ומתחתיו הזמן במילים
+                    addView(LinearLayout(this@MainActivity).apply {
+                        orientation = LinearLayout.VERTICAL
+                        addView(text("", 17f, C.TEXT).apply { setSingleLine(); ellipsize = TextUtils.TruncateAt.END })
+                        addView(text("", 13f, C.MUTED).apply { setSingleLine(); setPadding(0, dp(2), 0, 0) })
+                    }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(18) })
+                    addView(LinearLayout(this@MainActivity).apply {
+                        orientation = LinearLayout.VERTICAL; gravity = Gravity.END
+                        addView(text("זמן התגוננות", 12f, C.MUTED))
+                        addView(text("", 14f, C.TEXT).apply { setPadding(0, dp(2), 0, 0) })
+                    }, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
                 }
                 (v.getChildAt(0) as CheckDot).apply { on = covered(name); invalidate() }
-                (v.getChildAt(1) as TextView).text = name
-                (v.getChildAt(2) as TextView).text = if (whole) "" else dmap[name] ?: ""
-                val sec = if (whole) null else AreaData.shelterSeconds(this@MainActivity, name)
-                (v.getChildAt(3) as TextView).text = sec?.let { AreaData.shelterText(it) } ?: ""
+                val names = v.getChildAt(1) as LinearLayout
+                (names.getChildAt(0) as TextView).text = name
+                (names.getChildAt(1) as TextView).apply {
+                    text = if (whole) "" else dmap[name] ?: ""
+                    visibility = if (text.isEmpty()) View.GONE else View.VISIBLE
+                }
+                val time = if (whole) distTime[name]
+                    else AreaData.shelterSeconds(this@MainActivity, name)?.let { AreaData.shelterText(it) }
+                val end = v.getChildAt(2) as LinearLayout
+                end.visibility = if (time == null) View.GONE else View.VISIBLE
+                (end.getChildAt(1) as TextView).text = time ?: ""
                 return v
             }
         }
@@ -986,7 +1026,7 @@ class MainActivity : Activity() {
                 setOnClickListener { Prefs.setCities(this@MainActivity, sel.toList()); refresh(); d.dismiss() }
             }, LinearLayout.LayoutParams(0, -1, 1f))
         }
-        frame.addView(save, FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.6f).toInt(), dp(46),
+        frame.addView(save, FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.53f).toInt(), dp(46),
             Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = navMargin() })
         frame.setOnApplyWindowInsetsListener { _, insets ->
             @Suppress("DEPRECATION")
@@ -1414,33 +1454,9 @@ class MainActivity : Activity() {
         ouiRow(c, "מרחק מקסימלי", sub = Prefs.radiusLabel(Prefs.nearRadiusKm(this))) { showNearRadius() }
         ouiAdd(body, c)
 
-        // אזורים נוספים (עברו מהמסך הראשי): יישוב מיושר לימין ולידו האזור בקטן, ✕ להסרה
+        // אזורים נוספים - שורה אחת שפותחת את חלון האזורים
         val extra = ouiCard()
-        // לחיצה על הכותרת פותחת את חלון בחירת האזורים
-        extra.addView(text("אזורים נוספים", 16f, C.TEXT).apply {
-            setPadding(dp(18), dp(14), dp(18), dp(4)); setOnClickListener { showExtraAreas() } })
-        val list = Prefs.cities(this)
-        if (list.isEmpty()) ouiRow(extra, "אין אזורים נוספים", subColor = C.MUTED,
-            sub = if (!Prefs.nearMe(this)) "⚠️ אין אזורים – לא יתקבלו התרעות" else "")
-        list.forEach { city ->
-            val isDistrict = city.startsWith(AreaData.DISTRICT_PREFIX)
-            val name = city.removePrefix(AreaData.DISTRICT_PREFIX)
-            val area = if (isDistrict) "כל האזור" else AreaData.districtMap(this)[name] ?: ""
-            val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), 0, dp(12), 0) }
-            val names = LinearLayout(this).apply { gravity = Gravity.BOTTOM }
-            names.addView(text(name, 16f, C.TEXT))
-            if (area.isNotEmpty()) names.addView(text(area, 12f, C.MUTED).apply { setPadding(0, 0, 0, dp(2)) },
-                LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(12) })
-            r.addView(names, LinearLayout.LayoutParams(0, -2, 1f))
-            r.addView(text("✕", 17f, C.MUTED).apply {
-                gravity = Gravity.CENTER
-                setOnClickListener { Prefs.setCities(this@MainActivity, Prefs.cities(this@MainActivity) - city); refresh(); rebuild() }
-            }, LinearLayout.LayoutParams(dp(36), dp(48)))
-            ouiDivider(extra)
-            extra.addView(r, LinearLayout.LayoutParams(-1, dp(48)))
-        }
-        ouiDivider(extra)
-        ouiRow(extra, "+ הוספת אזור", subColor = C.MUTED) { showExtraAreas() }
+        ouiRow(extra, "אזורים נוספים") { showExtraAreas() }
         ouiAdd(body, extra)
         // הקראה - כרטיס נפרד
         val sp = ouiCard()
