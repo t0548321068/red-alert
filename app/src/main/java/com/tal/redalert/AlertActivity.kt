@@ -103,7 +103,7 @@ open class AlertActivity : Activity() {
 
         // אזורים כתגיות + מקור ההתרעה - מתחת למפה, בגדול
         val chips = Flow(this, dpx(8))
-        (intent.getStringExtra("body") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach { a ->
+        (intent.getStringExtra("body") ?: "").split(",").map { AreaData.unify(it.trim()) }.filter { it.isNotEmpty() }.distinct().forEach { a ->
             chips.addView(tv(a, if (popup) 19f else 22f, bold = true).apply {
                 setPadding(dpx(14), dpx(6), dpx(14), dpx(6))
                 background = card("#33FFFFFF", 18)

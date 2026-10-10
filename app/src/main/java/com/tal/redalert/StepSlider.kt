@@ -16,6 +16,9 @@ import kotlin.math.roundToInt
 class StepSlider(context: Context, private val steps: Int, private var sel: Int,
                  private val light: Boolean, private val onPick: (Int) -> Unit) : View(context) {
 
+    /** נקרא תוך כדי גרירה בכל פעם שהשלב משתנה (לעדכון הכיתוב מיד) */
+    var onMove: ((Int) -> Unit)? = null
+
     private val d = resources.displayMetrics.density
     // מידות לפי הצילום מסמסונג: פס דק 13, נקודות 7, טבעת 19 עם קו כחול דק
     private val trackH = 13 * d
@@ -69,13 +72,14 @@ class StepSlider(context: Context, private val steps: Int, private var sel: Int,
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
                 parent?.requestDisallowInterceptTouchEvent(true)
-                drag = stepAt(e.x); invalidate()
+                val p = stepAt(e.x)
+                if (p != drag) { drag = p; invalidate(); onMove?.invoke(p) }
             }
             MotionEvent.ACTION_UP -> {
                 val p = stepAt(e.x); drag = -1
                 if (p != sel) { sel = p; invalidate(); onPick(p) } else invalidate()
             }
-            MotionEvent.ACTION_CANCEL -> { drag = -1; invalidate() }
+            MotionEvent.ACTION_CANCEL -> { drag = -1; invalidate(); onMove?.invoke(sel) }
         }
         return true
     }

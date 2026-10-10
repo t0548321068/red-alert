@@ -29,6 +29,11 @@ object AreaData {
     @Volatile private var districtCache: Map<String, String>? = null
     const val DISTRICT_PREFIX = "מחוז "
     const val ALL_COUNTRY = "כל הארץ"
+    private const val ALL_COUNTRY_2 = "ברחבי הארץ"
+    /** "ברחבי הארץ" ו"כל הארץ" - אותו דבר, מוצג תמיד כ"כל הארץ" */
+    fun unify(area: String) = if (area == ALL_COUNTRY_2) ALL_COUNTRY else area
+    /** אזור ארצי (לא מקום אמיתי) - לא נכנס ל"יישובים בקרבתי" */
+    fun isNational(area: String) = area == ALL_COUNTRY || area == ALL_COUNTRY_2
     fun districtMap(c: Context): Map<String, String> = districtCache ?: synchronized(this) {
         districtCache ?: try {
             val o = JSONObject(c.assets.open("districts.json").bufferedReader(Charsets.UTF_8).use { it.readText() })
@@ -129,7 +134,7 @@ object AreaData {
     /** האזורים ל"התרעות לפי מיקום": לפי המרחק המקסימלי שנבחר (ושומר את המיקום לחישוב מחדש) */
     fun nearby(c: Context, lat: Double, lon: Double): List<String> {
         Prefs.setLastNearLoc(c, lat, lon)
-        return areasAt(c, lat, lon, Prefs.nearRadiusKm(c).toDouble()).take(20)
+        return areasAt(c, lat, lon, Prefs.nearRadiusKm(c).toDouble()).filterNot { isNational(it) }.take(20)
     }
 
     /** בדיקת נקודה בתוך פוליגון (ray casting) */
