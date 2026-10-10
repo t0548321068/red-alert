@@ -327,8 +327,7 @@ class MainActivity : Activity() {
             setPadding(dp(6), padV, dp(6), padV)
             background = graphite(28)
         }
-        // בלי לחיצה על החיווים (רק 7 הלחיצות הנסתרות על הגרסה נשארו)
-        netInd = indicator(R.drawable.ic_globe, null)
+        netInd = indicator(R.drawable.ic_globe) { showNetwork() }   // לחיצה: עמוד רשת
         protInd = indicator(R.drawable.ic_shield_ind) { toggle() }   // לחיצה: הפעלה / כיבוי (נראה כמו שאר החיוויים)
         locInd = indicator(R.drawable.ic_location) { onLocationIndicator() }   // לחיצה: רענון מיקום
         srvInd = indicator(R.drawable.ic_antenna) { showSourcesInfo() }   // לחיצה: רשימת המקורות
@@ -1600,15 +1599,107 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun showNetworkInfo() {
-        val net = network()
-        val type = when (net?.first) { "wifi" -> " (Wi-Fi)"; "cell" -> " (נתונים ניידים)"; else -> "" }
-        val msg = when {
-            net == null -> "לא מחובר לרשת – התראות לא יגיעו"
-            !net.second -> "מחובר לרשת$type, אבל אין אינטרנט"
-            else -> "מחובר לרשת$type ✓"
+    /** עמוד "רשת" בסגנון One UI (לחיצה על חיווי הרשת) - מתעדכן לבד כל 2 שניות */
+    private fun showNetwork() {
+        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
+        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(30)) }
+        val page = ScrollView(this).apply {
+            setBackgroundColor(C.BG)
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            addView(body)
+            setOnApplyWindowInsetsListener { v, insets ->
+                @Suppress("DEPRECATION")
+                v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
+                insets
+            }
         }
-        android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
+        val blue = Color.parseColor("#5AA9FF")
+        fun card() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = graphite(26); clipToOutline = true }
+        fun addCard(c: View) = body.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(8)) })
+        fun note(t: String) = body.addView(text(t, 11f, C.MUTED2).apply { setPadding(dp(26), 0, dp(26), dp(14)) })
+        fun divider(c: LinearLayout) = c.addView(View(this).apply { setBackgroundColor(C.DIV) },
+            LinearLayout.LayoutParams(-1, dp(1)).apply { setMargins(dp(18), 0, dp(18), 0) })
+        /** שורה: שם + ערך בכחול מתחת (כמו בעמוד התצוגה) */
+        fun row(c: LinearLayout, title: String, sub: String, click: (() -> Unit)? = null) {
+            val r = LinearLayout(this).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(18), 0, dp(18), 0)
+                if (click != null) setOnClickListener { click() }
+            }
+            val t = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            t.addView(text(title, 16f, C.TEXT).apply { includeFontPadding = false })
+            if (sub.isNotEmpty()) t.addView(text(sub, 12f, blue).apply { includeFontPadding = false; setPadding(0, dp(4), 0, 0) })
+            r.addView(t, LinearLayout.LayoutParams(0, -2, 1f))
+            c.addView(r, LinearLayout.LayoutParams(-1, dp(if (sub.isEmpty()) 48 else 56)))
+        }
+        fun openNetSettings() {
+            val i = if (Build.VERSION.SDK_INT >= 29) Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY)
+                    else Intent(Settings.ACTION_WIRELESS_SETTINGS)
+            try { startActivity(i) } catch (_: Exception) { startActivity(Intent(Settings.ACTION_SETTINGS)) }
+        }
+        fun rebuild() {
+            body.removeAllViews()
+            body.addView(text("רשת", 20f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(14), dp(24), dp(14)) })
+            val cm = getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }
+            val net = network()
+            val airplane = Settings.Global.getInt(contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) == 1
+            // כרטיס מצב: אייקון גדול בצבע המצב + שורה ברורה אם התרעות יגיעו
+            val (state, sub, color) = when {
+                net == null -> Triple(if (airplane) "מצב טיסה – אין רשת" else "אין רשת", "התרעות לא יגיעו", C.RED)
+                !net.second -> Triple("מחובר, אבל אין אינטרנט", "התרעות לא יגיעו", C.ORANGE)
+                else -> Triple("מחובר לאינטרנט", "התרעות יגיעו", C.GREEN)
+            }
+            val hero = card().apply { gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(18), dp(26), dp(18), dp(22)) }
+            hero.addView(android.widget.ImageView(this).apply {
+                setImageResource(R.drawable.ic_globe)
+                imageTintList = android.content.res.ColorStateList.valueOf(color)
+            }, LinearLayout.LayoutParams(dp(56), dp(56)).apply { bottomMargin = dp(12) })
+            hero.addView(text(state, 20f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER })
+            hero.addView(text(sub, 13f, color).apply { gravity = Gravity.CENTER; setPadding(0, dp(4), 0, 0) })
+            addCard(hero)
+            // פרטי החיבור
+            val info = card()
+            row(info, "סוג חיבור", when (net?.first) { "wifi" -> "Wi-Fi"; "cell" -> "נתונים ניידים"; "other" -> "אחר"; else -> "—" })
+            divider(info)
+            row(info, "אינטרנט", if (net?.second == true) "פעיל ✓" else "אין")
+            if (caps != null) {
+                val sig = if (Build.VERSION.SDK_INT >= 29) caps.signalStrength else Int.MIN_VALUE
+                if (sig != Int.MIN_VALUE) {
+                    divider(info)
+                    row(info, "עוצמת אות", when { sig >= -60 -> "חזקה"; sig >= -75 -> "בינונית"; else -> "חלשה" })
+                }
+                val kbps = caps.linkDownstreamBandwidthKbps
+                if (kbps > 0) {
+                    divider(info)
+                    row(info, "מהירות משוערת", if (kbps >= 1000) "${kbps / 1000} Mbps" else "$kbps Kbps")
+                }
+                divider(info)
+                row(info, "חיבור מוגבל", if (caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)) "לא" else "כן")
+                if (caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)) {
+                    divider(info); row(info, "VPN", "פעיל")
+                }
+            }
+            divider(info)
+            row(info, "מצב טיסה", if (airplane) "פעיל" else "כבוי")
+            addCard(info)
+            note("מתעדכן אוטומטית")
+            val more = card()
+            row(more, "הגדרות רשת", "Wi-Fi · נתונים ניידים") { openNetSettings() }
+            addCard(more)
+        }
+        rebuild()
+        val live = object : Runnable {
+            override fun run() { if (!d.isShowing) return; rebuild(); ui.postDelayed(this, 2000) }
+        }
+        d.setOnDismissListener { ui.removeCallbacks(live) }
+        d.setContentView(page)
+        d.window?.setLayout(-1, -1)
+        @Suppress("DEPRECATION")
+        d.window?.statusBarColor = C.BG
+        edgeToEdge(d)
+        d.show()
+        ui.postDelayed(live, 2000)
     }
 
     private fun onLocationIndicator() {
