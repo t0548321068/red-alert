@@ -650,8 +650,47 @@ class MainActivity : Activity() {
         clockArea.addView(View(this).apply { setBackgroundColor(Color.parseColor("#33FFFFFF")) },
             LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(10) })
 
-        // אזורים נוספים - עברו להגדרות התרעות (מתחת למרחק)
         shelterLine.visibility = View.GONE   // הזמן מוצג עכשיו בפס המיקום
+        renderExtraCard()
+    }
+
+    /** כרטיס במסך הראשי: היישובים והאזורים הנוספים. לחיצה - חלון אזורים נוספים */
+    private fun renderExtraCard() {
+        areasSlot.removeAllViews()
+        val (towns, dists) = extraSelection()
+        val dmap = AreaData.districtMap(this)
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = graphite(28); clipToOutline = true
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            setPadding(0, dp(14), 0, dp(10))
+            setOnClickListener { showExtraAreas() }
+        }
+        val head = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), 0, dp(18), dp(6)) }
+        head.addView(text("יישובים ואזורים נוספים", 16f, C.TEXT, bold = true), LinearLayout.LayoutParams(0, -2, 1f))
+        head.addView(text("‹", 18f, C.MUTED))
+        card.addView(head)
+        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        fun row(name: String, sub: String) = list.addView(LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(5), dp(18), dp(5))
+            addView(text(name, 15f, C.TEXT).apply { setSingleLine(); ellipsize = TextUtils.TruncateAt.END },
+                LinearLayout.LayoutParams(0, -2, 1f))
+            if (sub.isNotEmpty()) addView(text(sub, 12f, C.MUTED).apply { setSingleLine() },
+                LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
+        })
+        fun section(title: String, names: List<String>, sub: (String) -> String) {
+            if (names.isEmpty()) return
+            list.addView(text(title, 12f, C.MUTED2).apply { setPadding(dp(18), dp(6), dp(18), dp(2)) })
+            names.forEach { row(it, sub(it)) }
+        }
+        section("יישובים", towns) { if (it == AreaData.ALL_COUNTRY) "" else dmap[it] ?: "" }
+        section("אזורים", dists) { "" }
+        if (towns.isEmpty() && dists.isEmpty())
+            list.addView(text("לא נבחרו · לחיצה להוספה", 14f, C.MUTED).apply { setPadding(dp(18), dp(4), dp(18), dp(6)) })
+        // הרשימה נגללת בתוך הכרטיס כשהיא ארוכה; הכרטיס לא חורג מהמקום שנשאר במסך
+        card.addView(ScrollView(this).apply { isVerticalScrollBarEnabled = false; addView(list) },
+            LinearLayout.LayoutParams(-1, -2, 1f))
+        areasSlot.addView(card, FrameLayout.LayoutParams(-1, -2, Gravity.TOP))
     }
 
     /** במסך הראשי: שורת סיכום של ההתראה האחרונה */
@@ -827,19 +866,27 @@ class MainActivity : Activity() {
     }
 
     /** חלון אזורים נוספים: הוספת יישוב / הוספת אזור שלם */
-    private fun showExtraAreas() = ouiPage("אזורים נוספים") { body, rebuild ->
-        // שתי קבוצות: הוספת יישוב + היישובים שנבחרו, הוספת אזור + האזורים שנבחרו
+    /** היישובים והאזורים הנוספים שנבחרו (בנפרד); נבחרו כולם - "כל הארץ" */
+    private fun extraSelection(): Pair<List<String>, List<String>> {
         val P = AreaData.DISTRICT_PREFIX
-        val dmap = AreaData.districtMap(this)
         val mine = Prefs.cities(this)
-        val allAreas = AreaData.areas(this).keys().asSequence().filter { !AreaData.isNational(it) }.toList()
-        // יישובים ואזורים בנפרד - לא משפיעים אחד על השני; נבחרו כולם - "כל הארץ"
         val allDists = AreaData.districts(this)
         val pickedD = mine.filter { it.startsWith(P) }.map { it.removePrefix(P) }
         val dists = if (AreaData.ALL_COUNTRY in pickedD || (allDists.isNotEmpty() && pickedD.containsAll(allDists)))
             listOf(AreaData.ALL_COUNTRY) else pickedD.sorted()
         val pickedT = mine.filterNot { it.startsWith(P) }
+        // רשימת כל היישובים נטענת רק כשיש יישובים שנבחרו (טעינה כבדה - שלא יתקע את המסך הראשי)
+        val allAreas = if (pickedT.isEmpty()) emptyList()
+            else AreaData.areas(this).keys().asSequence().filter { !AreaData.isNational(it) }.toList()
         val towns = if (allAreas.isNotEmpty() && pickedT.toSet().containsAll(allAreas)) listOf(AreaData.ALL_COUNTRY) else pickedT.sorted()
+        return towns to dists
+    }
+
+    private fun showExtraAreas() = ouiPage("אזורים נוספים") { body, rebuild ->
+        // שתי קבוצות: הוספת יישוב + היישובים שנבחרו, הוספת אזור + האזורים שנבחרו
+        val P = AreaData.DISTRICT_PREFIX
+        val dmap = AreaData.districtMap(this)
+        val (towns, dists) = extraSelection()
         /** מחיקת שורה: יישוב / אזור; "כל הארץ" - מוחק את כל היישובים (או כל האזורים) */
         fun remove(name: String, whole: Boolean) {
             val keep = Prefs.cities(this).filter { k ->
