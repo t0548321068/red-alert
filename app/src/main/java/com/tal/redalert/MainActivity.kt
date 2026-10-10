@@ -54,7 +54,7 @@ class MainActivity : Activity() {
             CARD2 = c("#1B1B1D", "#FFFFFF")      // כרטיסים (One UI)
             PILL = c("#3A3A3E", "#E3E3E8")       // גלולות / כפתורים צפים
             DIV = c("#2A2A2C", "#E0E0E5")        // קו בין שורות
-            SEPV = c("#3A3A3C", "#D1D1D6")       // קו לפני מתג
+            SEPV = c("#5C5C5E", "#C7C7CC")       // קו לפני מתג (לפי צילום סמסונג)
             SOFT = c("#E6FFFFFF", "#CC1C1C1E")   // טקסט משני רך
             MUTED2 = c("#AAAAAA", "#6E6E73")     // טקסט אפור
             LINE = c("#14FFFFFF", "#14000000")
@@ -842,24 +842,24 @@ class MainActivity : Activity() {
 
     /** חלון אזורים נוספים: הוספת יישוב / הוספת אזור שלם */
     private fun showExtraAreas() = ouiPage("אזורים נוספים") { body, _ ->
-        val c = ouiCard()
-        ouiRow(c, "הוספת יישוב") { showAreaPicker(whole = false) }
-        ouiDivider(c)
-        ouiRow(c, "הוספת אזור שלם") { showAreaPicker(whole = true) }
-        ouiAdd(body, c)
-
-        // שני כרטיסים: אזורים שלמים שנבחרו, ויישובים שנבחרו (כולל כל היישובים של אזור שלם שנבחר)
+        // שתי קבוצות: הוספת יישוב + היישובים שנבחרו, הוספת אזור + האזורים שנבחרו
         val P = AreaData.DISTRICT_PREFIX
         val dmap = AreaData.districtMap(this)
         val mine = Prefs.cities(this)
         val allAreas = AreaData.areas(this).keys().asSequence().filter { !AreaData.isNational(it) }.toList()
-        val dists = mine.filter { it.startsWith(P) }.map { it.removePrefix(P) }
-        val towns = (mine.filterNot { it.startsWith(P) } +
-            allAreas.filter { a -> AreaData.ALL_COUNTRY in dists || dmap[a] in dists }).distinct().sorted()
-        fun listCard(title: String, names: List<String>, empty: String, small: (String) -> String) {
+        // יישובים ואזורים בנפרד - לא משפיעים אחד על השני; נבחרו כולם - "כל הארץ"
+        val allDists = AreaData.districts(this)
+        val pickedD = mine.filter { it.startsWith(P) }.map { it.removePrefix(P) }
+        val dists = if (AreaData.ALL_COUNTRY in pickedD || (allDists.isNotEmpty() && pickedD.containsAll(allDists)))
+            listOf(AreaData.ALL_COUNTRY) else pickedD.sorted()
+        val pickedT = mine.filterNot { it.startsWith(P) }
+        val towns = if (allAreas.isNotEmpty() && pickedT.toSet().containsAll(allAreas)) listOf(AreaData.ALL_COUNTRY) else pickedT.sorted()
+        fun group(add: String, onAdd: () -> Unit, title: String, names: List<String>, empty: String, small: (String) -> String) {
             val card = ouiCard()
-            card.addView(text(title, 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-            if (names.isEmpty()) ouiRow(card, empty)
+            ouiRow(card, add) { onAdd() }
+            ouiDivider(card)
+            card.addView(text(title, 13f, C.MUTED).apply { setPadding(dp(18), dp(12), dp(18), dp(2)) })
+            if (names.isEmpty()) ouiRow(card, empty, subColor = C.MUTED)
             names.forEachIndexed { i, name ->
                 if (i > 0) ouiDivider(card)
                 val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), 0, dp(18), 0) }
@@ -871,8 +871,9 @@ class MainActivity : Activity() {
             }
             ouiAdd(body, card)
         }
-        listCard("יישובים שנבחרו", towns, "לא נבחרו יישובים") { dmap[it] ?: "" }
-        listCard("אזורים שלמים שנבחרו", dists, "לא נבחרו אזורים שלמים") { "" }
+        group("הוספת יישוב", { showAreaPicker(whole = false) }, "יישובים שנבחרו", towns, "לא נבחרו יישובים") { if (it == AreaData.ALL_COUNTRY) "" else dmap[it] ?: "" }
+        body.addView(View(this), LinearLayout.LayoutParams(-1, dp(10)))   // רווח בין הקבוצות
+        group("הוספת אזור", { showAreaPicker(whole = true) }, "אזורים שנבחרו", dists, "לא נבחרו אזורים") { "" }
     }
 
     /**
@@ -900,8 +901,13 @@ class MainActivity : Activity() {
                 }
             }.toMap()
 
-        fun covered(name: String) = allKey in sel ||
-            (if (whole) (P + name) in sel else name in sel || (P + (dmap[name] ?: "")) in sel)
+        // הפרדה מלאה: חלון יישובים מטפל רק ביישובים, חלון אזורים רק באזורים
+        // "כל הארץ" ישן (מגרסה קודמת) הופך לכל האזורים אחד אחד
+        if (sel.remove(allKey)) sel.addAll(districts.map { P + it })
+        fun key(name: String) = if (whole) P + name else name
+        val kind = if (whole) districts else all
+        fun covered(name: String) = key(name) in sel
+        fun allOn() = kind.all { key(it) in sel }
         lateinit var render: () -> Unit
 
         val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
@@ -916,8 +922,8 @@ class MainActivity : Activity() {
             addView(allDot, LinearLayout.LayoutParams(dp(22), dp(22)))
             addView(text("הכל", 12f, C.TEXT).apply { setPadding(0, dp(2), 0, 0) })
             setOnClickListener {
-                // כל הארץ מכסה הכל - שאר הבחירות מיותרות
-                if (!sel.remove(allKey)) { sel.clear(); sel.add(allKey) }
+                // "הכל" - בוחר / מבטל את כל היישובים (או כל האזורים) בחלון הזה בלבד
+                if (allOn()) kind.forEach { sel.remove(key(it)) } else kind.forEach { sel.add(key(it)) }
                 render()
             }
         }, LinearLayout.LayoutParams(dp(44), -2))
@@ -991,26 +997,16 @@ class MainActivity : Activity() {
             adapter.notifyDataSetChanged()
         }
         render = {
-            count.text = if (sel.isEmpty()) "בחירת אזורים" else "${sel.size} נבחרו"
-            allDot.on = allKey in sel; allDot.invalidate()
+            // נבחרו כל היישובים / כל האזורים - "כל הארץ"
+            val n = kind.count { key(it) in sel }
+            val full = n == kind.size && n > 0
+            count.text = when { n == 0 -> if (whole) "בחירת אזור שלם" else "בחירת יישוב"; full -> "כל הארץ"; else -> "$n נבחרו" }
+            allDot.on = full; allDot.invalidate()
             adapter.notifyDataSetChanged()
         }
         list.setOnItemClickListener { _, _, p, _ ->
             val name = items[p]
-            if (whole) {
-                // אזור שלם: מבטלים מתוך "כל הארץ" - שאר האזורים נשארים
-                if (sel.remove(allKey)) sel.addAll(districts.filter { it != name }.map { P + it })
-                else if (!sel.remove(P + name)) { sel.add(P + name); sel.removeAll { !it.startsWith(P) && dmap[it] == name } }
-            } else if (covered(name)) {
-                if (name in sel) sel.remove(name)
-                else {
-                    // מבטלים יישוב מתוך אזור שלם שנבחר - שאר היישובים נשארים מסומנים
-                    val dist = dmap[name]
-                    if (sel.remove(allKey)) sel.addAll(districts.filter { it != dist }.map { P + it })
-                    sel.remove(P + dist)
-                    sel.addAll(all.filter { dmap[it] == dist && it != name })
-                }
-            } else sel.add(name)
+            if (!sel.remove(key(name))) sel.add(key(name))
             render()
         }
         search.addTextChangedListener(object : android.text.TextWatcher {
@@ -1174,7 +1170,7 @@ class MainActivity : Activity() {
         if (radio != null) r.addView(ouiRadio(radio), LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginStart = dp(10) })
         // onToggle: לחיצה על השורה פותחת הגדרה, והמתג לבד מדליק/מכבה (כמו בעמוד תצוגה)
         if (on != null && onToggle != null) r.addView(View(this).apply { setBackgroundColor(C.SEPV) },
-            LinearLayout.LayoutParams(dp(1), dp(26)).apply { setMargins(dp(12), 0, 0, 0) })
+            LinearLayout.LayoutParams(dp(1), dp(20)).apply { setMargins(dp(12), 0, 0, 0) })
         if (on != null) r.addView(android.widget.Switch(this).apply {
             minHeight = 0; minimumHeight = 0; setPadding(0, 0, 0, 0)
             isChecked = on
@@ -1710,7 +1706,7 @@ class MainActivity : Activity() {
             r.addView(t, LinearLayout.LayoutParams(0, -2, 1f))
             if (on != null) {
                 if (sep) r.addView(View(this).apply { setBackgroundColor(C.SEPV) },
-                    LinearLayout.LayoutParams(dp(1), dp(26)).apply { setMargins(dp(12), 0, dp(12), 0) })
+                    LinearLayout.LayoutParams(dp(1), dp(20)).apply { setMargins(dp(12), 0, dp(12), 0) })
                 r.addView(android.widget.Switch(this).apply {
                     minHeight = 0; minimumHeight = 0; setPadding(0, 0, 0, 0)
                     isChecked = on
