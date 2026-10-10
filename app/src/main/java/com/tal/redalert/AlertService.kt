@@ -193,7 +193,7 @@ class AlertService : Service() {
             .setContentIntent(openApp())
             .build()
         if (Build.VERSION.SDK_INT >= 34) {
-            // עם סוג "מיקום" השירות יכול לקרוא מיקום גם ברקע (ל"קרוב אליי").
+            // עם סוג "מיקום" השירות יכול לקרוא מיקום גם ברקע (ל"התרעות לפי מיקום").
             // אם אי אפשר כרגע (למשל הופעל מהרקע אחרי הדלקה) - ממשיכים בלי.
             try {
                 startForeground(ID_SERVICE, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or
@@ -521,11 +521,11 @@ class AlertService : Service() {
     }
 
     /**
-     * "קרוב אליי": כל 2 דקות לוקח מיקום עדכני (לא רק מה שהטלפון זוכר)
+     * "התרעות לפי מיקום": כל 2 דקות לוקח מיקום עדכני (לא רק מה שהטלפון זוכר)
      * ומזהה באילו אזורים המכשיר נמצא עכשיו.
      */
     /**
-     * "קרוב אליי": כל 5 דקות. קודם מיקום מהרשת (כמעט בלי סוללה);
+     * "התרעות לפי מיקום": כל 5 דקות. קודם מיקום מהרשת (כמעט בלי סוללה);
      * GPS נדלק רק אם זזנו (מעל 300 מ׳) או שהמיקום מהרשת לא מספיק מדויק.
      */
     private var lastGps: android.location.Location? = null
@@ -559,7 +559,7 @@ class AlertService : Service() {
         try {
             Prefs.addVisits(this, AreaData.areasAt(this, loc.latitude, loc.longitude, 0.0), System.currentTimeMillis())
             if (Prefs.nearMe(this)) {
-                val list = AreaData.areasAt(this, loc.latitude, loc.longitude, 1.0).take(4)
+                val list = AreaData.nearby(this, loc.latitude, loc.longitude)
                 if (list.isNotEmpty() && list != Prefs.nearbyAreas(this)) Prefs.setNearbyAreas(this, list)
             }
         } catch (_: Exception) { }
