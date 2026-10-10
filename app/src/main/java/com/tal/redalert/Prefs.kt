@@ -11,13 +11,20 @@ object Prefs {
     // הגדרות נשמרות מיד לדיסק (commit) - שלא ילכו לאיבוד אם האפליקציה נסגרת לעדכון
     private fun sp(c: Context) = c.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
-    /** ערים לסינון. ריק = כל הארץ */
-    fun cities(c: Context): List<String> =
-        (sp(c).getString("cities", "") ?: "")
-            .split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    /**
+     * יישובים/אזורים שנבחרו. נשמר כמערך JSON - יש שמות עם פסיק בתוכם ("אשדוד - א,ב,ד,ה"),
+     * ושמירה מופרדת בפסיקים פירקה אותם ואיבדה יישובים. ערך ישן (מופרד בפסיקים) עדיין נקרא
+     */
+    fun cities(c: Context): List<String> {
+        val raw = sp(c).getString("cities", "") ?: ""
+        if (raw.startsWith("[")) return try {
+            val a = JSONArray(raw); (0 until a.length()).map { a.getString(it) }.filter { it.isNotEmpty() }
+        } catch (_: Exception) { emptyList() }
+        return raw.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    }
 
     fun setCities(c: Context, list: List<String>) =
-        sp(c).edit().putString("cities", list.joinToString(",")).commit()
+        sp(c).edit().putString("cities", JSONArray(list.distinct()).toString()).commit()
 
     fun enabled(c: Context) = sp(c).getBoolean("enabled", false)
     fun setEnabled(c: Context, v: Boolean) = sp(c).edit().putBoolean("enabled", v).commit()
