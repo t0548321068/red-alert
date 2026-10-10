@@ -46,9 +46,4 @@ object SourceHealth {
 
     fun upCount() = NAMES.keys.count { isUp(it) }
     fun total() = NAMES.size
-
-    fun report(): String = NAMES.entries.joinToString("\n") { (k, name) ->
-        (if (isUp(k)) "🟢 " else if (connecting(k)) "🟡 " else "🔴 ") + name +
-            (if (connecting(k)) " (מתחבר…)" else "")
-    }
 }
