@@ -330,9 +330,8 @@ class MainActivity : Activity() {
         clockCard.addView(greeting)
         clockCard.addView(clockTime)
         clockCard.addView(clockDay)
-        // אזור ההתרעה (לפי המיקום) - בתוך כרטיס השעון
+        // אזור ההתרעה (לפי המיקום) - בכרטיס השעון, מתחת ל"מוגן" (נכנס למקום אחרי שהמגן נוסף)
         clockArea = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL }
-        clockCard.addView(clockArea, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         // כרטיס חיווים מעל השעון: רשת / מיקום / מקורות - שלוש עמודות שוות
         val status = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
@@ -429,6 +428,7 @@ class MainActivity : Activity() {
         (greeting.layoutParams as? LinearLayout.LayoutParams)?.bottomMargin = dp(6)
         clockCard.addView(haloOuter, 1, LinearLayout.LayoutParams(dp(56), dp(56)).apply { gravity = Gravity.CENTER_HORIZONTAL })
         clockCard.addView(circleLabel, 2, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(2) })
+        clockCard.addView(clockArea, 3, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(10) })
         // רווח שווה: מ"מוגן" עד ראש הספרות של השעה = מהברכה עד העיגול של המגן.
         // נמדד אחרי הפריסה (הספרות הגדולות מגיעות עם רווח פנימי משלהן)
         clockCard.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> evenClockGaps() }
@@ -567,6 +567,12 @@ class MainActivity : Activity() {
 
     private fun evenClockGaps() {
         if (circleLabel.height == 0 || clockTime.height == 0) return
+        // אזור ההתרעה יושב בין "מוגן" לשעון - הרווחים קבועים, לא מיישרים
+        if (clockArea.childCount > 0) {
+            val lp0 = circleLabel.layoutParams as LinearLayout.LayoutParams
+            if (lp0.bottomMargin != dp(2)) { lp0.bottomMargin = dp(2); circleLabel.post { circleLabel.layoutParams = lp0 } }
+            return
+        }
         val target = if (greeting.visibility == View.VISIBLE)
             (haloOuter.top + (haloOuter.height - dp(42)) / 2) - (greeting.top + greeting.baseline)
         else dp(10)
@@ -637,8 +643,6 @@ class MainActivity : Activity() {
 
         // אזור התרעה (לפי המיקום) - מוצג בכרטיס השעון
         clockArea.removeAllViews()
-        clockArea.addView(View(this).apply { setBackgroundColor(Color.parseColor("#33FFFFFF")) },
-            LinearLayout.LayoutParams(-1, dp(1)).apply { bottomMargin = dp(8) })
         val top = clockArea
         top.addView(text("אזור התרעה", 14f, C.SOFT))
         top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 22f, C.TEXT, bold = true)
@@ -647,6 +651,9 @@ class MainActivity : Activity() {
         if (sec != null) top.addView(text("⏱ זמן התגוננות: ${AreaData.shelterText(sec)}", 14f, light)
             .apply { setPadding(0, dp(2), 0, 0) })
         for (i in 0 until top.childCount) (top.getChildAt(i) as? TextView)?.gravity = Gravity.CENTER
+        // קו מתחת לאזור ההתרעה - מפריד בינו לבין השעון
+        clockArea.addView(View(this).apply { setBackgroundColor(Color.parseColor("#33FFFFFF")) },
+            LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(10) })
 
         // אזורים נוספים
         val bottom = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), dp(8)) }
