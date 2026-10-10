@@ -479,9 +479,8 @@ class MainActivity : Activity() {
         shelterLine = text("", 13f, C.SOFT)
         areasCard.addView(shelterLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         // המסך לא נגלל: אזורי ההתרעה תופסים את מה שנשאר (לכל היותר), והרשימה שבתוכם נגללת
-        areasSlot = FrameLayout(this).apply {
-            addView(areasCard, FrameLayout.LayoutParams(-1, -2, Gravity.TOP))
-        }
+        // כרטיס האזורים לא מוצג במסך הראשי (אזורים נוספים עברו להגדרות) - המקום נשאר ריק כדי שהפיד יישב למטה
+        areasSlot = FrameLayout(this)
         col.addView(areasSlot, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(GAP) })
 
         historyBox = LinearLayout(this)   // לא מוצג - נשאר לשימוש פנימי
@@ -655,50 +654,7 @@ class MainActivity : Activity() {
         clockArea.addView(View(this).apply { setBackgroundColor(Color.parseColor("#33FFFFFF")) },
             LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(10) })
 
-        // אזורים נוספים
-        val bottom = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), dp(8)) }
-        // כותרת וכיתובים ממורכזים; כפתור ההוספה למטה באמצע
-        bottom.addView(text("אזורים נוספים", 15f, muted).apply { gravity = Gravity.CENTER; setPadding(0, dp(4), 0, dp(4)) },
-            LinearLayout.LayoutParams(-1, -2))
-        if (list.isEmpty()) bottom.addView(text("אין אזורים נוספים", 16f, muted).apply {
-            gravity = Gravity.CENTER; setPadding(0, dp(7), 0, dp(7)) }, LinearLayout.LayoutParams(-1, -2))
-        // הרשימה נגללת: עד 4 שורות גלויות, השאר בגלילה
-        val rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        list.forEachIndexed { i, city ->
-            if (i > 0) rows.addView(View(this).apply { setBackgroundColor(C.LINE) },
-                LinearLayout.LayoutParams(-1, dp(1)))
-            val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(8)) }
-            // מיושר לימין: שם היישוב, ולידו האזור שלו בקטן (אזור שלם - "כל האזור")
-            val isDistrict = city.startsWith(AreaData.DISTRICT_PREFIX)
-            val name = city.removePrefix(AreaData.DISTRICT_PREFIX)
-            val sub = if (isDistrict) "כל האזור" else AreaData.districtMap(this)[name] ?: ""
-            // באותה שורה: שם היישוב, ולידו האזור בקטן
-            val col = LinearLayout(this).apply { gravity = Gravity.BOTTOM }
-            col.addView(text(name, 18f, C.TEXT))
-            // הרווח בצד הפנימי (ליד שם היישוב) - בעברית זה הצד הימני של האזור
-            if (sub.isNotEmpty()) col.addView(text(sub, 13f, muted).apply { setPadding(0, 0, 0, dp(2)) },
-                LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(12) })
-            r.addView(col, LinearLayout.LayoutParams(0, -2, 1f))
-            r.addView(text("✕", 17f, muted).apply {
-                gravity = Gravity.CENTER
-                layoutParams = LinearLayout.LayoutParams(dp(32), -2)
-                setOnClickListener { Prefs.setCities(this@MainActivity, Prefs.cities(this@MainActivity) - city); refresh() }
-            })
-            rows.addView(r)
-        }
-        // הרשימה נגללת כשאין לה מקום במסך (והגלילה שלה לא "נגנבת" ע"י המסך)
-        bottom.addView(ScrollView(this).apply {
-            addView(rows)
-            isVerticalScrollBarEnabled = false
-            setOnTouchListener { v, _ -> v.parent?.requestDisallowInterceptTouchEvent(v.canScrollVertically(1) || v.canScrollVertically(-1)); false }
-        }, LinearLayout.LayoutParams(-1, -2, 1f))
-        if (list.isEmpty() && !nearOn)
-            bottom.addView(text("⚠️ אין אזורים – לא יתקבלו התראות", 15f, C.ORANGE).apply {
-                gravity = Gravity.CENTER; setPadding(0, dp(4), 0, dp(4)) }, LinearLayout.LayoutParams(-1, -2))
-        bottom.addView(text("+ הוספה", 14f, C.TEXT).apply {
-            setPadding(dp(18), dp(7), dp(18), dp(7)); background = pill(); setOnClickListener { chooseAddType() }
-        }, LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.CENTER_HORIZONTAL; topMargin = dp(6); bottomMargin = dp(4) })
-        chips.addView(bottom, LinearLayout.LayoutParams(-1, -2, 1f))
+        // אזורים נוספים - עברו להגדרות התרעות (מתחת למרחק)
         shelterLine.visibility = View.GONE   // הזמן מוצג עכשיו בפס המיקום
     }
 
@@ -1280,7 +1236,7 @@ class MainActivity : Activity() {
             "צלילים ורטט" to { listOf(
                 Row("📳", "צלילים ורטט", { "שעות שקט · נא לא להפריע · מצב שקט · שבת" }) { showSoundSettings() }) },
             "התרעות" to { listOf(
-                Row("🔔", "הגדרות התרעות", { "סוג תצוגה · התרעות לפי מיקום · הקראה · בדיקה" }) { showAlertSettings() }) },
+                Row("🔔", "הגדרות התרעות", { "סוג תצוגה · מיקום · אזורים נוספים · הקראה · בדיקה" }) { showAlertSettings() }) },
             "הרשאות" to { phoneRows() },
             "כללי" to { generalRows() }
         )
@@ -1382,13 +1338,42 @@ class MainActivity : Activity() {
 
         val c = ouiCard()
         // מתג = הדלקה/כיבוי, לחיצה על השם = ההגדרות המלאות
-        ouiRow(c, "התרעות לפי מיקום", sub = onOff(Prefs.nearMe(this)), on = Prefs.nearMe(this)) { toggleNearMe(); rebuild() }
+        ouiRow(c, "אזור התרעה", sub = onOff(Prefs.nearMe(this)), on = Prefs.nearMe(this)) { toggleNearMe(); rebuild() }
         ouiDivider(c)
         ouiRow(c, "מרחק מקסימלי", sub = Prefs.radiusLabel(Prefs.nearRadiusKm(this))) { showNearRadius() }
-        ouiDivider(c)
-        ouiRow(c, "הקראה", sub = onOff(Prefs.speakAlerts(this)), on = Prefs.speakAlerts(this),
-            onToggle = { Prefs.setSpeakAlerts(this, !Prefs.speakAlerts(this)); rebuild() }) { showSpeech() }
         ouiAdd(body, c)
+
+        // אזורים נוספים (עברו מהמסך הראשי): יישוב מיושר לימין ולידו האזור בקטן, ✕ להסרה
+        val extra = ouiCard()
+        extra.addView(text("אזורים נוספים", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+        val list = Prefs.cities(this)
+        if (list.isEmpty()) ouiRow(extra, "אין אזורים נוספים", subColor = C.MUTED,
+            sub = if (!Prefs.nearMe(this)) "⚠️ אין אזורים – לא יתקבלו התרעות" else "")
+        list.forEach { city ->
+            val isDistrict = city.startsWith(AreaData.DISTRICT_PREFIX)
+            val name = city.removePrefix(AreaData.DISTRICT_PREFIX)
+            val area = if (isDistrict) "כל האזור" else AreaData.districtMap(this)[name] ?: ""
+            val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), 0, dp(12), 0) }
+            val names = LinearLayout(this).apply { gravity = Gravity.BOTTOM }
+            names.addView(text(name, 16f, C.TEXT))
+            if (area.isNotEmpty()) names.addView(text(area, 12f, C.MUTED).apply { setPadding(0, 0, 0, dp(2)) },
+                LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(12) })
+            r.addView(names, LinearLayout.LayoutParams(0, -2, 1f))
+            r.addView(text("✕", 17f, C.MUTED).apply {
+                gravity = Gravity.CENTER
+                setOnClickListener { Prefs.setCities(this@MainActivity, Prefs.cities(this@MainActivity) - city); refresh(); rebuild() }
+            }, LinearLayout.LayoutParams(dp(36), dp(48)))
+            ouiDivider(extra)
+            extra.addView(r, LinearLayout.LayoutParams(-1, dp(48)))
+        }
+        ouiDivider(extra)
+        ouiRow(extra, "+ הוספת אזור", subColor = C.MUTED) { chooseAddType() }
+        ouiAdd(body, extra)
+        // הקראה - כרטיס נפרד
+        val sp = ouiCard()
+        ouiRow(sp, "הקראה", sub = onOff(Prefs.speakAlerts(this)), on = Prefs.speakAlerts(this),
+            onToggle = { Prefs.setSpeakAlerts(this, !Prefs.speakAlerts(this)); rebuild() }) { showSpeech() }
+        ouiAdd(body, sp)
         // בדיקת התראה (עברה מהכפתור שבמסך הראשי)
         val t = ouiCard()
         ouiRow(t, "בדיקת התראה", sub = "מקדימה · ירי · סיום") { chooseTest() }
@@ -1428,7 +1413,7 @@ class MainActivity : Activity() {
         val near = ouiCard()
         near.addView(text("יישובים בקרבתי", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
         val list = Prefs.nearbyAreas(this).filterNot { AreaData.isNational(it) }
-        if (!Prefs.nearMe(this)) ouiRow(near, "התרעות לפי מיקום כבויות")
+        if (!Prefs.nearMe(this)) ouiRow(near, "אזור התרעה כבוי")
         else if (list.isEmpty()) ouiRow(near, "עוד לא זוהה מיקום")
         else list.forEachIndexed { i, a -> if (i > 0) ouiDivider(near); ouiRow(near, a) }
         ouiAdd(body, near)
