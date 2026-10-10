@@ -287,13 +287,13 @@ class MainActivity : Activity() {
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         header.addView(text("צבע אדום", 24f, C.TEXT, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) })
         header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
-        // כפתור בדיקה בעיגול צף (שאר הכפתורים עברו לתפריט התחתון)
+        // כפתור שעון בעיגול צף (הבדיקה עברה להגדרות התרעות)
         header.addView(android.widget.ImageView(this).apply {
-            setImageResource(R.drawable.ic_bell)
+            setImageResource(R.drawable.ic_nav_clock)
             imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT)
             setPadding(dp(12), dp(12), dp(12), dp(12))
             background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(C.PILL) }
-            setOnClickListener { chooseTest() }
+            setOnClickListener { startActivity(Intent(this@MainActivity, ClockActivity::class.java)) }
         }, LinearLayout.LayoutParams(dp(46), dp(46)))
         col.addView(header, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
 
@@ -332,7 +332,15 @@ class MainActivity : Activity() {
             background = graphite(28)
         }
         // בלי לחיצה על החיווים (רק 7 הלחיצות הנסתרות על הגרסה נשארו)
-        netInd = indicator(R.drawable.ic_globe, null)
+        // לחיצה: חלון האינטרנט של הטלפון (Wi-Fi ונתונים ניידים) בלי לצאת מהאפליקציה
+        netInd = indicator(R.drawable.ic_globe) {
+            try {
+                startActivity(Intent(if (Build.VERSION.SDK_INT >= 29) Settings.Panel.ACTION_INTERNET_CONNECTIVITY
+                                     else Settings.ACTION_WIRELESS_SETTINGS))
+            } catch (_: Exception) {
+                try { startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS)) } catch (_: Exception) { }
+            }
+        }
         protInd = indicator(R.drawable.ic_shield_ind) { toggle() }   // לחיצה: הפעלה / כיבוי (נראה כמו שאר החיוויים)
         locInd = indicator(R.drawable.ic_location) { onLocationIndicator() }   // לחיצה: רענון מיקום
         srvInd = indicator(R.drawable.ic_antenna) { showSourcesInfo() }   // לחיצה: רשימת המקורות
@@ -694,7 +702,7 @@ class MainActivity : Activity() {
         val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
         frame.addView(page, FrameLayout.LayoutParams(-1, -1))
         val nav = bottomNav(navTab) { i -> switchTab(d, i) }
-        frame.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(10) })
+        frame.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = navMargin() })
         frame.setOnApplyWindowInsetsListener { _, insets ->
             @Suppress("DEPRECATION")
             (nav.layoutParams as FrameLayout.LayoutParams).bottomMargin = insets.systemWindowInsetBottom + dp(10)
@@ -944,7 +952,7 @@ class MainActivity : Activity() {
     private fun pill() = GradientDrawable().apply { setColor(C.PILL); cornerRadius = dp(30).toFloat() }
 
     /** מסך מלא (על כל המסך) עם כותרת וחץ חזרה; build בונה את התוכן, ונבנה מחדש כשחוזרים אליו */
-    private fun fullPage(title: String, navTab: Int = -1, build: (LinearLayout) -> Unit) {
+    private fun fullPage(title: String, build: (LinearLayout) -> Unit) {
         val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(14), dp(16), dp(30)) }
         val head = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
@@ -962,17 +970,7 @@ class MainActivity : Activity() {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             addView(body)
         }
-        if (navTab < 0) d.setContentView(sv)
-        else {
-            // עם התפריט התחתון (התרעות אחרונות)
-            body.setPadding(body.paddingLeft, body.paddingTop, body.paddingRight, dp(100))
-            d.setContentView(FrameLayout(this).apply {
-                setBackgroundColor(C.BG)
-                addView(sv, FrameLayout.LayoutParams(-1, -1))
-                addView(bottomNav(navTab) { i -> switchTab(d, i) },
-                    FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(18) })
-            })
-        }
+        d.setContentView(sv)
         rebuild()
         // חוזרים מחלון של הגדרה - מעדכנים את המצבים
         d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
@@ -1216,8 +1214,7 @@ class MainActivity : Activity() {
     private fun openTab(i: Int) {
         when (i) {
             1 -> showRecent()
-            2 -> startActivity(Intent(this, ClockActivity::class.java))
-            3 -> showSettings()
+            2 -> showSettings()
         }
     }
 
@@ -1243,7 +1240,7 @@ class MainActivity : Activity() {
             "צלילים ורטט" to { listOf(
                 Row("📳", "צלילים ורטט", { "שעות שקט · נא לא להפריע · מצב שקט · שבת" }) { showSoundSettings() }) },
             "התרעות" to { listOf(
-                Row("🔔", "הגדרות התרעות", { "סוג תצוגה · קרוב אליי · הקראה" }) { showAlertSettings() }) },
+                Row("🔔", "הגדרות התרעות", { "סוג תצוגה · קרוב אליי · הקראה · בדיקה" }) { showAlertSettings() }) },
             "הרשאות" to { phoneRows() },
             "כללי" to { generalRows() }
         )
@@ -1299,8 +1296,8 @@ class MainActivity : Activity() {
         // התפריט התחתון נשאר גם בהגדרות
         val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
         frame.addView(page, FrameLayout.LayoutParams(-1, -1))
-        val nav = bottomNav(3) { i -> switchTab(d, i) }
-        frame.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(10) })
+        val nav = bottomNav(2) { i -> switchTab(d, i) }
+        frame.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = navMargin() })
         frame.setOnApplyWindowInsetsListener { _, insets ->
             @Suppress("DEPRECATION")
             (nav.layoutParams as FrameLayout.LayoutParams).bottomMargin = insets.systemWindowInsetBottom + dp(10)
@@ -1380,6 +1377,10 @@ class MainActivity : Activity() {
         ouiRow(c, "הקראה", sub = onOff(Prefs.speakAlerts(this)), on = Prefs.speakAlerts(this),
             onToggle = { Prefs.setSpeakAlerts(this, !Prefs.speakAlerts(this)); rebuild() }) { showSpeech() }
         ouiAdd(body, c)
+        // בדיקת התראה (עברה מהכפתור שבמסך הראשי)
+        val t = ouiCard()
+        ouiRow(t, "בדיקת התראה", sub = "מקדימה · ירי · סיום") { chooseTest() }
+        ouiAdd(body, t)
     }
 
     /** עמוד צלילים ורטט: צלילים, רטט, שעות שקט, נא לא להפריע, מצב שקט ומצב שבת */
@@ -1422,8 +1423,17 @@ class MainActivity : Activity() {
      * עמודים שנפתחים כחלון (הגדרות, התרעות, תצוגה) - מצוירים מתחת לשורת המצב ולסרגל הניווט כמו המסך הראשי,
      * כדי שהתפריט התחתון יישב בדיוק באותו מקום בכל המסכים (בלי לזוז במעבר בין לשוניות)
      */
+    /** מרחק התפריט התחתון מהתחתית - מחושב מיד (לא מחכים לאירוע insets), כדי שלא יקפוץ בפתיחה */
+    private fun navMargin(): Int {
+        @Suppress("DEPRECATION")
+        val inset = window?.decorView?.rootWindowInsets?.systemWindowInsetBottom ?: 0
+        return inset + dp(10)
+    }
+
     private fun edgeToEdge(d: android.app.Dialog) {
         val w = d.window ?: return
+        // בלי אנימציית פתיחה/סגירה - העמוד מופיע במקום, והתפריט התחתון לא זז
+        w.setWindowAnimations(0)
         // החלונות בנויים על ערכת "Theme.Black" הישנה - בה המערכת מציירת לשורת המצב רקע שחור משלה.
         // בעיצוב בהיר האייקונים כהים, אז על השחור לא רואים שעה/סוללה. מבקשים לצייר את הרקע בעצמנו בצבע העמוד
         @Suppress("DEPRECATION")
@@ -1898,10 +1908,10 @@ class MainActivity : Activity() {
         ouiDivider(ver)
         // מתי האפליקציה עודכנה לאחרונה בטלפון
         val updatedAt = try {
-            java.text.SimpleDateFormat("dd/MM/yyyy · HH:mm", java.util.Locale.US)
+            java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.US)
                 .format(java.util.Date(packageManager.getPackageInfo(packageName, 0).lastUpdateTime))
         } catch (_: Exception) { "" }
-        ouiRow(ver, "בדיקת עדכונים", sub = "עודכן לאחרונה: $updatedAt") { Updater.check(this, silent = false) }
+        ouiRow(ver, "עודכן לאחרונה", end = updatedAt, endColor = C.MUTED)
         ouiAdd(body, ver)
         ouiNote(body, "מהעדכון השני ההתקנה אוטומטית, בלי ללחוץ התקן")
 

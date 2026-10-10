@@ -94,7 +94,7 @@ class ClockActivity : Activity() {
             addView(box, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER))
         }
         // תפריט תחתון: מוצג בלחיצה על המסך ונעלם אחרי 5 שניות (שלא ייצרב במסך העמום)
-        val nav = NavBar.build(this, 2) { i ->
+        val nav = NavBar.build(this, -1) { i ->
             finish()
             if (i > 0) startActivity(android.content.Intent(this, MainActivity::class.java)
                 .addFlags(android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT).putExtra("tab", i))

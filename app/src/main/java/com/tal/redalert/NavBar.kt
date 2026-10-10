@@ -11,10 +11,10 @@ import android.widget.TextView
 
 /** התפריט התחתון - משותף למסך הראשי, להגדרות, להתרעות ולשעון */
 object NavBar {
-    /** תפריט תחתון צף (sel = הלשונית הנבחרת): ראשי · התרעות · שעון · הגדרות */
+    /** תפריט תחתון צף (sel = הלשונית הנבחרת, -1 = אף אחת): ראשי · התרעות · הגדרות */
     fun build(c: Context, sel: Int, light: Boolean = false, onTab: (Int) -> Unit): LinearLayout {
         fun dp(v: Int) = (v * c.resources.displayMetrics.density).toInt()
-        // תפריט תחתון צף: ראשי · התרעות · שעון · הגדרות (לפי המידות של inv-bottom-nav)
+        // תפריט תחתון צף: ראשי · התרעות · הגדרות (לפי המידות של inv-bottom-nav)
         val nav = LinearLayout(c).apply {
             gravity = Gravity.CENTER_VERTICAL
             setPaddingRelative(dp(5), dp(4), dp(5) + dp(6), dp(4))   // +6 מפצה על החפיפה של הלשונית האחרונה
@@ -46,7 +46,7 @@ object NavBar {
         // חפיפה של 6 בין הלשוניות
         val tabLp = { LinearLayout.LayoutParams(tabW, -2).apply { marginEnd = -dp(6) } }
         listOf(R.drawable.ic_home to "ראשי", R.drawable.ic_nav_alerts to "התרעות",
-               R.drawable.ic_nav_clock to "שעון", R.drawable.ic_gear to "הגדרות").forEachIndexed { i, (ic, l) ->
+               R.drawable.ic_gear to "הגדרות").forEachIndexed { i, (ic, l) ->
             nav.addView(tab(ic, l, i == sel) { if (i != sel) onTab(i) }, tabLp())
         }
         return nav
