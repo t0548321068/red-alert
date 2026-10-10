@@ -862,11 +862,13 @@ class MainActivity : Activity() {
             names.forEachIndexed { i, name ->
                 if (i > 0) ouiDivider(card)
                 val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), 0, dp(18), 0) }
-                r.addView(text(name, 16f, C.TEXT))
+                // שם היישוב, ומתחתיו האזור שלו
                 val s = small(name)
-                if (s.isNotEmpty()) r.addView(text(s, 12f, C.MUTED),
-                    LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(12) })
-                r.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+                r.addView(LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    addView(text(name, 16f, C.TEXT).apply { includeFontPadding = false })
+                    if (s.isNotEmpty()) addView(text(s, 12f, C.MUTED).apply { includeFontPadding = false; setPadding(0, dp(4), 0, 0) })
+                }, LinearLayout.LayoutParams(0, -2, 1f))
                 // סימן מחיקה בקצה השורה: קו אדום קצר (כמו ברשימות של סמסונג)
                 r.addView(FrameLayout(this).apply {
                     addView(View(this@MainActivity).apply {
@@ -874,7 +876,7 @@ class MainActivity : Activity() {
                     }, FrameLayout.LayoutParams(dp(16), dp(2), Gravity.CENTER))
                     setOnClickListener { remove(name, whole) }
                 }, LinearLayout.LayoutParams(dp(44), dp(44)).apply { marginEnd = -dp(12) })
-                card.addView(r, LinearLayout.LayoutParams(-1, dp(48)))
+                card.addView(r, LinearLayout.LayoutParams(-1, dp(if (s.isEmpty()) 48 else 56)))
             }
             ouiAdd(body, card)
         }
@@ -1023,7 +1025,9 @@ class MainActivity : Activity() {
         })
         fill(); render()
 
-        showWithCancelSave(d, root) { Prefs.setCities(this@MainActivity, sel.toList()); refresh() }
+        // שומרים רק שמות אמיתיים - מנקה שאריות של שמות שנחתכו בפסיק בגרסאות קודמות
+        val valid = all.toHashSet() + districts.map { P + it }
+        showWithCancelSave(d, root) { Prefs.setCities(this@MainActivity, sel.filter { it in valid }); refresh() }
     }
 
     // ---- מסך הגדרות: כפתור לכל קטגוריה, וכל קטגוריה במסך משלה ----
