@@ -181,6 +181,16 @@ object Prefs {
     fun sound(c: Context, level: Int) = sp(c).getString("sound$level", "") ?: ""
     fun setSound(c: Context, level: Int, uri: String) = sp(c).edit().putString("sound$level", uri).commit()
 
+    // ---- מתג כללי לצלילים ולרטט של ההתרעות (ברירת מחדל: פעיל) ----
+    fun soundsOn(c: Context) = sp(c).getBoolean("soundsOn", true)
+    fun setSoundsOn(c: Context, v: Boolean) = sp(c).edit().putBoolean("soundsOn", v).commit()
+    fun vibesOn(c: Context) = sp(c).getBoolean("vibesOn", true)
+    fun setVibesOn(c: Context, v: Boolean) = sp(c).edit().putBoolean("vibesOn", v).commit()
+
+    /** עקיפת מצב שקט: כשהטלפון על שקט/רטט - ההתרעה בכל זאת משמיעה צליל (ברירת מחדל: כבוי) */
+    fun bypassSilent(c: Context) = sp(c).getBoolean("bypassSilent", false)
+    fun setBypassSilent(c: Context, v: Boolean) = sp(c).edit().putBoolean("bypassSilent", v).commit()
+
     // ---- הקראה בקול ----
     fun speakAlerts(c: Context) = sp(c).getBoolean("speak", true)
     fun shabbatMode(c: Context) = sp(c).getInt("shabbatMode", Shabbat.OFF)
