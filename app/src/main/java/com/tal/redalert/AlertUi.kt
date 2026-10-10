@@ -29,6 +29,20 @@ object AlertUi {
         else -> R.drawable.ic_list_siren
     }
 
+    /**
+     * אייקון לפי השלב: בירי - סוג ההתרעה בזמן ההתגוננות, בית בזמן "נשארים במרחב המוגן",
+     * שעון חול ב"ממתינים להודעת סיום". בשאר הרמות - כמו icon()
+     */
+    fun stageIcon(title: String, level: Int, shelter: Int, firedAt: Long, now: Long = System.currentTimeMillis()): Int {
+        if (level != AlertService.LEVEL_ALERT) return icon(title, level)
+        val enterEnd = firedAt + shelter.coerceAtLeast(0) * 1000L
+        return when {
+            now < enterEnd -> icon(title, level)
+            now < enterEnd + Prefs.STAY_MS -> R.drawable.ic_stage_stay
+            else -> R.drawable.ic_stage_wait
+        }
+    }
+
     private fun mmss(s: Int) = "%d:%02d".format(s / 60, s % 60)
 
     /** (כיתוב, טיימר) לרמת "ירי": זמן התגוננות -> נשארים במרחב המוגן -> ממתינים לסיום. null לשאר הרמות */

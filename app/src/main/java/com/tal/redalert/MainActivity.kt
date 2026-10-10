@@ -191,6 +191,8 @@ class MainActivity : Activity() {
         if (lp.height != h || lp.weight != w) { lp.height = h; lp.weight = w; areasSlot.layoutParams = lp }
     }
     private var alertCardKey = ""
+    private var alertCardIcon: android.widget.ImageView? = null
+    private var alertCardIconRes = 0
     private var alertCardTimer: TextView? = null
     private var alertCardLabel: TextView? = null
 
@@ -212,8 +214,9 @@ class MainActivity : Activity() {
                 setColor(Color.parseColor(AlertUi.color(level))); cornerRadius = dp(28).toFloat() }
             val (t1, t2) = AlertUi.head(j.optString("title"), level)
             // אייקון מעל הכותרת לפי סוג ההתרעה
-            val icon = AlertUi.icon(j.optString("title"), level)
-            alertCard.addView(android.widget.ImageView(this).apply { setImageResource(icon) },
+            alertCardIcon = android.widget.ImageView(this)
+            alertCardIconRes = 0
+            alertCard.addView(alertCardIcon,
                 LinearLayout.LayoutParams(dp(30), dp(30)).apply { gravity = Gravity.CENTER_HORIZONTAL })
             alertCard.addView(text(t1, 19f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER })
             alertCard.addView(text(t2, 14f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER })
@@ -235,6 +238,9 @@ class MainActivity : Activity() {
             alertWrap.visibility = View.VISIBLE
             setScrollMode(true)
         }
+        // האייקון לפי השלב (היכנסו → נשארים במרחב המוגן → ממתינים לסיום)
+        AlertUi.stageIcon(j.optString("title"), level, j.optInt("shelter", -1), firedAt).let { r ->
+            if (r != alertCardIconRes) { alertCardIconRes = r; alertCardIcon?.setImageResource(r) } }
         AlertUi.timer(level, j.optInt("shelter", -1), firedAt)?.let { (lbl, t) ->
             alertCardLabel?.text = lbl
             alertCardLabel?.visibility = if (lbl.isEmpty()) View.GONE else View.VISIBLE
@@ -330,7 +336,7 @@ class MainActivity : Activity() {
         val white = C.TEXT
         val soft = C.SOFT
         greeting.setTextColor(soft)
-        clockTime.setTextColor(white); clockTime.textSize = 58f
+        clockTime.setTextColor(white); clockTime.textSize = 46f
         clockDay.setTextColor(soft)
         clockCard.addView(greeting)
         clockCard.addView(clockTime)
