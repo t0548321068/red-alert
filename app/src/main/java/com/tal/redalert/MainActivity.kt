@@ -1201,7 +1201,9 @@ class MainActivity : Activity() {
         }
         val cats = listOf(
             "תצוגה" to { listOf(Row("🎨", "תצוגה", { "ערכת צבעים · שעון · תאריך · מזג אוויר" }) { showDisplay() }) },
-            "התראות" to { listOf(Row("🔔", "התרעות", { "סוג תצוגה · צלילים · רטט · הקראה · שעות שקט · מצב שבת" }) { showAlertSettings() }) },
+            "התראות" to { listOf(
+                Row("🔔", "התרעות", { "סוג תצוגה · קרוב אליי · הקראה" }) { showAlertSettings() },
+                Row("📳", "צלילים ורטט", { "שעות שקט · נא לא להפריע · מצב שקט · שבת" }) { showSoundSettings() }) },
             "הרשאות" to { phoneRows() },
             "כללי" to { generalRows() }
         )
@@ -1298,21 +1300,6 @@ class MainActivity : Activity() {
 
     private fun onOff(b: Boolean) = if (b) "פעיל" else "כבוי"
 
-    private fun alertsRows(): List<Row> {
-        return listOf(
-            Row("📍", "קרוב אליי", { onOff(Prefs.nearMe(this)) }) { toggleNearMe() },
-            Row("🔔", "צלילים", { if (AlertService.PHONE_DEFAULTS) "של הטלפון" else "" }) {
-                if (AlertService.PHONE_DEFAULTS) openNotificationSettings() else showSounds() },
-            Row("📳", "רטט", { if (AlertService.PHONE_DEFAULTS) "של הטלפון" else "" }) {
-                if (AlertService.PHONE_DEFAULTS) openNotificationSettings() else showVibes() },
-            Row("🗣", "הקראה", { onOff(Prefs.speakAlerts(this)) }) { showSpeech() },
-            Row("🌙", "שעות שקט", {
-                if (Prefs.quietOn(this)) "${hhmm(Prefs.quietFrom(this))}–${hhmm(Prefs.quietTo(this))}" else "כבוי" }) { showQuietHours() },
-            Row("🔕", "עקיפת נא לא להפריע", { dndState() }) { showDnd() },
-            Row("🕯", "מצב שבת", { Shabbat.label(Prefs.shabbatMode(this)) }) { chooseShabbat() }
-        )
-    }
-
     /** עמוד התרעות: כל ההגדרות של ההתרעה במקום אחד */
     private fun showAlertSettings() = ouiPage("התרעות") { body, rebuild ->
         // סוג תצוגת התרעה: הדמיה קטנה של כל סוג + בחירה (הועבר מעמוד תצוגה)
@@ -1340,6 +1327,14 @@ class MainActivity : Activity() {
         // מתג = הדלקה/כיבוי, לחיצה על השם = ההגדרות המלאות
         ouiRow(c, "קרוב אליי", sub = onOff(Prefs.nearMe(this)), on = Prefs.nearMe(this)) { toggleNearMe(); rebuild() }
         ouiDivider(c)
+        ouiRow(c, "הקראה", sub = onOff(Prefs.speakAlerts(this)), on = Prefs.speakAlerts(this),
+            onToggle = { Prefs.setSpeakAlerts(this, !Prefs.speakAlerts(this)); rebuild() }) { showSpeech() }
+        ouiAdd(body, c)
+    }
+
+    /** עמוד צלילים ורטט: צלילים, רטט, שעות שקט, נא לא להפריע, מצב שקט ומצב שבת */
+    private fun showSoundSettings() = ouiPage("צלילים ורטט") { body, rebuild ->
+        val c = ouiCard()
         val snd = Prefs.soundsOn(this); val vib = Prefs.vibesOn(this)
         ouiRow(c, "צלילים", sub = if (!snd) "כבוי" else if (AlertService.PHONE_DEFAULTS) "של הטלפון" else "פעיל",
             on = snd, onToggle = { Prefs.setSoundsOn(this, !snd); rebuild() }) {
@@ -1348,26 +1343,27 @@ class MainActivity : Activity() {
         ouiRow(c, "רטט", sub = if (!vib) "כבוי" else if (AlertService.PHONE_DEFAULTS) "של הטלפון" else "פעיל",
             on = vib, onToggle = { Prefs.setVibesOn(this, !vib); rebuild() }) {
             if (AlertService.PHONE_DEFAULTS) openNotificationSettings() else showVibes() }
-        ouiDivider(c)
-        ouiRow(c, "הקראה", sub = onOff(Prefs.speakAlerts(this)), on = Prefs.speakAlerts(this),
-            onToggle = { Prefs.setSpeakAlerts(this, !Prefs.speakAlerts(this)); rebuild() }) { showSpeech() }
-        ouiDivider(c)
-        ouiRow(c, "שעות שקט",
+        ouiAdd(body, c)
+
+        val q = ouiCard()
+        ouiRow(q, "שעות שקט",
             sub = if (Prefs.quietOn(this)) "${hhmm(Prefs.quietFrom(this))}–${hhmm(Prefs.quietTo(this))}" else "כבוי",
             on = Prefs.quietOn(this),
             onToggle = { Prefs.setQuietOn(this, !Prefs.quietOn(this)); rebuild() }) { showQuietHours() }
-        ouiDivider(c)
-        ouiRow(c, "עקיפת נא לא להפריע", sub = dndState(), on = Prefs.dndOverride(this),
-            onToggle = { Prefs.setDndOverride(this, !Prefs.dndOverride(this)); rebuild() }) { showDnd() }
-        ouiDivider(c)
-        ouiRow(c, "עקיפת מצב שקט", sub = if (Prefs.bypassSilent(this)) "צליל גם כשהטלפון על שקט או רטט" else "כבוי",
+        ouiDivider(q)
+        // רק הדלקה/כיבוי - ההרשאה עצמה במסך ההרשאות
+        ouiRow(q, "עקיפת נא לא להפריע", sub = onOff(Prefs.dndOverride(this)), on = Prefs.dndOverride(this)) {
+            Prefs.setDndOverride(this, !Prefs.dndOverride(this)); rebuild() }
+        ouiDivider(q)
+        ouiRow(q, "עקיפת מצב שקט", sub = if (Prefs.bypassSilent(this)) "צליל גם כשהטלפון על שקט או רטט" else "כבוי",
             on = Prefs.bypassSilent(this)) { Prefs.setBypassSilent(this, !Prefs.bypassSilent(this)); rebuild() }
-        ouiDivider(c)
+        ouiDivider(q)
         // מצב שבת: המתג מדליק "אוטומטי" או מכבה. דלוק תמיד - בעמוד מצב שבת
         val sh = Prefs.shabbatMode(this)
-        ouiRow(c, "מצב שבת", sub = Shabbat.label(sh), on = sh != Shabbat.OFF,
+        ouiRow(q, "מצב שבת", sub = Shabbat.label(sh), on = sh != Shabbat.OFF,
             onToggle = { Prefs.setShabbatMode(this, if (sh == Shabbat.OFF) Shabbat.AUTO else Shabbat.OFF); rebuild() }) { chooseShabbat() }
-        ouiAdd(body, c)
+        ouiAdd(body, q)
+        ouiNote(body, "מצב שבת עוקף את שעות השקט, נא לא להפריע ומצב שקט")
     }
 
     companion object { private var reopenDisplay = false }
@@ -1582,18 +1578,6 @@ class MainActivity : Activity() {
         d.show()
     }
 
-    private fun displayRows(): List<Row> {
-        return listOf(
-            Row("🎨", "ערכת צבעים", { Prefs.THEME_NAMES[Prefs.themeMode(this)] }) { chooseTheme() },
-            Row("🚨", "סוג תצוגת התרעה", { Prefs.ALERT_STYLES[Prefs.alertStyle(this)] }) { chooseAlertStyle() },
-            Row("🕐", "שעון ותאריך", { "" }) { showClockSettings() },
-            Row("🌤", "מזג אוויר", { if (Prefs.showWeather(this)) "" else "מוסתר" }) {
-                Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true) },
-            Row("👋", "ברכה", { if (Prefs.showGreeting(this)) "מוצג" else "מוסתר" }) {
-                Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock() }
-        )
-    }
-
     /** הרשאות: שורה אחת שפותחת מסך עם כל ההרשאות והמצב של כל אחת */
     private fun phoneRows(): List<Row> = listOf(
         Row("🛡", "הרשאות", {
@@ -1640,26 +1624,6 @@ class MainActivity : Activity() {
             Row("⬆️", "בדיקת עדכונים", { "v" + Updater.versionLabel(this) }) { showUpdates() },
             Row("ℹ️", "אודות", { "" }) { showAbout() }
         )
-    }
-
-    private fun chooseAlertStyle() {
-        AlertDialog.Builder(this, dlg())
-            .setTitle("סוג תצוגת התרעה")
-            .setSingleChoiceItems(Prefs.ALERT_STYLES, Prefs.alertStyle(this)) { d, i ->
-                d.dismiss(); Prefs.setAlertStyle(this, i)
-            }
-            .show()
-    }
-
-    private fun chooseTheme() {
-        AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("ערכת צבעים")
-            .setSingleChoiceItems(Prefs.THEME_NAMES, Prefs.themeMode(this)) { d, i ->
-                d.dismiss()
-                if (i != Prefs.themeMode(this)) { Prefs.setThemeMode(this, i); recreate() }
-            }
-            .show()
     }
 
     // ---- חיווים ----
@@ -2009,34 +1973,6 @@ class MainActivity : Activity() {
     /** הקראה: הפעלה/כיבוי ודוגמה */
     private fun dndAccess() =
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).isNotificationPolicyAccessGranted
-    private fun dndState() = when {
-        !Prefs.dndOverride(this) -> "כבוי"
-        dndAccess() -> "פעיל"
-        else -> "צריך הרשאה"
-    }
-
-    /** בזמן התראה "נא לא להפריע" נכבה לדקה וחוזר למצב הקודם */
-    private fun showDnd() {
-        val on = Prefs.dndOverride(this)
-        val items = arrayOf(
-            if (on) "✅ פעיל – לחץ לכיבוי" else "⬜ כבוי – לחץ להפעלה",
-            "🔑 הרשאה: " + if (dndAccess()) "מאושרת ✓" else "לא מאושרת – לחץ לאישור",
-            "ℹ️ בזמן ירי ו\"התראה מקדימה\" – נא לא להפריע נכבה לדקה כדי שהצליל, הרטט והמסך יעבדו, ואז חוזר לבד"
-        )
-        AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("🔕 עקיפת נא לא להפריע")
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> { Prefs.setDndOverride(this, !on); showDnd() }
-                    1 -> startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
-                    else -> showDnd()
-                }
-            }
-            .setPositiveButton("סגור", null)
-            .show()
-    }
-
     private fun showAbout() {
         val msg = """
             |צבע אדום · גרסה ${Updater.versionLabel(this)}
@@ -2182,64 +2118,6 @@ class MainActivity : Activity() {
             Prefs.setBlinkColon(this, !Prefs.blinkColon(this)); updateClock(); rebuild() }
         ouiAdd(body, c)
         ouiNote(body, "השינוי נראה מיד בשעון במסך הראשי")
-    }
-
-    private fun showClockSettings() {
-        val items = arrayOf(
-            "ערכת צבעים: " + Prefs.THEME_NAMES[Prefs.themeMode(this)],
-            "סגנון יום: ${TimeFormat.dayOptions()[Prefs.dayStyle(this)]}",
-            "שניות: " + if (Prefs.showSeconds(this)) "מוצג" else "מוסתר",
-            "נקודתיים מהבהבות: " + if (Prefs.blinkColon(this)) "פעיל" else "כבוי",
-            "תאריך: " + if (Prefs.showDate(this)) "מוצג" else "מוסתר",
-            "מזג אוויר: " + if (Prefs.showWeather(this)) "מוצג" else "מוסתר",
-            "עדכון מזג אוויר: " + weatherLabel(Prefs.weatherMinutes(this)),
-            "ברכה (בוקר טוב / ערב טוב…): " + if (Prefs.showGreeting(this)) "מוצג" else "מוסתר"
-        )
-        AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("תצוגה")
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> AlertDialog.Builder(this, dlg())
-                        .setIcon(R.mipmap.ic_launcher)
-                        .setTitle("ערכת צבעים")
-                        .setSingleChoiceItems(Prefs.THEME_NAMES, Prefs.themeMode(this)) { d, i ->
-                            d.dismiss()
-                            if (i != Prefs.themeMode(this)) {
-                                Prefs.setThemeMode(this, i)
-                                recreate()   // בונה את המסך מחדש בצבעים החדשים
-                            }
-                        }
-                        .show()
-                    1 -> AlertDialog.Builder(this, dlg())
-                        .setIcon(R.mipmap.ic_launcher)
-                        .setTitle("סגנון יום")
-                        .setSingleChoiceItems(TimeFormat.dayOptions(), Prefs.dayStyle(this)) { d, i ->
-                            Prefs.setDayStyle(this, i)
-                            updateClock(); refresh(); d.dismiss(); showClockSettings()
-                        }
-                        .show()
-                    2 -> { Prefs.setShowSeconds(this, !Prefs.showSeconds(this)); updateClock(); refresh(); showClockSettings() }
-                    3 -> { Prefs.setBlinkColon(this, !Prefs.blinkColon(this)); updateClock(); showClockSettings() }
-                    4 -> { Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); showClockSettings() }
-                    5 -> { Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); showClockSettings() }
-                    7 -> { Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock(); showClockSettings() }
-                    6 -> {
-                        val opts = intArrayOf(1, 2, 5, 10, 15, 30, 60)
-                        AlertDialog.Builder(this, dlg())
-                            .setIcon(R.mipmap.ic_launcher)
-                            .setTitle("עדכון מזג אוויר")
-                            .setSingleChoiceItems(opts.map { weatherLabel(it) }.toTypedArray(),
-                                opts.indexOf(Prefs.weatherMinutes(this))) { d, i ->
-                                Prefs.setWeatherMinutes(this, opts[i])
-                                d.dismiss(); showClockSettings()
-                            }
-                            .show()
-                    }
-                }
-            }
-            .setPositiveButton("סגור", null)
-            .show()
     }
 
 
