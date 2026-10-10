@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- דמות בכוונת - חדירת מחבלים + גלי אזעקה -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-    <group android:pivotX="12.00" android:pivotY="12.00" android:scaleX="0.436" android:scaleY="0.436" android:translateX="0.00" android:translateY="0.00">
-        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="3.67" android:fillColor="#00000000" android:pathData="M12,2a10,10 0 1 1 0,20a10,10 0 1 1 0,-20z" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M12,5.6a3.4,3.4 0 1 1 0,6.8a3.4,3.4 0 1 1 0,-6.8zM5.8,19v-1.2c0,-2.9 2.8,-5 6.2,-5s6.2,2.1 6.2,5V19z" />
+    <group android:pivotX="12.00" android:pivotY="12.00" android:scaleX="0.408" android:scaleY="0.408" android:translateX="0.00" android:translateY="0.00">
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.70" android:fillColor="#00000000" android:pathData="M12,3a9,9 0 1 1 0,18a9,9 0 1 1 0,-18z" />
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.70" android:strokeLineCap="round" android:pathData="M12,0.5v4M12,19.5v4M0.5,12h4M19.5,12h4" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M12,7a2.6,2.6 0 1 1 0,5.2a2.6,2.6 0 1 1 0,-5.2zM7.6,17.3v-0.8c0,-2.2 2,-3.7 4.4,-3.7s4.4,1.5 4.4,3.7v0.8z" />
     </group>
     <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineCap="round" android:pathData="M6.6,8 Q4.2,12 6.6,16" />
     <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineCap="round" android:pathData="M17.4,8 Q19.8,12 17.4,16" />
