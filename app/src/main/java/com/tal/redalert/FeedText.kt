@@ -36,9 +36,12 @@ object FeedText {
         return Prefs.feed(c).filter { it.ts >= since }
     }
 
-    /** פיד במסך הראשי, בשתי שורות: "נקודה שעה סוג" ומתחת אזורי ההתרעה (החדשה ראשונה) */
+    /** פיד במסך הראשי, בשלוש שורות: שעה / "נקודה סוג נקודה" / אזורי ההתרעה (החדשה ראשונה) */
     fun recent(c: Context): List<String> =
-        inWindow(c).take(30).map { "${icon(it.level)} ${TimeFormat.time(c, it.ts)} ${short(it.title)}\n${it.body}" }
+        inWindow(c).take(30).map {
+            val dot = icon(it.level)
+            "${TimeFormat.time(c, it.ts)}\n$dot ${short(it.title)} $dot\n${it.body}"
+        }
 
     /** שורה אחת (מסך השעון): ההתראות בחלון הזמן, או null אם אין */
     fun latest(c: Context): String? = inWindow(c).take(8).ifEmpty { null }?.joinToString("     •     ") { line(c, it) }
