@@ -178,6 +178,7 @@ class MainActivity : Activity() {
     private lateinit var areasSlot: FrameLayout
 
     /** כשכרטיס ההתרעה מוצג - האזורים בגובה מלא והמסך נגלל; בלעדיו - האזורים ממלאים את מה שנשאר */
+    private lateinit var clockArea: LinearLayout
     private var mainScroll: ScrollView? = null
     /** האם המסך הראשי עצמו נגלל (רק כשכרטיס ההתרעה מוצג) */
     private var pageScrolls = false
@@ -329,6 +330,9 @@ class MainActivity : Activity() {
         clockCard.addView(greeting)
         clockCard.addView(clockTime)
         clockCard.addView(clockDay)
+        // אזור ההתרעה (לפי המיקום) - בתוך כרטיס השעון
+        clockArea = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL }
+        clockCard.addView(clockArea, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         // כרטיס חיווים מעל השעון: רשת / מיקום / מקורות - שלוש עמודות שוות
         val status = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
@@ -508,7 +512,7 @@ class MainActivity : Activity() {
         val nav = bottomNav(0) { i -> openTab(i) }
         scroll.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(10) })
         // מקום לתפריט מתחת לפיד
-        col.setPadding(col.paddingLeft, col.paddingTop, col.paddingRight, dp(GAP) + dp(70))
+        col.setPadding(col.paddingLeft, col.paddingTop, col.paddingRight, dp(GAP) + dp(86))   // גובה התפריט + המרווח שלו
         setContentView(scroll)
         askPermissions()
         showWhatsNewIfUpdated()
@@ -631,21 +635,18 @@ class MainActivity : Activity() {
         val muted = C.MUTED2
         val light = C.SOFT
 
-        // אזור התרעה (לפי המיקום)
-        val top = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))   // רקע כמו שאר הכרטיסים (של הכרטיס עצמו)
-        }
-        top.addView(text("אזור התרעה", 16f, muted))
-        top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 26f, C.TEXT, bold = true)
+        // אזור התרעה (לפי המיקום) - מוצג בכרטיס השעון
+        clockArea.removeAllViews()
+        clockArea.addView(View(this).apply { setBackgroundColor(Color.parseColor("#33FFFFFF")) },
+            LinearLayout.LayoutParams(-1, dp(1)).apply { bottomMargin = dp(8) })
+        val top = clockArea
+        top.addView(text("אזור התרעה", 14f, C.SOFT))
+        top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 22f, C.TEXT, bold = true)
             .apply { setPadding(0, dp(2), 0, 0) })
         val sec = if (nearOn && near.isNotEmpty()) AreaData.shelterSeconds(this, near.take(1)) else null
-        if (sec != null) top.addView(text("⏱ זמן התגוננות: ${AreaData.shelterText(sec)}", 16f, light)
+        if (sec != null) top.addView(text("⏱ זמן התגוננות: ${AreaData.shelterText(sec)}", 14f, light)
             .apply { setPadding(0, dp(2), 0, 0) })
         for (i in 0 until top.childCount) (top.getChildAt(i) as? TextView)?.gravity = Gravity.CENTER
-        chips.addView(top)
-        chips.addView(View(this).apply { setBackgroundColor(C.LINE) }, LinearLayout.LayoutParams(-1, dp(1)))
 
         // אזורים נוספים
         val bottom = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), dp(8)) }
