@@ -660,13 +660,14 @@ class MainActivity : Activity() {
             if (i > 0) rows.addView(View(this).apply { setBackgroundColor(C.LINE) },
                 LinearLayout.LayoutParams(-1, dp(1)))
             val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(8)) }
-            // מיושר לימין: שם היישוב, ומתחתיו האזור שלו בקטן (אזור שלם - "כל האזור")
+            // מיושר לימין: שם היישוב, ולידו האזור שלו בקטן (אזור שלם - "כל האזור")
             val isDistrict = city.startsWith(AreaData.DISTRICT_PREFIX)
             val name = city.removePrefix(AreaData.DISTRICT_PREFIX)
             val sub = if (isDistrict) "כל האזור" else AreaData.districtMap(this)[name] ?: ""
-            val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            // באותה שורה: שם היישוב, ולידו האזור בקטן
+            val col = LinearLayout(this).apply { gravity = Gravity.BOTTOM }
             col.addView(text(name, 18f, C.TEXT))
-            if (sub.isNotEmpty()) col.addView(text(sub, 13f, muted))
+            if (sub.isNotEmpty()) col.addView(text(sub, 13f, muted).apply { setPadding(dp(8), 0, 0, dp(2)) })
             r.addView(col, LinearLayout.LayoutParams(0, -2, 1f))
             r.addView(text("✕", 17f, muted).apply {
                 gravity = Gravity.CENTER
