@@ -1041,7 +1041,8 @@ class MainActivity : Activity() {
      */
     private fun ouiRow(c: LinearLayout, title: String, sub: String = "", subColor: Int = OUI_BLUE,
                        end: String? = null, endColor: Int = C.TEXT, endBig: Boolean = false,
-                       radio: Boolean? = null, on: Boolean? = null, click: (() -> Unit)? = null) {
+                       radio: Boolean? = null, on: Boolean? = null, onToggle: (() -> Unit)? = null,
+                       click: (() -> Unit)? = null) {
         val r = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(18), 0, dp(18), 0)
@@ -1054,9 +1055,13 @@ class MainActivity : Activity() {
         if (end != null) r.addView(text(end, if (endBig) 22f else 14f, endColor, bold = endBig).apply { includeFontPadding = false },
             LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
         if (radio != null) r.addView(ouiRadio(radio), LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginStart = dp(10) })
+        // onToggle: לחיצה על השורה פותחת הגדרה, והמתג לבד מדליק/מכבה (כמו בעמוד תצוגה)
+        if (on != null && onToggle != null) r.addView(View(this).apply { setBackgroundColor(C.SEPV) },
+            LinearLayout.LayoutParams(dp(1), dp(26)).apply { setMargins(dp(12), 0, 0, 0) })
         if (on != null) r.addView(android.widget.Switch(this).apply {
             minHeight = 0; minimumHeight = 0; setPadding(0, 0, 0, 0)
-            isChecked = on; isClickable = false
+            isChecked = on
+            if (onToggle != null) setOnClickListener { onToggle() } else isClickable = false
             thumbTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
             trackTintList = android.content.res.ColorStateList.valueOf(Color.parseColor(if (on) "#3E82F7" else "#5A5A5E"))
             trackTintMode = android.graphics.PorterDuff.Mode.SRC
@@ -1121,7 +1126,7 @@ class MainActivity : Activity() {
             "כל התרעה נפתחת במסך מלא, גם כשהטלפון בשימוש",
             "ההתרעה מוקראת בקול, גם אם ההקראה כבויה בהגדרות",
             "מסך ההתרעה נסגר לבד אחרי דקה – אין צורך לגעת בטלפון",
-            "שעות שקט לא פועלות – כל התרעה נשמעת"
+            "עוקף הכל: שעות שקט, נא לא להפריע, מצב שקט של הטלפון, וגם צלילים ורטט כבויים"
         ).joinToString("\n") { "• $it" })
         ouiAdd(body, info)
     }
@@ -1332,10 +1337,36 @@ class MainActivity : Activity() {
         ouiNote(body, "המפה מוצגת במסך מלא ובפופ-אפ")
 
         val c = ouiCard()
-        alertsRows().forEachIndexed { i, r ->
-            if (i > 0) ouiDivider(c)
-            ouiRow(c, r.title, sub = r.value()) { r.action(); rebuild() }
-        }
+        // מתג = הדלקה/כיבוי, לחיצה על השם = ההגדרות המלאות
+        ouiRow(c, "קרוב אליי", sub = onOff(Prefs.nearMe(this)), on = Prefs.nearMe(this)) { toggleNearMe(); rebuild() }
+        ouiDivider(c)
+        val snd = Prefs.soundsOn(this); val vib = Prefs.vibesOn(this)
+        ouiRow(c, "צלילים", sub = if (!snd) "כבוי" else if (AlertService.PHONE_DEFAULTS) "של הטלפון" else "פעיל",
+            on = snd, onToggle = { Prefs.setSoundsOn(this, !snd); rebuild() }) {
+            if (AlertService.PHONE_DEFAULTS) openNotificationSettings() else showSounds() }
+        ouiDivider(c)
+        ouiRow(c, "רטט", sub = if (!vib) "כבוי" else if (AlertService.PHONE_DEFAULTS) "של הטלפון" else "פעיל",
+            on = vib, onToggle = { Prefs.setVibesOn(this, !vib); rebuild() }) {
+            if (AlertService.PHONE_DEFAULTS) openNotificationSettings() else showVibes() }
+        ouiDivider(c)
+        ouiRow(c, "הקראה", sub = onOff(Prefs.speakAlerts(this)), on = Prefs.speakAlerts(this),
+            onToggle = { Prefs.setSpeakAlerts(this, !Prefs.speakAlerts(this)); rebuild() }) { showSpeech() }
+        ouiDivider(c)
+        ouiRow(c, "שעות שקט",
+            sub = if (Prefs.quietOn(this)) "${hhmm(Prefs.quietFrom(this))}–${hhmm(Prefs.quietTo(this))}" else "כבוי",
+            on = Prefs.quietOn(this),
+            onToggle = { Prefs.setQuietOn(this, !Prefs.quietOn(this)); rebuild() }) { showQuietHours() }
+        ouiDivider(c)
+        ouiRow(c, "עקיפת נא לא להפריע", sub = dndState(), on = Prefs.dndOverride(this),
+            onToggle = { Prefs.setDndOverride(this, !Prefs.dndOverride(this)); rebuild() }) { showDnd() }
+        ouiDivider(c)
+        ouiRow(c, "עקיפת מצב שקט", sub = if (Prefs.bypassSilent(this)) "צליל גם כשהטלפון על שקט או רטט" else "כבוי",
+            on = Prefs.bypassSilent(this)) { Prefs.setBypassSilent(this, !Prefs.bypassSilent(this)); rebuild() }
+        ouiDivider(c)
+        // מצב שבת: המתג מדליק "אוטומטי" או מכבה. דלוק תמיד - בעמוד מצב שבת
+        val sh = Prefs.shabbatMode(this)
+        ouiRow(c, "מצב שבת", sub = Shabbat.label(sh), on = sh != Shabbat.OFF,
+            onToggle = { Prefs.setShabbatMode(this, if (sh == Shabbat.OFF) Shabbat.AUTO else Shabbat.OFF); rebuild() }) { chooseShabbat() }
         ouiAdd(body, c)
     }
 
