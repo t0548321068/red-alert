@@ -1026,7 +1026,7 @@ class MainActivity : Activity() {
                 setOnClickListener { Prefs.setCities(this@MainActivity, sel.toList()); refresh(); d.dismiss() }
             }, LinearLayout.LayoutParams(0, -1, 1f))
         }
-        frame.addView(save, FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.53f).toInt(), dp(46),
+        frame.addView(save, FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.47f).toInt(), dp(46),
             Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = navMargin() })
         frame.setOnApplyWindowInsetsListener { _, insets ->
             @Suppress("DEPRECATION")
