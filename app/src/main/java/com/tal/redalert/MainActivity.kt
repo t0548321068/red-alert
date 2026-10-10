@@ -985,7 +985,8 @@ class MainActivity : Activity() {
     private val OUI_BLUE get() = Color.parseColor("#5AA9FF")
 
     /** עמוד מלא: כותרת קטנה למעלה (כמו "תצוגה"), build נקרא מחדש בכל rebuild */
-    private fun ouiPage(title: String, refreshOnFocus: Boolean = true, build: (LinearLayout, () -> Unit) -> Unit) {
+    private fun ouiPage(title: String, refreshOnFocus: Boolean = true, onClose: (() -> Unit)? = null,
+                        build: (LinearLayout, () -> Unit) -> Unit) {
         val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(30)) }
         val page = ScrollView(this).apply {
@@ -1011,6 +1012,7 @@ class MainActivity : Activity() {
         d.window?.statusBarColor = C.BG
         edgeToEdge(d)
         if (refreshOnFocus) d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
+        if (onClose != null) d.setOnDismissListener { onClose() }
         d.show()
     }
 
@@ -1193,8 +1195,8 @@ class MainActivity : Activity() {
             insets
         }
         val cats = listOf(
-            "תצוגה" to { listOf(Row("🎨", "תצוגה", { "ערכת צבעים · סוג תצוגת התרעה · שעון" }) { showDisplay() }) },
-            "התראות" to { alertsRows() },
+            "תצוגה" to { listOf(Row("🎨", "תצוגה", { "ערכת צבעים · שעון · תאריך · מזג אוויר" }) { showDisplay() }) },
+            "התראות" to { listOf(Row("🔔", "התרעות", { "סוג תצוגה · צלילים · רטט · הקראה · שעות שקט · מצב שבת" }) { showAlertSettings() }) },
             "הרשאות" to { phoneRows() },
             "כללי" to { generalRows() }
         )
@@ -1304,6 +1306,37 @@ class MainActivity : Activity() {
             Row("🔕", "עקיפת נא לא להפריע", { dndState() }) { showDnd() },
             Row("🕯", "מצב שבת", { Shabbat.label(Prefs.shabbatMode(this)) }) { chooseShabbat() }
         )
+    }
+
+    /** עמוד התרעות: כל ההגדרות של ההתרעה במקום אחד */
+    private fun showAlertSettings() = ouiPage("התרעות") { body, rebuild ->
+        // סוג תצוגת התרעה: הדמיה קטנה של כל סוג + בחירה (הועבר מעמוד תצוגה)
+        val style = ouiCard()
+        style.addView(text("סוג תצוגת התרעה", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+        val opts = LinearLayout(this).apply { setPadding(dp(6), dp(10), dp(6), dp(16)) }
+        listOf("מסך מלא", "פופ-אפ", "כרטיס", "ממוזער").forEachIndexed { i, label ->
+            val sel = Prefs.alertStyle(this) == i
+            opts.addView(LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                addView(alertStylePreview(i), LinearLayout.LayoutParams(dp(58), dp(116)))
+                addLabelRadio(this, label, sel)
+                setOnClickListener { Prefs.setAlertStyle(this@MainActivity, i); rebuild() }
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        style.addView(opts)
+        ouiDivider(style)
+        ouiRow(style, "מפה במסך ההתרעה", on = Prefs.alertMap(this)) {
+            Prefs.setAlertMap(this, !Prefs.alertMap(this)); rebuild() }
+        ouiAdd(body, style)
+        ouiNote(body, "המפה מוצגת במסך מלא ובפופ-אפ")
+
+        val c = ouiCard()
+        alertsRows().forEachIndexed { i, r ->
+            if (i > 0) ouiDivider(c)
+            ouiRow(c, r.title, sub = r.value()) { r.action(); rebuild() }
+        }
+        ouiAdd(body, c)
     }
 
     companion object { private var reopenDisplay = false }
@@ -1486,26 +1519,6 @@ class MainActivity : Activity() {
             row(theme, "לפי המערכת", on = sys, sep = false) { setTheme(d, if (sys) 0 else 2) { rebuild() } }
             addCard(theme)
             note("כשמופעל - בהיר או חשוך לפי הגדרת הטלפון")
-            // סוג תצוגת התרעה: הדמיה קטנה של כל סוג + בחירה
-            val style = card()
-            style.addView(text("סוג תצוגת התרעה", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-            val opts = LinearLayout(this).apply { setPadding(dp(6), dp(10), dp(6), dp(16)) }
-            listOf("מסך מלא", "פופ-אפ", "כרטיס", "ממוזער").forEachIndexed { i, label ->
-                val sel = Prefs.alertStyle(this) == i
-                opts.addView(LinearLayout(this).apply {
-                    orientation = LinearLayout.VERTICAL
-                    gravity = Gravity.CENTER_HORIZONTAL
-                    addView(alertStylePreview(i), LinearLayout.LayoutParams(dp(58), dp(116)))
-                    addLabelRadio(this, label, sel)
-                    setOnClickListener { Prefs.setAlertStyle(this@MainActivity, i); rebuild() }
-                }, LinearLayout.LayoutParams(0, -2, 1f))
-            }
-            style.addView(opts)
-            divider(style)
-            row(style, "מפה במסך ההתרעה", on = Prefs.alertMap(this), sep = false) {
-                Prefs.setAlertMap(this, !Prefs.alertMap(this)); rebuild() }
-            addCard(style)
-            note("המפה מוצגת במסך מלא ובפופ-אפ")
             // שעון ותאריך, מזג אוויר וברכה - בכרטיס אחד
             val more = card()
             row(more, "שעון", listOf(if (Prefs.showSeconds(this)) "שניות" else "", if (Prefs.blinkColon(this)) "נקודתיים מהבהבות" else "")
@@ -2114,37 +2127,52 @@ class MainActivity : Activity() {
         else -> "כל $min דקות"
     }
 
-    /** הגדרות שעה ותאריך - כל שינוי נראה מיד בשעון */
-    private fun chooseDayStyle(done: () -> Unit) {
-        AlertDialog.Builder(this, dlg())
-            .setTitle("סגנון יום")
-            .setSingleChoiceItems(TimeFormat.dayOptions(), Prefs.dayStyle(this)) { d, i ->
-                Prefs.setDayStyle(this, i); updateClock(); refresh(); d.dismiss(); done()
-            }
-            .show()
+    /** עמוד תאריך: הצגה + סגנון היום - כל שינוי נראה מיד בשעון */
+    private fun chooseDayStyle(done: () -> Unit) = ouiPage("תאריך", onClose = done) { body, rebuild ->
+        val show = ouiCard()
+        ouiRow(show, "הצגת תאריך", on = Prefs.showDate(this)) {
+            Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); rebuild() }
+        ouiAdd(body, show)
+        ouiNote(body, "התאריך מוצג מתחת לשעון במסך הראשי")
+        val styles = ouiCard()
+        styles.addView(text("סגנון יום", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+        TimeFormat.dayOptions().forEachIndexed { i, label ->
+            if (i > 0) ouiDivider(styles)
+            ouiRow(styles, label, radio = Prefs.dayStyle(this) == i) {
+                Prefs.setDayStyle(this, i); updateClock(); refresh(); rebuild() }
+        }
+        ouiAdd(body, styles)
     }
 
-    private fun chooseWeatherInterval(done: () -> Unit) {
+    /** עמוד מזג אוויר: הצגה + תדירות עדכון */
+    private fun chooseWeatherInterval(done: () -> Unit) = ouiPage("מזג אוויר", onClose = done) { body, rebuild ->
+        val show = ouiCard()
+        ouiRow(show, "הצגת מזג אוויר", on = Prefs.showWeather(this)) {
+            Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); rebuild() }
+        ouiAdd(body, show)
+        ouiNote(body, "טמפרטורה ומצב מזג האוויר לפי המיקום, בכרטיס השעון")
         val opts = intArrayOf(1, 2, 5, 10, 15, 30, 60)
-        AlertDialog.Builder(this, dlg())
-            .setTitle("עדכון מזג אוויר")
-            .setSingleChoiceItems(opts.map { weatherLabel(it) }.toTypedArray(), opts.indexOf(Prefs.weatherMinutes(this))) { d, i ->
-                Prefs.setWeatherMinutes(this, opts[i]); d.dismiss(); done()
-            }
-            .show()
+        val freq = ouiCard()
+        freq.addView(text("תדירות עדכון", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+        opts.forEachIndexed { i, m ->
+            if (i > 0) ouiDivider(freq)
+            ouiRow(freq, weatherLabel(m), radio = Prefs.weatherMinutes(this) == m) {
+                Prefs.setWeatherMinutes(this, m); rebuild() }
+        }
+        ouiAdd(body, freq)
+        ouiNote(body, "עדכון תכוף יותר משתמש קצת יותר בסוללה ובאינטרנט")
     }
 
-    /** הגדרות שעון: רק שניות ונקודתיים מהבהבות */
-    private fun showClockPage() {
-        AlertDialog.Builder(this, dlg())
-            .setTitle("שעון")
-            .setMultiChoiceItems(arrayOf("שניות", "נקודתיים מהבהבות"),
-                booleanArrayOf(Prefs.showSeconds(this), Prefs.blinkColon(this))) { _, i, on ->
-                if (i == 0) { Prefs.setShowSeconds(this, on); refresh() } else Prefs.setBlinkColon(this, on)
-                updateClock()
-            }
-            .setPositiveButton("סגור", null)
-            .show()
+    /** עמוד שעון: שניות ונקודתיים מהבהבות */
+    private fun showClockPage() = ouiPage("שעון") { body, rebuild ->
+        val c = ouiCard()
+        ouiRow(c, "הצגת שניות", on = Prefs.showSeconds(this)) {
+            Prefs.setShowSeconds(this, !Prefs.showSeconds(this)); refresh(); updateClock(); rebuild() }
+        ouiDivider(c)
+        ouiRow(c, "נקודתיים מהבהבות", on = Prefs.blinkColon(this)) {
+            Prefs.setBlinkColon(this, !Prefs.blinkColon(this)); updateClock(); rebuild() }
+        ouiAdd(body, c)
+        ouiNote(body, "השינוי נראה מיד בשעון במסך הראשי")
     }
 
     private fun showClockSettings() {
