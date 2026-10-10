@@ -309,7 +309,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             typeface = Typeface.create("sans-serif", Typeface.BOLD)
         }
-        clockDay = text("", 16f, C.TEXT).apply {
+        clockDay = text("", 19f, C.TEXT).apply {
             gravity = Gravity.CENTER
         }
         greeting = text("", 20f, C.TEXT).apply { gravity = Gravity.CENTER }
@@ -377,7 +377,7 @@ class MainActivity : Activity() {
             status.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
         }
         col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
-        weatherLine = text("", 16f, C.TEXT).apply {
+        weatherLine = text("", 19f, C.TEXT).apply {
             gravity = Gravity.CENTER
         }
         weatherLine.setTextColor(soft)
@@ -644,11 +644,11 @@ class MainActivity : Activity() {
         // אזור התרעה (לפי המיקום) - מוצג בכרטיס השעון
         clockArea.removeAllViews()
         val top = clockArea
-        top.addView(text("אזור התרעה", 14f, C.SOFT))
-        top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 22f, C.TEXT, bold = true)
+        top.addView(text("אזור התרעה", 17f, C.SOFT))
+        top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 26f, C.TEXT, bold = true)
             .apply { setPadding(0, dp(2), 0, 0) })
         val sec = if (nearOn && near.isNotEmpty()) AreaData.shelterSeconds(this, near.take(1)) else null
-        if (sec != null) top.addView(text("⏱ זמן התגוננות: ${AreaData.shelterText(sec)}", 14f, light)
+        if (sec != null) top.addView(text("⏱ זמן התגוננות: ${AreaData.shelterText(sec)}", 17f, light)
             .apply { setPadding(0, dp(2), 0, 0) })
         for (i in 0 until top.childCount) (top.getChildAt(i) as? TextView)?.gravity = Gravity.CENTER
         // קו מתחת לאזור ההתרעה - מפריד בינו לבין השעון
