@@ -126,6 +126,12 @@ object AreaData {
         return (inside + near.sortedBy { it.second }.map { it.first }).distinct()
     }
 
+    /** האזורים ל"התרעות לפי מיקום": לפי המרחק המקסימלי שנבחר (ושומר את המיקום לחישוב מחדש) */
+    fun nearby(c: Context, lat: Double, lon: Double): List<String> {
+        Prefs.setLastNearLoc(c, lat, lon)
+        return areasAt(c, lat, lon, Prefs.nearRadiusKm(c).toDouble()).take(20)
+    }
+
     /** בדיקת נקודה בתוך פוליגון (ray casting) */
     private fun contains(poly: JSONArray, lat: Double, lon: Double): Boolean {
         var inside = false

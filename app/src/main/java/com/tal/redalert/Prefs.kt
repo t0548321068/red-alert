@@ -137,9 +137,28 @@ object Prefs {
         if (dualFrequency(c) != v) sp(c).edit().putBoolean("dualFreq", v).commit()
     }
 
-    // ---- קרוב אליי: התראה גם לפי המיקום הנוכחי ----
+    // ---- התרעות לפי מיקום: התראה גם לפי המיקום הנוכחי ----
     fun nearMe(c: Context) = sp(c).getBoolean("nearMe", true)   // ברירת מחדל: התראות לפי מיקום
     fun setNearMe(c: Context, v: Boolean) = sp(c).edit().putBoolean("nearMe", v).commit()
+    /** מרחק מקסימלי ל"התרעות לפי מיקום" בק"מ (0 = רק האזור שאני בתוכו). ברירת מחדל 1 ק"מ כמו עד עכשיו */
+    fun nearRadiusKm(c: Context) = sp(c).getFloat("nearRadius", 1f)
+    fun setNearRadiusKm(c: Context, v: Float) = sp(c).edit().putFloat("nearRadius", v).commit()
+    val NEAR_RADII = FloatArray(11) { it.toFloat() }   // 11 נקודות: באזורך, 1 עד 10 ק"מ
+    fun radiusLabel(km: Float) = when {
+        km <= 0f -> "באזורך"
+        km < 1f -> "${(km * 1000).toInt()} מטר"
+        km == 1f -> "1 ק\"מ"
+        else -> "${km.toInt()} ק\"מ"
+    }
+    /** המיקום האחרון שלפיו חושבו האזורים - לחישוב מחדש מיד כשמשנים מרחק */
+    fun lastNearLoc(c: Context): Pair<Double, Double>? {
+        val v = sp(c).getString("nearLoc", "") ?: ""
+        val p = v.split(",").mapNotNull { it.toDoubleOrNull() }
+        return if (p.size == 2) p[0] to p[1] else null
+    }
+    fun setLastNearLoc(c: Context, lat: Double, lon: Double) =
+        sp(c).edit().putString("nearLoc", "$lat,$lon").apply()
+
     /** האזורים שזוהו לאחרונה סביב המיקום (לתצוגה ולסינון) */
     fun nearbyAreas(c: Context): List<String> =
         (sp(c).getString("nearby", "") ?: "").split("|").filter { it.isNotEmpty() }
