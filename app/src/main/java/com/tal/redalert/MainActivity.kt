@@ -890,11 +890,14 @@ class MainActivity : Activity() {
         val districts = AreaData.districts(this)
         var query = ""
         val distCount: Map<String?, Int> = if (!whole) emptyMap() else all.groupingBy { dmap[it] }.eachCount()
-        // זמן ההתגוננות של אזור שלם: הקצר ביותר מבין היישובים שבו (מוצג כמו ביישובים)
+        // זמן ההתגוננות של אזור שלם: מהקצר לארוך מבין היישובים שבו
         val distTime: Map<String, String> = if (!whole) emptyMap() else
             all.groupBy { dmap[it] }.mapNotNull { (dist, names) ->
-                val lo = names.mapNotNull { AreaData.shelterSeconds(this, it) }.minOrNull()
-                if (dist == null || lo == null) null else dist to AreaData.shelterText(lo)
+                val secs = names.mapNotNull { AreaData.shelterSeconds(this, it) }
+                if (dist == null || secs.isEmpty()) null else {
+                    val lo = secs.min(); val hi = secs.max()
+                    dist to (if (lo == hi) AreaData.shelterText(lo) else AreaData.shelterText(lo) + " – " + AreaData.shelterText(hi))
+                }
             }.toMap()
 
         fun covered(name: String) = allKey in sel ||
@@ -949,10 +952,12 @@ class MainActivity : Activity() {
                         addView(text("", 17f, C.TEXT).apply { setSingleLine(); ellipsize = TextUtils.TruncateAt.END })
                         addView(text("", 13f, C.MUTED).apply { setSingleLine(); setPadding(0, dp(2), 0, 0) })
                     }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(18) })
+                    // זמן ההתגוננות מיושר לשמאל (צמוד לקצה המסך)
                     addView(LinearLayout(this@MainActivity).apply {
-                        orientation = LinearLayout.VERTICAL; gravity = Gravity.END
-                        addView(text("זמן התגוננות", 12f, C.MUTED))
-                        addView(text("", 14f, C.TEXT).apply { setPadding(0, dp(2), 0, 0) })
+                        orientation = LinearLayout.VERTICAL
+                        addView(text("זמן התגוננות", 12f, C.MUTED).apply { gravity = Gravity.LEFT }, LinearLayout.LayoutParams(-1, -2))
+                        addView(text("", 14f, C.TEXT).apply { gravity = Gravity.LEFT; setPadding(0, dp(2), 0, 0) },
+                            LinearLayout.LayoutParams(-1, -2))
                     }, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
                 }
                 (v.getChildAt(0) as CheckDot).apply { on = covered(name); invalidate() }
