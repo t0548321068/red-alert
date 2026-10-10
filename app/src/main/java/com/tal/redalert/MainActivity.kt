@@ -848,25 +848,31 @@ class MainActivity : Activity() {
         ouiRow(c, "הוספת אזור שלם") { showAreaPicker(whole = true) }
         ouiAdd(body, c)
 
-        // כרטיס האזורים שנבחרו: שם, ולידו בקטן האזור שהיישוב שייך אליו
+        // שני כרטיסים: אזורים שלמים שנבחרו, ויישובים שנבחרו (כולל כל היישובים של אזור שלם שנבחר)
         val P = AreaData.DISTRICT_PREFIX
         val dmap = AreaData.districtMap(this)
-        val chosen = ouiCard()
-        chosen.addView(text("אזורים שנבחרו", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
         val mine = Prefs.cities(this)
-        if (mine.isEmpty()) ouiRow(chosen, "לא נבחרו אזורים")
-        mine.forEachIndexed { i, city ->
-            if (i > 0) ouiDivider(chosen)
-            val isDistrict = city.startsWith(P)
-            val name = city.removePrefix(P)
-            val area = if (isDistrict) "אזור שלם" else dmap[name] ?: ""
-            val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), 0, dp(18), 0) }
-            r.addView(text(name, 16f, C.TEXT))
-            if (area.isNotEmpty()) r.addView(text(area, 12f, C.MUTED),
-                LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(12) })
-            chosen.addView(r, LinearLayout.LayoutParams(-1, dp(48)))
+        val allAreas = AreaData.areas(this).keys().asSequence().filter { !AreaData.isNational(it) }.toList()
+        val dists = mine.filter { it.startsWith(P) }.map { it.removePrefix(P) }
+        val towns = (mine.filterNot { it.startsWith(P) } +
+            allAreas.filter { a -> AreaData.ALL_COUNTRY in dists || dmap[a] in dists }).distinct().sorted()
+        fun listCard(title: String, names: List<String>, empty: String, small: (String) -> String) {
+            val card = ouiCard()
+            card.addView(text(title, 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+            if (names.isEmpty()) ouiRow(card, empty)
+            names.forEachIndexed { i, name ->
+                if (i > 0) ouiDivider(card)
+                val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), 0, dp(18), 0) }
+                r.addView(text(name, 16f, C.TEXT))
+                val s = small(name)
+                if (s.isNotEmpty()) r.addView(text(s, 12f, C.MUTED),
+                    LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(12) })
+                card.addView(r, LinearLayout.LayoutParams(-1, dp(48)))
+            }
+            ouiAdd(body, card)
         }
-        ouiAdd(body, chosen)
+        listCard("יישובים שנבחרו", towns, "לא נבחרו יישובים") { dmap[it] ?: "" }
+        listCard("אזורים שלמים שנבחרו", dists, "לא נבחרו אזורים שלמים") { "" }
     }
 
     /**
@@ -883,6 +889,7 @@ class MainActivity : Activity() {
         val all = AreaData.areas(this).keys().asSequence().filter { !AreaData.isNational(it) }.toList()
         val districts = AreaData.districts(this)
         var query = ""
+        val distCount: Map<String?, Int> = if (!whole) emptyMap() else all.groupingBy { dmap[it] }.eachCount()
         // זמן ההתגוננות של אזור שלם: מהקצר לארוך מבין היישובים שבו
         val distTime: Map<String, String> = if (!whole) emptyMap() else
             all.groupBy { dmap[it] }.mapNotNull { (dist, names) ->
@@ -955,7 +962,8 @@ class MainActivity : Activity() {
                 val names = v.getChildAt(1) as LinearLayout
                 (names.getChildAt(0) as TextView).text = name
                 (names.getChildAt(1) as TextView).apply {
-                    text = if (whole) "" else dmap[name] ?: ""
+                    // באזור שלם: מספר היישובים - כדי שהשורה תהיה בשתי שורות ותתיישר כמו ביישובים
+                    text = if (whole) distCount[name]?.let { "$it יישובים" } ?: "" else dmap[name] ?: ""
                     visibility = if (text.isEmpty()) View.GONE else View.VISIBLE
                 }
                 val time = if (whole) distTime[name]
