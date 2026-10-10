@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- טיפה - חומרים מסוכנים + גלי אזעקה -->
+<!-- מבחנה עם בועות - חומרים מסוכנים + גלי אזעקה -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-    <group android:pivotX="12.00" android:pivotY="11.35" android:scaleX="0.642" android:scaleY="0.642" android:translateX="0.00" android:translateY="0.65">
-        <path android:fillColor="#FFFFFFFF" android:pathData="M12,2c3,4.2 6.5,8.2 6.5,12.2a6.5,6.5 0 0 1 -13,0c0,-4 3.5,-8 6.5,-12.2z" />
+    <group android:pivotX="12.00" android:pivotY="12.00" android:scaleX="0.485" android:scaleY="0.485" android:translateX="-0.00" android:translateY="0.00">
+        <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M8.5,7h7v1.6h-0.9v3.6l4.6,7.6a1.8,1.8 0 0 1 -1.5,2.7H6.3a1.8,1.8 0 0 1 -1.5,-2.7l4.6,-7.6V8.6h-0.9z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M11,1.5a1.2,1.2 0 1 1 0,2.4a1.2,1.2 0 1 1 0,-2.4zM14,3.5a1.6,1.6 0 1 1 0,3.2a1.6,1.6 0 1 1 0,-3.2z" />
     </group>
     <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineCap="round" android:pathData="M6.6,8 Q4.2,12 6.6,16" />
     <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineCap="round" android:pathData="M17.4,8 Q19.8,12 17.4,16" />
