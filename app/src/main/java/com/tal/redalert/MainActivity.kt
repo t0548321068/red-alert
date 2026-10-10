@@ -693,7 +693,7 @@ class MainActivity : Activity() {
         build(content)
         val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
         frame.addView(page, FrameLayout.LayoutParams(-1, -1))
-        val nav = bottomNav(navTab) { i -> d.dismiss(); openTab(i) }
+        val nav = bottomNav(navTab) { i -> switchTab(d, i) }
         frame.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(10) })
         frame.setOnApplyWindowInsetsListener { _, insets ->
             @Suppress("DEPRECATION")
@@ -933,7 +933,9 @@ class MainActivity : Activity() {
 
     // ---- מסך הגדרות: כפתור לכל קטגוריה, וכל קטגוריה במסך משלה ----
 
-    private class Row(val icon: String, val title: String, val value: () -> String, val action: () -> Unit)
+    /** on != null - השורה מציגה מתג (לחיצה על השורה מדליקה/מכבה) */
+    private class Row(val icon: String, val title: String, val value: () -> String,
+                      val on: (() -> Boolean)? = null, val action: () -> Unit)
 
     // סגנון One UI: כרטיס אפור כהה אחיד עם פינות מעוגלות מאוד
     private fun graphite(@Suppress("UNUSED_PARAMETER") radius: Int) = GradientDrawable().apply {
@@ -967,7 +969,7 @@ class MainActivity : Activity() {
             d.setContentView(FrameLayout(this).apply {
                 setBackgroundColor(C.BG)
                 addView(sv, FrameLayout.LayoutParams(-1, -1))
-                addView(bottomNav(navTab) { i -> d.dismiss(); openTab(i) },
+                addView(bottomNav(navTab) { i -> switchTab(d, i) },
                     FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(18) })
             })
         }
@@ -1162,7 +1164,7 @@ class MainActivity : Activity() {
         "🌙" -> R.drawable.ic_set_moon; "🔕" -> R.drawable.ic_set_belloff; "🕯" -> R.drawable.ic_set_candle
         "📱" -> R.drawable.ic_set_phone; "🔋" -> R.drawable.ic_set_battery; "⚙️" -> R.drawable.ic_set_gear
         "⬆️" -> R.drawable.ic_set_update; "🆕" -> R.drawable.ic_set_new; "ℹ️" -> R.drawable.ic_set_info
-        "🧪" -> R.drawable.ic_set_beta
+        "🧪" -> R.drawable.ic_set_beta; "⏻" -> R.drawable.ic_shield_ind
         else -> 0
     }
 
@@ -1171,10 +1173,21 @@ class MainActivity : Activity() {
         "🎨" -> "#7E57C2"; "🚨", "📍", "🆕" -> "#E53935"; "🕐", "📱", "⬆️" -> "#1E88E5"
         "🌤", "🔔" -> "#FB8C00"; "👋", "🔋" -> "#43A047"; "📳" -> "#8E24AA"
         "🗣", "🧪" -> "#00897B"; "🌙" -> "#3949AB"; "🔕" -> "#6D4C41"; "🕯" -> "#F9A825"
+        "⏻" -> "#D50000"
         else -> "#546E7A"
     })
 
     private fun bottomNav(sel: Int, onTab: (Int) -> Unit) = NavBar.build(this, sel, C.LIGHT, onTab)
+
+    /**
+     * מעבר בין לשוניות: קודם פותחים את הלשונית החדשה ורק אחר כך סוגרים את הישנה,
+     * כדי שמסך הבית לא יקפוץ לרגע באמצע
+     */
+    private fun switchTab(d: android.app.Dialog, i: Int) {
+        if (i == 0) { d.dismiss(); return }
+        openTab(i)
+        ui.postDelayed({ try { d.dismiss() } catch (_: Exception) { } }, 300)
+    }
 
     /** מעבר ללשונית מהתפריט התחתון (0 = המסך הראשי עצמו) */
     private fun openTab(i: Int) {
@@ -1200,10 +1213,14 @@ class MainActivity : Activity() {
             insets
         }
         val cats = listOf(
+            // הפעלה / כיבוי של האפליקציה - כמו הכפתור בשורת החיווי
+            "צבע אדום" to { listOf(Row("⏻", "הגנה", { if (Prefs.enabled(this)) "פעיל – מוגן" else "כבוי – לא מקבל התרעות" },
+                on = { Prefs.enabled(this) }) { toggle() }) },
             "תצוגה" to { listOf(Row("🎨", "תצוגה", { "ערכת צבעים · שעון · תאריך · מזג אוויר" }) { showDisplay() }) },
-            "התראות" to { listOf(
-                Row("🔔", "התרעות", { "סוג תצוגה · קרוב אליי · הקראה" }) { showAlertSettings() },
+            "צלילים ורטט" to { listOf(
                 Row("📳", "צלילים ורטט", { "שעות שקט · נא לא להפריע · מצב שקט · שבת" }) { showSoundSettings() }) },
+            "התרעות" to { listOf(
+                Row("🔔", "הגדרות התרעות", { "סוג תצוגה · קרוב אליי · הקראה" }) { showAlertSettings() }) },
             "הרשאות" to { phoneRows() },
             "כללי" to { generalRows() }
         )
@@ -1239,6 +1256,16 @@ class MainActivity : Activity() {
                     val v = r.value()
                     if (v.isNotEmpty()) texts.addView(text(v, 12f, Color.parseColor("#5AA9FF")))
                     row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
+                    r.on?.let { isOn ->
+                        val on = isOn()
+                        row.addView(android.widget.Switch(this).apply {
+                            minHeight = 0; minimumHeight = 0; setPadding(0, 0, 0, 0)
+                            isChecked = on; isClickable = false
+                            thumbTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+                            trackTintList = android.content.res.ColorStateList.valueOf(Color.parseColor(if (on) "#3E82F7" else "#5A5A5E"))
+                            trackTintMode = android.graphics.PorterDuff.Mode.SRC
+                        })
+                    }
                     card.addView(row)
                 }
                 body.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), 0) })
@@ -1249,7 +1276,7 @@ class MainActivity : Activity() {
         // התפריט התחתון נשאר גם בהגדרות
         val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
         frame.addView(page, FrameLayout.LayoutParams(-1, -1))
-        val nav = bottomNav(3) { i -> d.dismiss(); openTab(i) }
+        val nav = bottomNav(3) { i -> switchTab(d, i) }
         frame.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(10) })
         frame.setOnApplyWindowInsetsListener { _, insets ->
             @Suppress("DEPRECATION")
@@ -1301,7 +1328,7 @@ class MainActivity : Activity() {
     private fun onOff(b: Boolean) = if (b) "פעיל" else "כבוי"
 
     /** עמוד התרעות: כל ההגדרות של ההתרעה במקום אחד */
-    private fun showAlertSettings() = ouiPage("התרעות") { body, rebuild ->
+    private fun showAlertSettings() = ouiPage("הגדרות התרעות") { body, rebuild ->
         // סוג תצוגת התרעה: הדמיה קטנה של כל סוג + בחירה (הועבר מעמוד תצוגה)
         val style = ouiCard()
         style.addView(text("סוג תצוגת התרעה", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
@@ -2061,6 +2088,7 @@ class MainActivity : Activity() {
         ouiNote(body, "מצב שבת עוקף את שעות השקט")
     }
 
+    /** בחירת שעה - חלון השעה של הטלפון (בסמסונג: גלגלים, "ביטול | סיום") */
     private fun pickTime(cur: Int, done: (Int) -> Unit) {
         android.app.TimePickerDialog(this, dlg(), { _, h, m -> done(h * 60 + m) },
             cur / 60, cur % 60, true).show()
