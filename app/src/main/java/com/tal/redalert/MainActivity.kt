@@ -667,7 +667,9 @@ class MainActivity : Activity() {
             // באותה שורה: שם היישוב, ולידו האזור בקטן
             val col = LinearLayout(this).apply { gravity = Gravity.BOTTOM }
             col.addView(text(name, 18f, C.TEXT))
-            if (sub.isNotEmpty()) col.addView(text(sub, 13f, muted).apply { setPadding(dp(8), 0, 0, dp(2)) })
+            // הרווח בצד הפנימי (ליד שם היישוב) - בעברית זה הצד הימני של האזור
+            if (sub.isNotEmpty()) col.addView(text(sub, 13f, muted).apply { setPadding(0, 0, 0, dp(2)) },
+                LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(12) })
             r.addView(col, LinearLayout.LayoutParams(0, -2, 1f))
             r.addView(text("✕", 17f, muted).apply {
                 gravity = Gravity.CENTER
