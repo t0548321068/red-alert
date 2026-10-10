@@ -714,6 +714,7 @@ class MainActivity : Activity() {
         @Suppress("DEPRECATION")
         d.window?.statusBarColor = C.BG
         edgeToEdge(d)
+        track(d)
         d.show()
     }
 
@@ -951,32 +952,6 @@ class MainActivity : Activity() {
     /** גלולה צפה (כפתורים) */
     private fun pill() = GradientDrawable().apply { setColor(C.PILL); cornerRadius = dp(30).toFloat() }
 
-    /** מסך מלא (על כל המסך) עם כותרת וחץ חזרה; build בונה את התוכן, ונבנה מחדש כשחוזרים אליו */
-    private fun fullPage(title: String, build: (LinearLayout) -> Unit) {
-        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
-        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(14), dp(16), dp(30)) }
-        val head = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        head.addView(text("→", 22f, C.MUTED).apply {
-            setPadding(0, 0, dp(12), 0)
-            setOnClickListener { d.dismiss() }
-        })
-        head.addView(text(title, 22f, C.TEXT, bold = true))
-        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        fun rebuild() { content.removeAllViews(); build(content) }
-        body.addView(head)
-        body.addView(content, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
-        val sv = ScrollView(this).apply {
-            setBackgroundColor(C.BG)
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            addView(body)
-        }
-        d.setContentView(sv)
-        rebuild()
-        // חוזרים מחלון של הגדרה - מעדכנים את המצבים
-        d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
-        d.show()
-    }
-
     /** קטגוריה פתוחה במגירת ההגדרות (נשמרת בין פתיחות) */
     private var openCat = -1
 
@@ -1007,12 +982,12 @@ class MainActivity : Activity() {
             build(body, rebuild)
         }
         rebuild()
-        if (button == null) d.setContentView(page)
+        // התפריט התחתון קבוע גם בתת-עמודים
+        val (frame, _) = withNav(d, page)
+        body.setPadding(0, 0, 0, dp(if (button == null) 100 else 170))
+        if (button == null) d.setContentView(frame)
         else {
-            // כפתור כחול גדול קבוע בתחתית (כמו "בדוק אם יש עדכונים" בסמסונג)
-            body.setPadding(0, 0, 0, dp(120))
-            val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
-            frame.addView(page, FrameLayout.LayoutParams(-1, -1))
+            // כפתור כחול גדול קבוע מעל התפריט (כמו "בדוק אם יש עדכונים" בסמסונג)
             // מידות לפי הצילום מסמסונג: 60% רוחב, גובה 46, עיגול מלא, כחול #4C7DFF, טקסט 16 מודגש
             val btn = text(button.first, 16f, Color.WHITE, bold = true).apply {
                 gravity = Gravity.CENTER
@@ -1020,13 +995,13 @@ class MainActivity : Activity() {
                 background = GradientDrawable().apply { setColor(Color.parseColor("#4C7DFF")); cornerRadius = dp(23).toFloat() }
                 setOnClickListener { button.second() }
             }
+            val above = dp(78)   // מעל התפריט התחתון
             frame.addView(btn, FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.6f).toInt(), dp(46),
-                Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(36) })
-            frame.setOnApplyWindowInsetsListener { _, insets ->
-                @Suppress("DEPRECATION")
-                (btn.layoutParams as FrameLayout.LayoutParams).bottomMargin = insets.systemWindowInsetBottom + dp(36)
-                btn.requestLayout()
-                page.dispatchApplyWindowInsets(insets)
+                Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = navMargin() + above })
+            frame.viewTreeObserver.addOnGlobalLayoutListener {
+                val want = navMargin() + above
+                val lp = btn.layoutParams as FrameLayout.LayoutParams
+                if (lp.bottomMargin != want) { lp.bottomMargin = want; btn.layoutParams = lp }
             }
             d.setContentView(frame)
         }
@@ -1035,7 +1010,7 @@ class MainActivity : Activity() {
         d.window?.statusBarColor = C.BG
         edgeToEdge(d)
         if (refreshOnFocus) d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
-        if (onClose != null) d.setOnDismissListener { onClose() }
+        track(d, onClose)
         d.show()
     }
 
@@ -1198,16 +1173,43 @@ class MainActivity : Activity() {
         else -> "#546E7A"
     })
 
-    private fun bottomNav(sel: Int, onTab: (Int) -> Unit) = NavBar.build(this, sel, C.LIGHT, onTab)
+    private fun bottomNav(sel: Int, reselect: Boolean = false, onTab: (Int) -> Unit) =
+        NavBar.build(this, sel, C.LIGHT, reselect, onTab)
+
+    /** כל העמודים הפתוחים (הגדרות, תת-עמודים, התרעות) - כדי שהתפריט התחתון יסגור את כולם במעבר */
+    private val pages = mutableListOf<android.app.Dialog>()
+    private fun track(d: android.app.Dialog, onClose: (() -> Unit)? = null) {
+        pages.add(d)
+        d.setOnDismissListener { pages.remove(d); onClose?.invoke() }
+    }
+
+    /**
+     * עמוד עם התפריט התחתון קבוע (תת-עמודי הגדרות: הלשונית "הגדרות" מסומנת,
+     * ולחיצה עליה חוזרת לעמוד ההגדרות הראשי)
+     */
+    private fun withNav(d: android.app.Dialog, page: View, sel: Int = 2): Pair<FrameLayout, View> {
+        val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
+        frame.addView(page, FrameLayout.LayoutParams(-1, -1))
+        val nav = bottomNav(sel, reselect = true) { i -> switchTab(d, i) }
+        frame.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = navMargin() })
+        frame.setOnApplyWindowInsetsListener { _, insets ->
+            @Suppress("DEPRECATION")
+            (nav.layoutParams as FrameLayout.LayoutParams).bottomMargin = insets.systemWindowInsetBottom + dp(10)
+            nav.requestLayout()
+            page.dispatchApplyWindowInsets(insets)
+        }
+        return frame to nav
+    }
 
     /**
      * מעבר בין לשוניות: קודם פותחים את הלשונית החדשה ורק אחר כך סוגרים את הישנה,
      * כדי שמסך הבית לא יקפוץ לרגע באמצע
      */
     private fun switchTab(d: android.app.Dialog, i: Int) {
-        if (i == 0) { d.dismiss(); return }
+        val old = (pages + d).distinct()
+        if (i == 0) { old.forEach { try { it.dismiss() } catch (_: Exception) { } }; return }
         openTab(i)
-        ui.postDelayed({ try { d.dismiss() } catch (_: Exception) { } }, 300)
+        ui.postDelayed({ old.forEach { try { it.dismiss() } catch (_: Exception) { } } }, 300)
     }
 
     /** מעבר ללשונית מהתפריט התחתון (0 = המסך הראשי עצמו) */
@@ -1240,7 +1242,7 @@ class MainActivity : Activity() {
             "צלילים ורטט" to { listOf(
                 Row("📳", "צלילים ורטט", { "שעות שקט · נא לא להפריע · מצב שקט · שבת" }) { showSoundSettings() }) },
             "התרעות" to { listOf(
-                Row("🔔", "הגדרות התרעות", { "סוג תצוגה · קרוב אליי · הקראה · בדיקה" }) { showAlertSettings() }) },
+                Row("🔔", "הגדרות התרעות", { "סוג תצוגה · התרעות לפי מיקום · הקראה · בדיקה" }) { showAlertSettings() }) },
             "הרשאות" to { phoneRows() },
             "כללי" to { generalRows() }
         )
@@ -1311,38 +1313,8 @@ class MainActivity : Activity() {
         edgeToEdge(d)
         // חוזרים מחלון של הגדרה - מעדכנים את המצבים
         d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
+        track(d)
         d.show()
-    }
-
-    private fun close(d: android.app.Dialog, panel: View, w: Int) {
-        panel.animate().translationX(w.toFloat()).setDuration(180).withEndAction { d.dismiss() }.start()
-    }
-
-    /** כרטיס עם שורות: אייקון, שם, מצב בצד וחץ */
-    private fun rowsPage(title: String, rows: () -> List<Row>) {
-        fullPage(title) { c ->
-            val card = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(16), dp(2), dp(16), dp(2))
-                background = graphite(20)
-            }
-            val list = rows()
-            list.forEachIndexed { i, r ->
-                val row = LinearLayout(this).apply {
-                    gravity = Gravity.CENTER_VERTICAL
-                    setPadding(0, dp(13), 0, dp(13))
-                    setOnClickListener { r.action() }
-                }
-                row.addView(text(r.icon, 17f, C.TEXT), LinearLayout.LayoutParams(dp(32), -2))
-                row.addView(text(r.title, 15f, C.TEXT), LinearLayout.LayoutParams(0, -2, 1f))
-                row.addView(text(r.value(), 13f, C.MUTED2))
-                row.addView(text("‹", 16f, Color.parseColor("#777777")).apply { setPadding(dp(8), 0, 0, 0) })
-                card.addView(row)
-                if (i < list.size - 1) card.addView(View(this).apply { setBackgroundColor(C.LINE) },
-                    LinearLayout.LayoutParams(-1, dp(1)))
-            }
-            c.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
-        }
     }
 
     private fun onOff(b: Boolean) = if (b) "פעיל" else "כבוי"
@@ -1372,7 +1344,9 @@ class MainActivity : Activity() {
 
         val c = ouiCard()
         // מתג = הדלקה/כיבוי, לחיצה על השם = ההגדרות המלאות
-        ouiRow(c, "קרוב אליי", sub = onOff(Prefs.nearMe(this)), on = Prefs.nearMe(this)) { toggleNearMe(); rebuild() }
+        ouiRow(c, "התרעות לפי מיקום", sub = onOff(Prefs.nearMe(this)), on = Prefs.nearMe(this)) { toggleNearMe(); rebuild() }
+        ouiDivider(c)
+        ouiRow(c, "מרחק מקסימלי", sub = Prefs.radiusLabel(Prefs.nearRadiusKm(this))) { showNearRadius() }
         ouiDivider(c)
         ouiRow(c, "הקראה", sub = onOff(Prefs.speakAlerts(this)), on = Prefs.speakAlerts(this),
             onToggle = { Prefs.setSpeakAlerts(this, !Prefs.speakAlerts(this)); rebuild() }) { showSpeech() }
@@ -1381,6 +1355,41 @@ class MainActivity : Activity() {
         val t = ouiCard()
         ouiRow(t, "בדיקת התראה", sub = "מקדימה · ירי · סיום") { chooseTest() }
         ouiAdd(body, t)
+    }
+
+    /** עמוד מרחק מקסימלי: בחירת מרחק, והיישובים שבקרבתי לפי המרחק הזה */
+    private fun showNearRadius() = ouiPage("מרחק מקסימלי") { body, rebuild ->
+        val r = ouiCard()
+        val radii = Prefs.NEAR_RADII
+        val cur = radii.indexOfFirst { it == Prefs.nearRadiusKm(this) }.coerceAtLeast(0)
+        ouiRow(r, "מרחק", sub = Prefs.radiusLabel(radii[cur]))
+        ouiAdd(body, r)
+        // פס בחירה בשלבים בכרטיס משלו, כמו "גודל גופן" בסמסונג: קרוב מימין, רחוק משמאל
+        val bar = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply { setColor(C.CARD2); cornerRadius = dp(32).toFloat() }
+            setPadding(dp(20), dp(10), dp(20), dp(10))
+        }
+        bar.addView(StepSlider(this, radii.size, cur, C.LIGHT) { i ->
+            val km = radii[i]
+            Prefs.setNearRadiusKm(this, km)
+            // חישוב מחדש מיד לפי המיקום האחרון (אם אין - מיקום חדש)
+            val last = Prefs.lastNearLoc(this)
+            if (last != null) Thread {
+                try { Prefs.setNearbyAreas(this, AreaData.nearby(this, last.first, last.second)) } catch (_: Exception) { }
+                runOnUiThread { rebuild() }
+            }.start() else { refreshNearby(); rebuild() }
+        }, LinearLayout.LayoutParams(0, -2, 1f))   // מימין: באזורך · משמאל: 10 ק"מ
+        ouiAdd(body, bar)
+        ouiNote(body, "התרעות יגיעו לאזורים שבמרחק הזה מהמיקום שלך, בנוסף לאזורים שהוספת")
+
+        val near = ouiCard()
+        near.addView(text("יישובים בקרבתי", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+        val list = Prefs.nearbyAreas(this)
+        if (!Prefs.nearMe(this)) ouiRow(near, "התרעות לפי מיקום כבויות")
+        else if (list.isEmpty()) ouiRow(near, "עוד לא זוהה מיקום")
+        else list.forEachIndexed { i, a -> if (i > 0) ouiDivider(near); ouiRow(near, a) }
+        ouiAdd(body, near)
     }
 
     /** עמוד צלילים ורטט: צלילים, רטט, שעות שקט, נא לא להפריע, מצב שקט ומצב שבת */
@@ -1637,8 +1646,9 @@ class MainActivity : Activity() {
         themeAtOpen = Prefs.themeMode(this)
         rebuild()
         // יציאה מהעמוד: אם ערכת הצבעים השתנתה - טוענים מחדש וחוזרים להגדרות
-        d.setOnDismissListener { if (Prefs.themeMode(this) != themeAtOpen) { reopenDisplay = true; recreate() } }
-        d.setContentView(page)
+        track(d) { if (Prefs.themeMode(this) != themeAtOpen) { reopenDisplay = true; recreate() } }
+        body.setPadding(0, 0, 0, dp(100))
+        d.setContentView(withNav(d, page).first)   // התפריט התחתון קבוע גם כאן
         d.window?.setLayout(-1, -1)
         @Suppress("DEPRECATION")
         d.window?.statusBarColor = C.BG
@@ -1940,7 +1950,7 @@ class MainActivity : Activity() {
 
     private fun hhmm(min: Int) = "%02d:%02d".format(min / 60, min % 60)
 
-    /** קרוב אליי: צריך מיקום מדויק. מיקום ברקע נקרא דרך השירות */
+    /** התרעות לפי מיקום: צריך מיקום מדויק. מיקום ברקע נקרא דרך השירות */
     private fun toggleNearMe() {
         val on = !Prefs.nearMe(this)
         if (on && !hasPrecise()) {
@@ -1954,7 +1964,7 @@ class MainActivity : Activity() {
             // זיהוי ראשון מיד, בלי לחכות לשירות
             Weather.freshLocation(this) { loc ->
                 if (loc != null) Thread {
-                    val list = AreaData.areasAt(this, loc.latitude, loc.longitude, 1.0).take(4)
+                    val list = AreaData.nearby(this, loc.latitude, loc.longitude)
                     Prefs.setNearbyAreas(this, list)
                     runOnUiThread { refresh() }
                 }.start()
@@ -2259,7 +2269,7 @@ class MainActivity : Activity() {
             .putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
     }
 
-    /** בכל פתיחה - מיקום עדכני ל"קרוב אליי" (בנוסף לעדכון של השירות כל 2 דקות) */
+    /** בכל פתיחה - מיקום עדכני ל"התרעות לפי מיקום" (בנוסף לעדכון של השירות כל 2 דקות) */
     private fun refreshNearby() {
         if (!Prefs.nearMe(this) || checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) !=
             android.content.pm.PackageManager.PERMISSION_GRANTED) return
@@ -2268,7 +2278,7 @@ class MainActivity : Activity() {
             if (loc != null) Thread {
                 try {
                     Prefs.addVisits(this, AreaData.areasAt(this, loc.latitude, loc.longitude, 0.0), System.currentTimeMillis())
-                    val list = AreaData.areasAt(this, loc.latitude, loc.longitude, 1.0).take(4)
+                    val list = AreaData.nearby(this, loc.latitude, loc.longitude)
                     if (list.isNotEmpty()) Prefs.setNearbyAreas(this, list)
                 } catch (_: Exception) { }
             }.start()
