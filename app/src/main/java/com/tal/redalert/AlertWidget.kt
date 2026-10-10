@@ -37,7 +37,7 @@ class AlertWidget : AppWidgetProvider() {
                 AlertService.LEVEL_END -> R.drawable.widget_end_bg
                 else -> R.drawable.widget_alert_bg
             }
-            val ic = AlertUi.icon(j.optString("title"), level)
+            val ic = AlertUi.stageIcon(j.optString("title"), level, j.optInt("shelter", -1), j.optLong("firedAt"))
             val (t1, t2) = AlertUi.head(j.optString("title"), level)
             v.setViewVisibility(box, android.view.View.VISIBLE)
             v.setInt(box, "setBackgroundResource", bg)
