@@ -1016,43 +1016,7 @@ class MainActivity : Activity() {
         })
         fill(); render()
 
-        // גלולה צפה למטה כמו בשעון של סמסונג: ביטול | שמור
-        val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
-        frame.addView(root, FrameLayout.LayoutParams(-1, -1))
-        val save = LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            // כמו בשעון של סמסונג: גלולה כהה, טקסט לבן מודגש, קו מפריד דק
-            background = GradientDrawable().apply { setColor(if (C.LIGHT) Color.parseColor("#E3E3E8") else Color.parseColor("#252525")); cornerRadius = dp(24).toFloat() }
-            addView(text("ביטול", 17f, C.TEXT, bold = true).apply {
-                gravity = Gravity.CENTER; setOnClickListener { d.dismiss() } }, LinearLayout.LayoutParams(0, -1, 1f))
-            addView(View(this@MainActivity).apply { setBackgroundColor(C.SEPV) }, LinearLayout.LayoutParams(dp(1), dp(20)))
-            addView(text("שמור", 17f, C.TEXT, bold = true).apply {
-                gravity = Gravity.CENTER
-                setOnClickListener { Prefs.setCities(this@MainActivity, sel.toList()); refresh(); d.dismiss() }
-            }, LinearLayout.LayoutParams(0, -1, 1f))
-        }
-        // מידות לפי הצילום מהשעון של סמסונג: רוחב 47% מהמסך, גובה 12.35% מרוחב המסך
-        val pillW = (resources.displayMetrics.widthPixels * 0.47f).toInt()
-        val pillH = (resources.displayMetrics.widthPixels * 0.1235f).toInt()
-        (save.background as GradientDrawable).cornerRadius = pillH / 2f
-        frame.addView(save, FrameLayout.LayoutParams(pillW, pillH,
-            Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = navMargin() })
-        frame.setOnApplyWindowInsetsListener { _, insets ->
-            @Suppress("DEPRECATION")
-            root.setPadding(0, insets.systemWindowInsetTop, 0, 0)
-            @Suppress("DEPRECATION")
-            (save.layoutParams as FrameLayout.LayoutParams).bottomMargin = insets.systemWindowInsetBottom + dp(10)
-            save.requestLayout()
-            insets
-        }
-        d.setContentView(frame)
-        d.window?.setLayout(-1, -1)
-        @Suppress("DEPRECATION")
-        d.window?.statusBarColor = C.BG
-        edgeToEdge(d)
-        track(d)
-        d.show()
+        showWithCancelSave(d, root) { Prefs.setCities(this@MainActivity, sel.toList()); refresh() }
     }
 
     // ---- מסך הגדרות: כפתור לכל קטגוריה, וכל קטגוריה במסך משלה ----
@@ -1171,14 +1135,9 @@ class MainActivity : Activity() {
         // onToggle: לחיצה על השורה פותחת הגדרה, והמתג לבד מדליק/מכבה (כמו בעמוד תצוגה)
         // רווחים זהים בכל האפליקציה: 12 מהטקסט לקו, והקו צמוד למתג
         if (on != null && onToggle != null) r.addView(View(this).apply { setBackgroundColor(C.SEPV) },
-            LinearLayout.LayoutParams(dp(1), dp(20)).apply { setMargins(dp(4), 0, dp(12), 0) })
-        if (on != null) r.addView(android.widget.Switch(this).apply {
-            minHeight = 0; minimumHeight = 0; setPadding(0, 0, 0, 0)
-            isChecked = on
+            LinearLayout.LayoutParams(dp(1), dp(20)).apply { setMargins(dp(12), 0, dp(12), 0) })
+        if (on != null) r.addView(OuiSwitch(this, on, C.LIGHT).apply {
             if (onToggle != null) setOnClickListener { onToggle() } else isClickable = false
-            thumbTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
-            trackTintList = android.content.res.ColorStateList.valueOf(Color.parseColor(if (on) "#3E82F7" else "#5A5A5E"))
-            trackTintMode = android.graphics.PorterDuff.Mode.SRC
         }, LinearLayout.LayoutParams(-2, -2).apply { marginStart = if (onToggle != null) 0 else dp(10) })
         c.addView(r, LinearLayout.LayoutParams(-1, dp(if (sub.isEmpty()) 48 else 56)))
     }
@@ -1245,27 +1204,28 @@ class MainActivity : Activity() {
         ouiAdd(body, info)
     }
 
-    private fun chooseTest() {
+    /** עמוד בדיקת התראה: שורה לכל סוג, לחיצה שולחת התראת בדיקה */
+    private fun chooseTest() = ouiPage("בדיקת התראה") { body, _ ->
         val tests = listOf(
-            "מקדימה" to "בדקות הקרובות צפויות להתקבל התרעות באזורך",
-            "בדיקת ירי" to "ירי רקטות וטילים",
-            "סיום" to "האירוע הסתיים")
-        AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("בדיקת התראה")
-            .setItems(tests.map { it.first }.toTypedArray()) { _, i ->
-                val title = tests[i].second
+            Triple("מקדימה", "בדקות הקרובות צפויות להתקבל התרעות באזורך", false),
+            Triple("ירי", "ירי רקטות וטילים", true),
+            Triple("סיום", "האירוע הסתיים", false))
+        val c = ouiCard()
+        tests.forEachIndexed { i, (label, title, isAlert) ->
+            if (i > 0) ouiDivider(c)
+            ouiRow(c, label, sub = title, subColor = C.MUTED) {
                 Prefs.setEnabled(this, true)
                 AlertService.start(this, testTitle = title)
-                if (i != 1 && Prefs.isQuietNow(this)) {
+                if (!isAlert && Prefs.isQuietNow(this)) {
                     android.widget.Toast.makeText(this,
                         "שעות שקט פעילות – ההתראה נשלחה בשקט, בלי צליל ומסך מלא",
                         android.widget.Toast.LENGTH_LONG).show()
                 }
                 refresh()
             }
-            .setNegativeButton("ביטול", null)
-            .show()
+        }
+        ouiAdd(body, c)
+        ouiNote(body, "ההתראה נשלחת מיד, בדיוק כמו התרעה אמיתית")
     }
 
     /** אייקון בקו לבן לכל שורה בהגדרות (לפי האמוג'י שלה) */
@@ -1396,13 +1356,7 @@ class MainActivity : Activity() {
                     row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
                     r.on?.let { isOn ->
                         val on = isOn()
-                        row.addView(android.widget.Switch(this).apply {
-                            minHeight = 0; minimumHeight = 0; setPadding(0, 0, 0, 0)
-                            isChecked = on; isClickable = false
-                            thumbTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
-                            trackTintList = android.content.res.ColorStateList.valueOf(Color.parseColor(if (on) "#3E82F7" else "#5A5A5E"))
-                            trackTintMode = android.graphics.PorterDuff.Mode.SRC
-                        })
+                        row.addView(OuiSwitch(this, on, C.LIGHT).apply { isClickable = false })
                     }
                     card.addView(row)
                 }
@@ -1488,12 +1442,10 @@ class MainActivity : Activity() {
         ouiRow(r, "מרחק", sub = Prefs.radiusLabel(radii[cur]))
         // הכיתוב הכחול מתחת ל"מרחק" - מתעדכן תוך כדי גרירה
         val distLabel = ((r.getChildAt(r.childCount - 1) as LinearLayout).getChildAt(0) as LinearLayout).getChildAt(1) as TextView
-        ouiAdd(body, r)
-        // פס בחירה בשלבים בכרטיס משלו, כמו "גודל גופן" בסמסונג: קרוב מימין, רחוק משמאל
+        // פס בחירה בשלבים באותו כרטיס, מתחת לשורת "מרחק": קרוב מימין, רחוק משמאל
         val bar = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
-            background = GradientDrawable().apply { setColor(C.CARD2); cornerRadius = dp(32).toFloat() }
-            setPadding(dp(20), dp(10), dp(20), dp(10))
+            setPadding(dp(18), 0, dp(18), dp(10))
         }
         bar.addView(StepSlider(this, radii.size, cur, C.LIGHT) { i ->
             distLabel.text = Prefs.radiusLabel(radii[i])
@@ -1507,7 +1459,8 @@ class MainActivity : Activity() {
             }.start() else { refreshNearby(); rebuild() }
         }.apply { onMove = { i -> distLabel.text = Prefs.radiusLabel(radii[i]) } },
             LinearLayout.LayoutParams(0, -2, 1f))   // מימין: באזורך · משמאל: 10 ק"מ
-        ouiAdd(body, bar)
+        r.addView(bar)
+        ouiAdd(body, r)
         ouiNote(body, "התרעות יגיעו לאזורים שבמרחק הזה מהמיקום שלך, בנוסף לאזורים שהוספת")
 
         val near = ouiCard()
@@ -1707,14 +1660,9 @@ class MainActivity : Activity() {
             r.addView(t, LinearLayout.LayoutParams(0, -2, 1f))
             if (on != null) {
                 if (sep) r.addView(View(this).apply { setBackgroundColor(C.SEPV) },
-                    LinearLayout.LayoutParams(dp(1), dp(20)).apply { setMargins(dp(4), 0, dp(12), 0) })
-                r.addView(android.widget.Switch(this).apply {
-                    minHeight = 0; minimumHeight = 0; setPadding(0, 0, 0, 0)
-                    isChecked = on
+                    LinearLayout.LayoutParams(dp(1), dp(20)).apply { setMargins(dp(12), 0, dp(12), 0) })
+                r.addView(OuiSwitch(this, on, C.LIGHT).apply {
                     if (open != null) setOnClickListener { click() } else isClickable = false
-                    thumbTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
-                    trackTintList = android.content.res.ColorStateList.valueOf(Color.parseColor(if (on) "#3E82F7" else "#5A5A5E"))
-                    trackTintMode = android.graphics.PorterDuff.Mode.SRC
                 })
             }
             c.addView(r, LinearLayout.LayoutParams(-1, dp(if (sub.isEmpty()) 48 else 56)))
@@ -1973,25 +1921,31 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun showSourcesInfo() {
-        fun title() = "שרתי התרעות · ${SourceHealth.upCount()}/${SourceHealth.total()} מחוברים"
-        fun body() = if (Prefs.enabled(this)) SourceHealth.report() else "ההאזנה כבויה"
-        val d = AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle(title())
-            .setMessage(body())
-            .setPositiveButton("סגור", null)
-            .show()
-        // מתעדכן בלייב כל שנייה כל עוד החלון פתוח
-        val live = object : Runnable {
-            override fun run() {
-                if (!d.isShowing) return
-                d.setTitle(title()); d.setMessage(body())
-                ui.postDelayed(this, 1000)
+    /** עמוד מקורות ההתרעה: כמה מחוברים, ומצב כל מקור - מתעדכן כל שנייה */
+    private fun showSourcesInfo() = ouiPage("מקורות התרעה") { body, rebuild ->
+        val on = Prefs.enabled(this)
+        val sum = ouiCard()
+        ouiRow(sum, "מחוברים", end = if (on) "${SourceHealth.upCount()}/${SourceHealth.total()}" else "—", endBig = true)
+        ouiAdd(body, sum)
+        if (!on) ouiNote(body, "ההאזנה כבויה")
+        else ouiNote(body, "ההתראה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד")
+        val list = ouiCard()
+        SourceHealth.NAMES.entries.forEachIndexed { i, (k, name) ->
+            if (i > 0) ouiDivider(list)
+            val (label, color) = when {
+                !on -> "כבוי" to C.MUTED
+                SourceHealth.isUp(k) -> "מחובר" to C.GREEN
+                SourceHealth.connecting(k) -> "מתחבר…" to C.ORANGE
+                else -> "מנותק" to C.RED
             }
+            ouiRow(list, name, end = label, endColor = color)
         }
+        ouiAdd(body, list)
+        // מתעדכן בלייב כל שנייה כל עוד העמוד פתוח
+        (body.tag as? Runnable)?.let { ui.removeCallbacks(it) }
+        val live = Runnable { if (body.isAttachedToWindow) rebuild() }
+        body.tag = live
         ui.postDelayed(live, 1000)
-        d.setOnDismissListener { ui.removeCallbacks(live) }
     }
 
     // ---- מה חדש ----
@@ -2026,14 +1980,46 @@ class MainActivity : Activity() {
         }
     }
 
+    /** אחרי עדכון: עמוד "מה חדש" - כרטיס לכל גרסה שהשתנתה */
     private fun showWhatsNew(sinceVersion: String?) {
-        val text = whatsNewText(sinceVersion) ?: return
-        AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("🆕 מה חדש")
-            .setMessage(text)
-            .setPositiveButton("הבנתי", null)
-            .show()
+        val notes = whatsNewText(sinceVersion) ?: return
+        ouiPage("מה חדש") { body, _ ->
+            body.addView(text("עודכן לגרסה " + Updater.versionLabel(this), 14f, C.MUTED).apply {
+                setPadding(dp(24), 0, dp(24), dp(14)) })
+            notes.split("\n\n").forEach { block ->
+                val lines = block.lines()
+                val c = ouiCard()
+                c.addView(text(lines.first(), 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), 0) })
+                ouiText(c, lines.drop(1).joinToString("\n"))
+                ouiAdd(body, c)
+            }
+        }
+    }
+
+    /**
+     * גרסה חדשה זמינה (נקרא מ-Updater): עמוד עם הגרסה שלך והגרסה החדשה,
+     * ולמטה מאוחר יותר | התקן עכשיו
+     */
+    fun showNewVersion(label: String, beta: Boolean, install: () -> Unit, later: () -> Unit) {
+        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
+        val page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; setBackgroundColor(C.BG); layoutDirection = View.LAYOUT_DIRECTION_RTL }
+        page.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(0, dp(40), 0, dp(26))
+            addView(android.widget.ImageView(this@MainActivity).apply { setImageResource(R.mipmap.ic_launcher) },
+                LinearLayout.LayoutParams(dp(88), dp(88)))
+            addView(text(if (beta) "גרסת בטא זמינה" else "גרסה חדשה זמינה", 24f, C.TEXT, bold = true).apply { setPadding(0, dp(14), 0, 0) })
+        }, LinearLayout.LayoutParams(-1, -2))
+        val c = ouiCard()
+        ouiRow(c, "הגרסה שלך", end = Updater.versionLabel(this), endColor = C.MUTED)
+        ouiDivider(c)
+        ouiRow(c, "גרסה חדשה", end = label)
+        page.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(8)) })
+        page.addView(text(if (beta) "גרסת בטא – לפני שחרור לכולם, יכולות להיות בה תקלות"
+            else "אפשר לעדכן בכל זמן דרך הגדרות ← עדכונים", 11f, C.MUTED2).apply { setPadding(dp(26), 0, dp(26), 0) })
+        d.setCancelable(false)
+        showWithCancelSave(d, page, cancel = "מאוחר יותר", ok = "התקן עכשיו", onCancel = later) { install() }
     }
 
     /** מסך עדכונים: גרסה מותקנת + בדיקה, גרסאות בטא (למי שנפתח לו), ומה חדש */
@@ -2186,36 +2172,45 @@ class MainActivity : Activity() {
     /** הקראה: הפעלה/כיבוי ודוגמה */
     private fun dndAccess() =
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).isNotificationPolicyAccessGranted
-    private fun showAbout() {
-        val msg = """
-            |צבע אדום · גרסה ${Updater.versionLabel(this)}
-            |התראות פיקוד העורף בזמן אמת, גם כשהאפליקציה סגורה והמסך כבוי.
-            |
-            |📡 מקורות (${SourceHealth.total()}):
-            |${SourceHealth.NAMES.values.joinToString("\n") { "• $it" }}
-            |ההתראה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד.
-            |
-            |📜 רישיונות:
-            |• מפה: Leaflet (BSD-2)
-            |• גבולות אזורים וזמני הגעה: oref_alert (MIT)
-            |• רשת: OkHttp (Apache 2.0)
-            |• מזג אוויר: Open-Meteo · שמות מקומות: OpenStreetMap
-            |
-            |⚠️ הבהרה:
-            |• זו אפליקציה פרטית ולא רשמית. היא אינה קשורה לפיקוד העורף, לצה"ל או לכל גוף ממשלתי.
-            |• המידע מגיע ממקורות ציבוריים, וייתכנו עיכובים, תקלות או התראות חסרות.
-            |• האפליקציה משלימה ואינה מחליפה את האפליקציה הרשמית של פיקוד העורף, את הצופרים ואת ההנחיות הרשמיות.
-            |• השימוש באחריות המשתמש בלבד. ההנחיות הרשמיות באתר פיקוד העורף גוברות תמיד.
-            |
-            |נבנתה על ידי טל ששון
-            |© ${java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)} כל הזכויות שמורות
-        """.trimMargin()
-        AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("ℹ️ אודות")
-            .setMessage(msg)
-            .setPositiveButton("סגור", null)
-            .show()
+    /** עמוד אודות: אייקון, שם וגרסה, מקורות, רישיונות והבהרה */
+    private fun showAbout() = ouiPage("אודות") { body, _ ->
+        // ראש העמוד כמו "אודות" בסמסונג: אייקון גדול, שם וגרסה
+        body.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(0, dp(10), 0, dp(22))
+            addView(android.widget.ImageView(this@MainActivity).apply { setImageResource(R.mipmap.ic_launcher) },
+                LinearLayout.LayoutParams(dp(88), dp(88)))
+            addView(text("צבע אדום", 24f, C.TEXT, bold = true).apply { setPadding(0, dp(12), 0, 0) })
+            addView(text("גרסה " + Updater.versionLabel(this@MainActivity), 14f, C.MUTED).apply { setPadding(0, dp(4), 0, 0) })
+            addView(text("התראות פיקוד העורף בזמן אמת, גם כשהאפליקציה סגורה והמסך כבוי", 13f, C.MUTED2).apply {
+                gravity = Gravity.CENTER; setPadding(dp(30), dp(10), dp(30), 0) })
+        }, LinearLayout.LayoutParams(-1, -2))
+
+        val note = ouiCard()
+        note.addView(text("הבהרה", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), 0) })
+        ouiText(note, listOf(
+            "זו אפליקציה פרטית ולא רשמית. היא אינה קשורה לפיקוד העורף, לצה\"ל או לכל גוף ממשלתי",
+            "המידע מגיע ממקורות ציבוריים, וייתכנו עיכובים, תקלות או התראות חסרות",
+            "האפליקציה משלימה ואינה מחליפה את האפליקציה הרשמית של פיקוד העורף, את הצופרים ואת ההנחיות הרשמיות",
+            "השימוש באחריות המשתמש בלבד. ההנחיות הרשמיות באתר פיקוד העורף גוברות תמיד"
+        ).joinToString("\n") { "• $it" })
+        ouiAdd(body, note)
+
+        val src = ouiCard()
+        src.addView(text("מקורות (${SourceHealth.total()})", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+        SourceHealth.NAMES.values.forEachIndexed { i, n -> if (i > 0) ouiDivider(src); ouiRow(src, n) }
+        ouiAdd(body, src)
+        ouiNote(body, "ההתראה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד")
+
+        val lic = ouiCard()
+        lic.addView(text("רישיונות", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+        listOf("מפה" to "Leaflet · BSD-2", "גבולות אזורים וזמני הגעה" to "oref_alert · MIT",
+            "רשת" to "OkHttp · Apache 2.0", "מזג אוויר ושמות מקומות" to "Open-Meteo · OpenStreetMap")
+            .forEachIndexed { i, (a, b) -> if (i > 0) ouiDivider(lic); ouiRow(lic, a, sub = b, subColor = C.MUTED) }
+        ouiAdd(body, lic)
+
+        body.addView(text("נבנתה על ידי טל ששון · © ${java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)} כל הזכויות שמורות",
+            12f, C.MUTED).apply { gravity = Gravity.CENTER; setPadding(dp(20), dp(10), dp(20), 0) }, LinearLayout.LayoutParams(-1, -2))
     }
 
     /** עמוד הקראה: הדלקה/כיבוי והשמעת דוגמה */
@@ -2266,18 +2261,116 @@ class MainActivity : Activity() {
         ouiNote(body, "בשעות האלה התרעה מקדימה וסיום אירוע מגיעים בשקט. ירי תמיד נשמע")
         val t = ouiCard()
         ouiRow(t, "התחלה", end = hhmm(Prefs.quietFrom(this)), endBig = true) {
-            pickTime(Prefs.quietFrom(this)) { Prefs.setQuiet(this, it, Prefs.quietTo(this)); rebuild() } }
+            pickTime("שעת התחלה", Prefs.quietFrom(this)) { Prefs.setQuiet(this, it, Prefs.quietTo(this)); rebuild() } }
         ouiDivider(t)
         ouiRow(t, "סיום", end = hhmm(Prefs.quietTo(this)), endBig = true) {
-            pickTime(Prefs.quietTo(this)) { Prefs.setQuiet(this, Prefs.quietFrom(this), it); rebuild() } }
+            pickTime("שעת סיום", Prefs.quietTo(this)) { Prefs.setQuiet(this, Prefs.quietFrom(this), it); rebuild() } }
         ouiAdd(body, t)
         ouiNote(body, "מצב שבת עוקף את שעות השקט")
     }
 
     /** בחירת שעה - חלון השעה של הטלפון (בסמסונג: גלגלים, "ביטול | סיום") */
-    private fun pickTime(cur: Int, done: (Int) -> Unit) {
-        android.app.TimePickerDialog(this, dlg(), { _, h, m -> done(h * 60 + m) },
-            cur / 60, cur % 60, true).show()
+    /**
+     * בחירת שעה בדיוק כמו "הגדר שעה" בהגדרות של סמסונג: חלון אפור מעוגל בתחתית המסך,
+     * כותרת, גלגל שעות וגלגל דקות, ולמטה ביטול | סיום
+     */
+    private fun pickTime(title: String, cur: Int, done: (Int) -> Unit) {
+        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
+        val white = if (C.LIGHT) C.TEXT else Color.WHITE
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            background = GradientDrawable().apply {
+                setColor(if (C.LIGHT) Color.WHITE else Color.parseColor("#393939")); cornerRadius = dp(26).toFloat() }
+        }
+        card.addView(text(title, 17f, white, bold = true).apply { setPadding(dp(30), dp(24), dp(30), dp(0)) })
+        // גלגלים: שעה משמאל, דקות מימין (כמו בצילום)
+        val hours = TimeWheel(this, 24, cur / 60)
+        val mins = TimeWheel(this, 60, cur % 60)
+        val wheels = LinearLayout(this).apply {
+            layoutDirection = View.LAYOUT_DIRECTION_LTR
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(44), 0, dp(44), 0)
+            addView(hours, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(text(":", 32f, white, bold = true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(40), -2))
+            addView(mins, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        card.addView(wheels, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(22) })
+        // ביטול | סיום
+        val btns = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            addView(text("ביטול", 17f, white, bold = true).apply {
+                gravity = Gravity.CENTER; setOnClickListener { d.dismiss() } }, LinearLayout.LayoutParams(0, -1, 1f))
+            addView(View(this@MainActivity).apply { setBackgroundColor(Color.parseColor(if (C.LIGHT) "#D1D1D6" else "#535353")) },
+                LinearLayout.LayoutParams(dp(1), dp(16)))
+            addView(text("סיום", 17f, white, bold = true).apply {
+                gravity = Gravity.CENTER
+                setOnClickListener { done(hours.value * 60 + mins.value); d.dismiss() }
+            }, LinearLayout.LayoutParams(0, -1, 1f))
+        }
+        card.addView(btns, LinearLayout.LayoutParams(-1, dp(64)).apply { topMargin = dp(8) })
+        val frame = FrameLayout(this)
+        frame.addView(card, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM).apply { setMargins(dp(10), 0, dp(10), dp(10)) })
+        frame.setOnClickListener { d.dismiss() }   // לחיצה מחוץ לחלון סוגרת
+        card.isClickable = true
+        frame.setOnApplyWindowInsetsListener { _, insets ->
+            @Suppress("DEPRECATION")
+            (card.layoutParams as FrameLayout.LayoutParams).bottomMargin = insets.systemWindowInsetBottom + dp(10)
+            card.requestLayout(); insets
+        }
+        d.setContentView(frame)
+        d.window?.apply {
+            setLayout(-1, -1)
+            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+            addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            setDimAmount(0.6f)
+            @Suppress("DEPRECATION")
+            decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            setWindowAnimations(0)
+        }
+        track(d)
+        d.show()
+    }
+
+    /** מסך מלא עם גלולה צפה למטה כמו בשעון של סמסונג: ביטול | שמור */
+    private fun showWithCancelSave(d: android.app.Dialog, root: View, cancel: String = "ביטול", ok: String = "שמור",
+                                   onCancel: () -> Unit = {}, onSave: () -> Unit) {
+        val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
+        frame.addView(root, FrameLayout.LayoutParams(-1, -1))
+        val save = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+            // כמו בשעון של סמסונג: גלולה כהה, טקסט לבן מודגש, קו מפריד דק
+            background = GradientDrawable().apply { setColor(if (C.LIGHT) Color.parseColor("#E3E3E8") else Color.parseColor("#252525")) }
+            addView(text(cancel, 17f, C.TEXT, bold = true).apply {
+                gravity = Gravity.CENTER; setOnClickListener { onCancel(); d.dismiss() } }, LinearLayout.LayoutParams(0, -1, 1f))
+            addView(View(this@MainActivity).apply { setBackgroundColor(C.SEPV) }, LinearLayout.LayoutParams(dp(1), dp(20)))
+            addView(text(ok, 17f, C.TEXT, bold = true).apply {
+                gravity = Gravity.CENTER
+                setOnClickListener { onSave(); d.dismiss() }
+            }, LinearLayout.LayoutParams(0, -1, 1f))
+        }
+        // מידות לפי הצילום מהשעון של סמסונג: רוחב 47% מהמסך, גובה 12.35% מרוחב המסך
+        val pillW = (resources.displayMetrics.widthPixels * 0.47f).toInt()
+        val pillH = (resources.displayMetrics.widthPixels * 0.1235f).toInt()
+        (save.background as GradientDrawable).cornerRadius = pillH / 2f
+        frame.addView(save, FrameLayout.LayoutParams(pillW, pillH,
+            Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = navMargin() })
+        frame.setOnApplyWindowInsetsListener { _, insets ->
+            @Suppress("DEPRECATION")
+            root.setPadding(0, insets.systemWindowInsetTop, 0, 0)
+            @Suppress("DEPRECATION")
+            (save.layoutParams as FrameLayout.LayoutParams).bottomMargin = insets.systemWindowInsetBottom + dp(10)
+            save.requestLayout()
+            insets
+        }
+        d.setContentView(frame)
+        d.window?.setLayout(-1, -1)
+        @Suppress("DEPRECATION")
+        d.window?.statusBarColor = C.BG
+        edgeToEdge(d)
+        track(d)
+        d.show()
     }
 
     private fun weatherLabel(min: Int) = when (min) {
@@ -2421,16 +2514,26 @@ class MainActivity : Activity() {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         if (nm.canUseFullScreenIntent()) return
         lockAsked = true
-        android.app.AlertDialog.Builder(this, Prefs.dialogTheme(this))
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("התראה על מסך נעילה")
-            .setMessage("כדי שההתראה תידלק מיד כשהמסך כבוי – צריך לאשר \"התראות במסך מלא\".")
-            .setPositiveButton("אישור") { _, _ ->
-                startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
-                    .setData(Uri.parse("package:$packageName")))
-            }
-            .setNegativeButton("לא עכשיו", null)
-            .show()
+        // עמוד בסגנון האפליקציה: אייקון, כותרת, הסבר, ולמטה לא עכשיו | אישור
+        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
+        val page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; setBackgroundColor(C.BG); layoutDirection = View.LAYOUT_DIRECTION_RTL }
+        page.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(0, dp(40), 0, dp(26))
+            addView(android.widget.ImageView(this@MainActivity).apply { setImageResource(R.mipmap.ic_launcher) },
+                LinearLayout.LayoutParams(dp(88), dp(88)))
+            addView(text("התראה על מסך נעילה", 24f, C.TEXT, bold = true).apply { setPadding(0, dp(14), 0, 0) })
+        }, LinearLayout.LayoutParams(-1, -2))
+        val c = ouiCard()
+        ouiText(c, "כדי שההתראה תידלק מיד כשהמסך כבוי – צריך לאשר \"התראות במסך מלא\"")
+        page.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(8)) })
+        page.addView(text("אחרי \"אישור\" נפתח מסך ההגדרות של הטלפון – מדליקים שם את המתג וחוזרים", 11f, C.MUTED2)
+            .apply { setPadding(dp(26), 0, dp(26), 0) })
+        showWithCancelSave(d, page, cancel = "לא עכשיו", ok = "אישור") {
+            startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
+                .setData(Uri.parse("package:$packageName")))
+        }
     }
 
     /**
