@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- סמל קרינה - אירוע רדיולוגי -->
+<!-- סמל קרינה - אירוע רדיולוגי + גלי אזעקה -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-    <!-- ממורכז לאמצע -->
-    <group android:translateX="0.00" android:translateY="0.62">
-        <path android:fillColor="#FFFFFFFF" android:pathData="M10.40,9.23L7.25,3.77A9.5,9.5 0 0 1 16.75,3.77L13.60,9.23A3.2,3.2 0 0 0 10.40,9.23zM15.20,12.00L21.50,12.00A9.5,9.5 0 0 1 16.75,20.23L13.60,14.77A3.2,3.2 0 0 0 15.20,12.00zM10.40,14.77L7.25,20.23A9.5,9.5 0 0 1 2.50,12.00L8.80,12.00A3.2,3.2 0 0 0 10.40,14.77z"/>
-        <path android:fillColor="#FFFFFFFF" android:pathData="M12,10.4a1.6,1.6 0 1 1 0,3.2a1.6,1.6 0 1 1 0,-3.2z"/>
+    <group android:pivotX="12.00" android:pivotY="11.98" android:scaleX="0.474" android:scaleY="0.474" android:translateX="0.00" android:translateY="0.02">
+        <group android:translateX="0.00" android:translateY="0.62">
+            <path android:fillColor="#FFFFFFFF" android:pathData="M10.40,9.23L7.25,3.77A9.5,9.5 0 0 1 16.75,3.77L13.60,9.23A3.2,3.2 0 0 0 10.40,9.23zM15.20,12.00L21.50,12.00A9.5,9.5 0 0 1 16.75,20.23L13.60,14.77A3.2,3.2 0 0 0 15.20,12.00zM10.40,14.77L7.25,20.23A9.5,9.5 0 0 1 2.50,12.00L8.80,12.00A3.2,3.2 0 0 0 10.40,14.77z" />
+            <path android:fillColor="#FFFFFFFF" android:pathData="M12,10.4a1.6,1.6 0 1 1 0,3.2a1.6,1.6 0 1 1 0,-3.2z" />
+        </group>
     </group>
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineCap="round" android:pathData="M6.6,8 Q4.2,12 6.6,16" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineCap="round" android:pathData="M17.4,8 Q19.8,12 17.4,16" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineCap="round" android:pathData="M3.4,5 Q0.4,12 3.4,19" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineCap="round" android:pathData="M20.6,5 Q23.6,12 20.6,19" />
 </vector>
