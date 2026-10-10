@@ -80,6 +80,7 @@ class MainActivity : Activity() {
     private lateinit var shelterLine: TextView
     private lateinit var quietLine: TextView
     private lateinit var feedLine: TextView
+    private lateinit var feedCard: FrameLayout
     private var feedText = ""
     private lateinit var netInd: TextView
     private lateinit var protInd: TextView   // מוגן / לא מוגן
@@ -389,11 +390,17 @@ class MainActivity : Activity() {
         // פיד ארצי - פס רץ עם כל ההתראות בארץ (בלי צליל)
         feedLine = text("", 14f, C.MUTED).apply {
             // התראה אחת בכל פעם, מתחלפות בגלילה כלפי מעלה (עד 2 שורות לכל התראה)
-            maxLines = 2
+            // גובה קבוע של 2 שורות - הכרטיס לא קופץ בין התראה קצרה לארוכה
+            minLines = 2; maxLines = 2
             ellipsize = TextUtils.TruncateAt.END
             gravity = Gravity.CENTER
-            setPadding(dp(12), dp(20), dp(12), dp(20))   // פיד ארצי - כרטיס גבוה יותר
+            setPadding(dp(12), dp(14), dp(12), dp(14))
+        }
+        // הכרטיס קבוע - רק המלל שבתוכו נגלל (נחתך בגבולות הכרטיס)
+        feedCard = FrameLayout(this).apply {
             background = graphite(20)   // כמו שאר הכרטיסים
+            clipToOutline = true; clipChildren = true
+            addView(feedLine, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER))
         }
 
         // כרטיס השעון הוא גם מצב ההגנה: ירוק עם פס אור שעובר לאט כשמוגן, גרפיט כשלא.
@@ -488,7 +495,7 @@ class MainActivity : Activity() {
         // הכפתור עבר לתפריט הצידי
 
         // הפיד הארצי - בתחתית המסך
-        col.addView(feedLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
+        col.addView(feedCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
 
         val scroll = FrameLayout(this).apply {
             // נגלל כשאין מקום (למשל כשכרטיס ההתרעה מוצג מעל השעון)
@@ -653,7 +660,7 @@ class MainActivity : Activity() {
         renderExtraCard()
     }
 
-    /** כרטיס במסך הראשי: היישובים והאזורים הנוספים. לחיצה - חלון אזורים נוספים */
+    /** כרטיס במסך הראשי: היישובים והאזורים הנוספים (תצוגה בלבד) */
     private fun renderExtraCard() {
         areasSlot.removeAllViews()
         val (towns, dists) = extraSelection()
@@ -663,12 +670,9 @@ class MainActivity : Activity() {
             background = graphite(28); clipToOutline = true
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             setPadding(0, dp(14), 0, dp(10))
-            setOnClickListener { showExtraAreas() }
         }
-        val head = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), 0, dp(18), dp(6)) }
-        head.addView(text("יישובים ואזורים נוספים", 16f, C.TEXT, bold = true), LinearLayout.LayoutParams(0, -2, 1f))
-        head.addView(text("‹", 18f, C.MUTED))
-        card.addView(head)
+        // תצוגה בלבד - העריכה בהגדרות התרעות → אזורים נוספים
+        card.addView(text("יישובים ואזורים נוספים", 16f, C.TEXT, bold = true).apply { setPadding(dp(18), 0, dp(18), dp(6)) })
         val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         fun row(name: String, sub: String) = list.addView(LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(5), dp(18), dp(5))
@@ -685,7 +689,7 @@ class MainActivity : Activity() {
         section("יישובים", towns) { if (it == AreaData.ALL_COUNTRY) "" else dmap[it] ?: "" }
         section("אזורים", dists) { "" }
         if (towns.isEmpty() && dists.isEmpty())
-            list.addView(text("לא נבחרו · לחיצה להוספה", 14f, C.MUTED).apply { setPadding(dp(18), dp(4), dp(18), dp(6)) })
+            list.addView(text("לא נבחרו", 14f, C.MUTED).apply { setPadding(dp(18), dp(4), dp(18), dp(6)) })
         // הרשימה נגללת בתוך הכרטיס כשהיא ארוכה; הכרטיס לא חורג מהמקום שנשאר במסך
         card.addView(ScrollView(this).apply { isVerticalScrollBarEnabled = false; addView(list) },
             LinearLayout.LayoutParams(-1, -2, 1f))
