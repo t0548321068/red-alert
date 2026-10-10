@@ -29,8 +29,14 @@ open class AlertActivity : Activity() {
     private var firedAt = 0L
     private var level = AlertService.LEVEL_ALERT
 
+    private var stageIconV: ImageView? = null
+    private var alertTitle = ""
+    private var stageRes = 0
+
     private val tick = object : Runnable {
         override fun run() {
+            AlertUi.stageIcon(alertTitle, level, shelterSec, firedAt).let { r ->
+                if (r != stageRes) { stageRes = r; stageIconV?.setImageResource(r) } }
             val cd = countdown ?: return
             val t = AlertUi.timer(level, shelterSec, firedAt) ?: return
             cdLabel?.text = t.first
@@ -68,6 +74,7 @@ open class AlertActivity : Activity() {
 
         val bg = Color.parseColor(AlertUi.color(level))
         val title = intent.getStringExtra("title") ?: "צבע אדום"
+        alertTitle = title
         val pre = level == AlertService.LEVEL_PRE
         val end = level == AlertService.LEVEL_END
         val (headTitle, headNote) = AlertUi.head(title, level)
@@ -88,9 +95,10 @@ open class AlertActivity : Activity() {
             gravity = Gravity.CENTER
             setPadding(dpx(16), dpx(if (popup) 16 else 36), dpx(16), dpx(if (popup) 10 else 14))
             // אייקון מעל הכותרת לפי סוג ההתרעה (אותם אייקונים כמו ברשימת ההתרעות)
-            val icon = AlertUi.icon(title, level)
+            // האייקון משתנה לפי השלב (היכנסו → נשארים במרחב המוגן → ממתינים לסיום)
             val size = dpx(if (popup) 34 else 44)
-            addView(ImageView(this@AlertActivity).apply { setImageResource(icon) },
+            addView(ImageView(this@AlertActivity).apply {
+                setImageResource(AlertUi.stageIcon(title, level, shelterSec, firedAt)); stageIconV = this },
                 LinearLayout.LayoutParams(size, size))
             addView(tv(headTitle, if (popup) 22f else 28f, bold = true))
             addView(tv(headNote, if (popup) 16f else 20f).apply { setPadding(0, dpx(2), 0, 0) })
