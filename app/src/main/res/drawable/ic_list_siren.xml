@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- צופר - התרעה (רשימת התרעות אחרונות) + גלי אזעקה -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-    <group android:pivotX="12.00" android:pivotY="12.00" android:scaleX="0.562" android:scaleY="0.562" android:translateX="0.00" android:translateY="0.00">
+    <group android:pivotX="12.00" android:pivotY="12.00" android:scaleX="0.478" android:scaleY="0.478" android:translateX="0.00" android:translateY="0.00">
         <group android:translateX="0.00" android:translateY="1.00">
             <path android:fillColor="#FFFFFFFF" android:pathData="M7,17v-5a5,5 0,0 1,10 0v5z" />
             <path android:fillColor="#FFFFFFFF" android:pathData="M6,17h12a1,1 0,0 1,1 1v1a1,1 0,0 1,-1 1H6a1,1 0,0 1,-1 -1v-1a1,1 0,0 1,1 -1z" />
-            <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.84" android:strokeLineCap="round" android:fillColor="#00000000" android:pathData="M12,3v2M5,6l1.4,1.4M19,6l-1.4,1.4" />
+            <path android:strokeColor="#FFFFFFFF" android:strokeWidth="3.34" android:strokeLineCap="round" android:fillColor="#00000000" android:pathData="M12,3v2M5,6l1.4,1.4M19,6l-1.4,1.4" />
         </group>
     </group>
     <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineCap="round" android:pathData="M6.6,8 Q4.2,12 6.6,16" />
