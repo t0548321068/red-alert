@@ -389,9 +389,9 @@ class MainActivity : Activity() {
 
         // פיד ארצי - פס רץ עם כל ההתראות בארץ (בלי צליל)
         feedLine = text("", 14f, C.MUTED).apply {
-            // התראה אחת בכל פעם, מתחלפות בגלילה כלפי מעלה (עד 2 שורות לכל התראה)
-            // גובה קבוע של 2 שורות - הכרטיס לא קופץ בין התראה קצרה לארוכה
-            minLines = 2; maxLines = 2
+            // התראה אחת בכל פעם, מתחלפות בגלילה כלפי מעלה
+            // גובה קבוע של 3 שורות (שעה / סוג / אזורים) - הכרטיס לא קופץ בין התראה קצרה לארוכה
+            minLines = 3; maxLines = 3
             ellipsize = TextUtils.TruncateAt.END
             gravity = Gravity.CENTER
             setPadding(dp(12), dp(14), dp(12), dp(14))
