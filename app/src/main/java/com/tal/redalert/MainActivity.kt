@@ -1226,22 +1226,16 @@ class MainActivity : Activity() {
 
     /** אייקון בקו לבן לכל שורה בהגדרות (לפי האמוג'י שלה) */
     private fun setIcon(icon: String) = when (icon) {
-        "🎨" -> R.drawable.ic_set_palette; "🚨" -> R.drawable.ic_set_siren; "🕐" -> R.drawable.ic_set_clock
-        "🌤" -> R.drawable.ic_set_weather; "👋" -> R.drawable.ic_set_hand; "📍" -> R.drawable.ic_set_pin
-        "🔔" -> R.drawable.ic_set_bell; "📳" -> R.drawable.ic_set_vibrate; "🗣" -> R.drawable.ic_set_speech
-        "🌙" -> R.drawable.ic_set_moon; "🔕" -> R.drawable.ic_set_belloff; "🕯" -> R.drawable.ic_set_candle
-        "📱" -> R.drawable.ic_set_phone; "🔋" -> R.drawable.ic_set_battery; "⚙️" -> R.drawable.ic_set_gear
-        "⬆️" -> R.drawable.ic_set_update; "🆕" -> R.drawable.ic_set_new; "ℹ️" -> R.drawable.ic_set_info
-        "🧪" -> R.drawable.ic_set_beta; "⏻" -> R.drawable.ic_shield_ind
+        "⏻" -> R.drawable.ic_set_shield; "🎨" -> R.drawable.ic_set_display; "📳" -> R.drawable.ic_set_sound
+        "🔔" -> R.drawable.ic_set_bell; "🛡" -> R.drawable.ic_set_lock; "⬆️" -> R.drawable.ic_set_update
+        "ℹ️" -> R.drawable.ic_set_info
         else -> 0
     }
 
     /** צבע העיגול של כל אייקון בהגדרות (סגנון One UI) */
     private fun iconColor(icon: String) = Color.parseColor(when (icon) {
-        "🎨" -> "#7E57C2"; "🚨", "📍", "🆕" -> "#E53935"; "🕐", "📱", "⬆️" -> "#1E88E5"
-        "🌤", "🔔" -> "#FB8C00"; "👋", "🔋" -> "#43A047"; "📳" -> "#8E24AA"
-        "🗣", "🧪" -> "#00897B"; "🌙" -> "#3949AB"; "🔕" -> "#6D4C41"; "🕯" -> "#F9A825"
-        "⏻" -> "#D50000"
+        "⏻" -> "#D50000"; "🎨" -> "#7E57C2"; "📳" -> "#8E24AA"; "🔔" -> "#FB8C00"
+        "🛡" -> "#00897B"; "⬆️" -> "#1E88E5"
         else -> "#546E7A"
     })
 
