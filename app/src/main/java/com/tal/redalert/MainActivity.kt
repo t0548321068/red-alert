@@ -2440,7 +2440,6 @@ class MainActivity : Activity() {
             .setNegativeButton("לא עכשיו", null)
             .show()
     }
-    }
 
     /**
      * "הצגה מעל אפליקציות אחרות". canDrawOverlays לפעמים מחזיר "לא" גם כשמופעל (במיוחד מיד אחרי
