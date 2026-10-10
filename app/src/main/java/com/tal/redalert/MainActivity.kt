@@ -2405,10 +2405,18 @@ class MainActivity : Activity() {
     private fun chooseFeedWindow(done: () -> Unit) = ouiPage("פיד ארצי", onClose = done) { body, rebuild ->
         val opts = ouiCard()
         opts.addView(text("הצגת התראות מ…", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+        val cur = Prefs.feedMinutes(this)
         FeedText.WINDOWS.forEachIndexed { i, m ->
             if (i > 0) ouiDivider(opts)
-            ouiRow(opts, FeedText.windowLabel(m), radio = Prefs.feedMinutes(this) == m) {
+            ouiRow(opts, FeedText.windowLabel(m), radio = cur == m) {
                 Prefs.setFeedMinutes(this, m); updateFeed(); rebuild() }
+        }
+        // מותאם אישית: שעות ודקות בגלגלים (כמו "הגדר שעה" של סמסונג)
+        val custom = cur !in FeedText.WINDOWS
+        ouiDivider(opts)
+        ouiRow(opts, "מותאם אישית", if (custom) FeedText.windowLabel(cur) else "", radio = custom) {
+            pickTime("זמן מותאם אישית (שעות : דקות)", if (custom) cur else 90) { m ->
+                Prefs.setFeedMinutes(this, m.coerceIn(1, 24 * 60)); updateFeed(); rebuild() }
         }
         ouiAdd(body, opts)
         ouiNote(body, "ההתראות מתחלפות אחת אחרי השנייה בגלילה כלפי מעלה")
