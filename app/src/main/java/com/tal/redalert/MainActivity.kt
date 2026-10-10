@@ -1616,7 +1616,9 @@ class MainActivity : Activity() {
             Perm("🔋", "חיסכון בסוללה", "האפליקציה לא נעצרת ברקע",
                 pm.isIgnoringBatteryOptimizations(packageName)) { openBatterySettings() },
             Perm("🔔", "התראות בטלפון", "התראות האפליקציה מופעלות",
-                nm.areNotificationsEnabled()) { openNotificationSettings() }
+                nm.areNotificationsEnabled()) { openNotificationSettings() },
+            Perm("🔕", "נא לא להפריע", "מאפשר לעקוף נא לא להפריע בזמן התרעה",
+                dndAccess()) { startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) }
         )
     }
 
@@ -2067,32 +2069,21 @@ class MainActivity : Activity() {
             .show()
     }
 
-    private fun showSpeech() {
-        val on = Prefs.speakAlerts(this)
-        val items = arrayOf(
-            if (on) "✅ פעיל – לחץ לכיבוי" else "⬜ כבוי – לחץ להפעלה",
-            "🔊 השמע דוגמה",
-            "ℹ️ מקריא סוג, אזורים וזמן להגעה – ואז הצליל"
-        )
-        AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("🗣 הקראה בקול")
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> { Prefs.setSpeakAlerts(this, !on); showSpeech() }
-                    1 -> {
-                        // דוגמה בקול של ההתראות (הקלטות "אבר")
-                        val sp = testSpeaker ?: Speaker(this).also { testSpeaker = it }
-                        val mine = Prefs.cities(this) + Prefs.nearbyAreas(this)
-                        val areas = mine.ifEmpty { listOf("תל אביב - מרכז העיר") }.take(3)
-                        sp.speakAlert("ירי רקטות וטילים", areas, AreaData.shelterSeconds(this, areas) ?: 90) {}
-                        showSpeech()
-                    }
-                    else -> showSpeech()
-                }
-            }
-            .setPositiveButton("סגור", null)
-            .show()
+    /** עמוד הקראה: הדלקה/כיבוי והשמעת דוגמה */
+    private fun showSpeech() = ouiPage("הקראה") { body, rebuild ->
+        val c = ouiCard()
+        ouiRow(c, "הקראה בקול", on = Prefs.speakAlerts(this)) {
+            Prefs.setSpeakAlerts(this, !Prefs.speakAlerts(this)); rebuild() }
+        ouiDivider(c)
+        ouiRow(c, "השמע דוגמה", sub = "ירי רקטות וטילים באזורים שלך") {
+            // דוגמה בקול של ההתראות (הקלטות "אבר")
+            val sp = testSpeaker ?: Speaker(this).also { testSpeaker = it }
+            val mine = Prefs.cities(this) + Prefs.nearbyAreas(this)
+            val areas = mine.ifEmpty { listOf("תל אביב - מרכז העיר") }.take(3)
+            sp.speakAlert("ירי רקטות וטילים", areas, AreaData.shelterSeconds(this, areas) ?: 90) {}
+        }
+        ouiAdd(body, c)
+        ouiNote(body, "מקריא סוג, אזורים וזמן להגעה – ואז הצליל. במצב שבת ההקראה פועלת תמיד")
     }
 
     /** רטט: בחירה לכל סוג התראה, עם דוגמה בכל לחיצה */
@@ -2117,34 +2108,21 @@ class MainActivity : Activity() {
     }
 
     /** שעות שקט: רק התראה מקדימה וסיום אירוע מושתקים. ירי תמיד נשמע. */
-    private fun showQuietHours() {
+    /** עמוד שעות שקט: הדלקה/כיבוי, שעת התחלה וסיום */
+    private fun showQuietHours() = ouiPage("שעות שקט") { body, rebuild ->
         val on = Prefs.quietOn(this)
-        // בלי setMessage - באנדרואיד הודעה מסתירה את רשימת האפשרויות
-        val items = arrayOf(
-            if (on) "✅ פעיל – לחץ לכיבוי" else "⬜ כבוי – לחץ להפעלה",
-            "🕚 מתחיל ב־${hhmm(Prefs.quietFrom(this))} – לחץ לשינוי",
-            "🕖 נגמר ב־${hhmm(Prefs.quietTo(this))} – לחץ לשינוי",
-            "ℹ️ מקדימה וסיום יגיעו בשקט. ירי תמיד נשמע."
-        )
-        AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("🌙 שעות שקט")
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> {
-                        Prefs.setQuietOn(this, !on)
-                        android.widget.Toast.makeText(this,
-                            if (!on) "שעות שקט הופעלו" else "שעות שקט כובו",
-                            android.widget.Toast.LENGTH_SHORT).show()
-                        showQuietHours()
-                    }
-                    1 -> pickTime(Prefs.quietFrom(this)) { Prefs.setQuiet(this, it, Prefs.quietTo(this)); showQuietHours() }
-                    2 -> pickTime(Prefs.quietTo(this)) { Prefs.setQuiet(this, Prefs.quietFrom(this), it); showQuietHours() }
-                    else -> showQuietHours()
-                }
-            }
-            .setPositiveButton("סגור", null)
-            .show()
+        val sw = ouiCard()
+        ouiRow(sw, "שעות שקט", on = on) { Prefs.setQuietOn(this, !on); rebuild() }
+        ouiAdd(body, sw)
+        ouiNote(body, "בשעות האלה התרעה מקדימה וסיום אירוע מגיעים בשקט. ירי תמיד נשמע")
+        val t = ouiCard()
+        ouiRow(t, "התחלה", end = hhmm(Prefs.quietFrom(this)), endBig = true) {
+            pickTime(Prefs.quietFrom(this)) { Prefs.setQuiet(this, it, Prefs.quietTo(this)); rebuild() } }
+        ouiDivider(t)
+        ouiRow(t, "סיום", end = hhmm(Prefs.quietTo(this)), endBig = true) {
+            pickTime(Prefs.quietTo(this)) { Prefs.setQuiet(this, Prefs.quietFrom(this), it); rebuild() } }
+        ouiAdd(body, t)
+        ouiNote(body, "מצב שבת עוקף את שעות השקט")
     }
 
     private fun pickTime(cur: Int, done: (Int) -> Unit) {
