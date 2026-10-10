@@ -1169,9 +1169,9 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
         if (radio != null) r.addView(ouiRadio(radio), LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginStart = dp(10) })
         // onToggle: לחיצה על השורה פותחת הגדרה, והמתג לבד מדליק/מכבה (כמו בעמוד תצוגה)
-        // רווחים זהים לעמוד תצוגה: 12 מהטקסט לקו ו-12 מהקו למתג
+        // רווחים זהים בכל האפליקציה: 12 מהטקסט לקו, והקו צמוד למתג
         if (on != null && onToggle != null) r.addView(View(this).apply { setBackgroundColor(C.SEPV) },
-            LinearLayout.LayoutParams(dp(1), dp(20)).apply { setMargins(dp(12), 0, dp(12), 0) })
+            LinearLayout.LayoutParams(dp(1), dp(20)).apply { setMargins(dp(4), 0, dp(12), 0) })
         if (on != null) r.addView(android.widget.Switch(this).apply {
             minHeight = 0; minimumHeight = 0; setPadding(0, 0, 0, 0)
             isChecked = on
@@ -1707,7 +1707,7 @@ class MainActivity : Activity() {
             r.addView(t, LinearLayout.LayoutParams(0, -2, 1f))
             if (on != null) {
                 if (sep) r.addView(View(this).apply { setBackgroundColor(C.SEPV) },
-                    LinearLayout.LayoutParams(dp(1), dp(20)).apply { setMargins(dp(12), 0, dp(12), 0) })
+                    LinearLayout.LayoutParams(dp(1), dp(20)).apply { setMargins(dp(4), 0, dp(12), 0) })
                 r.addView(android.widget.Switch(this).apply {
                     minHeight = 0; minimumHeight = 0; setPadding(0, 0, 0, 0)
                     isChecked = on
