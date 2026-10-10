@@ -31,12 +31,15 @@ object FeedText {
         else -> "%d:%02d השעות האחרונות".format(min / 60, min % 60)   // מותאם אישית, למשל 1:30
     }
 
-    /** ההתראות בפיד לפי חלון הזמן שנבחר בהגדרות (החדשה ראשונה) */
-    fun recent(c: Context): List<String> {
+    private fun inWindow(c: Context): List<Prefs.Entry> {
         val since = System.currentTimeMillis() - Prefs.feedMinutes(c) * 60_000L
-        return Prefs.feed(c).filter { it.ts >= since }.take(30).map { line(c, it) }
+        return Prefs.feed(c).filter { it.ts >= since }
     }
 
+    /** פיד במסך הראשי, בשתי שורות: "נקודה שעה סוג" ומתחת אזורי ההתרעה (החדשה ראשונה) */
+    fun recent(c: Context): List<String> =
+        inWindow(c).take(30).map { "${icon(it.level)} ${TimeFormat.time(c, it.ts)} ${short(it.title)}\n${it.body}" }
+
     /** שורה אחת (מסך השעון): ההתראות בחלון הזמן, או null אם אין */
-    fun latest(c: Context): String? = recent(c).take(8).ifEmpty { null }?.joinToString("     •     ")
+    fun latest(c: Context): String? = inWindow(c).take(8).ifEmpty { null }?.joinToString("     •     ") { line(c, it) }
 }
