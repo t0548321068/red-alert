@@ -827,7 +827,7 @@ class MainActivity : Activity() {
     }
 
     /** חלון אזורים נוספים: הוספת יישוב / הוספת אזור שלם */
-    private fun showExtraAreas() = ouiPage("אזורים נוספים") { body, _ ->
+    private fun showExtraAreas() = ouiPage("אזורים נוספים") { body, rebuild ->
         // שתי קבוצות: הוספת יישוב + היישובים שנבחרו, הוספת אזור + האזורים שנבחרו
         val P = AreaData.DISTRICT_PREFIX
         val dmap = AreaData.districtMap(this)
@@ -840,7 +840,20 @@ class MainActivity : Activity() {
             listOf(AreaData.ALL_COUNTRY) else pickedD.sorted()
         val pickedT = mine.filterNot { it.startsWith(P) }
         val towns = if (allAreas.isNotEmpty() && pickedT.toSet().containsAll(allAreas)) listOf(AreaData.ALL_COUNTRY) else pickedT.sorted()
-        fun group(add: String, onAdd: () -> Unit, title: String, names: List<String>, empty: String, small: (String) -> String) {
+        /** מחיקת שורה: יישוב / אזור; "כל הארץ" - מוחק את כל היישובים (או כל האזורים) */
+        fun remove(name: String, whole: Boolean) {
+            val keep = Prefs.cities(this).filter { k ->
+                val isDist = k.startsWith(P)
+                when {
+                    whole != isDist -> true
+                    name == AreaData.ALL_COUNTRY -> false
+                    whole -> k != P + name
+                    else -> k != name
+                }
+            }
+            Prefs.setCities(this, keep); refresh(); rebuild()
+        }
+        fun group(add: String, onAdd: () -> Unit, title: String, names: List<String>, empty: String, whole: Boolean, small: (String) -> String) {
             val card = ouiCard()
             ouiRow(card, add) { onAdd() }
             ouiDivider(card)
@@ -853,13 +866,21 @@ class MainActivity : Activity() {
                 val s = small(name)
                 if (s.isNotEmpty()) r.addView(text(s, 12f, C.MUTED),
                     LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(12) })
+                r.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+                // סימן מחיקה בקצה השורה: קו אדום קצר (כמו ברשימות של סמסונג)
+                r.addView(FrameLayout(this).apply {
+                    addView(View(this@MainActivity).apply {
+                        background = GradientDrawable().apply { setColor(C.RED); cornerRadius = dp(1).toFloat() }
+                    }, FrameLayout.LayoutParams(dp(16), dp(2), Gravity.CENTER))
+                    setOnClickListener { remove(name, whole) }
+                }, LinearLayout.LayoutParams(dp(44), dp(44)).apply { marginEnd = -dp(12) })
                 card.addView(r, LinearLayout.LayoutParams(-1, dp(48)))
             }
             ouiAdd(body, card)
         }
-        group("הוספת יישוב", { showAreaPicker(whole = false) }, "יישובים שנבחרו", towns, "לא נבחרו יישובים") { if (it == AreaData.ALL_COUNTRY) "" else dmap[it] ?: "" }
+        group("הוספת יישוב", { showAreaPicker(whole = false) }, "יישובים שנבחרו", towns, "לא נבחרו יישובים", false) { if (it == AreaData.ALL_COUNTRY) "" else dmap[it] ?: "" }
         body.addView(View(this), LinearLayout.LayoutParams(-1, dp(10)))   // רווח בין הקבוצות
-        group("הוספת אזור", { showAreaPicker(whole = true) }, "אזורים שנבחרו", dists, "לא נבחרו אזורים") { "" }
+        group("הוספת אזור", { showAreaPicker(whole = true) }, "אזורים שנבחרו", dists, "לא נבחרו אזורים", true) { "" }
     }
 
     /**
