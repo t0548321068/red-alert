@@ -890,14 +890,11 @@ class MainActivity : Activity() {
         val districts = AreaData.districts(this)
         var query = ""
         val distCount: Map<String?, Int> = if (!whole) emptyMap() else all.groupingBy { dmap[it] }.eachCount()
-        // זמן ההתגוננות של אזור שלם: מהקצר לארוך מבין היישובים שבו
+        // זמן ההתגוננות של אזור שלם: הקצר ביותר מבין היישובים שבו (מוצג כמו ביישובים)
         val distTime: Map<String, String> = if (!whole) emptyMap() else
             all.groupBy { dmap[it] }.mapNotNull { (dist, names) ->
-                val secs = names.mapNotNull { AreaData.shelterSeconds(this, it) }
-                if (dist == null || secs.isEmpty()) null else {
-                    val lo = secs.min(); val hi = secs.max()
-                    dist to (if (lo == hi) AreaData.shelterText(lo) else AreaData.shelterText(lo) + " – " + AreaData.shelterText(hi))
-                }
+                val lo = names.mapNotNull { AreaData.shelterSeconds(this, it) }.minOrNull()
+                if (dist == null || lo == null) null else dist to AreaData.shelterText(lo)
             }.toMap()
 
         fun covered(name: String) = allKey in sel ||
