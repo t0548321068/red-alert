@@ -75,6 +75,9 @@ class AlertService : Service() {
         }
 
         private const val CH_INFO = "info_v2"
+        private const val CH_NO_SOUND = "alerts_nosound"   // רטט בלי צליל
+        private const val CH_NO_VIBE = "alerts_novibe"     // צליל בלי רטט
+        private const val CH_SILENT = "alerts_silent"      // בלי צליל ובלי רטט
         private const val CH_QUIET = "quiet"
         private const val CH_WATCH = "watchdog_v4"
         private const val ID_WATCH = 4
@@ -592,8 +595,14 @@ class AlertService : Service() {
         val fullPi = PendingIntent.getActivity(
             this, 1, full, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
+        // מתג צלילים / רטט כבוי - ערוץ בלי צליל ו/או בלי רטט (ערוץ אנדרואיד לא משתנה אחרי שנוצר)
+        // מצב שבת עוקף הכל: שעות שקט, נא לא להפריע, מצב שקט, וגם מתגי הצלילים והרטט
+        val snd = shabbat || Prefs.soundsOn(this); val vib = shabbat || Prefs.vibesOn(this)
         val channel = when {
             quiet -> CH_QUIET
+            !snd && !vib -> CH_SILENT
+            !snd -> CH_NO_SOUND
+            !vib -> CH_NO_VIBE
             level == LEVEL_END -> CH_INFO
             else -> CH_ALERT
         }
@@ -615,7 +624,7 @@ class AlertService : Service() {
         // ספירה לאחור גדולה בתוך ההתראה הקופצת
         // (בלי תצוגת טיימר מיוחדת - נראית כמו שאר ההתראות)
         val n = nb.build()
-        if (!quiet && level != LEVEL_END) overrideDnd()
+        if (!quiet && level != LEVEL_END) overrideDnd(force = shabbat)
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n)
 
         // מסך מלא גם כשהטלפון פתוח ובשימוש:
@@ -667,9 +676,14 @@ class AlertService : Service() {
         }
 
         val playSound = {
-            if (PHONE_DEFAULTS) Unit   // הטלפון משמיע את צליל ההתראה בעצמו
+            // עקיפת מצב שקט: הטלפון על שקט/רטט - הטלפון לא ישמיע, אז האפליקציה משמיעה בעצמה (ערוץ התראה של שעון מעורר)
+            val ringer = (getSystemService(AUDIO_SERVICE) as android.media.AudioManager).ringerMode
+            val bypass = PHONE_DEFAULTS && (shabbat || Prefs.bypassSilent(this)) && snd && !quiet &&
+                ringer != android.media.AudioManager.RINGER_MODE_NORMAL
+            if (bypass) playAlarm(level, RingtoneManager.TYPE_ALARM, if (level == LEVEL_ALERT) 15000 else 3000)
+            else if (PHONE_DEFAULTS) Unit   // הטלפון משמיע את צליל ההתראה בעצמו
             else when {
-                quiet -> main.post { ringtone?.stop() }
+                quiet || !snd -> main.post { ringtone?.stop() }
                 level == LEVEL_ALERT -> playAlarm(level, RingtoneManager.TYPE_ALARM, 15000)
                 level == LEVEL_PRE -> playAlarm(level, RingtoneManager.TYPE_NOTIFICATION, 3000)
                 Sounds.effective(this, level) != Sounds.SILENT ->
@@ -690,7 +704,7 @@ class AlertService : Service() {
             playSound()
         }
 
-        if (!quiet && !PHONE_DEFAULTS) vibrate(level)
+        if (!quiet && !PHONE_DEFAULTS && vib) vibrate(level)
         AlertWidget.updateAll(this)
     }
 
@@ -738,8 +752,8 @@ class AlertService : Service() {
      * דורש הרשאת "גישה לנא לא להפריע" (⚙ ← נא לא להפריע).
      */
     private var dndSaved = -1
-    private fun overrideDnd() {
-        if (!Prefs.dndOverride(this)) return
+    private fun overrideDnd(force: Boolean = false) {
+        if (!force && !Prefs.dndOverride(this)) return
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         if (!nm.isNotificationPolicyAccessGranted) return
         val cur = nm.currentInterruptionFilter
@@ -867,6 +881,21 @@ class AlertService : Service() {
                 // בינתיים: צליל ההתראות הרגיל של הטלפון (לא המנגינה של האפליקציה)
                 setBypassDnd(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            })
+        nm.createNotificationChannel(
+            NotificationChannel(CH_NO_SOUND, "התראות – רטט בלי צליל", NotificationManager.IMPORTANCE_HIGH).apply {
+                setSound(null, null); enableVibration(true)
+                setBypassDnd(true); lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            })
+        nm.createNotificationChannel(
+            NotificationChannel(CH_NO_VIBE, "התראות – צליל בלי רטט", NotificationManager.IMPORTANCE_HIGH).apply {
+                enableVibration(false); vibrationPattern = longArrayOf(0)
+                setBypassDnd(true); lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            })
+        nm.createNotificationChannel(
+            NotificationChannel(CH_SILENT, "התראות – בלי צליל ורטט", NotificationManager.IMPORTANCE_HIGH).apply {
+                setSound(null, null); enableVibration(false); vibrationPattern = longArrayOf(0)
+                setBypassDnd(true); lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             })
         nm.createNotificationChannel(
             NotificationChannel(CH_INFO, "סיום אירוע", NotificationManager.IMPORTANCE_HIGH).apply {
