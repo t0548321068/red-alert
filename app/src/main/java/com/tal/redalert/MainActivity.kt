@@ -294,14 +294,19 @@ class MainActivity : Activity() {
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         header.addView(text("צבע אדום", 24f, C.TEXT, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) })
         header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
-        // כפתור שעון בעיגול צף (הבדיקה עברה להגדרות התרעות)
-        header.addView(android.widget.ImageView(this).apply {
-            setImageResource(R.drawable.ic_nav_clock)
+        // אייקונים למעלה בשמאל (במקום התפריט התחתון): שעון · התרעות · הגדרות (הגדרות הכי שמאלי)
+        fun headerIcon(res: Int, click: () -> Unit) = header.addView(android.widget.ImageView(this).apply {
+            setImageResource(res)
             imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT)
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(C.PILL) }
-            setOnClickListener { startActivity(Intent(this@MainActivity, ClockActivity::class.java)) }
+            setPadding(dp(11), dp(11), dp(11), dp(11))
+            background = android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(C.LINE2), null,
+                GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) })
+            setOnClickListener { click() }
         }, LinearLayout.LayoutParams(dp(46), dp(46)))
+        headerIcon(R.drawable.ic_nav_clock) { startActivity(Intent(this@MainActivity, ClockActivity::class.java)) }
+        headerIcon(R.drawable.ic_nav_alerts) { showRecent() }
+        headerIcon(R.drawable.ic_gear) { showSettings() }
         col.addView(header, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
 
         // שעון
@@ -508,10 +513,6 @@ class MainActivity : Activity() {
                 insets
             }
         }
-        val nav = bottomNav(0) { i -> openTab(i) }
-        scroll.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(10) })
-        // מקום לתפריט מתחת לפיד
-        col.setPadding(col.paddingLeft, col.paddingTop, col.paddingRight, dp(GAP) + dp(86))   // גובה התפריט + המרווח שלו
         setContentView(scroll)
         askPermissions()
         showWhatsNewIfUpdated()
@@ -526,8 +527,6 @@ class MainActivity : Activity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        // לשונית שנבחרה בתפריט שבמסך השעון
-        intent.getIntExtra("tab", -1).takeIf { it > 0 }?.let { t -> intent.removeExtra("tab"); ui.post { openTab(t) } }
     }
 
     override fun onResume() {
@@ -674,8 +673,8 @@ class MainActivity : Activity() {
      * מסך "התראות אחרונות": כל ההתראות שהיו בארץ (החודש האחרון, מהארכיון של פיקוד העורף),
      * בלי סינון. לחיצה על התראה - המפה על האזור שלה.
      */
-    /** עמוד בסגנון One UI: כותרת גדולה, תוכן נגלל, והתפריט התחתון (navTab = הלשונית הנבחרת) */
-    private fun onePage(title: String, navTab: Int, build: (LinearLayout) -> Unit) {
+    /** עמוד בסגנון One UI: כותרת גדולה ותוכן נגלל */
+    private fun onePage(title: String, build: (LinearLayout) -> Unit) {
         val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val page = ScrollView(this).apply {
@@ -691,19 +690,9 @@ class MainActivity : Activity() {
         body.addView(text(title, 30f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(64), dp(24), dp(12)) })
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         body.addView(content)
-        body.addView(View(this), LinearLayout.LayoutParams(-1, dp(90)))   // מקום לתפריט התחתון
+        body.addView(View(this), LinearLayout.LayoutParams(-1, dp(30)))
         build(content)
-        val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
-        frame.addView(page, FrameLayout.LayoutParams(-1, -1))
-        val nav = bottomNav(navTab) { i -> switchTab(d, i) }
-        frame.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = navMargin() })
-        frame.setOnApplyWindowInsetsListener { _, insets ->
-            @Suppress("DEPRECATION")
-            (nav.layoutParams as FrameLayout.LayoutParams).bottomMargin = insets.systemWindowInsetBottom + dp(10)
-            nav.requestLayout()
-            page.dispatchApplyWindowInsets(insets)
-        }
-        d.setContentView(frame)
+        d.setContentView(page)
         d.window?.setLayout(-1, -1)
         @Suppress("DEPRECATION")
         d.window?.statusBarColor = C.BG
@@ -713,7 +702,7 @@ class MainActivity : Activity() {
     }
 
     /** התראות אחרונות בסגנון One UI: מחולקות לימים, כל יום בכרטיס */
-    private fun showRecent() = onePage("התרעות אחרונות", 1) { c ->
+    private fun showRecent() = onePage("התרעות אחרונות") { c ->
         val cached = archiveCache
         if (cached != null) { fillRecent(c, cached); return@onePage }
         val loading = text("טוען את כל ההתראות…", 14f, C.MUTED2).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) }
@@ -1061,9 +1050,10 @@ class MainActivity : Activity() {
             build(body, rebuild)
         }
         rebuild()
-        // התפריט התחתון קבוע גם בתת-עמודים
-        val (frame, _) = withNav(d, page)
-        body.setPadding(0, 0, 0, dp(if (button == null) 100 else 170))
+        val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
+        frame.addView(page, FrameLayout.LayoutParams(-1, -1))
+        frame.setOnApplyWindowInsetsListener { _, insets -> page.dispatchApplyWindowInsets(insets) }
+        body.setPadding(0, 0, 0, dp(if (button == null) 30 else 100))
         if (button == null) d.setContentView(frame)
         else {
             // כפתור כחול גדול קבוע מעל התפריט (כמו "בדוק אם יש עדכונים" בסמסונג)
@@ -1074,7 +1064,7 @@ class MainActivity : Activity() {
                 background = GradientDrawable().apply { setColor(Color.parseColor("#4C7DFF")); cornerRadius = dp(23).toFloat() }
                 setOnClickListener { button.second() }
             }
-            val above = dp(78)   // מעל התפריט התחתון
+            val above = dp(10)
             frame.addView(btn, FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.6f).toInt(), dp(46),
                 Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = navMargin() + above })
             frame.viewTreeObserver.addOnGlobalLayoutListener {
@@ -1249,51 +1239,11 @@ class MainActivity : Activity() {
         else -> "#546E7A"
     })
 
-    private fun bottomNav(sel: Int, reselect: Boolean = false, onTab: (Int) -> Unit) =
-        NavBar.build(this, sel, C.LIGHT, reselect, onTab)
-
     /** כל העמודים הפתוחים (הגדרות, תת-עמודים, התרעות) - כדי שהתפריט התחתון יסגור את כולם במעבר */
     private val pages = mutableListOf<android.app.Dialog>()
     private fun track(d: android.app.Dialog, onClose: (() -> Unit)? = null) {
         pages.add(d)
         d.setOnDismissListener { pages.remove(d); onClose?.invoke() }
-    }
-
-    /**
-     * עמוד עם התפריט התחתון קבוע (תת-עמודי הגדרות: הלשונית "הגדרות" מסומנת,
-     * ולחיצה עליה חוזרת לעמוד ההגדרות הראשי)
-     */
-    private fun withNav(d: android.app.Dialog, page: View, sel: Int = 2): Pair<FrameLayout, View> {
-        val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
-        frame.addView(page, FrameLayout.LayoutParams(-1, -1))
-        val nav = bottomNav(sel, reselect = true) { i -> switchTab(d, i) }
-        frame.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = navMargin() })
-        frame.setOnApplyWindowInsetsListener { _, insets ->
-            @Suppress("DEPRECATION")
-            (nav.layoutParams as FrameLayout.LayoutParams).bottomMargin = insets.systemWindowInsetBottom + dp(10)
-            nav.requestLayout()
-            page.dispatchApplyWindowInsets(insets)
-        }
-        return frame to nav
-    }
-
-    /**
-     * מעבר בין לשוניות: קודם פותחים את הלשונית החדשה ורק אחר כך סוגרים את הישנה,
-     * כדי שמסך הבית לא יקפוץ לרגע באמצע
-     */
-    private fun switchTab(d: android.app.Dialog, i: Int) {
-        val old = (pages + d).distinct()
-        if (i == 0) { old.forEach { try { it.dismiss() } catch (_: Exception) { } }; return }
-        openTab(i)
-        ui.postDelayed({ old.forEach { try { it.dismiss() } catch (_: Exception) { } } }, 300)
-    }
-
-    /** מעבר ללשונית מהתפריט התחתון (0 = המסך הראשי עצמו) */
-    private fun openTab(i: Int) {
-        when (i) {
-            1 -> showRecent()
-            2 -> showSettings()
-        }
     }
 
     /** הגדרות בסגנון One UI: עמוד מלא, כותרת גדולה, כל הקבוצות פתוחות */
@@ -1362,21 +1312,10 @@ class MainActivity : Activity() {
                 }
                 body.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), 0) })
             }
-            body.addView(View(this), LinearLayout.LayoutParams(-1, dp(90)))   // מקום לתפריט התחתון
+            body.addView(View(this), LinearLayout.LayoutParams(-1, dp(30)))
         }
         rebuild()
-        // התפריט התחתון נשאר גם בהגדרות
-        val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
-        frame.addView(page, FrameLayout.LayoutParams(-1, -1))
-        val nav = bottomNav(2) { i -> switchTab(d, i) }
-        frame.addView(nav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = navMargin() })
-        frame.setOnApplyWindowInsetsListener { _, insets ->
-            @Suppress("DEPRECATION")
-            (nav.layoutParams as FrameLayout.LayoutParams).bottomMargin = insets.systemWindowInsetBottom + dp(10)
-            nav.requestLayout()
-            page.dispatchApplyWindowInsets(insets)
-        }
-        d.setContentView(frame)
+        d.setContentView(page)
         d.window?.setLayout(-1, -1)
         @Suppress("DEPRECATION")
         d.window?.statusBarColor = C.BG
@@ -1722,8 +1661,8 @@ class MainActivity : Activity() {
         rebuild()
         // יציאה מהעמוד: אם ערכת הצבעים השתנתה - טוענים מחדש וחוזרים להגדרות
         track(d) { if (Prefs.themeMode(this) != themeAtOpen) { reopenDisplay = true; recreate() } }
-        body.setPadding(0, 0, 0, dp(100))
-        d.setContentView(withNav(d, page).first)   // התפריט התחתון קבוע גם כאן
+        body.setPadding(0, 0, 0, dp(30))
+        d.setContentView(page)
         d.window?.setLayout(-1, -1)
         @Suppress("DEPRECATION")
         d.window?.statusBarColor = C.BG
@@ -1980,46 +1919,14 @@ class MainActivity : Activity() {
         }
     }
 
-    /** אחרי עדכון: עמוד "מה חדש" - כרטיס לכל גרסה שהשתנתה */
     private fun showWhatsNew(sinceVersion: String?) {
-        val notes = whatsNewText(sinceVersion) ?: return
-        ouiPage("מה חדש") { body, _ ->
-            body.addView(text("עודכן לגרסה " + Updater.versionLabel(this), 14f, C.MUTED).apply {
-                setPadding(dp(24), 0, dp(24), dp(14)) })
-            notes.split("\n\n").forEach { block ->
-                val lines = block.lines()
-                val c = ouiCard()
-                c.addView(text(lines.first(), 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), 0) })
-                ouiText(c, lines.drop(1).joinToString("\n"))
-                ouiAdd(body, c)
-            }
-        }
-    }
-
-    /**
-     * גרסה חדשה זמינה (נקרא מ-Updater): עמוד עם הגרסה שלך והגרסה החדשה,
-     * ולמטה מאוחר יותר | התקן עכשיו
-     */
-    fun showNewVersion(label: String, beta: Boolean, install: () -> Unit, later: () -> Unit) {
-        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
-        val page = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setBackgroundColor(C.BG); layoutDirection = View.LAYOUT_DIRECTION_RTL }
-        page.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(0, dp(40), 0, dp(26))
-            addView(android.widget.ImageView(this@MainActivity).apply { setImageResource(R.mipmap.ic_launcher) },
-                LinearLayout.LayoutParams(dp(88), dp(88)))
-            addView(text(if (beta) "גרסת בטא זמינה" else "גרסה חדשה זמינה", 24f, C.TEXT, bold = true).apply { setPadding(0, dp(14), 0, 0) })
-        }, LinearLayout.LayoutParams(-1, -2))
-        val c = ouiCard()
-        ouiRow(c, "הגרסה שלך", end = Updater.versionLabel(this), endColor = C.MUTED)
-        ouiDivider(c)
-        ouiRow(c, "גרסה חדשה", end = label)
-        page.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(8)) })
-        page.addView(text(if (beta) "גרסת בטא – לפני שחרור לכולם, יכולות להיות בה תקלות"
-            else "אפשר לעדכן בכל זמן דרך הגדרות ← עדכונים", 11f, C.MUTED2).apply { setPadding(dp(26), 0, dp(26), 0) })
-        d.setCancelable(false)
-        showWithCancelSave(d, page, cancel = "מאוחר יותר", ok = "התקן עכשיו", onCancel = later) { install() }
+        val text = whatsNewText(sinceVersion) ?: return
+        AlertDialog.Builder(this, dlg())
+            .setIcon(R.mipmap.ic_launcher)
+            .setTitle("🆕 מה חדש")
+            .setMessage(text)
+            .setPositiveButton("הבנתי", null)
+            .show()
     }
 
     /** מסך עדכונים: גרסה מותקנת + בדיקה, גרסאות בטא (למי שנפתח לו), ומה חדש */
@@ -2180,8 +2087,8 @@ class MainActivity : Activity() {
             setPadding(0, dp(10), 0, dp(22))
             addView(android.widget.ImageView(this@MainActivity).apply { setImageResource(R.mipmap.ic_launcher) },
                 LinearLayout.LayoutParams(dp(88), dp(88)))
-            addView(text("צבע אדום", 24f, C.TEXT, bold = true).apply { setPadding(0, dp(12), 0, 0) })
-            addView(text("גרסה " + Updater.versionLabel(this@MainActivity), 14f, C.MUTED).apply { setPadding(0, dp(4), 0, 0) })
+            addView(text("צבע אדום", 24f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER; setPadding(0, dp(12), 0, 0) })
+            addView(text("גרסה " + Updater.versionLabel(this@MainActivity), 14f, C.MUTED).apply { gravity = Gravity.CENTER; setPadding(0, dp(4), 0, 0) })
             addView(text("התראות פיקוד העורף בזמן אמת, גם כשהאפליקציה סגורה והמסך כבוי", 13f, C.MUTED2).apply {
                 gravity = Gravity.CENTER; setPadding(dp(30), dp(10), dp(30), 0) })
         }, LinearLayout.LayoutParams(-1, -2))
@@ -2275,6 +2182,27 @@ class MainActivity : Activity() {
      * כותרת, גלגל שעות וגלגל דקות, ולמטה ביטול | סיום
      */
     private fun pickTime(title: String, cur: Int, done: (Int) -> Unit) {
+        // גלגלים: שעה משמאל, דקות מימין (כמו בצילום)
+        val hours = TimeWheel(this, 24, cur / 60)
+        val mins = TimeWheel(this, 60, cur % 60)
+        ouiSheet(title, cancel = "ביטול", ok = "סיום", onOk = { done(hours.value * 60 + mins.value) }) { card, white ->
+            card.addView(LinearLayout(this).apply {
+                layoutDirection = View.LAYOUT_DIRECTION_LTR
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(44), 0, dp(44), 0)
+                addView(hours, LinearLayout.LayoutParams(0, -2, 1f))
+                addView(text(":", 32f, white, bold = true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(40), -2))
+                addView(mins, LinearLayout.LayoutParams(0, -2, 1f))
+            }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(22) })
+        }
+    }
+
+    /**
+     * חלון קופץ בסגנון סמסונג (כמו "הגדר שעה"): כרטיס אפור מעוגל בתחתית המסך, כותרת מודגשת,
+     * תוכן, ולמטה שני כפתורים עם קו מפריד
+     */
+    private fun ouiSheet(title: String, cancel: String, ok: String, onOk: () -> Unit,
+                         content: (LinearLayout, Int) -> Unit) {
         val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
         val white = if (C.LIGHT) C.TEXT else Color.WHITE
         val card = LinearLayout(this).apply {
@@ -2284,28 +2212,16 @@ class MainActivity : Activity() {
                 setColor(if (C.LIGHT) Color.WHITE else Color.parseColor("#393939")); cornerRadius = dp(26).toFloat() }
         }
         card.addView(text(title, 17f, white, bold = true).apply { setPadding(dp(30), dp(24), dp(30), dp(0)) })
-        // גלגלים: שעה משמאל, דקות מימין (כמו בצילום)
-        val hours = TimeWheel(this, 24, cur / 60)
-        val mins = TimeWheel(this, 60, cur % 60)
-        val wheels = LinearLayout(this).apply {
-            layoutDirection = View.LAYOUT_DIRECTION_LTR
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(44), 0, dp(44), 0)
-            addView(hours, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(text(":", 32f, white, bold = true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(40), -2))
-            addView(mins, LinearLayout.LayoutParams(0, -2, 1f))
-        }
-        card.addView(wheels, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(22) })
-        // ביטול | סיום
+        content(card, white)
         val btns = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
-            addView(text("ביטול", 17f, white, bold = true).apply {
+            addView(text(cancel, 17f, white, bold = true).apply {
                 gravity = Gravity.CENTER; setOnClickListener { d.dismiss() } }, LinearLayout.LayoutParams(0, -1, 1f))
             addView(View(this@MainActivity).apply { setBackgroundColor(Color.parseColor(if (C.LIGHT) "#D1D1D6" else "#535353")) },
                 LinearLayout.LayoutParams(dp(1), dp(16)))
-            addView(text("סיום", 17f, white, bold = true).apply {
+            addView(text(ok, 17f, white, bold = true).apply {
                 gravity = Gravity.CENTER
-                setOnClickListener { done(hours.value * 60 + mins.value); d.dismiss() }
+                setOnClickListener { onOk(); d.dismiss() }
             }, LinearLayout.LayoutParams(0, -1, 1f))
         }
         card.addView(btns, LinearLayout.LayoutParams(-1, dp(64)).apply { topMargin = dp(8) })
@@ -2333,8 +2249,7 @@ class MainActivity : Activity() {
     }
 
     /** מסך מלא עם גלולה צפה למטה כמו בשעון של סמסונג: ביטול | שמור */
-    private fun showWithCancelSave(d: android.app.Dialog, root: View, cancel: String = "ביטול", ok: String = "שמור",
-                                   onCancel: () -> Unit = {}, onSave: () -> Unit) {
+    private fun showWithCancelSave(d: android.app.Dialog, root: View, onSave: () -> Unit) {
         val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
         frame.addView(root, FrameLayout.LayoutParams(-1, -1))
         val save = LinearLayout(this).apply {
@@ -2342,10 +2257,10 @@ class MainActivity : Activity() {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             // כמו בשעון של סמסונג: גלולה כהה, טקסט לבן מודגש, קו מפריד דק
             background = GradientDrawable().apply { setColor(if (C.LIGHT) Color.parseColor("#E3E3E8") else Color.parseColor("#252525")) }
-            addView(text(cancel, 17f, C.TEXT, bold = true).apply {
-                gravity = Gravity.CENTER; setOnClickListener { onCancel(); d.dismiss() } }, LinearLayout.LayoutParams(0, -1, 1f))
+            addView(text("ביטול", 17f, C.TEXT, bold = true).apply {
+                gravity = Gravity.CENTER; setOnClickListener { d.dismiss() } }, LinearLayout.LayoutParams(0, -1, 1f))
             addView(View(this@MainActivity).apply { setBackgroundColor(C.SEPV) }, LinearLayout.LayoutParams(dp(1), dp(20)))
-            addView(text(ok, 17f, C.TEXT, bold = true).apply {
+            addView(text("שמור", 17f, C.TEXT, bold = true).apply {
                 gravity = Gravity.CENTER
                 setOnClickListener { onSave(); d.dismiss() }
             }, LinearLayout.LayoutParams(0, -1, 1f))
@@ -2514,26 +2429,17 @@ class MainActivity : Activity() {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         if (nm.canUseFullScreenIntent()) return
         lockAsked = true
-        // עמוד בסגנון האפליקציה: אייקון, כותרת, הסבר, ולמטה לא עכשיו | אישור
-        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
-        val page = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setBackgroundColor(C.BG); layoutDirection = View.LAYOUT_DIRECTION_RTL }
-        page.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(0, dp(40), 0, dp(26))
-            addView(android.widget.ImageView(this@MainActivity).apply { setImageResource(R.mipmap.ic_launcher) },
-                LinearLayout.LayoutParams(dp(88), dp(88)))
-            addView(text("התראה על מסך נעילה", 24f, C.TEXT, bold = true).apply { setPadding(0, dp(14), 0, 0) })
-        }, LinearLayout.LayoutParams(-1, -2))
-        val c = ouiCard()
-        ouiText(c, "כדי שההתראה תידלק מיד כשהמסך כבוי – צריך לאשר \"התראות במסך מלא\"")
-        page.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(8)) })
-        page.addView(text("אחרי \"אישור\" נפתח מסך ההגדרות של הטלפון – מדליקים שם את המתג וחוזרים", 11f, C.MUTED2)
-            .apply { setPadding(dp(26), 0, dp(26), 0) })
-        showWithCancelSave(d, page, cancel = "לא עכשיו", ok = "אישור") {
-            startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
-                .setData(Uri.parse("package:$packageName")))
-        }
+        android.app.AlertDialog.Builder(this, Prefs.dialogTheme(this))
+            .setIcon(R.mipmap.ic_launcher)
+            .setTitle("התראה על מסך נעילה")
+            .setMessage("כדי שההתראה תידלק מיד כשהמסך כבוי – צריך לאשר \"התראות במסך מלא\".")
+            .setPositiveButton("אישור") { _, _ ->
+                startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
+                    .setData(Uri.parse("package:$packageName")))
+            }
+            .setNegativeButton("לא עכשיו", null)
+            .show()
+    }
     }
 
     /**
