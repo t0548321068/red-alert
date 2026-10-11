@@ -217,17 +217,16 @@ class MainActivity : Activity() {
             // אייקון מעל הכותרת לפי סוג ההתרעה
             alertCardIcon = android.widget.ImageView(this)
             alertCardIconRes = 0
-            // גופנים גדולים: אייקון, כותרת, שורת המשנה ואזור ההתרעה
             alertCard.addView(alertCardIcon,
-                LinearLayout.LayoutParams(dp(40), dp(40)).apply { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dp(2) })
-            alertCard.addView(text(t1, 24f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER })
-            alertCard.addView(text(t2, 18f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER })
+                LinearLayout.LayoutParams(dp(30), dp(30)).apply { gravity = Gravity.CENTER_HORIZONTAL })
+            alertCard.addView(text(t1, 19f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER })
+            alertCard.addView(text(t2, 14f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER })
             val body = j.optString("body")
-            if (body.isNotEmpty()) alertCard.addView(text(body, 20f, Color.WHITE, bold = true).apply {
+            if (body.isNotEmpty()) alertCard.addView(text(body, 12f, Color.WHITE).apply {
                 gravity = Gravity.CENTER; maxLines = 2; ellipsize = TextUtils.TruncateAt.END
-                setPadding(dp(18), dp(7), dp(18), dp(7))
-                background = GradientDrawable().apply { setColor(Color.parseColor("#33FFFFFF")); cornerRadius = dp(22).toFloat() }
-            }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(8); bottomMargin = dp(2) })
+                setPadding(dp(10), dp(3), dp(10), dp(3))
+                background = GradientDrawable().apply { setColor(Color.parseColor("#33FFFFFF")); cornerRadius = dp(14).toFloat() }
+            }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(6); bottomMargin = dp(2) })
             alertCardLabel = null; alertCardTimer = null
             if (level == AlertService.LEVEL_ALERT) {
                 alertCardLabel = text("", 13f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER; setPadding(0, dp(4), 0, 0) }
@@ -2295,10 +2294,9 @@ class MainActivity : Activity() {
      * בחירת שעה בדיוק כמו "הגדר שעה" בהגדרות של סמסונג: חלון אפור מעוגל בתחתית המסך,
      * כותרת, גלגל שעות וגלגל דקות, ולמטה ביטול | סיום
      */
-    /** hourCount = כמה ערכים בגלגל השעות (24 = 00–23 לשעון; 25 = 00–24 למשך זמן) */
-    private fun pickTime(title: String, cur: Int, hourCount: Int = 24, done: (Int) -> Unit) {
+    private fun pickTime(title: String, cur: Int, done: (Int) -> Unit) {
         // גלגלים: שעה משמאל, דקות מימין (כמו בצילום)
-        val hours = TimeWheel(this, hourCount, cur / 60)
+        val hours = TimeWheel(this, 24, cur / 60)
         val mins = TimeWheel(this, 60, cur % 60)
         ouiSheet(title, cancel = "ביטול", ok = "סיום", onOk = { done(hours.value * 60 + mins.value) }) { card, white ->
             card.addView(LinearLayout(this).apply {
@@ -2441,8 +2439,7 @@ class MainActivity : Activity() {
         val custom = cur !in FeedText.WINDOWS
         ouiDivider(opts)
         ouiRow(opts, "מותאם אישית", if (custom) FeedText.windowLabel(cur) else "", radio = custom) {
-            // עד 24:00 בדיוק (24 שעות) - בגלגל השעות 00 עד 24
-            pickTime("זמן מותאם אישית (שעות : דקות)", if (custom) cur else 90, hourCount = 25) { m ->
+            pickTime("זמן מותאם אישית (שעות : דקות)", if (custom) cur else 90) { m ->
                 Prefs.setFeedMinutes(this, m.coerceIn(1, 24 * 60)); updateFeed(); rebuild() }
         }
         ouiAdd(body, opts)
