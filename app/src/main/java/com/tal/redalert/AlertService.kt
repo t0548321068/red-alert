@@ -608,8 +608,11 @@ class AlertService : Service() {
             level == LEVEL_END -> CH_INFO
             else -> CH_ALERT
         }
-        val text = if (shelterSec != null && level == LEVEL_ALERT)
-            "$body · זמן למרחב מוגן: ${AreaData.shelterText(shelterSec)}" else body
+        // אזור ההתרעה מודגש
+        val text = android.text.SpannableString(if (shelterSec != null && level == LEVEL_ALERT)
+            "$body · זמן למרחב מוגן: ${AreaData.shelterText(shelterSec)}" else body).apply {
+            setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, body.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
         val nb = Notification.Builder(this, channel)
             .setSmallIcon(R.drawable.ic_stat_siren)
             .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
@@ -719,7 +722,9 @@ class AlertService : Service() {
             .setSmallIcon(R.drawable.ic_stat_siren)
             .setColor(0xFFD50000.toInt())
             .setContentTitle("⏳ נשארים במרחב המוגן")
-            .setContentText("$stayTitle · $stayBody")
+            .setContentText(android.text.SpannableString("$stayTitle · $stayBody").apply {   // האזור מודגש
+                setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), length - stayBody.length, length,
+                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE) })
             .setOnlyAlertOnce(true)
             .setContentIntent(stayNotifPi)
             .setAutoCancel(true)
