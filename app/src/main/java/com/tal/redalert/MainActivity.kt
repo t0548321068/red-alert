@@ -1861,11 +1861,12 @@ class MainActivity : Activity() {
         val win = Prefs.feedMinutes(this)
         if (items != feedItems || win != feedWin) {
             feedItems = items; feedWin = win; feedIdx = 0; feedTick = 0
+            // הכרטיס מוצג רק כשיש התראות בטווח הזמן שנבחר
             val first = items.firstOrNull()
+            feedCard.visibility = if (first == null) View.GONE else View.VISIBLE
             feedText = first?.text ?: ""
-            feedLine.text = if (first != null) feedSpan(first)
-                else "🇮🇱 פיד ארצי · אין התראות בארץ ב־${FeedText.windowLabel(Prefs.feedMinutes(this))}"
-            feedLine.setTextColor(if (items.isEmpty()) C.MUTED else C.TEXT)
+            feedLine.text = if (first != null) feedSpan(first) else ""
+            feedLine.setTextColor(C.TEXT)
             return
         }
         // כל 3 שניות - ההתראה הבאה עולה מלמטה
