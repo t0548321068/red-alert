@@ -2294,9 +2294,10 @@ class MainActivity : Activity() {
      * בחירת שעה בדיוק כמו "הגדר שעה" בהגדרות של סמסונג: חלון אפור מעוגל בתחתית המסך,
      * כותרת, גלגל שעות וגלגל דקות, ולמטה ביטול | סיום
      */
-    private fun pickTime(title: String, cur: Int, done: (Int) -> Unit) {
+    /** hourCount = כמה ערכים בגלגל השעות (24 = 00–23 לשעון; 25 = 00–24 למשך זמן) */
+    private fun pickTime(title: String, cur: Int, hourCount: Int = 24, done: (Int) -> Unit) {
         // גלגלים: שעה משמאל, דקות מימין (כמו בצילום)
-        val hours = TimeWheel(this, 24, cur / 60)
+        val hours = TimeWheel(this, hourCount, cur / 60)
         val mins = TimeWheel(this, 60, cur % 60)
         ouiSheet(title, cancel = "ביטול", ok = "סיום", onOk = { done(hours.value * 60 + mins.value) }) { card, white ->
             card.addView(LinearLayout(this).apply {
@@ -2439,7 +2440,8 @@ class MainActivity : Activity() {
         val custom = cur !in FeedText.WINDOWS
         ouiDivider(opts)
         ouiRow(opts, "מותאם אישית", if (custom) FeedText.windowLabel(cur) else "", radio = custom) {
-            pickTime("זמן מותאם אישית (שעות : דקות)", if (custom) cur else 90) { m ->
+            // עד 24:00 בדיוק (24 שעות) - בגלגל השעות 00 עד 24
+            pickTime("זמן מותאם אישית (שעות : דקות)", if (custom) cur else 90, hourCount = 25) { m ->
                 Prefs.setFeedMinutes(this, m.coerceIn(1, 24 * 60)); updateFeed(); rebuild() }
         }
         ouiAdd(body, opts)
