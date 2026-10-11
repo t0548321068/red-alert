@@ -71,10 +71,7 @@ class AlertWidget : AppWidgetProvider() {
                     else -> "#FF3B30"
                 }
                 val t = if (last.ts > 0) TimeFormat.time(c, last.ts) else last.time
-                val head = "$t · ${last.title}\n"
-                v.setTextViewText(R.id.widget_last, android.text.SpannableString(head + last.body).apply {   // האזור מודגש
-                    setSpan(android.text.style.StyleSpan(android.graphics.Typeface.BOLD), head.length, length,
-                        android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE) })
+                v.setTextViewText(R.id.widget_last, "$t · ${last.title}\n${last.body}")
                 v.setTextColor(R.id.widget_last, Color.parseColor(color))
             }
 

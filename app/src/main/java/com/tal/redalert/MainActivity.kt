@@ -796,7 +796,7 @@ class MainActivity : Activity() {
                 }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(12) })
                 val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
                 texts.addView(text(if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title, 15f, C.TEXT))
-                texts.addView(text(e.body.replace("ברחבי הארץ", AreaData.ALL_COUNTRY), 12f, muted, bold = true).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
+                texts.addView(text(e.body.replace("ברחבי הארץ", AreaData.ALL_COUNTRY), 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
                 row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
                 row.addView(text(if (e.ts > 0) java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
                     .format(java.util.Date(e.ts)) else e.time.take(5), 12f, muted),
@@ -1854,10 +1854,6 @@ class MainActivity : Activity() {
             }
             i = it.text.indexOf('\uFFFC', i + 1)
         }
-        // השורה האחרונה (אזורי ההתרעה) מודגשת
-        val last = it.text.lastIndexOf('\n') + 1
-        if (last in 1 until it.text.length)
-            sp.setSpan(android.text.style.StyleSpan(Typeface.BOLD), last, it.text.length, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         return sp
     }
 
