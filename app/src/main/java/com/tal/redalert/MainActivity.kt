@@ -1849,9 +1849,7 @@ class MainActivity : Activity() {
             if (d != null) {
                 d.setTint(Color.parseColor(it.color))
                 d.setBounds(0, 0, size, size)
-                val align = if (Build.VERSION.SDK_INT >= 29) android.text.style.DynamicDrawableSpan.ALIGN_CENTER
-                            else android.text.style.DynamicDrawableSpan.ALIGN_BASELINE
-                sp.setSpan(android.text.style.ImageSpan(d, align), i, i + 1, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                sp.setSpan(CenteredIcon(d), i, i + 1, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
             i = it.text.indexOf('\uFFFC', i + 1)
         }
@@ -2646,5 +2644,32 @@ class FlowLayout(context: Context, private val gap: Int) : ViewGroup(context) {
             x += c.measuredWidth + gap
             rowH = maxOf(rowH, c.measuredHeight)
         }
+    }
+}
+
+/**
+ * אייקון בתוך טקסט, ממורכז בדיוק לגובה האותיות (ולא לגובה השורה כולה, שכולל רווח לניקוד) -
+ * כך האייקונים בפיד בדיוק בקו אחד עם סוג האירוע
+ */
+class CenteredIcon(private val d: android.graphics.drawable.Drawable) : android.text.style.ReplacementSpan() {
+    override fun getSize(paint: android.graphics.Paint, text: CharSequence?, start: Int, end: Int,
+                         fm: android.graphics.Paint.FontMetricsInt?): Int {
+        if (fm != null) {
+            val pf = paint.fontMetricsInt
+            fm.ascent = pf.ascent; fm.descent = pf.descent; fm.top = pf.top; fm.bottom = pf.bottom
+        }
+        return d.bounds.right
+    }
+
+    override fun draw(c: android.graphics.Canvas, text: CharSequence?, start: Int, end: Int, x: Float,
+                      top: Int, y: Int, bottom: Int, paint: android.graphics.Paint) {
+        // מרכז האותיות: לפי הגבולות האמיתיים של אותיות עבריות מהקו התחתון ועד ראשן
+        val r = android.graphics.Rect()
+        paint.getTextBounds("אבג", 0, 3, r)
+        val center = y + (r.top + r.bottom) / 2f
+        c.save()
+        c.translate(x, center - d.bounds.bottom / 2f)
+        d.draw(c)
+        c.restore()
     }
 }
