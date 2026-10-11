@@ -1834,18 +1834,39 @@ class MainActivity : Activity() {
     }
 
     /** הפיד הארצי: ההתראות בחלון הזמן מההגדרות, אחת בכל פעם, מתחלפות בגלילה כלפי מעלה */
-    private var feedItems: List<String> = emptyList()
+    private var feedItems: List<FeedText.Item> = emptyList()
     private var feedIdx = 0
     private var feedTick = 0
     private var feedWin = -1
+
+    /** הטקסט של פריט בפיד, עם אייקון סוג ההתרעה (בצבע הרמה) במקום תווי המקום */
+    private fun feedSpan(it: FeedText.Item): CharSequence {
+        val sp = android.text.SpannableString(it.text)
+        val size = (feedLine.textSize * 1.25f).toInt()
+        var i = it.text.indexOf('\uFFFC')
+        while (i >= 0) {
+            val d = getDrawable(it.icon)?.mutate()
+            if (d != null) {
+                d.setTint(Color.parseColor(it.color))
+                d.setBounds(0, 0, size, size)
+                val align = if (Build.VERSION.SDK_INT >= 29) android.text.style.DynamicDrawableSpan.ALIGN_CENTER
+                            else android.text.style.DynamicDrawableSpan.ALIGN_BASELINE
+                sp.setSpan(android.text.style.ImageSpan(d, align), i, i + 1, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            i = it.text.indexOf('\uFFFC', i + 1)
+        }
+        return sp
+    }
+
     private fun updateFeed() {
         val items = FeedText.recent(this)
         val win = Prefs.feedMinutes(this)
         if (items != feedItems || win != feedWin) {
             feedItems = items; feedWin = win; feedIdx = 0; feedTick = 0
-            val t = items.firstOrNull() ?: "🇮🇱 פיד ארצי · אין התראות בארץ ב־${FeedText.windowLabel(Prefs.feedMinutes(this))}"
-            feedText = t
-            feedLine.text = t
+            val first = items.firstOrNull()
+            feedText = first?.text ?: ""
+            feedLine.text = if (first != null) feedSpan(first)
+                else "🇮🇱 פיד ארצי · אין התראות בארץ ב־${FeedText.windowLabel(Prefs.feedMinutes(this))}"
             feedLine.setTextColor(if (items.isEmpty()) C.MUTED else C.TEXT)
             return
         }
@@ -1856,7 +1877,7 @@ class MainActivity : Activity() {
         val next = items[feedIdx]
         val h = feedLine.height.coerceAtLeast(dp(40)) / 2f
         feedLine.animate().translationY(-h).alpha(0f).setDuration(220).withEndAction {
-            feedText = next; feedLine.text = next
+            feedText = next.text; feedLine.text = feedSpan(next)
             feedLine.translationY = h
             feedLine.animate().translationY(0f).alpha(1f).setDuration(220).start()
         }.start()
