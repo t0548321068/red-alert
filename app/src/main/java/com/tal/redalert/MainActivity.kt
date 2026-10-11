@@ -223,10 +223,10 @@ class MainActivity : Activity() {
             alertCard.addView(text(t1, 24f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER })
             alertCard.addView(text(t2, 18f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER })
             val body = j.optString("body")
-            if (body.isNotEmpty()) alertCard.addView(text(body, 16f, Color.WHITE).apply {
+            if (body.isNotEmpty()) alertCard.addView(text(body, 20f, Color.WHITE, bold = true).apply {
                 gravity = Gravity.CENTER; maxLines = 2; ellipsize = TextUtils.TruncateAt.END
-                setPadding(dp(14), dp(5), dp(14), dp(5))
-                background = GradientDrawable().apply { setColor(Color.parseColor("#33FFFFFF")); cornerRadius = dp(18).toFloat() }
+                setPadding(dp(18), dp(7), dp(18), dp(7))
+                background = GradientDrawable().apply { setColor(Color.parseColor("#33FFFFFF")); cornerRadius = dp(22).toFloat() }
             }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(8); bottomMargin = dp(2) })
             alertCardLabel = null; alertCardTimer = null
             if (level == AlertService.LEVEL_ALERT) {
