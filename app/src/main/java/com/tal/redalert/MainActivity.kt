@@ -81,6 +81,8 @@ class MainActivity : Activity() {
     private lateinit var quietLine: TextView
     private lateinit var feedLine: TextView
     private lateinit var feedCard: FrameLayout
+    private lateinit var mainCol: LinearLayout
+    private lateinit var testFab: View
     private var feedText = ""
     private lateinit var netInd: TextView
     private lateinit var protInd: TextView   // מוגן / לא מוגן
@@ -294,8 +296,9 @@ class MainActivity : Activity() {
 
         val col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(4), dp(16), dp(GAP) + dp(76))   // כותרת קרובה יותר לראש המסך; למטה - מקום לכפתור הצף
+            setPadding(dp(16), dp(4), dp(16), dp(GAP))   // כותרת קרובה יותר לראש המסך
         }
+        mainCol = col
 
         // כותרת + גלגל שיניים
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
@@ -511,7 +514,7 @@ class MainActivity : Activity() {
             }
             addView(mainScroll, FrameLayout.LayoutParams(-1, -1))
             // כפתור צף: התראות בדיקה לכל סוגי ההתרעה
-            addView(FrameLayout(this@MainActivity).apply {
+            testFab = FrameLayout(this@MainActivity).apply {
                 background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#D50000")) }
                 elevation = dp(6).toFloat()
                 addView(android.widget.ImageView(this@MainActivity).apply {
@@ -519,8 +522,10 @@ class MainActivity : Activity() {
                     imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
                 }, FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER))
                 setOnClickListener { chooseTest() }
-            }, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM or Gravity.LEFT).apply {
+            }
+            addView(testFab, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM or Gravity.LEFT).apply {
                 setMargins(dp(20), 0, dp(20), dp(20)) })
+            applyTestFab()
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")
                 v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
@@ -1278,7 +1283,19 @@ class MainActivity : Activity() {
     }
 
     /** עמוד בדיקת התראה: שורה לכל סוג, לחיצה שולחת התראת בדיקה */
-    private fun chooseTest() = ouiPage("בדיקת התראה") { body, _ ->
+    /** הכפתור הצף מוצג / מוסתר לפי ההגדרה; כשמוצג - מקום בתחתית המסך כדי שלא יסתיר כרטיסים */
+    private fun applyTestFab() {
+        val on = Prefs.testFab(this)
+        testFab.visibility = if (on) View.VISIBLE else View.GONE
+        mainCol.setPadding(mainCol.paddingLeft, mainCol.paddingTop, mainCol.paddingRight, dp(GAP) + if (on) dp(76) else 0)
+    }
+
+    private fun chooseTest() = ouiPage("בדיקת התראה") { body, rebuild ->
+        val fab = ouiCard()
+        ouiRow(fab, "כפתור צף במסך הראשי", on = Prefs.testFab(this)) {
+            Prefs.setTestFab(this, !Prefs.testFab(this)); applyTestFab(); rebuild() }
+        ouiAdd(body, fab)
+        ouiNote(body, "כפתור אדום בפינת המסך הראשי שפותח את העמוד הזה")
         // כל סוגי ההתרעה של פיקוד העורף - כל שורה עם האייקון של הסוג בצבע הרמה
         val tests = listOf(
             "התרעה מקדימה" to "בדקות הקרובות צפויות להתקבל התרעות באזורך",
