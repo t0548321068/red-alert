@@ -294,7 +294,7 @@ class MainActivity : Activity() {
 
         val col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(4), dp(16), dp(GAP))   // כותרת קרובה יותר לראש המסך
+            setPadding(dp(16), dp(4), dp(16), dp(GAP) + dp(76))   // כותרת קרובה יותר לראש המסך; למטה - מקום לכפתור הצף
         }
 
         // כותרת + גלגל שיניים
@@ -510,6 +510,17 @@ class MainActivity : Activity() {
                 addView(col, ViewGroup.LayoutParams(-1, -2))
             }
             addView(mainScroll, FrameLayout.LayoutParams(-1, -1))
+            // כפתור צף: התראות בדיקה לכל סוגי ההתרעה
+            addView(FrameLayout(this@MainActivity).apply {
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#D50000")) }
+                elevation = dp(6).toFloat()
+                addView(android.widget.ImageView(this@MainActivity).apply {
+                    setImageResource(R.drawable.ic_list_siren)
+                    imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+                }, FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER))
+                setOnClickListener { chooseTest() }
+            }, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM or Gravity.LEFT).apply {
+                setMargins(dp(20), 0, dp(20), dp(20)) })
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")
                 v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
@@ -1268,23 +1279,43 @@ class MainActivity : Activity() {
 
     /** עמוד בדיקת התראה: שורה לכל סוג, לחיצה שולחת התראת בדיקה */
     private fun chooseTest() = ouiPage("בדיקת התראה") { body, _ ->
+        // כל סוגי ההתרעה של פיקוד העורף - כל שורה עם האייקון של הסוג בצבע הרמה
         val tests = listOf(
-            Triple("מקדימה", "בדקות הקרובות צפויות להתקבל התרעות באזורך", false),
-            Triple("ירי", "ירי רקטות וטילים", true),
-            Triple("סיום", "האירוע הסתיים", false))
+            "התרעה מקדימה" to "בדקות הקרובות צפויות להתקבל התרעות באזורך",
+            "ירי רקטות וטילים" to "ירי רקטות וטילים",
+            "חדירת כלי טיס עוין" to "חדירת כלי טיס עוין",
+            "חדירת מחבלים" to "חדירת מחבלים",
+            "רעידת אדמה" to "רעידת אדמה",
+            "צונאמי" to "צונאמי",
+            "אירוע רדיולוגי" to "אירוע רדיולוגי",
+            "חומרים מסוכנים" to "חומרים מסוכנים",
+            "האירוע הסתיים" to "האירוע הסתיים")
         val c = ouiCard()
-        tests.forEachIndexed { i, (label, title, isAlert) ->
+        tests.forEachIndexed { i, (label, title) ->
             if (i > 0) ouiDivider(c)
-            ouiRow(c, label, sub = title, subColor = C.MUTED) {
-                Prefs.setEnabled(this, true)
-                AlertService.start(this, testTitle = title)
-                if (!isAlert && Prefs.isQuietNow(this)) {
-                    android.widget.Toast.makeText(this,
-                        "שעות שקט פעילות – ההתראה נשלחה בשקט, בלי צליל ומסך מלא",
-                        android.widget.Toast.LENGTH_LONG).show()
+            val level = AlertService.levelOf(title)
+            c.addView(LinearLayout(this).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(18), 0, dp(18), 0)
+                addView(FrameLayout(this@MainActivity).apply {
+                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(AlertUi.color(level))) }
+                    addView(android.widget.ImageView(this@MainActivity).apply {
+                        setImageResource(AlertUi.icon(title, level))
+                        imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+                    }, FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER))
+                }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(14) })
+                addView(text(label, 16f, C.TEXT), LinearLayout.LayoutParams(0, -2, 1f))
+                setOnClickListener {
+                    Prefs.setEnabled(this@MainActivity, true)
+                    AlertService.start(this@MainActivity, testTitle = title)
+                    if (level != AlertService.LEVEL_ALERT && Prefs.isQuietNow(this@MainActivity)) {
+                        android.widget.Toast.makeText(this@MainActivity,
+                            "שעות שקט פעילות – ההתראה נשלחה בשקט, בלי צליל ומסך מלא",
+                            android.widget.Toast.LENGTH_LONG).show()
+                    }
+                    refresh()
                 }
-                refresh()
-            }
+            }, LinearLayout.LayoutParams(-1, dp(56)))
         }
         ouiAdd(body, c)
         ouiNote(body, "ההתראה נשלחת מיד, בדיוק כמו התרעה אמיתית")
