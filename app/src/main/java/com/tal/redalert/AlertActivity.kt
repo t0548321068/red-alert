@@ -96,12 +96,12 @@ open class AlertActivity : Activity() {
             setPadding(dpx(16), dpx(if (popup) 16 else 36), dpx(16), dpx(if (popup) 10 else 14))
             // אייקון מעל הכותרת לפי סוג ההתרעה (אותם אייקונים כמו ברשימת ההתרעות)
             // האייקון משתנה לפי השלב (היכנסו → נשארים במרחב המוגן → ממתינים לסיום)
-            val size = dpx(if (popup) 34 else 44)
+            val size = dpx(44)   // פופ-אפ: אותו גודל כמו במסך מלא
             addView(ImageView(this@AlertActivity).apply {
                 setImageResource(AlertUi.stageIcon(title, level, shelterSec, firedAt)); stageIconV = this },
                 LinearLayout.LayoutParams(size, size))
-            addView(tv(headTitle, if (popup) 22f else 28f, bold = true))
-            addView(tv(headNote, if (popup) 16f else 20f).apply { setPadding(0, dpx(2), 0, 0) })
+            addView(tv(headTitle, 28f, bold = true))
+            addView(tv(headNote, 20f).apply { setPadding(0, dpx(2), 0, 0) })
         }
         root.addView(titleView)
         (if (Prefs.alertMap(this)) miniMap(level) else null)?.let { map ->   // אפשר לכבות את המפה בהגדרות
@@ -112,7 +112,7 @@ open class AlertActivity : Activity() {
         // אזורים כתגיות + מקור ההתרעה - מתחת למפה, בגדול
         val chips = Flow(this, dpx(8))
         (intent.getStringExtra("body") ?: "").split(",").map { AreaData.unify(it.trim()) }.filter { it.isNotEmpty() }.distinct().forEach { a ->
-            chips.addView(tv(a, if (popup) 19f else 22f, bold = true).apply {
+            chips.addView(tv(a, 22f, bold = true).apply {
                 setPadding(dpx(14), dpx(6), dpx(14), dpx(6))
                 background = card("#33FFFFFF", 18)
             })
