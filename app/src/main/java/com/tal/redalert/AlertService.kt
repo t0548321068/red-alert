@@ -264,8 +264,12 @@ class AlertService : Service() {
         if (intent?.action == ACTION_TEST) {
             val title = intent.getStringExtra("title") ?: "ירי רקטות וטילים"
             val mine = Prefs.cities(this) + Prefs.nearbyAreas(this)
+            // זמן ההתגוננות בבדיקה - לפי המיקום שלי (ולא לפי כל האזורים הנוספים: עם "כל הארץ" הקצר ביותר הוא "מיידי",
+            // ואז הבדיקה דילגה ישר ל"נשארים במרחב המוגן" ולא הראתה את אייקון סוג ההתרעה). לפחות 15 שניות
+            val shelter = (AreaData.shelterSeconds(this, Prefs.nearbyAreas(this))
+                ?: AreaData.shelterSeconds(this, mine) ?: 15).coerceAtLeast(15)
             fire(title, listOf("התראת בדיקה"), forceScreen = true, test = true,
-                shelter = AreaData.shelterSeconds(this, mine) ?: 15, mapAreas = mine)
+                shelter = shelter, mapAreas = mine)
         }
         return START_STICKY
     }
