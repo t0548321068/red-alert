@@ -27,6 +27,9 @@ object Prefs {
         sp(c).edit().putString("cities", JSONArray(list.distinct()).toString()).commit()
 
     fun enabled(c: Context) = sp(c).getBoolean("enabled", false)
+    /** כפתור צף לבדיקת התראה במסך הראשי */
+    fun testFab(c: Context) = sp(c).getBoolean("testFab", true)
+    fun setTestFab(c: Context, v: Boolean) = sp(c).edit().putBoolean("testFab", v).commit()
     fun setEnabled(c: Context, v: Boolean) = sp(c).edit().putBoolean("enabled", v).commit()
 
     // ---- תצוגת שעה ותאריך ----
