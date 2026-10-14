@@ -1330,6 +1330,8 @@ class MainActivity : Activity() {
                             "שעות שקט פעילות – ההתראה נשלחה בשקט, בלי צליל ומסך מלא",
                             android.widget.Toast.LENGTH_LONG).show()
                     }
+                    // סוגרים את עמודי ההגדרות - ההתרעה מוצגת מיד (גם כרטיס / ממוזער שבמסך הראשי)
+                    pages.toList().forEach { it.dismiss() }
                     refresh()
                 }
             }, LinearLayout.LayoutParams(-1, dp(56)))
