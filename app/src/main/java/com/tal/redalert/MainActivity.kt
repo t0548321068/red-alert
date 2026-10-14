@@ -219,16 +219,17 @@ class MainActivity : Activity() {
             // אייקון מעל הכותרת לפי סוג ההתרעה
             alertCardIcon = android.widget.ImageView(this)
             alertCardIconRes = 0
+            // גופנים גדולים: אייקון, כותרת, שורת המשנה ואזור ההתרעה (מודגש)
             alertCard.addView(alertCardIcon,
-                LinearLayout.LayoutParams(dp(30), dp(30)).apply { gravity = Gravity.CENTER_HORIZONTAL })
-            alertCard.addView(text(t1, 19f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER })
-            alertCard.addView(text(t2, 14f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER })
+                LinearLayout.LayoutParams(dp(42), dp(42)).apply { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dp(2) })
+            alertCard.addView(text(t1, 25f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER })
+            alertCard.addView(text(t2, 19f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER })
             val body = j.optString("body")
-            if (body.isNotEmpty()) alertCard.addView(text(body, 12f, Color.WHITE).apply {
+            if (body.isNotEmpty()) alertCard.addView(text(body, 19f, Color.WHITE, bold = true).apply {
                 gravity = Gravity.CENTER; maxLines = 2; ellipsize = TextUtils.TruncateAt.END
-                setPadding(dp(10), dp(3), dp(10), dp(3))
-                background = GradientDrawable().apply { setColor(Color.parseColor("#33FFFFFF")); cornerRadius = dp(14).toFloat() }
-            }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(6); bottomMargin = dp(2) })
+                setPadding(dp(16), dp(6), dp(16), dp(6))
+                background = GradientDrawable().apply { setColor(Color.parseColor("#33FFFFFF")); cornerRadius = dp(20).toFloat() }
+            }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(8); bottomMargin = dp(2) })
             alertCardLabel = null; alertCardTimer = null
             if (level == AlertService.LEVEL_ALERT) {
                 alertCardLabel = text("", 13f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER; setPadding(0, dp(4), 0, 0) }
