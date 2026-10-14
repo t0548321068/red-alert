@@ -204,7 +204,9 @@ class MainActivity : Activity() {
         val j = Prefs.activeAlert(this)
         val level = j?.optInt("level") ?: 0
         val firedAt = j?.optLong("firedAt") ?: 0L
-        if (j == null || AlertUi.expired(level, firedAt) || Prefs.alertDismissed(this) == firedAt) {
+        // בתצוגה "ממוזער" אין כרטיס במסך הראשי - החלון הקטן כבר מציג את ההתרעה (כפילות)
+        val mini = Prefs.alertStyle(this) == 3 && !Shabbat.active(this)
+        if (j == null || mini || AlertUi.expired(level, firedAt) || Prefs.alertDismissed(this) == firedAt) {
             if (alertWrap.visibility != View.GONE) alertWrap.visibility = View.GONE
             setScrollMode(false)
             alertCardKey = ""; return
