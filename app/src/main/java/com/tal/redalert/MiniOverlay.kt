@@ -24,6 +24,7 @@ object MiniOverlay {
     private var tick: Runnable? = null
     private var bg: GradientDrawable? = null
     private var labelV: TextView? = null
+    private var iconV: android.widget.ImageView? = null
     private var areaV: TextView? = null
     private var timerV: TextView? = null
     private var timerLabelV: TextView? = null
@@ -68,6 +69,10 @@ object MiniOverlay {
             maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
             visibility = if (area.isEmpty()) View.GONE else View.VISIBLE
         }
+        val icon = android.widget.ImageView(app).apply {
+            setImageResource(AlertUi.stageIcon(title, level, shelter, firedAt))
+            imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+        }
         val texts = LinearLayout(app).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(10), 0, dp(6), 0)
@@ -103,6 +108,8 @@ object MiniOverlay {
             background = GradientDrawable().apply { cornerRadius = dp(28).toFloat(); setColor(Color.parseColor(color)) }
                 .also { bg = it }
             elevation = dp(6).toFloat()
+            // אייקון סוג ההתרעה (משתנה לפי השלב: היכנסו → נשארים → ממתינים)
+            addView(icon, LinearLayout.LayoutParams(dp(28), dp(28)).apply { marginStart = dp(6) })
             addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
             addView(timerBox)
             addView(closeX, LinearLayout.LayoutParams(dp(34), dp(34)))
@@ -123,7 +130,7 @@ object MiniOverlay {
         }
         try { wm.addView(bar, lp) } catch (_: Exception) { return }
         view = bar
-        labelV = label; areaV = areaLine; timerV = timer; timerLabelV = timerLabel
+        labelV = label; areaV = areaLine; timerV = timer; timerLabelV = timerLabel; iconV = icon
 
         val t = object : Runnable {
             override fun run() {
@@ -141,6 +148,7 @@ object MiniOverlay {
                     // אחרי 10 הדקות: "ממתינים להודעת סיום" בצד שמאל, במקום הטיימר
                     else -> { label.text = title; timerLabel.text = ""; timer.textSize = 14f; timer.text = "ממתינים להודעת סיום"; bg?.setColor(Color.parseColor(RED)) }
                 }
+                icon.setImageResource(AlertUi.stageIcon(title, level, shelter, firedAt, now))
                 timerBox.visibility = if (timer.text.isEmpty()) View.GONE else View.VISIBLE
                 // כיתוב ריק תופס שורה ודוחף את המלל למטה - מסתירים אותו כדי שהמלל יהיה באמצע הגובה
                 timerLabel.visibility = if (timerLabel.text.isEmpty()) View.GONE else View.VISIBLE
@@ -159,6 +167,7 @@ object MiniOverlay {
         tick?.let { ui.removeCallbacks(it) }; tick = null
         bg?.setColor(Color.parseColor(GREEN))
         labelV?.text = "האירוע הסתיים"
+        iconV?.setImageResource(R.drawable.ic_list_end)
         timerLabelV?.text = ""; timerLabelV?.visibility = View.GONE
         timerV?.textSize = 12f; timerV?.text = "ניתן לצאת\nמהמרחב המוגן"
         (timerV?.parent as? View)?.visibility = View.VISIBLE
@@ -167,7 +176,7 @@ object MiniOverlay {
 
     fun hide(c: Context) {
         tick?.let { ui.removeCallbacks(it) }; tick = null
-        bg = null; labelV = null; areaV = null; timerV = null; timerLabelV = null
+        bg = null; labelV = null; areaV = null; timerV = null; timerLabelV = null; iconV = null
         val v = view ?: return
         view = null
         try { (c.applicationContext.getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(v) } catch (_: Exception) { }
