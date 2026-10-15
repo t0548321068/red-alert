@@ -637,20 +637,18 @@ class AlertService : Service() {
         // בבדיקה (האפליקציה בחזית) או עם הרשאת "הצגה מעל אפליקציות אחרות"
         if (!quiet) wakeScreen()
         val screenOff = !(getSystemService(POWER_SERVICE) as PowerManager).isInteractive
-        val canShow = forceScreen || shabbat || screenOff || android.provider.Settings.canDrawOverlays(this)
+        val canShow = forceScreen || shabbat || screenOff || overlayOk()
         if (toMini) main.post { MiniOverlay.showEnd(body) }
         else if (!quiet && canShow) {
             when {
                 // מסך כבוי/נעול: חלון ממוזער וכרטיס לא נראים שם - מסך מלא
-                screenOff || style <= 1 -> try { startActivity(full) } catch (_: Exception) { }
-                // כרטיס מעל השעון: פותחים את המסך הראשי
-                style == 2 -> try {
-                    startActivity(Intent(this, MainActivity::class.java)
+                screenOff || style <= 1 -> launchOver(full)
+                // כרטיס מעל השעון: פותחים את המסך הראשי מעל האפליקציה הפתוחה
+                style == 2 -> launchOver(Intent(this, MainActivity::class.java)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
-                } catch (_: Exception) { }
                 // ממוזער: החלון הקטן למעלה (בלי הרשאה - מסך מלא)
-                else -> if (MiniOverlay.canShow(this)) main.post { MiniOverlay.show(this, full) }
-                        else try { startActivity(full) } catch (_: Exception) { }
+                else -> if (overlayOk()) main.post { MiniOverlay.show(this, full) }
+                        else launchOver(full)
             }
         }
 
@@ -779,6 +777,39 @@ class AlertService : Service() {
 
     /** מדליק את המסך כשהוא כבוי - שההתראה תופיע מיד גם על מסך הנעילה */
     @Suppress("DEPRECATION")
+    /** הרשאת "הצגה מעל אפליקציות אחרות" (canDrawOverlays לפעמים טועה - בודקים גם ב-AppOps) */
+    private fun overlayOk(): Boolean {
+        if (android.provider.Settings.canDrawOverlays(this)) return true
+        return try {
+            val ops = getSystemService(APP_OPS_SERVICE) as android.app.AppOpsManager
+            @Suppress("DEPRECATION")
+            ops.checkOpNoThrow(android.app.AppOpsManager.OPSTR_SYSTEM_ALERT_WINDOW,
+                android.os.Process.myUid(), packageName) == android.app.AppOpsManager.MODE_ALLOWED
+        } catch (_: Exception) { false }
+    }
+
+    /**
+     * פתיחת מסך ההתרעה מעל אפליקציה אחרת.
+     * מאנדרואיד 15 מותר לפתוח מסך מהרקע רק כשיש לאפליקציה חלון צף גלוי -
+     * אז מוסיפים חלון שקוף בגודל פיקסל, פותחים את המסך, ומסירים אותו אחרי כמה שניות.
+     */
+    private fun launchOver(i: Intent) = main.post {
+        val wm = getSystemService(WINDOW_SERVICE) as android.view.WindowManager
+        var v: android.view.View? = null
+        if (overlayOk()) try {
+            v = android.view.View(this)
+            wm.addView(v, android.view.WindowManager.LayoutParams(1, 1,
+                android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                android.graphics.PixelFormat.TRANSLUCENT).apply {
+                gravity = android.view.Gravity.TOP or android.view.Gravity.START })
+        } catch (_: Exception) { v = null }
+        try { startActivity(i) } catch (_: Exception) { }
+        main.postDelayed({ try { v?.let { wm.removeView(it) } } catch (_: Exception) { } }, 4000)
+    }
+
     private fun wakeScreen() {
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         if (pm.isInteractive) return
