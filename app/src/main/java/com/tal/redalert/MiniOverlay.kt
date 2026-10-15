@@ -142,6 +142,8 @@ object MiniOverlay {
                     else -> { label.text = title; timerLabel.text = ""; timer.textSize = 14f; timer.text = "ממתינים להודעת סיום"; bg?.setColor(Color.parseColor(RED)) }
                 }
                 timerBox.visibility = if (timer.text.isEmpty()) View.GONE else View.VISIBLE
+                // כיתוב ריק תופס שורה ודוחף את המלל למטה - מסתירים אותו כדי שהמלל יהיה באמצע הגובה
+                timerLabel.visibility = if (timerLabel.text.isEmpty()) View.GONE else View.VISIBLE
                 if (level == AlertService.LEVEL_ALERT && now < stayEnd) ui.postDelayed(this, 500)
             }
         }
@@ -157,7 +159,8 @@ object MiniOverlay {
         tick?.let { ui.removeCallbacks(it) }; tick = null
         bg?.setColor(Color.parseColor(GREEN))
         labelV?.text = "האירוע הסתיים"
-        timerLabelV?.text = ""; timerV?.textSize = 12f; timerV?.text = "ניתן לצאת\nמהמרחב המוגן"
+        timerLabelV?.text = ""; timerLabelV?.visibility = View.GONE
+        timerV?.textSize = 12f; timerV?.text = "ניתן לצאת\nמהמרחב המוגן"
         (timerV?.parent as? View)?.visibility = View.VISIBLE
         if (area.isNotEmpty()) { areaV?.text = area; areaV?.visibility = View.VISIBLE }
     }
