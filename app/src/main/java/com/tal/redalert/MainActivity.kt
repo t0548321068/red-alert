@@ -1249,7 +1249,13 @@ class MainActivity : Activity() {
         c.addView(text(t, 14f, C.TEXT).apply { setPadding(dp(18), dp(12), dp(18), dp(12)); setLineSpacing(dp(3).toFloat(), 1f) })
 
     /** מסך מצב שבת: בחירת מצב, עיר וזמני כניסה ויציאה, והסבר מה המצב עושה */
+    private var shabbatLocAsked = 0L
     private fun chooseShabbat() = ouiPage("מצב שבת") { body, rebuild ->
+        // מיקום עדכני (מהרשת) בכל פתיחה - והזמנים מחושבים מחדש לפיו
+        if (System.currentTimeMillis() - shabbatLocAsked > 60_000) {
+            shabbatLocAsked = System.currentTimeMillis()
+            try { Weather.networkLocation(this) { l -> if (l != null) runOnUiThread { rebuild() } } } catch (_: Exception) { }
+        }
         // מצב
         val modes = ouiCard()
         listOf(Shabbat.OFF to "כבוי", Shabbat.ON to "דלוק", Shabbat.AUTO to "אוטומטי")
