@@ -45,7 +45,10 @@
 </head>
 <body>
 <!-- מסך ההתרעה פותח את המפה עם #mini=... - מצב קטן מהרגע הראשון, בלי לחכות לאפליקציה -->
-<script>if (location.hash.indexOf('#mini=') === 0) document.body.classList.add('mini');</script>
+<script>if (location.hash.indexOf('#mini=') === 0) document.body.classList.add('mini');
+  // עיצוב בהיר מהרגע הראשון (מפה גדולה: #light, מפת ההתרעה: "dark":false)
+  if (location.hash === '#light' || location.hash.indexOf('%22dark%22%3Afalse') > 0 || location.hash.indexOf('"dark":false') > 0)
+    document.body.classList.add('light');</script>
 <div id="map"></div>
 <div class="bar">
   <button data-h="1">שעה</button>
