@@ -65,20 +65,8 @@
   var COLORS = ['#FF3B30', '#FF9F0A', '#30D158'];
   function css(v) { return getComputedStyle(document.body).getPropertyValue(v).trim(); }
 
-  var map = L.map('map', { zoomControl: false, attributionControl: false, preferCanvas: true, minZoom: 7, maxZoom: 18 })
+  var map = L.map('map', { zoomControl: false, attributionControl: false, preferCanvas: true, minZoom: 7, maxZoom: 16 })
     .setView([31.6, 34.9], 8);
-
-  // רחובות: מפת רקע מהאינטרנט (כהה/בהירה לפי ערכת הנושא). בלי אינטרנט - נשארת המפה הרגילה
-  var TILES_OK = false;
-  function tileUrl(dark) {
-    return 'https://{s}.basemaps.cartocdn.com/' + (dark ? 'dark_all' : 'rastertiles/voyager') + '/{z}/{x}/{y}{r}.png';
-  }
-  var streets = L.tileLayer(tileUrl(true), { subdomains: 'abcd', maxZoom: 18, keepBuffer: 3 }).addTo(map);
-  streets.on('tileload', function () {
-    if (TILES_OK) return;
-    TILES_OK = true;   // יש רחובות - האזורים שקופים כדי שיראו אותם, נשארים רק הגבולות
-    baseLayer.eachLayer(function (l) { if (l.setStyle) l.setStyle({ fillOpacity: 0 }); });
-  });
 
   var baseLayer = L.layerGroup().addTo(map);     // כל האזורים = המפה
   var labelLayer = L.layerGroup();               // שמות - רק כשמתקרבים
@@ -96,7 +84,7 @@
     Object.keys(ALL_AREAS).forEach(function (name) {
       var a = ALL_AREAS[name];
       if (only && !only.contains(a.c)) return;   // מפת ההתרעה: רק מה שבתצוגה - מהיר
-      if (a.p) L.polygon(a.p, { color: edge, weight: .6, fillColor: land, fillOpacity: TILES_OK ? 0 : 1 })
+      if (a.p) L.polygon(a.p, { color: edge, weight: .6, fillColor: land, fillOpacity: 1 })
         .bindPopup(info(name)).addTo(baseLayer);
       L.tooltip({ permanent: true, direction: 'center', className: 'lbl' })
         .setLatLng(a.c).setContent(name).addTo(labelLayer);
@@ -183,7 +171,6 @@
   function render(data) {
     DATA = data;
     document.body.classList.toggle('light', !data.dark);
-    streets.setUrl(tileUrl(data.dark));
     drawBase(); drawAlerts(); syncLabels();
   }
   function setMe(lat, lon, acc) {
