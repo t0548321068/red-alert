@@ -637,14 +637,15 @@ class MainActivity : Activity() {
     }
 
     private fun refresh() {
-        val on = Prefs.enabled(this)
+        val sched = Prefs.enabled(this) && Prefs.scheduleOffNow(this)   // פעיל, אבל עכשיו מחוץ לתזמון
+        val on = Prefs.enabled(this) && !sched
         val color = if (on) C.GREEN else C.OFF
         // כרטיס כהה, מסגרת ירוקה כשמוגן / אפורה כשלא
         circle.background = graphite(24).apply { setStroke(dp(2), Color.parseColor(if (on) "#4CAF50" else "#555555")) }
         shieldIcon.setImageResource(if (on) R.drawable.ic_shield_green else R.drawable.ic_shield_outline)
         haloOuter.background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(if (on) "#0F69F0AE" else "#00000000")) }
         haloInner.background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(if (on) "#2469F0AE" else "#10FFFFFF")) }
-        circleLabel.text = if (on) "מוגן" else "לא מוגן"
+        circleLabel.text = if (on) "מוגן" else if (sched) "כבוי לפי תזמון" else "לא מוגן"
         circleLabel.setTextColor(Color.parseColor(if (on) "#69F0AE" else "#AAAAAA"))
         setSweep(on)
         updateIndicators()
@@ -1408,8 +1409,8 @@ class MainActivity : Activity() {
         }
         val cats = listOf(
             // הפעלה / כיבוי של האפליקציה - כמו הכפתור בשורת החיווי
-            "צבע אדום" to { listOf(Row("⏻", "הגנה", { if (Prefs.enabled(this)) "פעיל – מוגן" else "כבוי – לא מקבל התרעות" },
-                on = { Prefs.enabled(this) }) { toggle() }) },
+            "צבע אדום" to { listOf(Row("⏻", "הגנה", { protectionLabel() },
+                on = { Prefs.enabled(this) }) { showProtection() }) },
             "תצוגה" to { listOf(Row("🎨", "תצוגה", { "ערכת צבעים · שעון · תאריך · מזג אוויר" }) { showDisplay() }) },
             "צלילים ורטט" to { listOf(
                 Row("📳", "צלילים ורטט", { "שעות שקט · נא לא להפריע · מצב שקט · שבת" }) { showSoundSettings() }) },
@@ -1473,6 +1474,58 @@ class MainActivity : Activity() {
     }
 
     private fun onOff(b: Boolean) = if (b) "פעיל" else "כבוי"
+
+    private fun protectionLabel(): String = when {
+        !Prefs.enabled(this) -> "כבוי – לא מקבל התרעות"
+        Prefs.scheduleOffNow(this) -> "כבוי עכשיו לפי תזמון"
+        Prefs.schedOn(this) -> "פעיל – מוגן · לפי תזמון"
+        else -> "פעיל – מוגן"
+    }
+
+    private val DAY_LETTERS = listOf("א", "ב", "ג", "ד", "ה", "ו", "ש")
+
+    /** מסך הגנה: הפעלה/כיבוי, ותזמון - באילו ימים ושעות האפליקציה פעילה */
+    private fun showProtection() = ouiPage("הגנה") { body, rebuild ->
+        val main = ouiCard()
+        ouiRow(main, "הגנה", sub = protectionLabel(), on = Prefs.enabled(this)) { toggle(); rebuild() }
+        ouiAdd(body, main)
+
+        val sc = ouiCard()
+        val on = Prefs.schedOn(this)
+        ouiRow(sc, "תזמון", sub = "פעיל רק בימים ובשעות שתבחר", on = on) { Prefs.setSchedOn(this, !on); refresh(); rebuild() }
+        if (on) {
+            ouiDivider(sc)
+            ouiRow(sc, "פעיל מ-", end = hhmm(Prefs.schedFrom(this)), endBig = true) {
+                pickTime("פעיל משעה", Prefs.schedFrom(this)) { Prefs.setSched(this, it, Prefs.schedTo(this)); refresh(); rebuild() } }
+            ouiDivider(sc)
+            ouiRow(sc, "עד", end = hhmm(Prefs.schedTo(this)), endBig = true) {
+                pickTime("פעיל עד שעה", Prefs.schedTo(this)) { Prefs.setSched(this, Prefs.schedFrom(this), it); refresh(); rebuild() } }
+            ouiDivider(sc)
+            // ימים: עיגול לכל יום, כחול = פעיל
+            val days = Prefs.schedDays(this)
+            sc.addView(LinearLayout(this).apply {
+                gravity = Gravity.CENTER
+                setPadding(dp(12), dp(14), dp(12), dp(16))
+                DAY_LETTERS.forEachIndexed { i, l ->
+                    val sel = days and (1 shl i) != 0
+                    addView(text(l, 15f, if (sel) Color.WHITE else C.TEXT, bold = sel).apply {
+                        gravity = Gravity.CENTER
+                        background = GradientDrawable().apply {
+                            shape = GradientDrawable.OVAL
+                            if (sel) setColor(Color.parseColor("#4C7DFF")) else setStroke(dp(1), C.MUTED)
+                        }
+                        setOnClickListener {
+                            val nd = days xor (1 shl i)
+                            if (nd != 0) { Prefs.setSchedDays(this@MainActivity, nd); refresh(); rebuild() }
+                        }
+                    }, LinearLayout.LayoutParams(dp(38), dp(38)).apply { setMargins(dp(4), 0, dp(4), 0) })
+                }
+            })
+        }
+        ouiAdd(body, sc)
+        ouiNote(body, if (on) "מחוץ לימים ולשעות האלה האפליקציה לא מקבלת התרעות. שעת סיום לפני שעת ההתחלה = עד למחרת"
+                      else "כשהתזמון כבוי - ההגנה פעילה כל הזמן")
+    }
 
     /** עמוד התרעות: כל ההגדרות של ההתרעה במקום אחד */
     private fun showAlertSettings() = ouiPage("הגדרות התרעות") { body, rebuild ->

@@ -249,6 +249,34 @@ object Prefs {
     fun setQuiet(c: Context, from: Int, to: Int) =
         sp(c).edit().putInt("quietFrom", from).putInt("quietTo", to).commit()
 
+    // ---- תזמון הגנה: האפליקציה פעילה רק בימים ובשעות שנבחרו ----
+    fun schedOn(c: Context) = sp(c).getBoolean("schedOn", false)
+    fun setSchedOn(c: Context, v: Boolean) = sp(c).edit().putBoolean("schedOn", v).commit()
+    fun schedFrom(c: Context) = sp(c).getInt("schedFrom", 7 * 60)
+    fun schedTo(c: Context) = sp(c).getInt("schedTo", 23 * 60)
+    fun setSched(c: Context, from: Int, to: Int) = sp(c).edit().putInt("schedFrom", from).putInt("schedTo", to).commit()
+    /** ימים: ביט 0 = ראשון ... ביט 6 = שבת */
+    fun schedDays(c: Context) = sp(c).getInt("schedDays", 0x7F)
+    fun setSchedDays(c: Context, v: Int) = sp(c).edit().putInt("schedDays", v).commit()
+
+    /** האם עכשיו מחוץ לתזמון (התרעות לא מתקבלות) */
+    fun scheduleOffNow(c: Context): Boolean {
+        if (!schedOn(c)) return false
+        val k = java.util.Calendar.getInstance()
+        val now = k.get(java.util.Calendar.HOUR_OF_DAY) * 60 + k.get(java.util.Calendar.MINUTE)
+        val today = k.get(java.util.Calendar.DAY_OF_WEEK) - 1          // 0 = ראשון
+        val yesterday = (today + 6) % 7
+        val days = schedDays(c)
+        fun dayOn(d: Int) = days and (1 shl d) != 0
+        val f = schedFrom(c); val t = schedTo(c)
+        val active = when {
+            f == t -> dayOn(today)                                       // כל היום
+            f < t -> dayOn(today) && now >= f && now < t
+            else -> (dayOn(today) && now >= f) || (dayOn(yesterday) && now < t)   // טווח שחוצה חצות
+        }
+        return !active
+    }
+
     fun isQuietNow(c: Context): Boolean {
         if (!quietOn(c)) return false
         val k = java.util.Calendar.getInstance()
