@@ -1121,7 +1121,7 @@ class MainActivity : Activity() {
 
     /** עמוד מלא: כותרת קטנה למעלה (כמו "תצוגה"), build נקרא מחדש בכל rebuild */
     private fun ouiPage(title: String, refreshOnFocus: Boolean = true, onClose: (() -> Unit)? = null,
-                        button: Pair<String, () -> Unit>? = null,
+                        button: Pair<String, (done: () -> Unit) -> Unit>? = null,
                         build: (LinearLayout, () -> Unit) -> Unit) {
         val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(30)) }
@@ -1150,11 +1150,31 @@ class MainActivity : Activity() {
         else {
             // כפתור כחול גדול קבוע מעל התפריט (כמו "בדוק אם יש עדכונים" בסמסונג)
             // מידות לפי הצילום מסמסונג: 60% רוחב, גובה 46, עיגול מלא, כחול #4C7DFF, טקסט 16 מודגש
-            val btn = text(button.first, 16f, Color.WHITE, bold = true).apply {
+            // בלחיצה: המלל מתחלף לאייקון טעינה מונפש עד שהפעולה מסתיימת
+            val label = text(button.first, 16f, Color.WHITE, bold = true).apply {
                 gravity = Gravity.CENTER
                 includeFontPadding = false
+            }
+            val spinner = android.widget.ProgressBar(this).apply {
+                isIndeterminate = true
+                indeterminateTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+                visibility = View.GONE
+            }
+            var busy = false
+            val btn = FrameLayout(this).apply {
                 background = GradientDrawable().apply { setColor(Color.parseColor("#4C7DFF")); cornerRadius = dp(23).toFloat() }
-                setOnClickListener { button.second() }
+                addView(label, FrameLayout.LayoutParams(-1, -1))
+                addView(spinner, FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER))
+                setOnClickListener {
+                    if (busy) return@setOnClickListener
+                    busy = true; label.visibility = View.INVISIBLE; spinner.visibility = View.VISIBLE
+                    val started = System.currentTimeMillis()
+                    button.second {
+                        // לפחות חצי שנייה של טעינה - שלא יהבהב
+                        postDelayed({ busy = false; spinner.visibility = View.GONE; label.visibility = View.VISIBLE },
+                            (500 - (System.currentTimeMillis() - started)).coerceAtLeast(0))
+                    }
+                }
             }
             val above = dp(10)
             frame.addView(btn, FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.6f).toInt(), dp(46),
@@ -2100,7 +2120,7 @@ class MainActivity : Activity() {
     /** מסך עדכונים: גרסה מותקנת + בדיקה, גרסאות בטא (למי שנפתח לו), ומה חדש */
     private fun showUpdates() = ouiPage("עדכונים",
         // אותה בדיקה בדיוק כמו לחיצה על הגרסה בשורת החיווי
-        button = "בדוק אם יש עדכונים" to { Updater.check(this, silent = false) }) { body, rebuild ->
+        button = "בדוק אם יש עדכונים" to { done -> Updater.check(this, silent = false, done = done) }) { body, rebuild ->
         val ver = ouiCard()
         ouiRow(ver, "גרסה מותקנת", end = "v" + Updater.versionLabel(this), endColor = C.MUTED)
         ouiDivider(ver)
