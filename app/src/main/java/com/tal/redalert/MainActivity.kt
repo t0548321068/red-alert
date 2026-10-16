@@ -1421,8 +1421,8 @@ class MainActivity : Activity() {
         fun rebuild() {
             body.removeAllViews()
             body.addView(text("הגדרות", 32f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(64), dp(24), dp(16)) })
-            cats.forEach { (title, rows) ->
-                body.addView(text(title, 13f, C.MUTED2).apply { setPadding(dp(28), dp(14), dp(28), dp(6)) })
+            cats.forEach { (_, rows) ->
+                // בלי כותרת מעל כל כרטיס - רק רווח בין הכרטיסים
                 val card = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
                     background = graphite(28)
@@ -1456,7 +1456,7 @@ class MainActivity : Activity() {
                     }
                     card.addView(row)
                 }
-                body.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), 0) })
+                body.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(12)) })
             }
             body.addView(View(this), LinearLayout.LayoutParams(-1, dp(30)))
         }
