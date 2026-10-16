@@ -96,7 +96,7 @@ open class AlertActivity : Activity() {
             setPadding(dpx(16), dpx(if (popup) 16 else 36), dpx(16), dpx(if (popup) 10 else 14))
             // אייקון מעל הכותרת לפי סוג ההתרעה (אותם אייקונים כמו ברשימת ההתרעות)
             // האייקון משתנה לפי השלב (היכנסו → נשארים במרחב המוגן → ממתינים לסיום)
-            val size = dpx(44)   // פופ-אפ: אותו גודל כמו במסך מלא
+            val size = dpx(36)   // פופ-אפ: אותו גודל כמו במסך מלא
             addView(ImageView(this@AlertActivity).apply {
                 AlertUi.setIcon(this, AlertUi.stageIcon(title, level, shelterSec, firedAt), big = false); stageIconV = this },
                 LinearLayout.LayoutParams(size, size))

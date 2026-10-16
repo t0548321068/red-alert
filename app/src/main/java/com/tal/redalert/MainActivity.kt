@@ -223,7 +223,7 @@ class MainActivity : Activity() {
             alertCardIconRes = 0
             // גופנים גדולים: אייקון, כותרת, שורת המשנה ואזור ההתרעה (מודגש)
             alertCard.addView(alertCardIcon,
-                LinearLayout.LayoutParams(dp(42), dp(42)).apply { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dp(2) })
+                LinearLayout.LayoutParams(dp(34), dp(34)).apply { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dp(2) })
             alertCard.addView(text(t1, 25f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER })
             alertCard.addView(text(t2, 19f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER })
             val body = j.optString("body")
