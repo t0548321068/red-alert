@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- גל - צונאמי (בלי גלים) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <!-- הגדלה לגודל אחיד עם שאר האייקונים -->
+    <group android:pivotX="12" android:pivotY="12" android:scaleX="1.222" android:scaleY="1.222">
     <group android:pivotX="11.98" android:pivotY="11.98" android:scaleX="2.051" android:scaleY="2.051" android:translateX="0.02" android:translateY="0.02">
         <group android:pivotX="12.00" android:pivotY="12.00" android:scaleX="0.409" android:scaleY="0.409" android:translateX="0.00" android:translateY="0.00">
             <group android:translateX="0.00" android:translateY="0.50">
@@ -8,5 +10,6 @@
                 <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.91" android:strokeLineCap="round" android:fillColor="#00000000" android:pathData="M2,18c2,0 3,-1.5 5,-1.5s3,1.5 5,1.5 3,-1.5 5,-1.5 3,1.5 5,1.5" />
             </group>
         </group>
+    </group>
     </group>
 </vector>

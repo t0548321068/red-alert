@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- סמל קרינה - אירוע רדיולוגי (בלי גלים) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <!-- הגדלה לגודל אחיד עם שאר האייקונים -->
+    <group android:pivotX="12" android:pivotY="12" android:scaleX="1.119" android:scaleY="1.119">
     <group android:pivotX="11.97" android:pivotY="11.98" android:scaleX="2.235" android:scaleY="2.235" android:translateX="0.03" android:translateY="0.02">
         <group android:pivotX="12.00" android:pivotY="11.98" android:scaleX="0.474" android:scaleY="0.474" android:translateX="0.00" android:translateY="0.02">
             <group android:translateX="0.00" android:translateY="0.62">
@@ -8,5 +10,6 @@
                 <path android:fillColor="#FFFFFFFF" android:pathData="M12,10.4a1.6,1.6 0 1 1 0,3.2a1.6,1.6 0 1 1 0,-3.2z" />
             </group>
         </group>
+    </group>
     </group>
 </vector>
