@@ -470,6 +470,8 @@ class AlertService : Service() {
     @Synchronized
     fun handle(rawTitle: String, rawAreas: List<String>, eventTime: Long = System.currentTimeMillis(),
                source: String = "") {
+        // תזמון הגנה: מחוץ לימים ולשעות שנבחרו - לא מקבלים התרעות
+        if (Prefs.scheduleOffNow(this)) return
         awake(60_000)   // התראה הגיעה - הטלפון נשאר ער לזמן הטיפול בה
         lastEventAt = System.currentTimeMillis()
         val level = levelOf(rawTitle)
