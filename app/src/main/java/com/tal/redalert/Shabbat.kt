@@ -15,16 +15,29 @@ object Shabbat {
     const val ON = 1
     const val AUTO = 2
 
-    // זמנים כמו בלוחות השבת המקובלים (נבדק מול ערוץ 7 בכמה ערים):
-    // כניסה 22 דקות לפני השקיעה המחושבת (בירושלים 42 - מנהג 40 דקות), יציאה בצאת הכוכבים. מעוגל לדקה
-    private const val CANDLE_MIN = 22L
-    private const val CANDLE_MIN_JLM = 42L
-    private const val END_SHIFT_MIN = -1L
+    // זמנים לפי שיטת אתר ישיבה (yeshiva.org.il/calendar/timeprinciples):
+    // כניסה - מספר דקות לפני השקיעה לפי מנהג המקום; יציאה - צאת הכוכבים (השמש 8.5° מתחת לאופק). מעוגל לדקה
+    private class Custom(val lat: Double, val lon: Double, val km: Float, val min: Long)
+    private val CUSTOMS = listOf(
+        Custom(31.778, 35.235, 12f, 40),   // ירושלים
+        Custom(32.087, 34.887, 5f, 40),    // פתח תקווה
+        Custom(32.180, 34.871, 4f, 20),    // רעננה
+        Custom(32.070, 34.790, 12f, 21),   // תל אביב וגוש דן
+        Custom(32.965, 35.496, 6f, 30),    // צפת
+        Custom(32.790, 35.530, 6f, 30),    // טבריה
+        Custom(32.800, 35.000, 12f, 30),   // חיפה
+        Custom(31.250, 34.790, 10f, 22),   // באר שבע
+        Custom(31.800, 34.650, 7f, 22),    // אשדוד
+    )
+    private const val CANDLE_DEFAULT = 30L   // מקום בלי מנהג ידוע - 30 דקות (משנה ברורה)
 
     private fun candleMin(lat: Double, lon: Double): Long {
         val r = FloatArray(1)
-        android.location.Location.distanceBetween(lat, lon, 31.778, 35.235, r)
-        return if (r[0] < 12_000f) CANDLE_MIN_JLM else CANDLE_MIN
+        for (c in CUSTOMS) {
+            android.location.Location.distanceBetween(lat, lon, c.lat, c.lon, r)
+            if (r[0] < c.km * 1000) return c.min
+        }
+        return CANDLE_DEFAULT
     }
     private fun roundMin(ms: Long) = (ms + 30_000) / 60_000 * 60_000
     private fun candle(prev: Calendar, lat: Double, lon: Double) =
@@ -101,7 +114,7 @@ object Shabbat {
     }
 
     private fun tzeit(day: Calendar, lat: Double, lon: Double) =
-        roundMin(sunset(day, lat, lon, 98.5) + END_SHIFT_MIN * 60_000)   // צאת הכוכבים: השמש 8.5° מתחת לאופק
+        roundMin(sunset(day, lat, lon, 98.5))   // צאת הכוכבים: השמש 8.5° מתחת לאופק
 
     /** שקיעה (או זנית אחר) ביום נתון - אלגוריתם NOAA, מחזיר זמן UTC במילישניות */
     private fun sunset(day: Calendar, lat: Double, lon: Double, zenith: Double): Long {
