@@ -1482,7 +1482,7 @@ class MainActivity : Activity() {
         else -> "פעיל – מוגן"
     }
 
-    private val DAY_LETTERS = listOf("א", "ב", "ג", "ד", "ה", "ו", "ש")
+    private val DAY_NAMES = listOf("ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת")
 
     /** מסך הגנה: הפעלה/כיבוי, ותזמון - באילו ימים ושעות האפליקציה פעילה */
     private fun showProtection() = ouiPage("הגנה") { body, rebuild ->
@@ -1494,36 +1494,22 @@ class MainActivity : Activity() {
         val on = Prefs.schedOn(this)
         ouiRow(sc, "תזמון", sub = "פעיל רק בימים ובשעות שתבחר", on = on) { Prefs.setSchedOn(this, !on); refresh(); rebuild() }
         if (on) {
-            ouiDivider(sc)
-            ouiRow(sc, "פעיל מ-", end = hhmm(Prefs.schedFrom(this)), endBig = true) {
-                pickTime("פעיל משעה", Prefs.schedFrom(this)) { Prefs.setSched(this, it, Prefs.schedTo(this)); refresh(); rebuild() } }
-            ouiDivider(sc)
-            ouiRow(sc, "עד", end = hhmm(Prefs.schedTo(this)), endBig = true) {
-                pickTime("פעיל עד שעה", Prefs.schedTo(this)) { Prefs.setSched(this, Prefs.schedFrom(this), it); refresh(); rebuild() } }
-            ouiDivider(sc)
-            // ימים: עיגול לכל יום, כחול = פעיל
-            val days = Prefs.schedDays(this)
-            sc.addView(LinearLayout(this).apply {
-                gravity = Gravity.CENTER
-                setPadding(dp(12), dp(14), dp(12), dp(16))
-                DAY_LETTERS.forEachIndexed { i, l ->
-                    val sel = days and (1 shl i) != 0
-                    addView(text(l, 15f, if (sel) Color.WHITE else C.TEXT, bold = sel).apply {
-                        gravity = Gravity.CENTER
-                        background = GradientDrawable().apply {
-                            shape = GradientDrawable.OVAL
-                            if (sel) setColor(Color.parseColor("#4C7DFF")) else setStroke(dp(1), C.MUTED)
-                        }
-                        setOnClickListener {
-                            val nd = days xor (1 shl i)
-                            if (nd != 0) { Prefs.setSchedDays(this@MainActivity, nd); refresh(); rebuild() }
-                        }
-                    }, LinearLayout.LayoutParams(dp(38), dp(38)).apply { setMargins(dp(4), 0, dp(4), 0) })
+            // לכל יום: מתג + השעות שלו. לחיצה על השורה - בחירת שעת התחלה ואז סיום
+            DAY_NAMES.forEachIndexed { d, name ->
+                ouiDivider(sc)
+                val dOn = Prefs.schedDayOn(this, d)
+                val f = Prefs.schedDayFrom(this, d); val t = Prefs.schedDayTo(this, d)
+                val range = when { !dOn -> "כבוי כל היום"; f == t -> "כל היום"; else -> hhmm(f) + "–" + hhmm(t) + if (t < f) " (עד למחרת)" else "" }
+                ouiRow(sc, name, sub = range, on = dOn,
+                    onToggle = { Prefs.setSchedDay(this, d, !dOn, f, t); refresh(); rebuild() }) {
+                    pickTime("$name – פעיל משעה", f) { nf ->
+                        pickTime("$name – פעיל עד שעה", t) { nt -> Prefs.setSchedDay(this, d, true, nf, nt); refresh(); rebuild() }
+                    }
                 }
-            })
+            }
         }
         ouiAdd(body, sc)
-        ouiNote(body, if (on) "מחוץ לימים ולשעות האלה האפליקציה לא מקבלת התרעות. שעת סיום לפני שעת ההתחלה = עד למחרת"
+        ouiNote(body, if (on) "מחוץ לשעות האלה האפליקציה לא מקבלת התרעות. לחיצה על יום – שינוי השעות. סיום לפני התחלה = עד למחרת"
                       else "כשהתזמון כבוי - ההגנה פעילה כל הזמן")
     }
 

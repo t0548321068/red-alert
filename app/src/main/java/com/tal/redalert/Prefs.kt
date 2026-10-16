@@ -252,12 +252,12 @@ object Prefs {
     // ---- תזמון הגנה: האפליקציה פעילה רק בימים ובשעות שנבחרו ----
     fun schedOn(c: Context) = sp(c).getBoolean("schedOn", false)
     fun setSchedOn(c: Context, v: Boolean) = sp(c).edit().putBoolean("schedOn", v).commit()
-    fun schedFrom(c: Context) = sp(c).getInt("schedFrom", 7 * 60)
-    fun schedTo(c: Context) = sp(c).getInt("schedTo", 23 * 60)
-    fun setSched(c: Context, from: Int, to: Int) = sp(c).edit().putInt("schedFrom", from).putInt("schedTo", to).commit()
-    /** ימים: ביט 0 = ראשון ... ביט 6 = שבת */
-    fun schedDays(c: Context) = sp(c).getInt("schedDays", 0x7F)
-    fun setSchedDays(c: Context, v: Int) = sp(c).edit().putInt("schedDays", v).commit()
+    // לכל יום שעות משלו (0 = ראשון ... 6 = שבת)
+    fun schedDayOn(c: Context, d: Int) = sp(c).getBoolean("schedD${d}On", true)
+    fun schedDayFrom(c: Context, d: Int) = sp(c).getInt("schedD${d}From", 7 * 60)
+    fun schedDayTo(c: Context, d: Int) = sp(c).getInt("schedD${d}To", 23 * 60)
+    fun setSchedDay(c: Context, d: Int, on: Boolean, from: Int, to: Int) = sp(c).edit()
+        .putBoolean("schedD${d}On", on).putInt("schedD${d}From", from).putInt("schedD${d}To", to).commit()
 
     /** האם עכשיו מחוץ לתזמון (התרעות לא מתקבלות) */
     fun scheduleOffNow(c: Context): Boolean {
@@ -266,15 +266,17 @@ object Prefs {
         val now = k.get(java.util.Calendar.HOUR_OF_DAY) * 60 + k.get(java.util.Calendar.MINUTE)
         val today = k.get(java.util.Calendar.DAY_OF_WEEK) - 1          // 0 = ראשון
         val yesterday = (today + 6) % 7
-        val days = schedDays(c)
-        fun dayOn(d: Int) = days and (1 shl d) != 0
-        val f = schedFrom(c); val t = schedTo(c)
-        val active = when {
-            f == t -> dayOn(today)                                       // כל היום
-            f < t -> dayOn(today) && now >= f && now < t
-            else -> (dayOn(today) && now >= f) || (dayOn(yesterday) && now < t)   // טווח שחוצה חצות
+        // היום: מהשעה שלו (עד חצות אם הטווח חוצה חצות)
+        val tf = schedDayFrom(c, today); val tt = schedDayTo(c, today)
+        val inToday = schedDayOn(c, today) && when {
+            tf == tt -> true                                             // כל היום
+            tf < tt -> now >= tf && now < tt
+            else -> now >= tf
         }
-        return !active
+        // אתמול: טווח שחוצה חצות ממשיך עד הבוקר
+        val yf = schedDayFrom(c, yesterday); val yt = schedDayTo(c, yesterday)
+        val fromYesterday = schedDayOn(c, yesterday) && yf > yt && now < yt
+        return !(inToday || fromYesterday)
     }
 
     fun isQuietNow(c: Context): Boolean {
