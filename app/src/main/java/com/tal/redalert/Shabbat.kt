@@ -15,8 +15,20 @@ object Shabbat {
     const val ON = 1
     const val AUTO = 2
 
-    private const val CANDLE_MIN = 40L   // כניסה: 40 דקות לפני השקיעה - הכי מוקדם מכל המנהגים (ירושלים), מתאים לכל הארץ
-    private const val END_EXTRA_MIN = 10L // יציאה: צאת הכוכבים + 10 דקות
+    // זמנים כמו בלוחות השבת המקובלים (נבדק מול ערוץ 7 בכמה ערים):
+    // כניסה 22 דקות לפני השקיעה המחושבת (בירושלים 42 - מנהג 40 דקות), יציאה בצאת הכוכבים. מעוגל לדקה
+    private const val CANDLE_MIN = 22L
+    private const val CANDLE_MIN_JLM = 42L
+    private const val END_SHIFT_MIN = -1L
+
+    private fun candleMin(lat: Double, lon: Double): Long {
+        val r = FloatArray(1)
+        android.location.Location.distanceBetween(lat, lon, 31.778, 35.235, r)
+        return if (r[0] < 12_000f) CANDLE_MIN_JLM else CANDLE_MIN
+    }
+    private fun roundMin(ms: Long) = (ms + 30_000) / 60_000 * 60_000
+    private fun candle(prev: Calendar, lat: Double, lon: Double) =
+        roundMin(sunset(prev, lat, lon, 90.833) - candleMin(lat, lon) * 60_000)
 
     fun label(mode: Int) = when (mode) { ON -> "דלוק"; AUTO -> "אוטומטי"; else -> "כבוי" }
 
@@ -41,7 +53,7 @@ object Shabbat {
             val day = (base.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, i) }
             val prev = (day.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, -1) }
             if (!isHoly(day) || isHoly(prev)) continue          // תחילת רצף של ימים קדושים
-            val start = sunset(prev, lat, lon, 90.833) - CANDLE_MIN * 60_000
+            val start = candle(prev, lat, lon)
             var last = day
             while (true) {
                 val next = (last.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 1) }
@@ -68,7 +80,7 @@ object Shabbat {
         // היום קדוש ועוד לא יצאו הכוכבים
         if (isHoly(today) && now < tzeit(today, lat, lon)) return true
         // מחר קדוש ועברה כניסת השבת/החג היום
-        if (isHoly(tomorrow) && now >= sunset(today, lat, lon, 90.833) - CANDLE_MIN * 60_000) return true
+        if (isHoly(tomorrow) && now >= candle(today, lat, lon)) return true
         return false
     }
 
@@ -89,7 +101,7 @@ object Shabbat {
     }
 
     private fun tzeit(day: Calendar, lat: Double, lon: Double) =
-        sunset(day, lat, lon, 98.5) + END_EXTRA_MIN * 60_000   // השמש 8.5° מתחת לאופק
+        roundMin(sunset(day, lat, lon, 98.5) + END_SHIFT_MIN * 60_000)   // צאת הכוכבים: השמש 8.5° מתחת לאופק
 
     /** שקיעה (או זנית אחר) ביום נתון - אלגוריתם NOAA, מחזיר זמן UTC במילישניות */
     private fun sunset(day: Calendar, lat: Double, lon: Double, zenith: Double): Long {
