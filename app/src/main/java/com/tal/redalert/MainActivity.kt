@@ -1298,7 +1298,7 @@ class MainActivity : Activity() {
                 end = fmtTime.format(java.util.Date(w.second)), endBig = true)
         }
         ouiAdd(body, times)
-        ouiNote(body, "לפי המיקום, כמו בלוחות השבת: כניסה 20 דקות לפני השקיעה (בירושלים 40), יציאה בצאת הכוכבים")
+        ouiNote(body, "לפי המיקום ושיטת אתר ישיבה: כניסה לפי מנהג המקום (ירושלים 40 דק׳, חיפה 30, תל אביב 21...), יציאה בצאת הכוכבים")
 
         // מה מצב שבת עושה
         val info = ouiCard()
