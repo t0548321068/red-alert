@@ -285,6 +285,11 @@ open class AlertActivity : Activity() {
             // שקוף עד שהמפה מוכנה - רואים את צבע ההתרעה, לא מלבן כהה
             setBackgroundColor(Color.TRANSPARENT)
             isVerticalScrollBarEnabled = false; isHorizontalScrollBarEnabled = false
+            // רחובות: אריחי OpenStreetMap יורדים דרך האפליקציה
+            webViewClient = object : android.webkit.WebViewClient() {
+                override fun shouldInterceptRequest(view: android.webkit.WebView, request: android.webkit.WebResourceRequest) =
+                    OsmTiles.intercept(this@AlertActivity, request)
+            }
             // הנתונים עוברים בכתובת - המפה נפתחת ישר במצב הקטן על אזור ההתרעה
             val me = try { Weather.lastLocation(this@AlertActivity) } catch (_: Exception) { null }
             val q = org.json.JSONObject().put("names", names).put("level", level)

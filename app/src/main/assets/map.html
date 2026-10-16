@@ -13,6 +13,10 @@
   html, body, #map { margin: 0; height: 100%; }
   body { font-family: sans-serif; }
   #map { background: var(--sea); }
+  /* רחובות: עד שהאריחים נטענים הם מוסתרים; במצב כהה - המפה הבהירה של OSM הופכת לכהה */
+  .leaflet-tile-pane { opacity: 0; }
+  body.streets .leaflet-tile-pane { opacity: 1; }
+  body:not(.light) .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.85); }
   .bar { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000;
          display: flex; gap: 6px; background: var(--panel); padding: 5px; border-radius: 18px; }
   .bar button { white-space: nowrap; border: 0; background: transparent; color: var(--text); padding: 7px 13px; border-radius: 14px; font-size: 14px; }
@@ -65,8 +69,19 @@
   var COLORS = ['#FF3B30', '#FF9F0A', '#30D158'];
   function css(v) { return getComputedStyle(document.body).getPropertyValue(v).trim(); }
 
-  var map = L.map('map', { zoomControl: false, attributionControl: false, preferCanvas: true, minZoom: 7, maxZoom: 16 })
+  var map = L.map('map', { zoomControl: false, attributionControl: false, preferCanvas: true, minZoom: 7, maxZoom: 18 })
     .setView([31.6, 34.9], 8);
+
+  // רחובות מ-OpenStreetMap (האפליקציה מורידה את האריחים). רק אחרי שאריח אמיתי נטען -
+  // מילוי האזורים נעשה שקוף כדי שיראו את הרחובות. בלי אינטרנט / חסימה - המפה נשארת כמו קודם
+  var TILES_OK = false;
+  var streets = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, maxNativeZoom: 19, keepBuffer: 2 }).addTo(map);
+  streets.on('tileload', function (e) {
+    if (TILES_OK || !e.tile || !e.tile.naturalWidth) return;
+    TILES_OK = true;
+    document.body.classList.add('streets');
+    baseLayer.eachLayer(function (l) { if (l.setStyle) l.setStyle({ fillOpacity: 0 }); });
+  });
 
   var baseLayer = L.layerGroup().addTo(map);     // כל האזורים = המפה
   var labelLayer = L.layerGroup();               // שמות - רק כשמתקרבים
@@ -84,7 +99,7 @@
     Object.keys(ALL_AREAS).forEach(function (name) {
       var a = ALL_AREAS[name];
       if (only && !only.contains(a.c)) return;   // מפת ההתרעה: רק מה שבתצוגה - מהיר
-      if (a.p) L.polygon(a.p, { color: edge, weight: .6, fillColor: land, fillOpacity: 1 })
+      if (a.p) L.polygon(a.p, { color: edge, weight: .6, fillColor: land, fillOpacity: TILES_OK ? 0 : 1 })
         .bindPopup(info(name)).addTo(baseLayer);
       L.tooltip({ permanent: true, direction: 'center', className: 'lbl' })
         .setLatLng(a.c).setContent(name).addTo(labelLayer);
