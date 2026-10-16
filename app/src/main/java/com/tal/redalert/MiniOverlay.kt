@@ -70,7 +70,7 @@ object MiniOverlay {
             visibility = if (area.isEmpty()) View.GONE else View.VISIBLE
         }
         val icon = android.widget.ImageView(app).apply {
-            AlertUi.setIcon(this, AlertUi.stageIcon(title, level, shelter, firedAt))
+            AlertUi.setIcon(this, AlertUi.stageIcon(title, level, shelter, firedAt), big = false)
             imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
         }
         val texts = LinearLayout(app).apply {
@@ -148,7 +148,7 @@ object MiniOverlay {
                     // אחרי 10 הדקות: "ממתינים להודעת סיום" בצד שמאל, במקום הטיימר
                     else -> { label.text = title; timerLabel.text = ""; timer.textSize = 14f; timer.text = "ממתינים להודעת סיום"; bg?.setColor(Color.parseColor(RED)) }
                 }
-                AlertUi.setIcon(icon, AlertUi.stageIcon(title, level, shelter, firedAt, now))
+                AlertUi.setIcon(icon, AlertUi.stageIcon(title, level, shelter, firedAt, now), big = false)
                 timerBox.visibility = if (timer.text.isEmpty()) View.GONE else View.VISIBLE
                 // כיתוב ריק תופס שורה ודוחף את המלל למטה - מסתירים אותו כדי שהמלל יהיה באמצע הגובה
                 timerLabel.visibility = if (timerLabel.text.isEmpty()) View.GONE else View.VISIBLE
@@ -167,7 +167,7 @@ object MiniOverlay {
         tick?.let { ui.removeCallbacks(it) }; tick = null
         bg?.setColor(Color.parseColor(GREEN))
         labelV?.text = "האירוע הסתיים"
-        AlertUi.setIcon(iconV, R.drawable.ic_list_end)
+        AlertUi.setIcon(iconV, R.drawable.ic_list_end, big = false)
         timerLabelV?.text = ""; timerLabelV?.visibility = View.GONE
         timerV?.textSize = 12f; timerV?.text = "ניתן לצאת\nמהמרחב המוגן"
         (timerV?.parent as? View)?.visibility = View.VISIBLE
