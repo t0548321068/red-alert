@@ -293,6 +293,7 @@ open class AlertActivity : Activity() {
             // הנתונים עוברים בכתובת - המפה נפתחת ישר במצב הקטן על אזור ההתרעה
             val me = try { Weather.lastLocation(this@AlertActivity) } catch (_: Exception) { null }
             val q = org.json.JSONObject().put("names", names).put("level", level)
+                .put("dark", Prefs.darkTheme(this@AlertActivity))   // מפה בהירה בעיצוב בהיר
             if (me != null) q.put("lat", me.latitude).put("lon", me.longitude)
             loadUrl("file:///android_asset/map.html#mini=" + android.net.Uri.encode(q.toString()))
         }
