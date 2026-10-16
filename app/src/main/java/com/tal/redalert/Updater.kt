@@ -54,11 +54,12 @@ object Updater {
      * silent = בדיקה אוטומטית: בלי הודעה כשאין עדכון,
      * ובלי פופ-אפ לגרסה שכבר נבחר עבורה "מאוחר יותר" (אז רק דרך ההגדרות)
      */
-    fun check(a: Activity, silent: Boolean) {
+    fun check(a: Activity, silent: Boolean, done: (() -> Unit)? = null) {
         Thread {
             var failed = false
             val u = try { best(a) } catch (_: Exception) { failed = true; null }
             a.runOnUiThread {
+                done?.invoke()   // סיום הבדיקה - למשל עצירת אייקון הטעינה בכפתור
                 if (a.isFinishing) return@runOnUiThread
                 when {
                     u != null ->
