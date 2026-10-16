@@ -1298,7 +1298,7 @@ class MainActivity : Activity() {
                 end = fmtTime.format(java.util.Date(w.second)), endBig = true)
         }
         ouiAdd(body, times)
-        ouiNote(body, "כניסה חצי שעה לפני השקיעה, יציאה 10 דקות אחרי צאת הכוכבים")
+        ouiNote(body, "כניסה 40 דקות לפני השקיעה, יציאה 10 דקות אחרי צאת הכוכבים – מתאים לכל הערים")
 
         // מה מצב שבת עושה
         val info = ouiCard()
