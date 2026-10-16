@@ -232,12 +232,17 @@
       b.classList.add('on'); MODE = b.dataset.m; drawAlerts();
     };
   });
-  // מסך ההתראה: מפה קטנה וקבועה (בלי גרירה) שמראה רק את אזורי ההתראה
+  // מסך ההתראה: מפה קטנה שמראה את אזורי ההתראה - אפשר לעשות זום (צביטה / לחיצה כפולה) ולהזיז
   function miniMode() {
     document.body.classList.add('mini');
-    map.dragging.disable(); map.touchZoom.disable(); map.doubleClickZoom.disable();
     map.scrollWheelZoom.disable(); map.boxZoom.disable(); map.keyboard.disable();
-    if (map.tap) map.tap.disable();
+    // אחרי זום או הזזה - מציירים את האזורים שבתצוגה החדשה
+    map.on('moveend', function () {
+      if (!document.body.classList.contains('ready')) return;
+      drawBase(map.getBounds().pad(0.6));
+      alertLayer.eachLayer(function (l) { if (l.bringToFront) l.bringToFront(); });
+      syncLabels();
+    });
   }
   function miniShow(names, level, lat, lon) {
     alertLayer.clearLayers();
