@@ -246,7 +246,7 @@ class MainActivity : Activity() {
         }
         // האייקון לפי השלב (היכנסו → נשארים במרחב המוגן → ממתינים לסיום)
         AlertUi.stageIcon(j.optString("title"), level, j.optInt("shelter", -1), firedAt).let { r ->
-            if (r != alertCardIconRes) { alertCardIconRes = r; alertCardIcon?.setImageResource(r) } }
+            if (r != alertCardIconRes) { alertCardIconRes = r; AlertUi.setIcon(alertCardIcon, r) } }
         AlertUi.timer(level, j.optInt("shelter", -1), firedAt)?.let { (lbl, t) ->
             alertCardLabel?.text = lbl
             alertCardLabel?.visibility = if (lbl.isEmpty()) View.GONE else View.VISIBLE
@@ -809,7 +809,7 @@ class MainActivity : Activity() {
                 val icon = AlertUi.icon(e.title, e.level)
                 row.addView(FrameLayout(this).apply {
                     background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(col)) }
-                    addView(android.widget.ImageView(this@MainActivity).apply { setImageResource(icon) },
+                    addView(android.widget.ImageView(this@MainActivity).apply { AlertUi.setIcon(this, icon) },
                         FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))
                 }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(12) })
                 val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -1320,7 +1320,7 @@ class MainActivity : Activity() {
                 addView(FrameLayout(this@MainActivity).apply {
                     background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(AlertUi.color(level))) }
                     addView(android.widget.ImageView(this@MainActivity).apply {
-                        setImageResource(AlertUi.icon(title, level))
+                        AlertUi.setIcon(this, AlertUi.icon(title, level))
                         imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
                     }, FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER))
                 }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(14) })
@@ -1901,7 +1901,8 @@ class MainActivity : Activity() {
             val d = getDrawable(it.icon)?.mutate()
             if (d != null) {
                 d.setTint(Color.parseColor(it.color))
-                d.setBounds(0, 0, size, size)
+                val s = (size * AlertUi.scale(it.icon)).toInt()
+                d.setBounds(0, 0, s, s)
                 sp.setSpan(CenteredIcon(d), i, i + 1, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
             i = it.text.indexOf('\uFFFC', i + 1)
