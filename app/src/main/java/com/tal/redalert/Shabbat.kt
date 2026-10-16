@@ -15,7 +15,7 @@ object Shabbat {
     const val ON = 1
     const val AUTO = 2
 
-    private const val CANDLE_MIN = 30L   // כניסה: חצי שעה לפני השקיעה (מרווח ביטחון)
+    private const val CANDLE_MIN = 40L   // כניסה: 40 דקות לפני השקיעה - הכי מוקדם מכל המנהגים (ירושלים), מתאים לכל הארץ
     private const val END_EXTRA_MIN = 10L // יציאה: צאת הכוכבים + 10 דקות
 
     fun label(mode: Int) = when (mode) { ON -> "דלוק"; AUTO -> "אוטומטי"; else -> "כבוי" }
