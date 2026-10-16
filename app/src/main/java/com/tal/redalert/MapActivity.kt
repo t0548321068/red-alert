@@ -51,7 +51,7 @@ class MapActivity : Activity() {
                 }.start()
             }
         }
-        web.loadUrl("file:///android_asset/map.html")
+        web.loadUrl("file:///android_asset/map.html" + if (dark) "" else "#light")   // ערכת נושא מהרגע הראשון
     }
 
     /** מיקום עדכני ומדויק (לא רק האחרון שהטלפון זוכר) - מסומן על המפה עם עיגול דיוק */
