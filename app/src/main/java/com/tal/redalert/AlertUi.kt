@@ -31,7 +31,8 @@ object AlertUi {
 
     /** אייקונים עגולים (מקדימה, סיום, מחבלים) נראים קטנים מהשאר - מוצגים מוגדלים */
     fun scale(res: Int): Float = when (res) {
-        R.drawable.ic_list_pre, R.drawable.ic_list_end, R.drawable.ic_alert_infiltration -> 1.40f
+        R.drawable.ic_list_pre, R.drawable.ic_list_end -> 1.40f
+        R.drawable.ic_alert_infiltration -> 1.55f   // מוקטן בפנים כדי שקווי הכוונת ייצאו מהעיגול
         else -> 1f
     }
 
