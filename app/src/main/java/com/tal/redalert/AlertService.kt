@@ -215,6 +215,7 @@ class AlertService : Service() {
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "redalert:poll").apply { setReferenceCounted(false) }
         instance = this
         scheduleWatchdog(this)
+        try { ShabbatLocReceiver.schedule(this) } catch (_: Exception) { }   // מצב שבת אוטומטי: מיקום עדכני לפני הכניסה
         running = true
         Thread(::loop, "oref-poll").start()
         Thread(::historyLoop, "oref-history").start()
