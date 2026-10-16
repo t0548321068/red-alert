@@ -261,7 +261,8 @@ class MainActivity : Activity() {
         startActivity(Intent(this, AlertActivity::class.java)
             .putExtra("title", j.optString("title")).putExtra("body", j.optString("body"))
             .putExtra("level", j.optInt("level")).putExtra("shelter", j.optInt("shelter", -1))
-            .putExtra("firedAt", j.optLong("firedAt")).putExtra("source", j.optString("source")))
+            .putExtra("firedAt", j.optLong("firedAt")).putExtra("source", j.optString("source"))
+            .putExtra("mapAreas", j.optString("mapAreas", j.optString("body"))))   // המפה - כמו בהתרעה עצמה
     }
 
     private fun updateClock() {

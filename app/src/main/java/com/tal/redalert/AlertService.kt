@@ -590,7 +590,8 @@ class AlertService : Service() {
         val now0 = System.currentTimeMillis()
         // לכרטיס מעל השעון במסך הראשי (מוצג עד סוף האירוע, גם אחרי סגירת המסך)
         Prefs.setActiveAlert(this, org.json.JSONObject().put("title", title).put("body", body).put("level", level)
-            .put("shelter", shelterSec ?: -1).put("firedAt", now0).put("source", srcName))
+            .put("shelter", shelterSec ?: -1).put("firedAt", now0).put("source", srcName)
+            .put("mapAreas", (mapAreas ?: areas).joinToString(", ")))   // למפה כשפותחים מהכרטיס
         val full = Intent(this, if (style == 1) AlertPopupActivity::class.java else AlertActivity::class.java)
             .putExtra("title", title).putExtra("body", body).putExtra("level", level)
             .putExtra("shelter", shelterSec ?: -1).putExtra("firedAt", now0)
