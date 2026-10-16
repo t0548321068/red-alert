@@ -1322,8 +1322,8 @@ class MainActivity : Activity() {
                     addView(android.widget.ImageView(this@MainActivity).apply {
                         AlertUi.setIcon(this, AlertUi.icon(title, level))
                         imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
-                    }, FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER))
-                }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(14) })
+                    }, FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))   // כמו בהתרעות אחרונות
+                }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(14) })
                 addView(text(label, 16f, C.TEXT), LinearLayout.LayoutParams(0, -2, 1f))
                 setOnClickListener {
                     Prefs.setEnabled(this@MainActivity, true)
