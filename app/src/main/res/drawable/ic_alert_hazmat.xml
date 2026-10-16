@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- מבחנה עם בועות - חומרים מסוכנים (בלי גלים) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <!-- הגדלה לגודל אחיד עם שאר האייקונים -->
+    <group android:pivotX="12" android:pivotY="12" android:scaleX="1.124" android:scaleY="1.124">
     <group android:pivotX="11.98" android:pivotY="11.98" android:scaleX="1.970" android:scaleY="1.970" android:translateX="0.02" android:translateY="0.02">
         <group android:pivotX="12.00" android:pivotY="12.00" android:scaleX="0.485" android:scaleY="0.485" android:translateX="-0.00" android:translateY="0.00">
             <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M8.5,7h7v1.6h-0.9v3.6l4.6,7.6a1.8,1.8 0 0 1 -1.5,2.7H6.3a1.8,1.8 0 0 1 -1.5,-2.7l4.6,-7.6V8.6h-0.9z" />
             <path android:fillColor="#FFFFFFFF" android:pathData="M11,1.5a1.2,1.2 0 1 1 0,2.4a1.2,1.2 0 1 1 0,-2.4zM14,3.5a1.6,1.6 0 1 1 0,3.2a1.6,1.6 0 1 1 0,-3.2z" />
         </group>
+    </group>
     </group>
 </vector>
