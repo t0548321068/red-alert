@@ -36,7 +36,7 @@ open class AlertActivity : Activity() {
     private val tick = object : Runnable {
         override fun run() {
             AlertUi.stageIcon(alertTitle, level, shelterSec, firedAt).let { r ->
-                if (r != stageRes) { stageRes = r; AlertUi.setIcon(stageIconV, r) } }
+                if (r != stageRes) { stageRes = r; AlertUi.setIcon(stageIconV, r, big = false) } }
             val cd = countdown ?: return
             val t = AlertUi.timer(level, shelterSec, firedAt) ?: return
             cdLabel?.text = t.first
@@ -98,7 +98,7 @@ open class AlertActivity : Activity() {
             // האייקון משתנה לפי השלב (היכנסו → נשארים במרחב המוגן → ממתינים לסיום)
             val size = dpx(44)   // פופ-אפ: אותו גודל כמו במסך מלא
             addView(ImageView(this@AlertActivity).apply {
-                AlertUi.setIcon(this, AlertUi.stageIcon(title, level, shelterSec, firedAt)); stageIconV = this },
+                AlertUi.setIcon(this, AlertUi.stageIcon(title, level, shelterSec, firedAt), big = false); stageIconV = this },
                 LinearLayout.LayoutParams(size, size))
             addView(tv(headTitle, 28f, bold = true))
             addView(tv(headNote, 20f).apply { setPadding(0, dpx(2), 0, 0) })
