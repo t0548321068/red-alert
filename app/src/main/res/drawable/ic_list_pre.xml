@@ -4,6 +4,7 @@
     <!-- הגדלה לגודל אחיד עם שאר האייקונים -->
     <group android:pivotX="12" android:pivotY="12" android:scaleX="1.235" android:scaleY="1.235">
     <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.2" android:fillColor="#00000000" android:pathData="M12,4a8,8 0,1 1,0 16a8,8 0,1 1,0 -16z"/>
-    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.2" android:strokeLineCap="round" android:fillColor="#00000000" android:pathData="M12,8v5M12,16v0.01"/>
+    <group android:pivotX="12" android:pivotY="12" android:scaleX="0.78" android:scaleY="0.78"><!-- הסמל הפנימי קטן יותר - רווח מהעיגול -->
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.82" android:strokeLineCap="round" android:fillColor="#00000000" android:pathData="M12,8v5M12,16v0.01"/></group>
     </group>
 </vector>
