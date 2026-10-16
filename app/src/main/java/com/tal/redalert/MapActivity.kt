@@ -30,6 +30,9 @@ class MapActivity : Activity() {
         }, "App")
 
         web.webViewClient = object : WebViewClient() {
+            // רחובות: אריחי OpenStreetMap יורדים דרך האפליקציה
+            override fun shouldInterceptRequest(view: WebView, request: android.webkit.WebResourceRequest) =
+                OsmTiles.intercept(this@MapActivity, request)
             override fun onPageFinished(view: WebView, url: String) {
                 Thread {
                     val data = buildData(dark)
