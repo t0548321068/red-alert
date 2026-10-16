@@ -36,10 +36,10 @@ object AlertUi {
         else -> 1f
     }
 
-    /** הצגת אייקון התרעה בגודל אחיד */
-    fun setIcon(v: android.widget.ImageView?, res: Int) {
+    /** הצגת אייקון התרעה בגודל אחיד. big=false: במסכי ההתרעה (מסך מלא, פופ-אפ, כרטיס, ממוזער) - בלי הגדלה */
+    fun setIcon(v: android.widget.ImageView?, res: Int, big: Boolean = true) {
         v ?: return
-        v.setImageResource(res); val s = scale(res); v.scaleX = s; v.scaleY = s
+        v.setImageResource(res); val s = if (big) scale(res) else 1f; v.scaleX = s; v.scaleY = s
     }
 
     /**
