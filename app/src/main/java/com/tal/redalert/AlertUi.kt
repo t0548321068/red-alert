@@ -29,6 +29,18 @@ object AlertUi {
         else -> R.drawable.ic_list_siren
     }
 
+    /** אייקונים עגולים (מקדימה, סיום, מחבלים) נראים קטנים מהשאר - מוצגים מוגדלים */
+    fun scale(res: Int): Float = when (res) {
+        R.drawable.ic_list_pre, R.drawable.ic_list_end, R.drawable.ic_alert_infiltration -> 1.22f
+        else -> 1f
+    }
+
+    /** הצגת אייקון התרעה בגודל אחיד */
+    fun setIcon(v: android.widget.ImageView?, res: Int) {
+        v ?: return
+        v.setImageResource(res); val s = scale(res); v.scaleX = s; v.scaleY = s
+    }
+
     /**
      * אייקון לפי השלב: בירי - סוג ההתרעה בזמן ההתגוננות, בית בזמן "נשארים במרחב המוגן",
      * שעון חול ב"ממתינים להודעת סיום". בשאר הרמות - כמו icon()
