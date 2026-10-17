@@ -16,7 +16,9 @@
   /* רחובות: עד שהאריחים נטענים הם מוסתרים; במצב כהה - המפה הבהירה של OSM הופכת לכהה */
   .leaflet-tile-pane { opacity: 0; }
   body.streets .leaflet-tile-pane { opacity: 1; }
-  body:not(.light) .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.85); }
+  /* מפה פשוטה: בלי צבעים (אפור בלבד) ובניגודיות נמוכה, כדי שאזורי ההתרעה יבלטו */
+  body.light .leaflet-tile-pane { filter: grayscale(1) contrast(.8) brightness(1.06); }
+  body:not(.light) .leaflet-tile-pane { filter: grayscale(1) invert(1) brightness(.72) contrast(.78); }
   .bar { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 1000;
          display: flex; gap: 6px; background: var(--panel); padding: 5px; border-radius: 18px; }
   .bar button { white-space: nowrap; border: 0; background: transparent; color: var(--text); padding: 7px 13px; border-radius: 14px; font-size: 14px; }
