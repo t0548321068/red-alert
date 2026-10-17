@@ -1724,7 +1724,42 @@ class MainActivity : Activity() {
     }
 
     /** עמוד צלילים ורטט: צלילים, רטט, שעות שקט, נא לא להפריע, מצב שקט ומצב שבת */
+    private fun muteLabel(): String {
+        val u = Prefs.muteUntil(this)
+        return when {
+            u <= System.currentTimeMillis() -> "כבוי"
+            u == Long.MAX_VALUE -> "מושתק עד שתבטל"
+            else -> "מושתק עד " + java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(java.util.Date(u))
+        }
+    }
+
+    /** השתקה זמנית: בחירת משך */
+    private fun chooseMute(done: () -> Unit) = ouiPage("השתקה זמנית", onClose = done) { body, rebuild ->
+        val c = ouiCard()
+        val opts = listOf("כבוי" to 0L, "30 דקות" to 30L, "שעה" to 60L, "שעתיים" to 120L, "4 שעות" to 240L, "8 שעות" to 480L, "עד שאבטל" to -1L)
+        val u = Prefs.muteUntil(this); val active = u > System.currentTimeMillis()
+        opts.forEachIndexed { i, (label, min) ->
+            if (i > 0) ouiDivider(c)
+            val sel = if (min == 0L) !active else if (min == -1L) u == Long.MAX_VALUE else false
+            ouiRow(c, label, radio = sel) {
+                Prefs.setMuteUntil(this, when (min) { 0L -> 0L; -1L -> Long.MAX_VALUE
+                    else -> System.currentTimeMillis() + min * 60_000 })
+                refresh(); rebuild()
+            }
+        }
+        ouiAdd(body, c)
+        ouiNote(body, if (active) muteLabel() + ". ההתרעות מוצגות כרגיל, בלי צליל, רטט והקראה" else "ההתרעות יוצגו כרגיל, אבל בלי צליל, רטט והקראה")
+    }
+
     private fun showSoundSettings() = ouiPage("צלילים ורטט") { body, rebuild ->
+        // השתקה זמנית - כרטיס נפרד למעלה
+        val m = ouiCard()
+        val muted = Prefs.mutedNow(this)
+        ouiRow(m, "השתקה זמנית", sub = muteLabel(), on = muted,
+            onToggle = { if (muted) Prefs.setMuteUntil(this, 0L) else Prefs.setMuteUntil(this, System.currentTimeMillis() + 60 * 60_000); rebuild() }) {
+            chooseMute { rebuild() } }
+        ouiAdd(body, m)
+        ouiNote(body, "כל ההתרעות מתקבלות בלי צליל ורטט – לזמן שתבחר")
         val c = ouiCard()
         val snd = Prefs.soundsOn(this); val vib = Prefs.vibesOn(this)
         ouiRow(c, "צלילים", sub = if (!snd) "כבוי" else if (AlertService.PHONE_DEFAULTS) "של הטלפון" else "פעיל",

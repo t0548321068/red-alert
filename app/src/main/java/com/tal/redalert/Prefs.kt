@@ -224,6 +224,10 @@ object Prefs {
 
     /** עקיפת מצב שקט: כשהטלפון על שקט/רטט - ההתרעה בכל זאת משמיעה צליל (ברירת מחדל: כבוי) */
     fun bypassSilent(c: Context) = sp(c).getBoolean("bypassSilent", false)
+    /** השתקה זמנית: עד מתי ההתרעות מגיעות בלי צליל, רטט והקראה (Long.MAX_VALUE = עד שמבטלים) */
+    fun muteUntil(c: Context) = sp(c).getLong("muteUntil", 0L)
+    fun setMuteUntil(c: Context, v: Long) = sp(c).edit().putLong("muteUntil", v).commit()
+    fun mutedNow(c: Context) = System.currentTimeMillis() < muteUntil(c)
     /** צליל חזק: כל ההתרעות בעוצמה מלאה, גם כשהווליום של הטלפון נמוך (למשל בעבודה במוסך) */
     fun loudSound(c: Context) = sp(c).getBoolean("loudSound", false)
     fun setLoudSound(c: Context, v: Boolean) = sp(c).edit().putBoolean("loudSound", v).commit()

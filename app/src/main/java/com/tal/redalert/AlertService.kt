@@ -608,7 +608,9 @@ class AlertService : Service() {
 
         // מתג צלילים / רטט כבוי - ערוץ בלי צליל ו/או בלי רטט (ערוץ אנדרואיד לא משתנה אחרי שנוצר)
         // מצב שבת עוקף הכל: שעות שקט, נא לא להפריע, מצב שקט, וגם מתגי הצלילים והרטט
-        val snd = shabbat || Prefs.soundsOn(this); val vib = shabbat || Prefs.vibesOn(this)
+        // השתקה זמנית: בלי צליל, בלי רטט ובלי הקראה - גובר על הכל (גם על מצב שבת וצליל חזק)
+        val muted = Prefs.mutedNow(this)
+        val snd = !muted && (shabbat || Prefs.soundsOn(this)); val vib = !muted && (shabbat || Prefs.vibesOn(this))
         val channel = when {
             quiet -> CH_QUIET
             !snd && !vib -> CH_SILENT
@@ -635,7 +637,7 @@ class AlertService : Service() {
         // ספירה לאחור גדולה בתוך ההתראה הקופצת
         // (בלי תצוגת טיימר מיוחדת - נראית כמו שאר ההתראות)
         val n = nb.build()
-        if (!quiet && level != LEVEL_END) overrideDnd(force = shabbat)
+        if (!quiet && !muted && level != LEVEL_END) overrideDnd(force = shabbat)
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n)
 
         // מסך מלא גם כשהטלפון פתוח ובשימוש:
@@ -691,7 +693,7 @@ class AlertService : Service() {
                 ringer != android.media.AudioManager.RINGER_MODE_NORMAL
             // צליל חזק: כשמופעל - תמיד, בכל ההתרעות (מקדימה, ירי, סיום), גם בשעות שקט ובמצב שקט.
             // עוצמת השעון המעורר למקסימום למשך הצליל, ואחר כך חוזרת למה שהיה
-            val loud = Prefs.loudSound(this)
+            val loud = !muted && Prefs.loudSound(this)
             val loudMs = if (level == LEVEL_ALERT) 15000L else 4000L
             if (loud) { boostAlarmVolume(loudMs); playAlarm(level, RingtoneManager.TYPE_ALARM, loudMs) }
             else if (bypass) playAlarm(level, RingtoneManager.TYPE_ALARM, if (level == LEVEL_ALERT) 15000 else 3000)
@@ -709,7 +711,7 @@ class AlertService : Service() {
 
         // הקראה: קודם מקריאים (סוג, אזורים, זמן להגעה) ואז הצליל.
         // הרטט מתחיל מיד. אם ההקראה נתקעת - הצליל מתחיל בכל מקרה אחרי 8 שניות.
-        if (!quiet && (Prefs.speakAlerts(this) || shabbat)) {
+        if (!quiet && !muted && (Prefs.speakAlerts(this) || shabbat)) {
             val started = java.util.concurrent.atomic.AtomicBoolean(false)
             val once = { if (started.compareAndSet(false, true)) main.post { playSound() } }
             speaker?.speakAlert(title, areas, shelterSec) { once() } ?: once()
