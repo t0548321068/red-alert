@@ -15,6 +15,13 @@ object AlertUi {
         else -> title to "היכנסו למרחב המוגן"
     }
 
+    /**
+     * רמה לתצוגה ברשימה ובמפה בלבד: "איום מלבנון" וכד' מוצג כמו התרעה מקדימה (אייקון וצבע כתום).
+     * הנוסח וההתנהגות (צליל, מסך וכו') לא משתנים
+     */
+    fun shownLevel(title: String, level: Int) =
+        if (level == AlertService.LEVEL_ALERT && title.contains("איום")) AlertService.LEVEL_PRE else level
+
     /** אייקון לפי סוג ההתרעה: מקדימה / סיום, ובאדום - לפי סוג האיום. לא מזוהה: צופר */
     fun icon(title: String, level: Int): Int = when {
         level == AlertService.LEVEL_PRE -> R.drawable.ic_list_pre

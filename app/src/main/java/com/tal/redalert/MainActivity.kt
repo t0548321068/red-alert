@@ -917,23 +917,22 @@ class MainActivity : Activity() {
                     setOnClickListener {
                         startActivity(Intent(this@MainActivity, MapActivity::class.java)
                             .putExtra("focus", e.body).putExtra("focusTs", e.ts).putExtra("focusAll", true)
-                            .putExtra("focusLevel", e.level).putExtra("focusTitle", e.title))   // ההתרעה שנלחצה - בצבע שלה
+                            .putExtra("focusLevel", AlertUi.shownLevel(e.title, e.level)).putExtra("focusTitle", e.title))   // ההתרעה שנלחצה - בצבע שלה
                     }
                 }
-                val col = when (e.level) {
+                val col = when (AlertUi.shownLevel(e.title, e.level)) {
                     AlertService.LEVEL_PRE -> "#F08C00"
                     AlertService.LEVEL_END -> "#2E7D32"
                     else -> "#E53935"
                 }
-                val icon = AlertUi.icon(e.title, e.level)
+                val icon = AlertUi.icon(e.title, AlertUi.shownLevel(e.title, e.level))
                 row.addView(FrameLayout(this).apply {
                     background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(col)) }
                     addView(android.widget.ImageView(this@MainActivity).apply { AlertUi.setIcon(this, icon) },
                         FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))
                 }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(12) })
                 val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-                // מקדימה: "התראה מקדימה", אבל "איום מלבנון..." נשאר בנוסח המלא (בכתום)
-                texts.addView(text(if (e.level == AlertService.LEVEL_PRE && !e.title.contains("איום")) "התראה מקדימה" else e.title, 15f, C.TEXT))
+                texts.addView(text(if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title, 15f, C.TEXT))
                 texts.addView(text(e.body.replace("ברחבי הארץ", AreaData.ALL_COUNTRY), 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
                 row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
                 row.addView(text(if (e.ts > 0) java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
