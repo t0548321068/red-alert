@@ -673,7 +673,10 @@ class MainActivity : Activity() {
         val on = Prefs.enabled(this) && !sched
         val color = if (on) C.GREEN else C.OFF
         // כרטיס כהה, מסגרת ירוקה כשמוגן / אפורה כשלא
-        circle.background = graphite(24).apply { setStroke(dp(2), Color.parseColor(if (on) "#4CAF50" else "#555555")) }
+        // מוגן: רקע ירוק כהה (בבהיר - ירוק בהיר) עם מסגרת ירוקה; לא מוגן - הכרטיס הרגיל עם מסגרת אפורה
+        circle.background = graphite(24).apply {
+            if (on) setColor(Color.parseColor(if (Prefs.darkTheme(this@MainActivity)) "#12301A" else "#E3F4E5"))
+            setStroke(dp(2), Color.parseColor(if (on) "#4CAF50" else "#555555")) }
         shieldIcon.setImageResource(if (on) R.drawable.ic_shield_green else R.drawable.ic_shield_outline)
         haloOuter.background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(if (on) "#0F69F0AE" else "#00000000")) }
         haloInner.background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(if (on) "#2469F0AE" else "#10FFFFFF")) }
