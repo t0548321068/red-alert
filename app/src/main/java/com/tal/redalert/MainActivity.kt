@@ -1412,10 +1412,8 @@ class MainActivity : Activity() {
             "צבע אדום" to { listOf(Row("⏻", "הגנה", { protectionLabel() },
                 on = { Prefs.enabled(this) }, toggle = { toggle() }) { showProtection() }) },
             "תצוגה" to { listOf(Row("🎨", "תצוגה", { "ערכת צבעים · שעון · תאריך · מזג אוויר" }) { showDisplay() }) },
-            "צלילים ורטט" to { listOf(
-                Row("📳", "צלילים ורטט", { "שעות שקט · נא לא להפריע · מצב שקט · שבת" }) { showSoundSettings() }) },
             "התרעות" to { listOf(
-                Row("🔔", "הגדרות התרעות", { "סוג תצוגה · מיקום · אזורים נוספים · הקראה · בדיקה" }) { showAlertSettings() }) },
+                Row("🔔", "הגדרות התרעות", { "סוג תצוגה · מיקום · אזורים נוספים · צלילים ורטט · הקראה · בדיקה" }) { showAlertSettings() }) },
             "הרשאות" to { phoneRows() },
             "כללי" to { generalRows() }
         )
@@ -1553,6 +1551,10 @@ class MainActivity : Activity() {
         val extra = ouiCard()
         ouiRow(extra, "אזורים נוספים") { showExtraAreas() }
         ouiAdd(body, extra)
+        // צלילים ורטט (הועבר מההגדרות הראשיות) - כרטיס נפרד מעל הקראה
+        val snd = ouiCard()
+        ouiRow(snd, "צלילים ורטט", sub = "שעות שקט · נא לא להפריע · מצב שקט · שבת") { showSoundSettings() }
+        ouiAdd(body, snd)
         // הקראה - כרטיס נפרד
         val sp = ouiCard()
         ouiRow(sp, "הקראה", sub = onOff(Prefs.speakAlerts(this)), on = Prefs.speakAlerts(this),
