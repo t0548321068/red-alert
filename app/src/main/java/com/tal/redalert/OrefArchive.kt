@@ -6,7 +6,38 @@ import java.net.URL
 
 /** כל ההתראות שהיו בארץ - מהארכיון של פיקוד העורף (החודש האחרון) */
 object OrefArchive {
-    private const val URL_MONTH = "https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=3"
+    private const val BASE = "https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he"
+    private const val URL_MONTH = "$BASE&mode=3"
+    private const val DAY = 24 * 3600 * 1000L
+
+    /**
+     * פעם אחת: משלים מהארכיון שנה אחורה (טווחי תאריכים של שבועיים), ושומר בטלפון.
+     * מחזיר true אם נוספו התרעות (כדי לרענן את הרשימה)
+     */
+    fun backfill(c: android.content.Context): Boolean {
+        val sp = c.getSharedPreferences("archive", android.content.Context.MODE_PRIVATE)
+        if (sp.getBoolean("backfillDone", false)) return false
+        val fmt = java.text.SimpleDateFormat("dd.MM.yyyy", java.util.Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("Asia/Jerusalem") }
+        val now = System.currentTimeMillis()
+        val got = ArrayList<Prefs.Entry>()
+        var ok = 0
+        var to = now - 28 * DAY   // החודש האחרון כבר מגיע מהבקשה הרגילה
+        while (to > now - 366 * DAY) {
+            val from = to - 13 * DAY
+            try {
+                got += fetchRaw("$BASE&fromDate=${fmt.format(java.util.Date(from))}&toDate=${fmt.format(java.util.Date(to))}&mode=0")
+                ok++
+            } catch (_: Exception) { }
+            to = from - DAY
+        }
+        if (ok == 0) return false   // אין חיבור - ננסה בפעם הבאה
+        val merged = LinkedHashMap<String, Prefs.Entry>()
+        (load(c) + got).forEach { e -> if (e.ts >= now - 366 * DAY) merged.putIfAbsent(e.title + "|" + e.ts, e) }
+        save(c, merged.values.sortedByDescending { it.ts })
+        sp.edit().putBoolean("backfillDone", true).apply()
+        return got.isNotEmpty()
+    }
 
     /**
      * ההתרעות של החודש האחרון מהארכיון + מה שנשמר בטלפון מפעמים קודמות - כך הרשימה גדלה עם הזמן
@@ -41,8 +72,8 @@ object OrefArchive {
     } catch (_: Exception) { false }
 
     /** השורות מהארכיון (לפני איחוד אירועים) */
-    private fun fetchRaw(): List<Prefs.Entry> {
-        val conn = URL(URL_MONTH + "&t=" + System.currentTimeMillis()).openConnection() as HttpURLConnection
+    private fun fetchRaw(url: String = URL_MONTH): List<Prefs.Entry> {
+        val conn = URL(url + "&t=" + System.currentTimeMillis()).openConnection() as HttpURLConnection
         conn.connectTimeout = 8000
         conn.readTimeout = 15000
         conn.useCaches = false

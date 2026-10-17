@@ -853,6 +853,11 @@ class MainActivity : Activity() {
                 archiveCache = list
                 fillRecent(c, list)
             }
+            // פעם אחת: השלמה מהארכיון שנה אחורה, ואז מרעננים את הרשימה
+            if (try { OrefArchive.backfill(this) } catch (_: Exception) { false }) {
+                val full = try { OrefArchive.fetchAndKeep(this) } catch (_: Exception) { emptyList() }
+                if (full.isNotEmpty()) runOnUiThread { archiveCache = full; recentList?.let { fillRecent(it, full) } }
+            }
         }.start()
     }
 
