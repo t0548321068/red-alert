@@ -832,7 +832,8 @@ class MainActivity : Activity() {
                     // לחיצה: המפה על האזורים של ההתראה
                     setOnClickListener {
                         startActivity(Intent(this@MainActivity, MapActivity::class.java)
-                            .putExtra("focus", e.body).putExtra("focusTs", e.ts).putExtra("focusAll", true))
+                            .putExtra("focus", e.body).putExtra("focusTs", e.ts).putExtra("focusAll", true)
+                            .putExtra("focusLevel", e.level).putExtra("focusTitle", e.title))   // ההתרעה שנלחצה - בצבע שלה
                     }
                 }
                 val col = when (e.level) {
