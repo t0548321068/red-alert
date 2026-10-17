@@ -81,9 +81,59 @@ object TimeFormat {
         return "%02d/%02d/%d".format(k.get(Calendar.DAY_OF_MONTH), k.get(Calendar.MONTH) + 1, k.get(Calendar.YEAR))
     }
 
-    /** שורת יום + תאריך (בלי תאריך אם כובה) */
-    fun dayLine(c: Context, ms: Long): String =
-        if (Prefs.showDate(c)) "${day(c, ms)} · ${date(ms)}" else day(c, ms)
+    /** שורת יום + תאריך (בלי תאריך אם כובה) - לועזי / עברי / שניהם לפי ההגדרה */
+    fun dayLine(c: Context, ms: Long): String {
+        if (!Prefs.showDate(c)) return day(c, ms)
+        val d = when (Prefs.dateKind(c)) {
+            1 -> hebrewDate(ms)
+            2 -> "${date(ms)} · ${hebrewDate(ms)}"
+            else -> date(ms)
+        }
+        return "${day(c, ms)} · $d"
+    }
+
+    /** תאריך עברי, למשל: ו' בחשוון תשפ"ז */
+    fun hebrewDate(ms: Long): String {
+        val h = android.icu.util.HebrewCalendar(android.icu.util.TimeZone.getTimeZone("Asia/Jerusalem"))
+        h.timeInMillis = ms
+        val day = h.get(android.icu.util.Calendar.DAY_OF_MONTH)
+        val m = h.get(android.icu.util.Calendar.MONTH)
+        val year = h.get(android.icu.util.Calendar.YEAR)
+        val leap = ((7 * year + 1) % 19) < 7
+        val month = when (m) {
+            android.icu.util.HebrewCalendar.TISHRI -> "תשרי"
+            android.icu.util.HebrewCalendar.HESHVAN -> "חשוון"
+            android.icu.util.HebrewCalendar.KISLEV -> "כסלו"
+            android.icu.util.HebrewCalendar.TEVET -> "טבת"
+            android.icu.util.HebrewCalendar.SHEVAT -> "שבט"
+            android.icu.util.HebrewCalendar.ADAR_1 -> if (leap) "אדר א'" else "אדר"
+            android.icu.util.HebrewCalendar.ADAR -> if (leap) "אדר ב'" else "אדר"
+            android.icu.util.HebrewCalendar.NISAN -> "ניסן"
+            android.icu.util.HebrewCalendar.IYAR -> "אייר"
+            android.icu.util.HebrewCalendar.SIVAN -> "סיוון"
+            android.icu.util.HebrewCalendar.TAMUZ -> "תמוז"
+            android.icu.util.HebrewCalendar.AV -> "אב"
+            else -> "אלול"
+        }
+        return "${gematria(day)} ב$month ${gematria(year % 1000)}"
+    }
+
+    /** מספר באותיות עבריות עם גרש / גרשיים (15 = ט"ו, 16 = ט"ז) */
+    private fun gematria(n0: Int): String {
+        var n = n0
+        val sb = StringBuilder()
+        val hundreds = listOf(400 to "ת", 300 to "ש", 200 to "ר", 100 to "ק")
+        for ((v, l) in hundreds) while (n >= v) { sb.append(l); n -= v }
+        when (n) {
+            15 -> { sb.append("טו"); n = 0 }
+            16 -> { sb.append("טז"); n = 0 }
+        }
+        val tens = listOf(90 to "צ", 80 to "פ", 70 to "ע", 60 to "ס", 50 to "נ", 40 to "מ", 30 to "ל", 20 to "כ", 10 to "י")
+        for ((v, l) in tens) if (n >= v) { sb.append(l); n -= v; break }
+        if (n > 0) sb.append("אבגדהוזחט"[n - 1])
+        val s = sb.toString()
+        return if (s.length == 1) "$s'" else s.dropLast(1) + "\"" + s.last()
+    }
 
     /** לשורה ברשימת ההתראות */
     fun stamp(c: Context, ms: Long): String {
