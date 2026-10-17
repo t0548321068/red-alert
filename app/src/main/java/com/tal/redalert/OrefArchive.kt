@@ -8,7 +8,40 @@ import java.net.URL
 object OrefArchive {
     private const val URL_MONTH = "https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=3"
 
-    fun fetch(): List<Prefs.Entry> {
+    /**
+     * ההתרעות של החודש האחרון מהארכיון + מה שנשמר בטלפון מפעמים קודמות - כך הרשימה גדלה עם הזמן
+     * ולא נמחקת אחרי חודש (נשמר עד שנה אחורה). בלי חיבור - מה שנשמר.
+     */
+    fun fetchAndKeep(c: android.content.Context): List<Prefs.Entry> {
+        val stored = load(c)
+        val fresh = try { fetchRaw() } catch (_: Exception) { emptyList() }
+        val yearAgo = System.currentTimeMillis() - 366L * 24 * 3600 * 1000
+        val merged = LinkedHashMap<String, Prefs.Entry>()
+        (fresh + stored).forEach { e -> if (e.ts >= yearAgo) merged.putIfAbsent(e.title + "|" + e.ts, e) }
+        val all = merged.values.sortedByDescending { it.ts }
+        if (fresh.isNotEmpty()) save(c, all)
+        return Prefs.collapse(all)
+    }
+
+    private fun file(c: android.content.Context) = java.io.File(c.filesDir, "archive.json")
+
+    private fun load(c: android.content.Context): List<Prefs.Entry> = try {
+        val arr = JSONArray(file(c).readText())
+        (0 until arr.length()).map { i ->
+            val o = arr.getJSONObject(i)
+            Prefs.Entry("", o.getString("t"), o.optString("b"), o.optInt("l"), o.getLong("ts"))
+        }
+    } catch (_: Exception) { emptyList() }
+
+    private fun save(c: android.content.Context, list: List<Prefs.Entry>) = try {
+        val arr = JSONArray()
+        list.forEach { arr.put(org.json.JSONObject().put("t", it.title).put("b", it.body).put("l", it.level).put("ts", it.ts)) }
+        val tmp = java.io.File(c.filesDir, "archive.json.tmp")
+        tmp.writeText(arr.toString()); tmp.renameTo(file(c))
+    } catch (_: Exception) { false }
+
+    /** השורות מהארכיון (לפני איחוד אירועים) */
+    private fun fetchRaw(): List<Prefs.Entry> {
         val conn = URL(URL_MONTH + "&t=" + System.currentTimeMillis()).openConnection() as HttpURLConnection
         conn.connectTimeout = 8000
         conn.readTimeout = 15000
@@ -42,7 +75,6 @@ object OrefArchive {
             Prefs.Entry("", if (level == AlertService.LEVEL_END) "האירוע הסתיים" else title,
                 areas.joinToString(", "), level, ts)
         }.sortedByDescending { it.ts }
-        // אותו אירוע שהתפרס על כמה דקות / כמה שורות סיום - שורה אחת
-        return Prefs.collapse(list)
+        return list
     }
 }
