@@ -96,7 +96,7 @@ class MapActivity : Activity() {
             if (names.length() > 0) {
                 events.put(JSONObject()
                     .put("ts", e.ts).put("title", e.title)
-                    .put("level", e.level).put("areas", names))
+                    .put("level", AlertUi.shownLevel(e.title, e.level)).put("areas", names))   // "איום" - בכתום
             }
         }
         return events

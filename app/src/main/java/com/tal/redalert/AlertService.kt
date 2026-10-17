@@ -95,9 +95,8 @@ class AlertService : Service() {
         /** סיווג לפי נוסח ההודעה של פיקוד העורף */
         fun levelOf(title: String): Int = when {
             title.contains("הסתיים") || title.contains("הוסר") || title.contains("ניתן לצאת") -> LEVEL_END
-            // "איום מלבנון" וכד' - התרעה מקדימה
             title.contains("בדקות הקרובות") || title.contains("צפויות") ||
-                title.contains("מקדימה") || title.contains("איום") -> LEVEL_PRE
+                title.contains("מקדימה") -> LEVEL_PRE
             else -> LEVEL_ALERT
         }
 
