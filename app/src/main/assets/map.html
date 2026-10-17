@@ -83,7 +83,9 @@
     if (TILES_OK || !e.tile || !e.tile.naturalWidth) return;
     TILES_OK = true;
     document.body.classList.add('streets');
-    baseLayer.eachLayer(function (l) { if (l.setStyle) l.setStyle({ fillOpacity: 0 }); });
+    // מפה פשוטה: יש רחובות - בלי מילוי, בלי גבולות ובלי שמות שלנו (השמות של מפת הרחובות מספיקים)
+    baseLayer.eachLayer(function (l) { if (l.setStyle) l.setStyle({ fillOpacity: 0, opacity: 0 }); });
+    syncLabels();
   });
 
   var baseLayer = L.layerGroup().addTo(map);     // כל האזורים = המפה
@@ -102,7 +104,7 @@
     Object.keys(ALL_AREAS).forEach(function (name) {
       var a = ALL_AREAS[name];
       if (only && !only.contains(a.c)) return;   // מפת ההתרעה: רק מה שבתצוגה - מהיר
-      if (a.p) L.polygon(a.p, { color: edge, weight: .6, fillColor: land, fillOpacity: TILES_OK ? 0 : 1 })
+      if (a.p) L.polygon(a.p, { color: edge, weight: .6, opacity: TILES_OK ? 0 : 1, fillColor: land, fillOpacity: TILES_OK ? 0 : 1 })
         .bindPopup(info(name)).addTo(baseLayer);
       L.tooltip({ permanent: true, direction: 'center', className: 'lbl' })
         .setLatLng(a.c).setContent(name).addTo(labelLayer);
@@ -120,6 +122,11 @@
   }
   // שמות היישובים רק מזום 12 - אחרת צפוף מדי
   function syncLabels() {
+    if (TILES_OK) {   // עם רחובות - בלי שמות כפולים
+      if (map.hasLayer(labelLayer)) map.removeLayer(labelLayer);
+      if (map.hasLayer(cityLayer)) map.removeLayer(cityLayer);
+      return;
+    }
     var near = map.getZoom() >= 12;
     if (near) { if (!map.hasLayer(labelLayer)) labelLayer.addTo(map); if (map.hasLayer(cityLayer)) map.removeLayer(cityLayer); }
     else { if (map.hasLayer(labelLayer)) map.removeLayer(labelLayer); if (!map.hasLayer(cityLayer)) cityLayer.addTo(map); }
