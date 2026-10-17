@@ -88,6 +88,7 @@ class MainActivity : Activity() {
     private lateinit var protInd: TextView   // מוגן / לא מוגן
     private lateinit var locInd: TextView
     private lateinit var srvInd: TextView
+    private lateinit var sndInd: TextView   // צלילים: רגיל / חזק / שקט / מושתק / כבוי
     private var weatherAt = 0L
     private var weatherAccuracy = -1
     private var lastHistoryKey = ""
@@ -383,6 +384,7 @@ class MainActivity : Activity() {
         protInd = indicator(R.drawable.ic_shield_ind) { toggle() }   // לחיצה: הפעלה / כיבוי (נראה כמו שאר החיוויים)
         locInd = indicator(R.drawable.ic_location) { onLocationIndicator() }   // לחיצה: רענון מיקום
         srvInd = indicator(R.drawable.ic_antenna) { showSourcesInfo() }   // לחיצה: רשימת המקורות
+        sndInd = indicator(R.drawable.ic_set_sound) { showSoundSettings() }   // לחיצה: הגדרות צלילים ורטט
         // גרסה: 7 לחיצות מהירות - פותח את אפשרות הבטא (מוסתרת משאר המשתמשים)
         var taps = 0; var lastTap = 0L
         // לחיצה: בדיקת עדכונים מיד - בדיוק כמו "בדיקת עדכונים" בהגדרות.
@@ -401,7 +403,7 @@ class MainActivity : Activity() {
         }
         setInd(verInd, R.drawable.ic_info, "v${Updater.currentVersion(this)}" +
             if (Updater.isBetaBuild(this) && !Updater.currentVersion(this).endsWith("b")) "b" else "", C.MUTED)
-        listOf(protInd, netInd, locInd, srvInd, verInd).forEachIndexed { i, v ->
+        listOf(protInd, sndInd, netInd, locInd, srvInd, verInd).forEachIndexed { i, v ->
             if (i > 0) status.addView(View(this).apply { setBackgroundColor(C.LINE2) },
                 LinearLayout.LayoutParams(dp(1), dp(26)))
             status.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
@@ -2099,6 +2101,7 @@ class MainActivity : Activity() {
     /** חיווי: אייקון למעלה, טקסט מתחת */
     private fun indicator(icon: Int, onClick: (() -> Unit)?) = text("", 12f, C.TEXT).apply {
         setIndIcon(this, icon)
+        maxLines = 1; ellipsize = TextUtils.TruncateAt.END   // 6 חיוויים בשורה - שורה אחת
         // האייקון גדל ב-15%, והרווח שמתחת לו קטן באותה מידה - גובה השורה לא משתנה
         compoundDrawablePadding = (dp(4) - (dp(18) * 0.15f).toInt()).coerceAtLeast(0)
         gravity = Gravity.CENTER
@@ -2193,6 +2196,14 @@ class MainActivity : Activity() {
         updateFeed()
         if (Prefs.enabled(this)) setInd(protInd, R.drawable.ic_shield_ind, "מוגן", C.GREEN)
         else setInd(protInd, R.drawable.ic_shield_ind_off, "לא מוגן", C.RED)
+        // חיווי צלילים
+        when {
+            Prefs.mutedNow(this) -> setInd(sndInd, R.drawable.ic_volume_off, "מושתק", C.RED)
+            Prefs.loudSound(this) -> setInd(sndInd, R.drawable.ic_set_sound, "חזק", C.GREEN)
+            !Prefs.soundsOn(this) -> setInd(sndInd, R.drawable.ic_volume_off, "כבוי", C.RED)
+            Prefs.isQuietNow(this) -> setInd(sndInd, R.drawable.ic_set_sound, "שקט", C.ORANGE)
+            else -> setInd(sndInd, R.drawable.ic_set_sound, "צלילים", C.GREEN)
+        }
         if (Prefs.isQuietNow(this)) {
             quietLine.text = "🌙 שעות שקט עד ${hhmm(Prefs.quietTo(this))} · מקדימה וסיום בשקט"
             quietLine.setTextColor(C.ORANGE)
@@ -2210,7 +2221,7 @@ class MainActivity : Activity() {
         when {
             net == null -> setInd(netInd, R.drawable.ic_globe, "אין רשת", C.RED)
             net.first == "wifi" -> setInd(netInd, R.drawable.ic_globe, "Wi-Fi", if (net.second) C.GREEN else C.ORANGE)
-            net.first == "cell" -> setInd(netInd, R.drawable.ic_globe, "נתונים ניידים", if (net.second) C.GREEN else C.ORANGE)
+            net.first == "cell" -> setInd(netInd, R.drawable.ic_globe, "נתונים", if (net.second) C.GREEN else C.ORANGE)
             else -> setInd(netInd, R.drawable.ic_globe, "מחובר", if (net.second) C.GREEN else C.ORANGE)
         }
         // מיקום: מתחתיו דיוק המיקום במטרים
@@ -2231,7 +2242,7 @@ class MainActivity : Activity() {
             }
             val label = when {
                 connecting -> "מתחבר…"
-                up > 0 -> "מחובר לשרת"
+                up > 0 -> "מחובר"
                 else -> "לא מחובר"
             }
             setInd(srvInd, R.drawable.ic_antenna, label, color)
