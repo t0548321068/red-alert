@@ -34,8 +34,7 @@
             border-radius: 50%; border: 0; background: var(--panel); box-shadow: 0 2px 10px rgba(0,0,0,.25);
             display: flex; align-items: center; justify-content: center; }
   .me-btn svg { width: 24px; height: 24px; fill: var(--accent); }
-  .lbl { background: transparent; border: 0; box-shadow: none; color: var(--label); font-size: 11px; padding: 0;
-         text-shadow: 0 0 3px var(--sea), 0 0 3px var(--sea), 0 0 2px var(--sea); }
+  .lbl { background: transparent; border: 0; box-shadow: none; color: var(--label); font-size: 11px; padding: 0; }
   .lbl::before { display: none; }
   .city { background: transparent; border: 0; box-shadow: none; color: var(--text); font-size: 13px; font-weight: bold;
           padding: 0; text-shadow: 0 0 3px var(--sea), 0 0 3px var(--sea); }
@@ -75,7 +74,8 @@
   // מילוי האזורים נעשה שקוף כדי שיראו אותם. בלי אינטרנט - המפה נשארת כמו קודם
   var TILES_OK = false, STYLE_DARK = !document.body.classList.contains('light');
   // עברית מימין לשמאל בשמות שעל המפה
-  try { maplibregl.setRTLTextPlugin('https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-rtl-text@0.3.0/dist/mapbox-gl-rtl-text.js', true); } catch (e) { }
+  // נטען מיד (לא בהשהיה) - אחרת השמות מופיעים רק אחרי זום
+  try { maplibregl.setRTLTextPlugin('https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-rtl-text@0.3.0/dist/mapbox-gl-rtl-text.js', false); } catch (e) { }
   var streets = null;
   try {
     streets = L.maplibreGL({ style: mapStyle(STYLE_DARK), interactive: false }).addTo(map);
@@ -130,7 +130,11 @@
   }
   // שמות היישובים רק מזום 12 - אחרת צפוף מדי
   function syncLabels() {
-    // שמות היישובים שלנו מוצגים תמיד (גם עם מפת הרחובות - שם רק שמות רחובות)
+    if (TILES_OK) {   // עם רחובות - בלי שמות כפולים
+      if (map.hasLayer(labelLayer)) map.removeLayer(labelLayer);
+      if (map.hasLayer(cityLayer)) map.removeLayer(cityLayer);
+      return;
+    }
     var near = map.getZoom() >= 12;
     if (near) { if (!map.hasLayer(labelLayer)) labelLayer.addTo(map); if (map.hasLayer(cityLayer)) map.removeLayer(cityLayer); }
     else { if (map.hasLayer(labelLayer)) map.removeLayer(labelLayer); if (!map.hasLayer(cityLayer)) cityLayer.addTo(map); }
