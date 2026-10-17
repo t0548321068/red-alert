@@ -1617,7 +1617,7 @@ class MainActivity : Activity() {
             if (AlertService.PHONE_DEFAULTS) openNotificationSettings() else showVibes() }
         ouiDivider(c)
         val loud = Prefs.loudSound(this)
-        ouiRow(c, "צליל חזק", sub = if (loud) "כל ההתרעות בעוצמה מלאה, גם כשהווליום נמוך" else "כבוי", on = loud) {
+        ouiRow(c, "צליל חזק", sub = if (loud) "תמיד בעוצמה מלאה – גם בווליום נמוך, בשעות שקט ובמצב שקט" else "כבוי", on = loud) {
             Prefs.setLoudSound(this, !loud); rebuild() }
         ouiAdd(body, c)
 
