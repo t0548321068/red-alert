@@ -815,16 +815,9 @@ class MainActivity : Activity() {
     /** התראות אחרונות בסגנון One UI: מחולקות לימים, כל יום בכרטיס */
     private var recentList: LinearLayout? = null
     private var recentSegView: LinearLayout? = null
-    /** ההתרעות באזורים שלי מתוך הרשימה (מחושב פעם אחת לכל טעינה) */
-    private var recentMineList: List<Prefs.Entry>? = null
-    private var recentMineFor: List<Prefs.Entry>? = null
-    private fun mineOf(all: List<Prefs.Entry>): List<Prefs.Entry> {
-        if (recentMineFor === all) recentMineList?.let { return it }
-        val manual = Prefs.cities(this).filter { it.isNotBlank() }
-        val near = if (Prefs.nearMe(this)) Prefs.nearbyAreas(this).filter { it.isNotBlank() } else emptyList()
-        val visits = Prefs.visits(this)
-        return all.filter { isMine(it, manual, near, visits) }.also { recentMineList = it; recentMineFor = all }
-    }
+    /** "שלי": רק ההתרעות שהאפליקציה באמת הקפיצה לי (ההיסטוריה שלי) - לא מהארכיון */
+    @Suppress("UNUSED_PARAMETER")
+    private fun mineOf(all: List<Prefs.Entry>): List<Prefs.Entry> = Prefs.history(this)
 
     /** בורר הכל / האזורים שלי (בכותרת, ליד כפתור המפה), עם מספר ההתרעות בכל אחד */
     private fun buildRecentSeg(seg: LinearLayout) {
@@ -882,14 +875,6 @@ class MainActivity : Activity() {
 
     /** סינון ברשימת ההתרעות: הכל / האזורים שלי (נזכר עד שסוגרים את האפליקציה) */
     private var recentMine = false
-
-    /** התרעה באזורים שלי: יישוב/אזור שבחרתי, האזור שאני נמצא בו עכשיו, או אזור שהייתי בו באותה שעה */
-    private fun isMine(e: Prefs.Entry, manual: List<String>, near: List<String>, visits: Map<String, List<LongArray>>): Boolean =
-        e.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }.any { a ->
-            manual.any { f -> AreaData.matches(this, a, f) } ||
-                near.any { n -> n == a || n.startsWith("$a -") || a.startsWith("$n -") } ||
-                Prefs.wasIn(visits, a, e.ts)
-        }
 
     private fun fillRecent(c: LinearLayout, all: List<Prefs.Entry>) {
         c.removeAllViews()
