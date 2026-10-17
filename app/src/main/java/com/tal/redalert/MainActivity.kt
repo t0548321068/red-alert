@@ -2138,10 +2138,27 @@ class MainActivity : Activity() {
     }
 
     /** עמוד מקורות ההתרעה: כמה מחוברים, ומצב כל מקור - מתעדכן כל שנייה */
+    /** "לפני X שניות / דקות / שעות" */
+    private fun agoText(t: Long): String {
+        if (t <= 0) return "עוד לא"
+        val sec = ((System.currentTimeMillis() - t) / 1000).coerceAtLeast(0)
+        return when {
+            sec < 3 -> "עכשיו"
+            sec < 60 -> "לפני $sec שניות"
+            sec < 120 -> "לפני דקה"
+            sec < 3600 -> "לפני ${sec / 60} דקות"
+            sec < 7200 -> "לפני שעה"
+            else -> "לפני ${sec / 3600} שעות"
+        }
+    }
+
     private fun showSourcesInfo() = ouiPage("מקורות התרעה") { body, rebuild ->
         val on = Prefs.enabled(this)
         val sum = ouiCard()
         ouiRow(sum, "מחוברים", end = if (on) "${SourceHealth.upCount()}/${SourceHealth.total()}" else "—", endBig = true)
+        // מתי הגיע מידע לאחרונה מאחד המקורות
+        ouiDivider(sum)
+        ouiRow(sum, "עודכן", end = if (on) agoText(SourceHealth.lastAny()) else "—", endColor = C.MUTED)
         ouiAdd(body, sum)
         if (!on) ouiNote(body, "ההאזנה כבויה")
         else ouiNote(body, "ההתראה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד")
