@@ -688,9 +688,10 @@ class AlertService : Service() {
             val ringer = (getSystemService(AUDIO_SERVICE) as android.media.AudioManager).ringerMode
             val bypass = PHONE_DEFAULTS && (shabbat || Prefs.bypassSilent(this)) && snd && !quiet &&
                 ringer != android.media.AudioManager.RINGER_MODE_NORMAL
-            // צליל חזק: בירי - עוצמת השעון המעורר למקסימום למשך הצליל, ואחר כך חוזרת למה שהיה
-            val loud = snd && !quiet && level == LEVEL_ALERT && Prefs.loudSound(this)
-            if (loud) { boostAlarmVolume(15000); playAlarm(level, RingtoneManager.TYPE_ALARM, 15000) }
+            // צליל חזק: בכל ההתרעות (מקדימה, ירי, סיום) - עוצמת השעון המעורר למקסימום למשך הצליל, ואחר כך חוזרת למה שהיה
+            val loud = snd && !quiet && Prefs.loudSound(this)
+            val loudMs = if (level == LEVEL_ALERT) 15000L else 4000L
+            if (loud) { boostAlarmVolume(loudMs); playAlarm(level, RingtoneManager.TYPE_ALARM, loudMs) }
             else if (bypass) playAlarm(level, RingtoneManager.TYPE_ALARM, if (level == LEVEL_ALERT) 15000 else 3000)
             else if (PHONE_DEFAULTS) Unit   // הטלפון משמיע את צליל ההתראה בעצמו
             else when {
