@@ -2547,6 +2547,17 @@ class MainActivity : Activity() {
             Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); rebuild() }
         ouiAdd(body, show)
         ouiNote(body, "התאריך מוצג מתחת לשעון במסך הראשי")
+        // סוג תאריך: לועזי / עברי / שניהם
+        val kinds = ouiCard()
+        kinds.addView(text("סוג תאריך", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+        val now = System.currentTimeMillis()
+        listOf("לועזי" to TimeFormat.date(now), "עברי" to TimeFormat.hebrewDate(now),
+            "לועזי ועברי" to TimeFormat.date(now) + " · " + TimeFormat.hebrewDate(now)).forEachIndexed { i, (label, ex) ->
+            if (i > 0) ouiDivider(kinds)
+            ouiRow(kinds, label, sub = ex, radio = Prefs.dateKind(this) == i) {
+                Prefs.setDateKind(this, i); updateClock(); refresh(); rebuild() }
+        }
+        ouiAdd(body, kinds)
         val styles = ouiCard()
         styles.addView(text("סגנון יום", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
         TimeFormat.dayOptions().forEachIndexed { i, label ->
