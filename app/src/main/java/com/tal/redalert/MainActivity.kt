@@ -834,9 +834,13 @@ class MainActivity : Activity() {
             val sel = recentMine == mine
             val n = when { data == null -> null; mine -> mineOf(data).size; else -> data.size }
             val label = if (n == null) name else "$name $n"
+            // רוחב קבוע לכל כפתור (לפי הנוסח המודגש) - בלי קפיצה כשמחליפים בחירה
+            val w = android.graphics.Paint().apply { textSize = 14f * resources.displayMetrics.scaledDensity
+                typeface = android.graphics.Typeface.DEFAULT_BOLD }.measureText(label).toInt() + dp(28)
             seg.addView(text(label, 14f, if (sel) Color.WHITE else C.MUTED, bold = sel).apply {
                 gravity = Gravity.CENTER
-                setPadding(dp(14), dp(7), dp(14), dp(7))
+                minWidth = w
+                setPadding(0, dp(7), 0, dp(7))
                 if (sel) background = GradientDrawable().apply { setColor(Color.parseColor("#4C7DFF")); cornerRadius = dp(16).toFloat() }
                 setOnClickListener {
                     if (sel) return@setOnClickListener
