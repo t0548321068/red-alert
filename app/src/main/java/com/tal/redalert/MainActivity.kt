@@ -1615,6 +1615,10 @@ class MainActivity : Activity() {
         ouiRow(c, "רטט", sub = if (!vib) "כבוי" else if (AlertService.PHONE_DEFAULTS) "של הטלפון" else "פעיל",
             on = vib, onToggle = { Prefs.setVibesOn(this, !vib); rebuild() }) {
             if (AlertService.PHONE_DEFAULTS) openNotificationSettings() else showVibes() }
+        ouiDivider(c)
+        val loud = Prefs.loudSound(this)
+        ouiRow(c, "צליל חזק", sub = if (loud) "בירי – עוצמה מלאה, גם כשהווליום נמוך" else "כבוי", on = loud) {
+            Prefs.setLoudSound(this, !loud); rebuild() }
         ouiAdd(body, c)
 
         val q = ouiCard()
