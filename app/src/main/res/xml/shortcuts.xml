@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- קיצורי דרך בלחיצה ארוכה על אייקון האפליקציה -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="recent" android:enabled="true" android:icon="@drawable/sc_alerts"
+        android:shortcutShortLabel="@string/sc_recent" android:shortcutLongLabel="@string/sc_recent">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.tal.redalert"
+            android:targetClass="com.tal.redalert.MainActivity">
+            <extra android:name="shortcut" android:value="recent" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="map" android:enabled="true" android:icon="@drawable/sc_map"
+        android:shortcutShortLabel="@string/sc_map" android:shortcutLongLabel="@string/sc_map">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.tal.redalert"
+            android:targetClass="com.tal.redalert.MainActivity">
+            <extra android:name="shortcut" android:value="map" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="clock" android:enabled="true" android:icon="@drawable/sc_clock"
+        android:shortcutShortLabel="@string/sc_clock" android:shortcutLongLabel="@string/sc_clock">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.tal.redalert"
+            android:targetClass="com.tal.redalert.MainActivity">
+            <extra android:name="shortcut" android:value="clock" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="test" android:enabled="true" android:icon="@drawable/sc_test"
+        android:shortcutShortLabel="@string/sc_test" android:shortcutLongLabel="@string/sc_test">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.tal.redalert"
+            android:targetClass="com.tal.redalert.MainActivity">
+            <extra android:name="shortcut" android:value="test" />
+        </intent>
+    </shortcut>
+</shortcuts>
