@@ -46,6 +46,9 @@ object Prefs {
     fun setBlinkColon(c: Context, v: Boolean) = sp(c).edit().putBoolean("blink_colon", v).commit()
     fun showDate(c: Context) = sp(c).getBoolean("date", true)
     fun setShowDate(c: Context, v: Boolean) = sp(c).edit().putBoolean("date", v).commit()
+    /** סוג תאריך: 0 = לועזי, 1 = עברי, 2 = שניהם */
+    fun dateKind(c: Context) = sp(c).getInt("dateKind", 0)
+    fun setDateKind(c: Context, v: Int) = sp(c).edit().putInt("dateKind", v).commit()
     /** ברכה לפי השעה (בוקר טוב / ערב טוב...) */
     fun showGreeting(c: Context) = sp(c).getBoolean("greeting", true)
     fun setShowGreeting(c: Context, v: Boolean) = sp(c).edit().putBoolean("greeting", v).commit()
