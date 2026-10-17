@@ -16,7 +16,7 @@ object OrefArchive {
      */
     fun backfill(c: android.content.Context): Boolean {
         val sp = c.getSharedPreferences("archive", android.content.Context.MODE_PRIVATE)
-        if (sp.getBoolean("backfillDone", false)) return false
+        if (sp.getBoolean("backfillSecDone", false)) return false   // פעם נוספת - כדי להוסיף שניות להתרעות שכבר נשמרו
         val fmt = java.text.SimpleDateFormat("dd.MM.yyyy", java.util.Locale.US).apply {
             timeZone = java.util.TimeZone.getTimeZone("Asia/Jerusalem") }
         val now = System.currentTimeMillis()
@@ -33,9 +33,9 @@ object OrefArchive {
         }
         if (ok == 0) return false   // אין חיבור - ננסה בפעם הבאה
         val merged = LinkedHashMap<String, Prefs.Entry>()
-        (load(c) + got).forEach { e -> if (e.ts >= now - 366 * DAY) merged.putIfAbsent(e.title + "|" + e.ts, e) }
+        (got + load(c)).forEach { e -> if (e.ts >= now - 366 * DAY) merged.putIfAbsent(e.title + "|" + e.ts / 60_000, e) }
         save(c, merged.values.sortedByDescending { it.ts })
-        sp.edit().putBoolean("backfillDone", true).apply()
+        sp.edit().putBoolean("backfillSecDone", true).apply()
         return got.isNotEmpty()
     }
 
@@ -48,7 +48,8 @@ object OrefArchive {
         val fresh = try { fetchRaw() } catch (_: Exception) { emptyList() }
         val yearAgo = System.currentTimeMillis() - 366L * 24 * 3600 * 1000
         val merged = LinkedHashMap<String, Prefs.Entry>()
-        (fresh + stored).forEach { e -> if (e.ts >= yearAgo) merged.putIfAbsent(e.title + "|" + e.ts, e) }
+        // אותה התרעה = אותו סוג + אותה דקה (החדשה - עם שניות - גוברת על מה שנשמר)
+        (fresh + stored).forEach { e -> if (e.ts >= yearAgo) merged.putIfAbsent(e.title + "|" + e.ts / 60_000, e) }
         val all = merged.values.sortedByDescending { it.ts }
         if (fresh.isNotEmpty()) save(c, all)
         return Prefs.collapse(all)
@@ -88,25 +89,29 @@ object OrefArchive {
             String(b, Charsets.UTF_8).trimStart('﻿').trim()
         } finally { conn.disconnect() }
         if (!text.startsWith("[")) return emptyList()
-        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.US).apply {
-            timeZone = java.util.TimeZone.getTimeZone("Asia/Jerusalem")
-        }
+        val tz = java.util.TimeZone.getTimeZone("Asia/Jerusalem")
+        val fmtSec = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply { timeZone = tz }
+        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.US).apply { timeZone = tz }
         val arr = JSONArray(text)
         // אותה התראה (סוג + דקה) = שורה אחת עם כל האזורים
-        val groups = LinkedHashMap<String, Triple<String, Long, MutableList<String>>>()
+        val groups = LinkedHashMap<String, Triple<String, LongArray, MutableList<String>>>()
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
             val title = o.optString("category_desc").ifEmpty { o.optString("title", "התראה") }
-            val date = o.optString("alertDate").replace('T', ' ').take(16)
-            val ts = try { fmt.parse(date)?.time } catch (_: Exception) { null } ?: continue
-            val g = groups.getOrPut("$title|$date") { Triple(title, ts, mutableListOf()) }
+            val full = o.optString("alertDate").replace('T', ' ')
+            val date = full.take(16)
+            // כולל שניות (אם יש); הקיבוץ - לפי דקה, והשעה - השנייה הראשונה בדקה
+            val ts = (try { if (full.length >= 19) fmtSec.parse(full.take(19))?.time else null } catch (_: Exception) { null })
+                ?: (try { fmt.parse(date)?.time } catch (_: Exception) { null }) ?: continue
+            val g = groups.getOrPut("$title|$date") { Triple(title, longArrayOf(ts), mutableListOf()) }
+            if (ts < g.second[0]) g.second[0] = ts
             val area = o.optString("data")
             if (area.isNotBlank() && area !in g.third) g.third.add(area)
         }
         val list = groups.values.map { (title, ts, areas) ->
             val level = AlertService.levelOf(title)
             Prefs.Entry("", if (level == AlertService.LEVEL_END) "האירוע הסתיים" else title,
-                areas.joinToString(", "), level, ts)
+                areas.joinToString(", "), level, ts[0])
         }.sortedByDescending { it.ts }
         return list
     }

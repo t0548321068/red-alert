@@ -923,7 +923,7 @@ class MainActivity : Activity() {
                 texts.addView(text(if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title, 15f, C.TEXT))
                 texts.addView(text(e.body.replace("ברחבי הארץ", AreaData.ALL_COUNTRY), 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
                 row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
-                row.addView(text(if (e.ts > 0) java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
+                row.addView(text(if (e.ts > 0) java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
                     .format(java.util.Date(e.ts)) else e.time.take(5), 12f, muted),
                     LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
                 card.addView(row)
