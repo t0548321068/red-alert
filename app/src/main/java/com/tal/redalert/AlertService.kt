@@ -688,7 +688,10 @@ class AlertService : Service() {
             val ringer = (getSystemService(AUDIO_SERVICE) as android.media.AudioManager).ringerMode
             val bypass = PHONE_DEFAULTS && (shabbat || Prefs.bypassSilent(this)) && snd && !quiet &&
                 ringer != android.media.AudioManager.RINGER_MODE_NORMAL
-            if (bypass) playAlarm(level, RingtoneManager.TYPE_ALARM, if (level == LEVEL_ALERT) 15000 else 3000)
+            // צליל חזק: בירי - עוצמת השעון המעורר למקסימום למשך הצליל, ואחר כך חוזרת למה שהיה
+            val loud = snd && !quiet && level == LEVEL_ALERT && Prefs.loudSound(this)
+            if (loud) { boostAlarmVolume(15000); playAlarm(level, RingtoneManager.TYPE_ALARM, 15000) }
+            else if (bypass) playAlarm(level, RingtoneManager.TYPE_ALARM, if (level == LEVEL_ALERT) 15000 else 3000)
             else if (PHONE_DEFAULTS) Unit   // הטלפון משמיע את צליל ההתראה בעצמו
             else when {
                 quiet || !snd -> main.post { ringtone?.stop() }
@@ -858,6 +861,26 @@ class AlertService : Service() {
     private fun vibrate(level: Int) = Vibes.play(this, Prefs.vibe(this, level))
 
     /** צליל בערוץ "שעון מעורר" - נשמע גם במצב שקט */
+    /** עוצמת ערוץ השעון המעורר למקסימום לזמן מוגבל, ואז מחזירים את העוצמה הקודמת */
+    private var savedAlarmVol = -1
+    private fun boostAlarmVolume(ms: Long) {
+        try {
+            val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+            val s = android.media.AudioManager.STREAM_ALARM
+            if (savedAlarmVol < 0) savedAlarmVol = am.getStreamVolume(s)
+            am.setStreamVolume(s, am.getStreamMaxVolume(s), 0)
+            main.removeCallbacks(restoreAlarmVol)
+            main.postDelayed(restoreAlarmVol, ms + 500)
+        } catch (_: Exception) { }
+    }
+    private val restoreAlarmVol = Runnable {
+        try {
+            if (savedAlarmVol >= 0) (getSystemService(AUDIO_SERVICE) as android.media.AudioManager)
+                .setStreamVolume(android.media.AudioManager.STREAM_ALARM, savedAlarmVol, 0)
+        } catch (_: Exception) { }
+        savedAlarmVol = -1
+    }
+
     private fun playAlarm(level: Int, type: Int, durationMs: Long) {
         val uri = Sounds.uri(this, Sounds.effective(this, level), level) ?: return
         main.post {

@@ -221,6 +221,9 @@ object Prefs {
 
     /** עקיפת מצב שקט: כשהטלפון על שקט/רטט - ההתרעה בכל זאת משמיעה צליל (ברירת מחדל: כבוי) */
     fun bypassSilent(c: Context) = sp(c).getBoolean("bypassSilent", false)
+    /** צליל חזק: בירי - עוצמה מלאה, גם כשהווליום של הטלפון נמוך */
+    fun loudSound(c: Context) = sp(c).getBoolean("loudSound", false)
+    fun setLoudSound(c: Context, v: Boolean) = sp(c).edit().putBoolean("loudSound", v).commit()
     fun setBypassSilent(c: Context, v: Boolean) = sp(c).edit().putBoolean("bypassSilent", v).commit()
 
     // ---- הקראה בקול ----
