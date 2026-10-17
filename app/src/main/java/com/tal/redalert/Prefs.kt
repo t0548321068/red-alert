@@ -72,7 +72,7 @@ object Prefs {
         val arr = try { JSONArray(sp(c).getString("feed", "[]")) } catch (_: Exception) { JSONArray() }
         return (0 until arr.length()).map {
             val o = arr.getJSONObject(it)
-            Entry("", o.optString("title"), o.optString("body"), o.optInt("level"), o.optLong("ts"))
+            Entry("", o.optString("title"), o.optString("body"), AlertService.levelOf(o.optString("title")), o.optLong("ts"))
         }.map { clean(c, it) }.sortedByDescending { it.ts }.let { collapse(it) }
     }
 
@@ -384,7 +384,7 @@ object Prefs {
         return (0 until arr.length()).map {
             val o = arr.getJSONObject(it)
             Entry(o.optString("time"), o.optString("title"), o.optString("body"),
-                o.optInt("level"), o.optLong("ts"), o.optString("src"))
+                AlertService.levelOf(o.optString("title")), o.optLong("ts"), o.optString("src"))
         }.filter { it.body != "התראת בדיקה" }   // בדיקות מגרסאות קודמות לא מוצגות
             .map { clean(c, it) }
             .sortedByDescending { it.ts }

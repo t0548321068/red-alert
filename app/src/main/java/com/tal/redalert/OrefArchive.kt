@@ -60,7 +60,9 @@ object OrefArchive {
         val arr = JSONArray(file(c).readText())
         (0 until arr.length()).map { i ->
             val o = arr.getJSONObject(i)
-            Prefs.Entry("", o.getString("t"), o.optString("b"), o.optInt("l"), o.getLong("ts"))
+            // הסוג מחושב מחדש מהכותרת (לא מה שנשמר) - כך תיקוני סיווג חלים גם על התרעות ישנות
+            val t = o.getString("t")
+            Prefs.Entry("", t, o.optString("b"), AlertService.levelOf(t), o.getLong("ts"))
         }
     } catch (_: Exception) { emptyList() }
 
