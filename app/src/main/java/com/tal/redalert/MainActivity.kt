@@ -2199,6 +2199,7 @@ class MainActivity : Activity() {
         // חיווי צלילים
         when {
             Prefs.mutedNow(this) -> setInd(sndInd, R.drawable.ic_volume_off, "מושתק", C.RED)
+            Shabbat.active(this) -> setInd(sndInd, R.drawable.ic_set_sound, "שבת", Color.parseColor("#4C7DFF"))   // מצב שבת: תמיד עם צליל והקראה
             Prefs.loudSound(this) -> setInd(sndInd, R.drawable.ic_set_sound, "חזק", C.GREEN)
             !Prefs.soundsOn(this) -> setInd(sndInd, R.drawable.ic_volume_off, "כבוי", C.RED)
             Prefs.isQuietNow(this) -> setInd(sndInd, R.drawable.ic_set_sound, "שקט", C.ORANGE)
