@@ -787,13 +787,16 @@ class MainActivity : Activity() {
             addView(text(title, 20f, C.TEXT, bold = true), LinearLayout.LayoutParams(0, -2, 1f))
             headerExtra?.invoke(this)
             action?.let { (icon, run) ->
-                addView(FrameLayout(this@MainActivity).apply {
-                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(C.CARD2) }
-                    addView(android.widget.ImageView(this@MainActivity).apply {
-                        setImageResource(icon); imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT) },
-                        FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER))
+                // כמו האייקונים בראש המסך הראשי: בלי רקע, רק הבהוב בלחיצה
+                addView(android.widget.ImageView(this@MainActivity).apply {
+                    setImageResource(icon)
+                    imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT)
+                    setPadding(dp(11), dp(11), dp(11), dp(11))
+                    background = android.graphics.drawable.RippleDrawable(
+                        android.content.res.ColorStateList.valueOf(C.LINE2), null,
+                        GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) })
                     setOnClickListener { run() }
-                }, LinearLayout.LayoutParams(dp(42), dp(42)))
+                }, LinearLayout.LayoutParams(dp(46), dp(46)))
             }
         })
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
