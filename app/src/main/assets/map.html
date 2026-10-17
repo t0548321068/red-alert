@@ -39,6 +39,7 @@
   .city { background: transparent; border: 0; box-shadow: none; color: var(--text); font-size: 13px; font-weight: bold;
           padding: 0; text-shadow: 0 0 3px var(--sea), 0 0 3px var(--sea); }
   .city::before { display: none; }
+  .pin { background: transparent; border: 0; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
   .leaflet-popup-content { direction: rtl; text-align: right; }
   /* מפה קטנה במסך ההתראה: רק המפה והאזורים, בלי כפתורים */
   body.mini .legend, body.mini .me-btn, body.mini .empty { display: none !important; }
@@ -65,6 +66,10 @@
 <button class="me-btn" id="meBtn" title="המיקום שלי"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 5.2-7 13-7 13S5 14.2 5 9a7 7 0 0 1 7-7zm0 4.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg></button>
 <script>
   var COLORS = ['#FF3B30', '#FF9F0A', '#30D158'];
+  // סיכת מיקום על כל מקום בהתרעה אדומה (ירי / חדירה)
+  var PIN = L.divIcon({ className: 'pin', iconSize: [26, 34], iconAnchor: [13, 33],
+    html: '<svg viewBox="0 0 26 34" width="26" height="34"><path d="M13 1C6.4 1 1 6.3 1 12.8 1 21.6 13 33 13 33s12-11.4 12-20.2C25 6.3 19.6 1 13 1z" fill="#D50000" stroke="#fff" stroke-width="2"/><circle cx="13" cy="12.8" r="4.4" fill="#fff"/></svg>' });
+  function addPin(a, layer) { if (a && a.c) L.marker(a.c, { icon: PIN, interactive: false, keyboard: false }).addTo(layer); }
   function css(v) { return getComputedStyle(document.body).getPropertyValue(v).trim(); }
 
   var map = L.map('map', { zoomControl: false, attributionControl: false, preferCanvas: true, minZoom: 7, maxZoom: 18 })
@@ -165,6 +170,7 @@
       var shape = a.p ? L.polygon(a.p, { color: color, weight: 2.5, fillColor: color, fillOpacity: .6 })
                       : L.circleMarker(a.c, { radius: 9, color: color, fillOpacity: .85 });
       shape.bindPopup(info(name) + '<br>' + FOCUS.title + '<br>' + fmt(FOCUS.ts)).addTo(alertLayer);
+      if (FOCUS.level === 0) addPin(a, alertLayer);
       pts = pts.concat(a.p || [a.c]);
     });
     document.getElementById('empty').style.display = 'none';
@@ -186,6 +192,7 @@
       var shape = a.p ? L.polygon(a.p, { color: color, weight: 2, fillColor: color, fillOpacity: .55 })
                       : L.circleMarker(a.c, { radius: 8, color: color, fillOpacity: .8 });
       shape.bindPopup(info(name) + '<br>' + e.title + '<br>' + fmt(e.ts)).addTo(alertLayer);
+      if (e.level === 0) addPin(a, alertLayer);
       bounds.push(a.c);
     });
     var empty = document.getElementById('empty');
@@ -278,6 +285,7 @@
       var a = ALL_AREAS[n]; if (!a) return;
       (a.p ? L.polygon(a.p, { color: color, weight: 2, fillColor: color, fillOpacity: .6, interactive: false })
            : L.circleMarker(a.c, { radius: 8, color: color, fillOpacity: .8, interactive: false })).addTo(alertLayer);
+      if (level === 0) addPin(a, alertLayer);
       pts = pts.concat(a.p || [a.c]);
     });
     // המיקום הנוכחי - נקודה כחולה. נכלל בזום רק אם הוא קרוב (עד 20 ק"מ) - כדי שהאזור יישאר ברור
