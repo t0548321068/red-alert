@@ -199,6 +199,24 @@ class MainActivity : Activity() {
     private var alertCardTimer: TextView? = null
     private var alertCardLabel: TextView? = null
 
+    /** רקע המסך הראשי נצבע לפי ההתרעה הפעילה (אדום / כתום / ירוק, בגוון כהה); null = הרקע הרגיל */
+    private var mainTint = 0
+    private fun applyMainTint(level: Int?) {
+        val c = if (level == null) C.BG else {
+            val a = Color.parseColor(AlertUi.color(level)); val f = if (Prefs.darkTheme(this)) 0.30f else 0.18f
+            Color.rgb((Color.red(a) * f + Color.red(C.BG) * (1 - f)).toInt(),
+                (Color.green(a) * f + Color.green(C.BG) * (1 - f)).toInt(),
+                (Color.blue(a) * f + Color.blue(C.BG) * (1 - f)).toInt())
+        }
+        if (c == mainTint) return
+        mainTint = c
+        window.decorView.setBackgroundColor(c)
+        @Suppress("DEPRECATION")
+        window.statusBarColor = c
+        @Suppress("DEPRECATION")
+        window.navigationBarColor = c
+    }
+
     /** כרטיס ההתרעה מעל השעון: נבנה כשההתרעה משתנה, והטיימר מתעדכן כל שנייה */
     private fun updateAlertCard() {
         val j = Prefs.activeAlert(this)
@@ -207,10 +225,12 @@ class MainActivity : Activity() {
         // בתצוגה "ממוזער" אין כרטיס במסך הראשי כל עוד החלון הקטן פתוח (כפילות); אחרי שנסגר - הכרטיס מופיע
         val mini = Prefs.alertStyle(this) == 3 && !Shabbat.active(this) && MiniOverlay.isShowing()
         if (j == null || mini || AlertUi.expired(level, firedAt) || Prefs.alertDismissed(this) == firedAt) {
+            applyMainTint(null)
             if (alertWrap.visibility != View.GONE) alertWrap.visibility = View.GONE
             setScrollMode(false)
             alertCardKey = ""; return
         }
+        applyMainTint(level)
         val key = j.toString()
         if (key != alertCardKey) {
             alertCardKey = key
