@@ -23,7 +23,27 @@ class MapActivity : Activity() {
             settings.domStorageEnabled = true
             setBackgroundColor(Color.TRANSPARENT)
         }
-        setContentView(web)
+        // המפה לא נכנסת מתחת לשורת המצב ולשורת הניווט של הטלפון
+        val bg = Color.parseColor(if (dark) "#000000" else "#F2F2F7")
+        val frame = android.widget.FrameLayout(this).apply {
+            setBackgroundColor(bg)
+            addView(web, android.widget.FrameLayout.LayoutParams(-1, -1))
+            setOnApplyWindowInsetsListener { v, insets ->
+                @Suppress("DEPRECATION")
+                v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop,
+                    insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
+                insets
+            }
+        }
+        @Suppress("DEPRECATION")
+        window.statusBarColor = bg
+        @Suppress("DEPRECATION")
+        window.navigationBarColor = bg
+        // אייקונים כהים בשורות כשהרקע בהיר
+        if (!dark && android.os.Build.VERSION.SDK_INT >= 30) window.insetsController?.setSystemBarsAppearance(
+            android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
+            android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS)
+        setContentView(frame)
         web.addJavascriptInterface(object {
             @android.webkit.JavascriptInterface
             fun locate() = runOnUiThread { locate(web) }
