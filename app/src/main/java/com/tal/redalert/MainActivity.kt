@@ -766,7 +766,7 @@ class MainActivity : Activity() {
      * בלי סינון. לחיצה על התראה - המפה על האזור שלה.
      */
     /** עמוד בסגנון One UI: כותרת גדולה ותוכן נגלל */
-    private fun onePage(title: String, build: (LinearLayout) -> Unit) {
+    private fun onePage(title: String, action: Pair<Int, () -> Unit>? = null, build: (LinearLayout) -> Unit) {
         val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val page = ScrollView(this).apply {
@@ -779,7 +779,21 @@ class MainActivity : Activity() {
             v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
             insets
         }
-        body.addView(text(title, 30f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(64), dp(24), dp(12)) })
+        // כותרת כמו בשאר מסכי ההגדרות, ואם יש - כפתור פעולה בצד (למשל מפה)
+        body.addView(LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(24), dp(14), dp(12), dp(14))
+            addView(text(title, 20f, C.TEXT, bold = true), LinearLayout.LayoutParams(0, -2, 1f))
+            action?.let { (icon, run) ->
+                addView(FrameLayout(this@MainActivity).apply {
+                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(C.CARD2) }
+                    addView(android.widget.ImageView(this@MainActivity).apply {
+                        setImageResource(icon); imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT) },
+                        FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER))
+                    setOnClickListener { run() }
+                }, LinearLayout.LayoutParams(dp(42), dp(42)))
+            }
+        })
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         body.addView(content)
         body.addView(View(this), LinearLayout.LayoutParams(-1, dp(30)))
@@ -794,7 +808,8 @@ class MainActivity : Activity() {
     }
 
     /** התראות אחרונות בסגנון One UI: מחולקות לימים, כל יום בכרטיס */
-    private fun showRecent() = onePage("התרעות אחרונות") { c ->
+    private fun showRecent() = onePage("התרעות אחרונות",
+        action = R.drawable.ic_map to { startActivity(Intent(this, MapActivity::class.java)) }) { c ->
         val cached = archiveCache
         if (cached != null) { fillRecent(c, cached); return@onePage }
         val loading = text("טוען את כל ההתראות…", 14f, C.MUTED2).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) }
@@ -1484,7 +1499,8 @@ class MainActivity : Activity() {
         )
         fun rebuild() {
             body.removeAllViews()
-            body.addView(text("הגדרות", 32f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(64), dp(24), dp(16)) })
+            // כותרת כמו בשאר מסכי ההגדרות
+            body.addView(text("הגדרות", 20f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(14), dp(24), dp(14)) })
             cats.forEach { (_, rows) ->
                 // בלי כותרת מעל כל כרטיס - רק רווח בין הכרטיסים
                 val card = LinearLayout(this).apply {

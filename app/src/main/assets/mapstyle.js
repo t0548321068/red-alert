@@ -44,12 +44,7 @@ function mapStyle(dark) {
         filter: ['==', ['get', 'class'], 'rail'], paint: { 'line-color': c.rail, 'line-width': 1, 'line-dasharray': [4, 3] } },
       { id: 'road-label', type: 'symbol', source: 'omt', 'source-layer': 'transportation_name', minzoom: 13,
         layout: { 'symbol-placement': 'line', 'text-field': name, 'text-font': font, 'text-size': 12 },
-        paint: { 'text-color': c.road_label, 'text-halo-color': c.halo, 'text-halo-width': 1.5 } },
-      { id: 'place', type: 'symbol', source: 'omt', 'source-layer': 'place',
-        filter: ['in', ['get', 'class'], ['literal', ['city', 'town', 'village', 'suburb', 'neighbourhood']]],
-        layout: { 'text-field': name, 'text-font': font,
-          'text-size': ['match', ['get', 'class'], 'city', 16, 'town', 14, 12] },
-        paint: { 'text-color': c.place, 'text-halo-color': c.halo, 'text-halo-width': 1.5 } }
+        paint: { 'text-color': c.road_label, 'text-halo-color': c.halo, 'text-halo-width': 1.5 } }
     ]
   };
 }
