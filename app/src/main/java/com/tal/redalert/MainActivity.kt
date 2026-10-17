@@ -800,8 +800,9 @@ class MainActivity : Activity() {
         val loading = text("טוען את כל ההתראות…", 14f, C.MUTED2).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) }
         c.addView(loading)
         Thread {
-            val list = try { OrefArchive.fetch() } catch (_: Exception) { emptyList() }
-                .ifEmpty { Prefs.feed(this) }   // אין חיבור לארכיון - מה שהאפליקציה שמרה
+            // הארכיון + מה שנשמר בטלפון מפעמים קודמות (נשמר עד שנה אחורה)
+            val list = try { OrefArchive.fetchAndKeep(this) } catch (_: Exception) { emptyList() }
+                .ifEmpty { Prefs.feed(this) }   // אין כלום - מה שהאפליקציה קלטה בעצמה
             runOnUiThread {
                 archiveCache = list
                 c.removeAllViews()
