@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <link rel="stylesheet" href="leaflet/leaflet.css">
 <script src="leaflet/leaflet.js"></script>
+<!-- מפת רחובות וקטורית (בסגנון גוגל מפות) מעל Leaflet -->
+<link rel="stylesheet" href="maplibre/maplibre-gl.css">
+<script src="maplibre/maplibre-gl.js"></script>
+<script src="maplibre/leaflet-maplibre-gl.js"></script>
+<script src="mapstyle.js"></script>
 <!-- כל אזורי ההתרעה בארץ (גבולות + מרכז) - המפה מצוירת מהם, בלי שום שרת חיצוני -->
 <script src="areas.js"></script>
 <style>
@@ -19,9 +24,6 @@
   /* רחובות: עד שהאריחים נטענים הם מוסתרים; במצב כהה - המפה הבהירה של OSM הופכת לכהה */
   .leaflet-tile-pane { opacity: 0; }
   body.streets .leaflet-tile-pane { opacity: 1; }
-  /* מפה פשוטה: בלי צבעים (אפור בלבד) ובניגודיות נמוכה, כדי שאזורי ההתרעה יבלטו */
-  body.light .leaflet-tile-pane { filter: grayscale(1) contrast(.75) brightness(1.08); }
-  body:not(.light) .leaflet-tile-pane { filter: grayscale(1) invert(1) brightness(.6) contrast(.85); }
   .bar { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 1000;
          display: flex; gap: 4px; background: var(--panel); padding: 4px; border-radius: 22px;
          box-shadow: 0 2px 10px rgba(0,0,0,.25); }
@@ -84,18 +86,30 @@
   var map = L.map('map', { zoomControl: false, attributionControl: false, preferCanvas: true, minZoom: 7, maxZoom: 18 })
     .setView([31.6, 34.9], 8);
 
-  // רחובות מ-OpenStreetMap (האפליקציה מורידה את האריחים). רק אחרי שאריח אמיתי נטען -
-  // מילוי האזורים נעשה שקוף כדי שיראו את הרחובות. בלי אינטרנט / חסימה - המפה נשארת כמו קודם
-  var TILES_OK = false;
-  var streets = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, maxNativeZoom: 19, keepBuffer: 2 }).addTo(map);
-  streets.on('tileload', function (e) {
-    if (TILES_OK || !e.tile || !e.tile.naturalWidth) return;
-    TILES_OK = true;
-    document.body.classList.add('streets');
-    // מפה פשוטה: יש רחובות - בלי מילוי, בלי גבולות ובלי שמות שלנו (השמות של מפת הרחובות מספיקים)
-    baseLayer.eachLayer(function (l) { if (l.setStyle) l.setStyle({ fillOpacity: 0, opacity: 0 }); });
-    syncLabels();
-  });
+  // רחובות: מפה וקטורית בסגנון גוגל מפות (OpenFreeMap, חינם ובלי מפתח). רק אחרי שבאמת נטענו רחובות -
+  // מילוי האזורים נעשה שקוף כדי שיראו אותם. בלי אינטרנט - המפה נשארת כמו קודם
+  var TILES_OK = false, STYLE_DARK = !document.body.classList.contains('light');
+  // עברית מימין לשמאל בשמות שעל המפה
+  try { maplibregl.setRTLTextPlugin('https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-rtl-text@0.3.0/dist/mapbox-gl-rtl-text.js', true); } catch (e) { }
+  var streets = null;
+  try {
+    streets = L.maplibreGL({ style: mapStyle(STYLE_DARK), interactive: false }).addTo(map);
+    var gl = streets.getMaplibreMap();
+    gl.on('idle', function () {
+      if (TILES_OK) return;
+      var f = []; try { f = gl.queryRenderedFeatures(); } catch (e) { }
+      if (!f.length) return;   // עוד לא נטען כלום (או שאין רשת)
+      TILES_OK = true;
+      document.body.classList.add('streets');
+      baseLayer.eachLayer(function (l) { if (l.setStyle) l.setStyle({ fillOpacity: 0, opacity: 0 }); });
+      syncLabels();
+    });
+  } catch (e) { streets = null; }
+  function setStreetsTheme(dark) {
+    if (!streets || dark === STYLE_DARK) return;
+    STYLE_DARK = dark;
+    try { streets.getMaplibreMap().setStyle(mapStyle(dark)); } catch (e) { }
+  }
 
   var baseLayer = L.layerGroup().addTo(map);     // כל האזורים = המפה
   var labelLayer = L.layerGroup();               // שמות - רק כשמתקרבים
@@ -205,6 +219,7 @@
   function render(data) {
     DATA = data;
     document.body.classList.toggle('light', !data.dark);
+    setStreetsTheme(!!data.dark);
     drawBase(); drawAlerts(); syncLabels();
   }
   function setMe(lat, lon, acc) {
