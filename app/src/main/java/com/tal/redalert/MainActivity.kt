@@ -814,11 +814,26 @@ class MainActivity : Activity() {
 
     /** התראות אחרונות בסגנון One UI: מחולקות לימים, כל יום בכרטיס */
     private var recentList: LinearLayout? = null
-    /** בורר הכל / האזורים שלי (בכותרת, ליד כפתור המפה) */
+    private var recentSegView: LinearLayout? = null
+    /** ההתרעות באזורים שלי מתוך הרשימה (מחושב פעם אחת לכל טעינה) */
+    private var recentMineList: List<Prefs.Entry>? = null
+    private var recentMineFor: List<Prefs.Entry>? = null
+    private fun mineOf(all: List<Prefs.Entry>): List<Prefs.Entry> {
+        if (recentMineFor === all) recentMineList?.let { return it }
+        val manual = Prefs.cities(this).filter { it.isNotBlank() }
+        val near = if (Prefs.nearMe(this)) Prefs.nearbyAreas(this).filter { it.isNotBlank() } else emptyList()
+        val visits = Prefs.visits(this)
+        return all.filter { isMine(it, manual, near, visits) }.also { recentMineList = it; recentMineFor = all }
+    }
+
+    /** בורר הכל / האזורים שלי (בכותרת, ליד כפתור המפה), עם מספר ההתרעות בכל אחד */
     private fun buildRecentSeg(seg: LinearLayout) {
         seg.removeAllViews()
-        listOf(false to "הכל", true to "שלי").forEach { (mine, label) ->
+        val data = archiveCache
+        listOf(false to "הכל", true to "שלי").forEach { (mine, name) ->
             val sel = recentMine == mine
+            val n = when { data == null -> null; mine -> mineOf(data).size; else -> data.size }
+            val label = if (n == null) name else "$name $n"
             seg.addView(text(label, 14f, if (sel) Color.WHITE else C.MUTED, bold = sel).apply {
                 gravity = Gravity.CENTER
                 setPadding(dp(14), dp(7), dp(14), dp(7))
@@ -837,7 +852,7 @@ class MainActivity : Activity() {
         action = R.drawable.ic_map to { startActivity(Intent(this, MapActivity::class.java)) },
         headerExtra = { h ->
             val seg = LinearLayout(this).apply { background = graphite(22); setPadding(dp(3), dp(3), dp(3), dp(3)) }
-            buildRecentSeg(seg)
+            buildRecentSeg(seg); recentSegView = seg
             h.addView(seg, LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(10) })
         }) { c ->
         recentList = c
@@ -874,12 +889,8 @@ class MainActivity : Activity() {
 
     private fun fillRecent(c: LinearLayout, all: List<Prefs.Entry>) {
         c.removeAllViews()
-        val items = if (!recentMine) all else {
-            val manual = Prefs.cities(this)
-            val near = if (Prefs.nearMe(this)) Prefs.nearbyAreas(this) else emptyList()
-            val visits = Prefs.visits(this)
-            all.filter { isMine(it, manual, near, visits) }
-        }
+        recentSegView?.let { buildRecentSeg(it) }   // מספרים מעודכנים
+        val items = if (!recentMine) all else mineOf(all)
         val muted = C.MUTED2
         if (items.isEmpty()) {
             c.addView(text(if (recentMine) "אין התראות באזורים שלך" else "אין התראות עדיין", 14f, muted).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) })
