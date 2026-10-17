@@ -833,7 +833,7 @@ class MainActivity : Activity() {
         listOf(false to "הכל", true to "שלי").forEach { (mine, name) ->
             val sel = recentMine == mine
             val n = when { data == null -> null; mine -> mineOf(data).size; else -> data.size }
-            val label = if (n == null) name else "$name $n"
+            val label = if (n == null) name else "$name ($n)"
             // רוחב קבוע לכל כפתור (לפי הנוסח המודגש) - בלי קפיצה כשמחליפים בחירה
             val w = android.graphics.Paint().apply { textSize = 14f * resources.displayMetrics.scaledDensity
                 typeface = android.graphics.Typeface.DEFAULT_BOLD }.measureText(label).toInt() + dp(28)
