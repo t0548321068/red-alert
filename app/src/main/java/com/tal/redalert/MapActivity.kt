@@ -16,7 +16,7 @@ class MapActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val dark = Prefs.darkTheme(this)
-        window.decorView.setBackgroundColor(Color.parseColor(if (dark) "#0E0E10" else "#F2F2F7"))
+        window.decorView.setBackgroundColor(Color.parseColor(if (dark) "#000000" else "#F2F2F7"))
 
         val web = WebView(this).apply {
             settings.javaScriptEnabled = true
