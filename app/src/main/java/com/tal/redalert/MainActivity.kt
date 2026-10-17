@@ -573,6 +573,18 @@ class MainActivity : Activity() {
     }
 
     override fun onResume() {
+        // קיצור דרך מאייקון האפליקציה (לחיצה ארוכה)
+        intent?.getStringExtra("shortcut")?.let { sc ->
+            intent.removeExtra("shortcut")
+            ui.post {
+                when (sc) {
+                    "recent" -> showRecent()
+                    "map" -> startActivity(Intent(this, MapActivity::class.java))
+                    "clock" -> startActivity(Intent(this, ClockActivity::class.java))
+                    "test" -> chooseTest()
+                }
+            }
+        }
         // "הפעלה" מההתראה "לא מוגן"
         if (intent?.getBooleanExtra("enable", false) == true) {
             intent.removeExtra("enable")
