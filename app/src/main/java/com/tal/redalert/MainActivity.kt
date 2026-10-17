@@ -766,7 +766,8 @@ class MainActivity : Activity() {
      * בלי סינון. לחיצה על התראה - המפה על האזור שלה.
      */
     /** עמוד בסגנון One UI: כותרת גדולה ותוכן נגלל */
-    private fun onePage(title: String, action: Pair<Int, () -> Unit>? = null, build: (LinearLayout) -> Unit) {
+    private fun onePage(title: String, action: Pair<Int, () -> Unit>? = null, headerExtra: ((LinearLayout) -> Unit)? = null,
+                        build: (LinearLayout) -> Unit) {
         val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
         val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val page = ScrollView(this).apply {
@@ -784,6 +785,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(24), dp(14), dp(12), dp(14))
             addView(text(title, 20f, C.TEXT, bold = true), LinearLayout.LayoutParams(0, -2, 1f))
+            headerExtra?.invoke(this)
             action?.let { (icon, run) ->
                 addView(FrameLayout(this@MainActivity).apply {
                     background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(C.CARD2) }
@@ -808,8 +810,34 @@ class MainActivity : Activity() {
     }
 
     /** התראות אחרונות בסגנון One UI: מחולקות לימים, כל יום בכרטיס */
+    private var recentList: LinearLayout? = null
+    /** בורר הכל / האזורים שלי (בכותרת, ליד כפתור המפה) */
+    private fun buildRecentSeg(seg: LinearLayout) {
+        seg.removeAllViews()
+        listOf(false to "הכל", true to "שלי").forEach { (mine, label) ->
+            val sel = recentMine == mine
+            seg.addView(text(label, 14f, if (sel) Color.WHITE else C.MUTED, bold = sel).apply {
+                gravity = Gravity.CENTER
+                setPadding(dp(14), dp(7), dp(14), dp(7))
+                if (sel) background = GradientDrawable().apply { setColor(Color.parseColor("#4C7DFF")); cornerRadius = dp(16).toFloat() }
+                setOnClickListener {
+                    if (sel) return@setOnClickListener
+                    recentMine = mine; buildRecentSeg(seg)
+                    val c = recentList; val data = archiveCache
+                    if (c != null && data != null) fillRecent(c, data)
+                }
+            }, LinearLayout.LayoutParams(-2, -2))
+        }
+    }
+
     private fun showRecent() = onePage("התרעות אחרונות",
-        action = R.drawable.ic_map to { startActivity(Intent(this, MapActivity::class.java)) }) { c ->
+        action = R.drawable.ic_map to { startActivity(Intent(this, MapActivity::class.java)) },
+        headerExtra = { h ->
+            val seg = LinearLayout(this).apply { background = graphite(22); setPadding(dp(3), dp(3), dp(3), dp(3)) }
+            buildRecentSeg(seg)
+            h.addView(seg, LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(10) })
+        }) { c ->
+        recentList = c
         val cached = archiveCache
         if (cached != null) { fillRecent(c, cached); return@onePage }
         val loading = text("טוען את כל ההתראות…", 14f, C.MUTED2).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) }
@@ -838,20 +866,6 @@ class MainActivity : Activity() {
 
     private fun fillRecent(c: LinearLayout, all: List<Prefs.Entry>) {
         c.removeAllViews()
-        // הכל / האזורים שלי - בורר בראש הרשימה
-        val seg = LinearLayout(this).apply {
-            background = graphite(22); setPadding(dp(4), dp(4), dp(4), dp(4))
-            listOf(false to "הכל", true to "האזורים שלי").forEach { (mine, label) ->
-                val sel = recentMine == mine
-                addView(text(label, 15f, if (sel) Color.WHITE else C.MUTED, bold = sel).apply {
-                    gravity = Gravity.CENTER
-                    setPadding(dp(18), dp(8), dp(18), dp(8))
-                    if (sel) background = GradientDrawable().apply { setColor(Color.parseColor("#4C7DFF")); cornerRadius = dp(18).toFloat() }
-                    setOnClickListener { if (!sel) { recentMine = mine; fillRecent(c, all) } }
-                }, LinearLayout.LayoutParams(-2, -2))
-            }
-        }
-        c.addView(seg, LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.CENTER_HORIZONTAL; setMargins(0, dp(4), 0, dp(6)) })
         val items = if (!recentMine) all else {
             val manual = Prefs.cities(this)
             val near = if (Prefs.nearMe(this)) Prefs.nearbyAreas(this) else emptyList()
