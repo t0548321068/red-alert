@@ -805,16 +805,47 @@ class MainActivity : Activity() {
                 .ifEmpty { Prefs.feed(this) }   // אין כלום - מה שהאפליקציה קלטה בעצמה
             runOnUiThread {
                 archiveCache = list
-                c.removeAllViews()
                 fillRecent(c, list)
             }
         }.start()
     }
 
-    private fun fillRecent(c: LinearLayout, items: List<Prefs.Entry>) {
+    /** סינון ברשימת ההתרעות: הכל / האזורים שלי (נזכר עד שסוגרים את האפליקציה) */
+    private var recentMine = false
+
+    /** התרעה באזורים שלי: יישוב/אזור שבחרתי, האזור שאני נמצא בו עכשיו, או אזור שהייתי בו באותה שעה */
+    private fun isMine(e: Prefs.Entry, manual: List<String>, near: List<String>, visits: Map<String, List<LongArray>>): Boolean =
+        e.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }.any { a ->
+            manual.any { f -> AreaData.matches(this, a, f) } ||
+                near.any { n -> n == a || n.startsWith("$a -") || a.startsWith("$n -") } ||
+                Prefs.wasIn(visits, a, e.ts)
+        }
+
+    private fun fillRecent(c: LinearLayout, all: List<Prefs.Entry>) {
+        c.removeAllViews()
+        // הכל / האזורים שלי - בורר בראש הרשימה
+        val seg = LinearLayout(this).apply {
+            background = graphite(22); setPadding(dp(4), dp(4), dp(4), dp(4))
+            listOf(false to "הכל", true to "האזורים שלי").forEach { (mine, label) ->
+                val sel = recentMine == mine
+                addView(text(label, 15f, if (sel) Color.WHITE else C.MUTED, bold = sel).apply {
+                    gravity = Gravity.CENTER
+                    setPadding(dp(18), dp(8), dp(18), dp(8))
+                    if (sel) background = GradientDrawable().apply { setColor(Color.parseColor("#4C7DFF")); cornerRadius = dp(18).toFloat() }
+                    setOnClickListener { if (!sel) { recentMine = mine; fillRecent(c, all) } }
+                }, LinearLayout.LayoutParams(-2, -2))
+            }
+        }
+        c.addView(seg, LinearLayout.LayoutParams(-2, -2).apply { gravity = Gravity.CENTER_HORIZONTAL; setMargins(0, dp(4), 0, dp(6)) })
+        val items = if (!recentMine) all else {
+            val manual = Prefs.cities(this)
+            val near = if (Prefs.nearMe(this)) Prefs.nearbyAreas(this) else emptyList()
+            val visits = Prefs.visits(this)
+            all.filter { isMine(it, manual, near, visits) }
+        }
         val muted = C.MUTED2
         if (items.isEmpty()) {
-            c.addView(text("אין התראות עדיין", 14f, muted).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) })
+            c.addView(text(if (recentMine) "אין התראות באזורים שלך" else "אין התראות עדיין", 14f, muted).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) })
             return
         }
         items.groupBy { if (it.ts > 0) fullDayLabel(it.ts) else "" }.forEach { (day, list) ->
