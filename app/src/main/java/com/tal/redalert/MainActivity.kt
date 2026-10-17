@@ -1105,7 +1105,7 @@ class MainActivity : Activity() {
 
     /** on != null - השורה מציגה מתג (לחיצה על השורה מדליקה/מכבה) */
     private class Row(val icon: String, val title: String, val value: () -> String,
-                      val on: (() -> Boolean)? = null, val action: () -> Unit)
+                      val on: (() -> Boolean)? = null, val toggle: (() -> Unit)? = null, val action: () -> Unit)
 
     // סגנון One UI: כרטיס אפור כהה אחיד עם פינות מעוגלות מאוד
     private fun graphite(@Suppress("UNUSED_PARAMETER") radius: Int) = GradientDrawable().apply {
@@ -1410,7 +1410,7 @@ class MainActivity : Activity() {
         val cats = listOf(
             // הפעלה / כיבוי של האפליקציה - כמו הכפתור בשורת החיווי
             "צבע אדום" to { listOf(Row("⏻", "הגנה", { protectionLabel() },
-                on = { Prefs.enabled(this) }) { showProtection() }) },
+                on = { Prefs.enabled(this) }, toggle = { toggle() }) { showProtection() }) },
             "תצוגה" to { listOf(Row("🎨", "תצוגה", { "ערכת צבעים · שעון · תאריך · מזג אוויר" }) { showDisplay() }) },
             "צלילים ורטט" to { listOf(
                 Row("📳", "צלילים ורטט", { "שעות שקט · נא לא להפריע · מצב שקט · שבת" }) { showSoundSettings() }) },
@@ -1453,7 +1453,13 @@ class MainActivity : Activity() {
                     row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
                     r.on?.let { isOn ->
                         val on = isOn()
-                        row.addView(OuiSwitch(this, on, C.LIGHT).apply { isClickable = false })
+                        // מתג נפרד: קו מפריד, והמתג לבד מדליק/מכבה; לחיצה על השורה פותחת את המסך
+                        val t = r.toggle
+                        if (t != null) row.addView(View(this).apply { setBackgroundColor(C.SEPV) },
+                            LinearLayout.LayoutParams(dp(1), dp(20)).apply { setMargins(dp(12), 0, dp(12), 0) })
+                        row.addView(OuiSwitch(this, on, C.LIGHT).apply {
+                            if (t != null) setOnClickListener { t(); rebuild() } else isClickable = false
+                        })
                     }
                     card.addView(row)
                 }
