@@ -16,7 +16,7 @@ object OrefArchive {
      */
     fun backfill(c: android.content.Context): Boolean {
         val sp = c.getSharedPreferences("archive", android.content.Context.MODE_PRIVATE)
-        if (sp.getBoolean("backfillSecDone", false)) return false   // פעם נוספת - כדי להוסיף שניות להתרעות שכבר נשמרו
+        if (sp.getBoolean("backfillSec2Done", false)) return false   // פעם נוספת - כדי להוסיף שניות להתרעות שכבר נשמרו
         val fmt = java.text.SimpleDateFormat("dd.MM.yyyy", java.util.Locale.US).apply {
             timeZone = java.util.TimeZone.getTimeZone("Asia/Jerusalem") }
         val now = System.currentTimeMillis()
@@ -35,7 +35,7 @@ object OrefArchive {
         val merged = LinkedHashMap<String, Prefs.Entry>()
         (got + load(c)).forEach { e -> if (e.ts >= now - 366 * DAY) merged.putIfAbsent(e.title + "|" + e.ts / 60_000, e) }
         save(c, merged.values.sortedByDescending { it.ts })
-        sp.edit().putBoolean("backfillSecDone", true).apply()
+        sp.edit().putBoolean("backfillSec2Done", true).apply()
         return got.isNotEmpty()
     }
 
@@ -92,6 +92,7 @@ object OrefArchive {
         val tz = java.util.TimeZone.getTimeZone("Asia/Jerusalem")
         val fmtSec = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply { timeZone = tz }
         val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.US).apply { timeZone = tz }
+        val fmtDT = java.text.SimpleDateFormat("dd.MM.yyyy HH:mm:ss", java.util.Locale.US).apply { timeZone = tz }
         val arr = JSONArray(text)
         // אותה התראה (סוג + דקה) = שורה אחת עם כל האזורים
         val groups = LinkedHashMap<String, Triple<String, LongArray, MutableList<String>>>()
@@ -100,8 +101,10 @@ object OrefArchive {
             val title = o.optString("category_desc").ifEmpty { o.optString("title", "התראה") }
             val full = o.optString("alertDate").replace('T', ' ')
             val date = full.take(16)
-            // כולל שניות (אם יש); הקיבוץ - לפי דקה, והשעה - השנייה הראשונה בדקה
-            val ts = (try { if (full.length >= 19) fmtSec.parse(full.take(19))?.time else null } catch (_: Exception) { null })
+            // alertDate מעוגל לדקה - השניות האמיתיות בשדות date + time; הקיבוץ - לפי דקה, והשעה - השנייה הראשונה
+            val d = o.optString("date"); val t = o.optString("time")
+            val ts = (try { if (d.isNotEmpty() && t.length >= 8) fmtDT.parse("$d ${t.take(8)}")?.time else null } catch (_: Exception) { null })
+                ?: (try { if (full.length >= 19) fmtSec.parse(full.take(19))?.time else null } catch (_: Exception) { null })
                 ?: (try { fmt.parse(date)?.time } catch (_: Exception) { null }) ?: continue
             val g = groups.getOrPut("$title|$date") { Triple(title, longArrayOf(ts), mutableListOf()) }
             if (ts < g.second[0]) g.second[0] = ts
