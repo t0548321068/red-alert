@@ -170,7 +170,24 @@
     return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
 
+  // התרעה מסוימת שנלחצה ברשימה: מוצגת רק היא, בצבע שלה (ירי באדום, מקדימה בכתום, סיום בירוק)
+  var FOCUS = null;
+  function drawFocus() {
+    alertLayer.clearLayers();
+    var color = COLORS[FOCUS.level] || COLORS[0], pts = [];
+    FOCUS.names.forEach(function (name) {
+      var a = ALL_AREAS[name]; if (!a) return;
+      var shape = a.p ? L.polygon(a.p, { color: color, weight: 2.5, fillColor: color, fillOpacity: .6 })
+                      : L.circleMarker(a.c, { radius: 9, color: color, fillOpacity: .85 });
+      shape.bindPopup(info(name) + '<br>' + FOCUS.title + '<br>' + fmt(FOCUS.ts)).addTo(alertLayer);
+      pts = pts.concat(a.p || [a.c]);
+    });
+    document.getElementById('empty').style.display = 'none';
+    HAS_BOUNDS = pts.length > 0;
+    if (pts.length) map.fitBounds(pts, { padding: [60, 60], maxZoom: 14 });
+  }
   function drawAlerts() {
+    if (FOCUS) { drawFocus(); return; }
     alertLayer.clearLayers();
     var since = Date.now() - HOURS * 3600 * 1000, latest = {};
     (DATA[MODE] || []).forEach(function (e) {
@@ -234,8 +251,14 @@
 
   // מתמקד באזורים של התראה מסוימת (מהרשימה במסך הראשי)
   var FOCUSED = false;
-  function focusOn(names, ts, all) {
+  function focusOn(names, ts, all, level, title) {
     if (!names || !names.length) return;
+    if (level != null && level >= 0) {   // התרעה מסוימת - רק היא, בצבע שלה
+      FOCUSED = true;
+      FOCUS = { names: names, ts: ts, level: level, title: title || '' };
+      drawFocus();
+      return;
+    }
     FOCUSED = true;
     var age = (Date.now() - ts) / 3600000;
     var h = age <= 1 ? 1 : age <= 24 ? 24 : 168;
@@ -256,14 +279,14 @@
   document.querySelectorAll('.bar button[data-h]').forEach(function (b) {
     b.onclick = function () {
       document.querySelectorAll('.bar button[data-h]').forEach(function (x) { x.classList.remove('on'); });
-      b.classList.add('on'); HOURS = +b.dataset.h; drawAlerts();
+      b.classList.add('on'); HOURS = +b.dataset.h; FOCUS = null; drawAlerts();
     };
   });
   // כל הארץ / שלי
   document.querySelectorAll('.bar button[data-m]').forEach(function (b) {
     b.onclick = function () {
       document.querySelectorAll('.bar button[data-m]').forEach(function (x) { x.classList.remove('on'); });
-      b.classList.add('on'); MODE = b.dataset.m; drawAlerts();
+      b.classList.add('on'); MODE = b.dataset.m; FOCUS = null; drawAlerts();
     };
   });
   // מסך ההתראה: מפה קטנה שמראה את אזורי ההתראה - אפשר לעשות זום (צביטה / לחיצה כפולה) ולהזיז
