@@ -2010,9 +2010,11 @@ class MainActivity : Activity() {
             note("מזג אוויר וברכה בכרטיס השעון במסך הראשי")
             // פיד ארצי - כמה זמן אחורה להציג
             val feed = card()
-            row(feed, "פיד ארצי", FeedText.windowLabel(Prefs.feedMinutes(this))) { chooseFeedWindow { rebuild() } }
+            row(feed, "פיד ארצי", FeedText.windowLabel(Prefs.feedMinutes(this)), on = Prefs.feedAlways(this),
+                open = { chooseFeedWindow { rebuild() } }) {
+                Prefs.setFeedAlways(this, !Prefs.feedAlways(this)); updateFeed(); rebuild() }
             addCard(feed)
-            note("ההתראות בכל הארץ בתחתית המסך הראשי")
+            note("ההתראות בכל הארץ בתחתית המסך הראשי. כשהמתג מופעל - הפיד מוצג תמיד, גם כשאין התראות")
         }
         themeAtOpen = Prefs.themeMode(this)
         rebuild()
@@ -2124,6 +2126,7 @@ class MainActivity : Activity() {
     private var feedIdx = 0
     private var feedTick = 0
     private var feedWin = -1
+    private var feedAlwaysShown: Boolean? = null
 
     /** הטקסט של פריט בפיד, עם אייקון סוג ההתרעה (בצבע הרמה) במקום תווי המקום */
     private fun feedSpan(it: FeedText.Item): CharSequence {
@@ -2146,13 +2149,15 @@ class MainActivity : Activity() {
     private fun updateFeed() {
         val items = FeedText.recent(this)
         val win = Prefs.feedMinutes(this)
-        if (items != feedItems || win != feedWin) {
-            feedItems = items; feedWin = win; feedIdx = 0; feedTick = 0
-            // הכרטיס מוצג רק כשיש התראות בטווח הזמן שנבחר
+        val always = Prefs.feedAlways(this)
+        if (items != feedItems || win != feedWin || always != feedAlwaysShown) {
+            feedItems = items; feedWin = win; feedAlwaysShown = always; feedIdx = 0; feedTick = 0
+            // הכרטיס מוצג כשיש התראות בטווח הזמן שנבחר, או תמיד (מתג בהגדרות › תצוגה)
             val first = items.firstOrNull()
-            feedCard.visibility = if (first == null) View.GONE else View.VISIBLE
+            feedCard.visibility = if (first == null && !always) View.GONE else View.VISIBLE
             feedText = first?.text ?: ""
-            feedLine.text = if (first != null) feedSpan(first) else ""
+            feedLine.text = if (first != null) feedSpan(first)
+                else "אין התראות ב" + FeedText.windowLabel(win)
             feedLine.setTextColor(C.TEXT)
             return
         }
