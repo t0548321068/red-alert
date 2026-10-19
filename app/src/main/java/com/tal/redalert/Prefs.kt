@@ -60,6 +60,9 @@ object Prefs {
     /** פיד ארצי במסך הראשי: כמה דקות אחורה להציג (30 דקות עד 24 שעות) */
     fun feedMinutes(c: Context) = sp(c).getInt("feedMin", 30)
     fun setFeedMinutes(c: Context, v: Int) = sp(c).edit().putInt("feedMin", v).commit()
+    /** פיד ארצי מוצג תמיד - גם כשאין התראות בטווח הזמן */
+    fun feedAlways(c: Context) = sp(c).getBoolean("feedAlways", false)
+    fun setFeedAlways(c: Context, v: Boolean) = sp(c).edit().putBoolean("feedAlways", v).commit()
 
     /** הגרסה האחרונה שהמשתמש ראה עליה "מה חדש" */
     fun seenVersion(c: Context) = sp(c).getString("seenVer", "") ?: ""
