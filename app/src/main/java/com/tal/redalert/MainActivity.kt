@@ -2157,7 +2157,7 @@ class MainActivity : Activity() {
             feedCard.visibility = if (first == null && !always) View.GONE else View.VISIBLE
             feedText = first?.text ?: ""
             feedLine.text = if (first != null) feedSpan(first)
-                else "אין התראות ב" + FeedText.windowLabel(win)
+                else FeedText.windowLabel(win).let { "אין התראות ב" + (if (it[0].isDigit()) "-" else "") + it }
             feedLine.setTextColor(C.TEXT)
             return
         }
