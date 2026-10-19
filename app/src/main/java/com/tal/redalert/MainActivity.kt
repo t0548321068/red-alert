@@ -1335,6 +1335,24 @@ class MainActivity : Activity() {
     }
 
     /**
+     * אזור המתג בשורה: מהקו המפריד ועד קצה השורה, לכל גובה השורה - לחיצה בכל האזור מדליקה/מכבה
+     * (המתג עצמו קטן מדי, ולחיצה לידו פתחה את המסך של השורה)
+     */
+    private fun switchZone(row: LinearLayout, on: Boolean, padEnd: Int, toggle: () -> Unit) {
+        row.setPaddingRelative(row.paddingStart, row.paddingTop, 0, row.paddingBottom)
+        val z = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPaddingRelative(dp(12), 0, padEnd, 0)
+            isClickable = true
+            setOnClickListener { toggle() }
+        }
+        z.addView(View(this).apply { setBackgroundColor(C.SEPV) },
+            LinearLayout.LayoutParams(dp(1), dp(20)).apply { marginEnd = dp(12) })
+        z.addView(OuiSwitch(this, on, C.LIGHT).apply { isClickable = false })
+        row.addView(z, LinearLayout.LayoutParams(-2, -1))
+    }
+
+    /**
      * שורה בגובה קבוע (48, או 56 עם שורת מצב): שם, מצב בכחול מתחת,
      * ובצד: ערך (end), כפתור בחירה (radio) או מתג (on)
      */
@@ -1356,11 +1374,9 @@ class MainActivity : Activity() {
         if (radio != null) r.addView(ouiRadio(radio), LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginStart = dp(10) })
         // onToggle: לחיצה על השורה פותחת הגדרה, והמתג לבד מדליק/מכבה (כמו בעמוד תצוגה)
         // רווחים זהים בכל האפליקציה: 12 מהטקסט לקו, והקו צמוד למתג
-        if (on != null && onToggle != null) r.addView(View(this).apply { setBackgroundColor(C.SEPV) },
-            LinearLayout.LayoutParams(dp(1), dp(20)).apply { setMargins(dp(12), 0, dp(12), 0) })
-        if (on != null) r.addView(OuiSwitch(this, on, C.LIGHT).apply {
-            if (onToggle != null) setOnClickListener { onToggle() } else isClickable = false
-        }, LinearLayout.LayoutParams(-2, -2).apply { marginStart = if (onToggle != null) 0 else dp(10) })
+        if (on != null && onToggle != null) switchZone(r, on, dp(18)) { onToggle() }
+        else if (on != null) r.addView(OuiSwitch(this, on, C.LIGHT).apply { isClickable = false },
+            LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
         c.addView(r, LinearLayout.LayoutParams(-1, dp(if (sub.isEmpty()) 48 else 56)))
     }
 
@@ -1573,11 +1589,8 @@ class MainActivity : Activity() {
                         val on = isOn()
                         // מתג נפרד: קו מפריד, והמתג לבד מדליק/מכבה; לחיצה על השורה פותחת את המסך
                         val t = r.toggle
-                        if (t != null) row.addView(View(this).apply { setBackgroundColor(C.SEPV) },
-                            LinearLayout.LayoutParams(dp(1), dp(20)).apply { setMargins(dp(12), 0, dp(12), 0) })
-                        row.addView(OuiSwitch(this, on, C.LIGHT).apply {
-                            if (t != null) setOnClickListener { t(); rebuild() } else isClickable = false
-                        })
+                        if (t != null) switchZone(row, on, dp(16)) { t(); rebuild() }
+                        else row.addView(OuiSwitch(this, on, C.LIGHT).apply { isClickable = false })
                     }
                     card.addView(row)
                 }
@@ -1950,11 +1963,12 @@ class MainActivity : Activity() {
             if (sub.isNotEmpty()) t.addView(text(sub, 12f, blue).apply { includeFontPadding = false; setPadding(0, dp(4), 0, 0) })
             r.addView(t, LinearLayout.LayoutParams(0, -2, 1f))
             if (on != null) {
-                if (sep) r.addView(View(this).apply { setBackgroundColor(C.SEPV) },
-                    LinearLayout.LayoutParams(dp(1), dp(20)).apply { setMargins(dp(12), 0, dp(12), 0) })
-                r.addView(OuiSwitch(this, on, C.LIGHT).apply {
-                    if (open != null) setOnClickListener { click() } else isClickable = false
-                })
+                if (open != null) switchZone(r, on, dp(18)) { click() }
+                else {
+                    if (sep) r.addView(View(this).apply { setBackgroundColor(C.SEPV) },
+                        LinearLayout.LayoutParams(dp(1), dp(20)).apply { setMargins(dp(12), 0, dp(12), 0) })
+                    r.addView(OuiSwitch(this, on, C.LIGHT).apply { isClickable = false })
+                }
             }
             c.addView(r, LinearLayout.LayoutParams(-1, dp(if (sub.isEmpty()) 48 else 56)))
         }
