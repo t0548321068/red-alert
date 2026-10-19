@@ -421,13 +421,27 @@ class MainActivity : Activity() {
             minLines = 3; maxLines = 3
             ellipsize = TextUtils.TruncateAt.END
             gravity = Gravity.CENTER
-            setPadding(dp(12), dp(14), dp(12), dp(14))
+            setPadding(dp(12), dp(10), dp(12), dp(14))
         }
-        // הכרטיס קבוע - רק המלל שבתוכו נגלל (נחתך בגבולות הכרטיס)
+        // הכרטיס קבוע: כותרת "התרעות אחרונות", פס מפריד, ומתחת - רק המלל נגלל (נחתך מתחת לפס)
+        val feedScroll = FrameLayout(this).apply {
+            clipChildren = true; clipToPadding = true
+            addView(feedLine, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER))
+        }
         feedCard = FrameLayout(this).apply {
             background = graphite(20)   // כמו שאר הכרטיסים
             clipToOutline = true; clipChildren = true
-            addView(feedLine, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER))
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(text("התרעות אחרונות", 15f, C.TEXT).apply {
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    gravity = Gravity.CENTER
+                    setPadding(dp(12), dp(12), dp(12), dp(10))
+                }, LinearLayout.LayoutParams(-1, -2))
+                addView(View(this@MainActivity).apply { setBackgroundColor(C.LINE2) },
+                    LinearLayout.LayoutParams(-1, dp(1)).apply { marginStart = dp(14); marginEnd = dp(14) })
+                addView(feedScroll, LinearLayout.LayoutParams(-1, -2))
+            }, FrameLayout.LayoutParams(-1, -2))
         }
 
         // כרטיס השעון הוא גם מצב ההגנה: ירוק עם פס אור שעובר לאט כשמוגן, גרפיט כשלא.
