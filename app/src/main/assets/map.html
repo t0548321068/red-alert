@@ -232,14 +232,19 @@
     var later = {}; Object.keys(fresh).forEach(function (n) { if (fresh[n].level === 0) later[n] = 1; });
     drawAlerts({ noFit: true, later: later });
     var pts = []; Object.keys(fresh).forEach(function (n) { var a = ALL_AREAS[n]; pts = pts.concat(a.p || [a.c]); });
-    clearTimeout(liveT); map.closePopup();
+    clearTimeout(liveT); map.closePopup(); map.off('moveend', liveLand);
+    LIVE_LATER = later;
+    // כשמגיעים לאזור (סוף התנועה, לא לפי שעון) - הסיכות נופלות, ואחרי רגע מתרחקים לכל ההתרעות
+    map.once('moveend', liveLand);
     map.flyToBounds(pts, { padding: [70, 70], maxZoom: 13, duration: 1.1 });
+  }
+  var LIVE_LATER = {};
+  function liveLand() {
+    Object.keys(LIVE_LATER).forEach(function (n) { addPin(ALL_AREAS[n], alertLayer, true); });
+    LIVE_LATER = {};
     liveT = setTimeout(function () {
-      Object.keys(later).forEach(function (n) { addPin(ALL_AREAS[n], alertLayer, true); });
-      liveT = setTimeout(function () {
-        if (ALL_BOUNDS.length > 1) map.flyToBounds(ALL_BOUNDS, { padding: [50, 50], maxZoom: 12, duration: 1.2 });
-      }, 1900);
-    }, 1150);
+      if (ALL_BOUNDS.length > 1) map.flyToBounds(L.latLngBounds(ALL_BOUNDS), { padding: [50, 50], maxZoom: 12, duration: 1.2 });
+    }, 1900);
   }
 
   // האזור שבו אני נמצא עכשיו - מסגרת כחולה מקווקוות (יחד עם הנקודה הכחולה)
