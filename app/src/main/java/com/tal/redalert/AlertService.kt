@@ -264,7 +264,7 @@ class AlertService : Service() {
         // בלי חיבור קבוע ל-ntfy (חיסכון בסוללה) - בדיקת עדכונים כל 6 שעות ובפתיחת האפליקציה
         Thread(::nearLoop, "near-me").start()
         tzofar = TzofarSource(this) { title, areas -> handle(title, areas, source = "tzofar") }.also { it.start() }
-        telegram = listOf("PikudHaOref_all", "tzevaadomm")   // שניים מספיקים - כולם חוזרים על אותן התרעות.map { ch ->
+        telegram = listOf("PikudHaOref_all", "tzevaadomm").map { ch ->   // שניים מספיקים - כולם חוזרים על אותן התרעות
             TelegramSource(ch, { telegramInterval() }) { title, areas ->
                 // רק שמות יישובים אמיתיים - בלי שורות כותרת, תאריכים ושמות ערוצים
                 val real = areas.filter { AreaData.isKnown(this, it) }
