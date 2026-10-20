@@ -20,7 +20,8 @@ class UpdatePush(private val beta: () -> Boolean, private val onPing: () -> Unit
     }
 
     private val client = OkHttpClient.Builder()
-        .readTimeout(0, TimeUnit.MILLISECONDS)   // חיבור פתוח לאורך זמן
+        // ntfy שולח סימן חיים כל 45 שניות - אם 90 שניות לא הגיע כלום, החיבור מת ומתחברים מחדש
+        .readTimeout(90, TimeUnit.SECONDS)
         .build()
 
     @Volatile private var running = false
@@ -35,7 +36,7 @@ class UpdatePush(private val beta: () -> Boolean, private val onPing: () -> Unit
         Thread(::loop, "update-push").start()
     }
 
-    fun stop() { running = false }
+    fun stop() { running = false; call?.cancel() }
 
     private fun loop() {
         while (running) {
