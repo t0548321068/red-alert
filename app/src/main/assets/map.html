@@ -82,29 +82,68 @@
   var PIN = L.divIcon({ className: 'pin', iconSize: [26, 34], iconAnchor: [13, 33],
     html: '<div class="sh"></div><svg class="pb" viewBox="0 0 26 34" width="26" height="34"><path d="M13 1C6.4 1 1 6.3 1 12.8 1 21.6 13 33 13 33s12-11.4 12-20.2C25 6.3 19.6 1 13 1z" fill="#D50000" stroke="#fff" stroke-width="2"/><circle cx="13" cy="12.8" r="4.4" fill="#fff"/></svg>' });
   function addPin(a, layer) { if (a && a.c) L.marker(a.c, { icon: PIN, interactive: false, keyboard: false }).addTo(layer); }
-  // לנפילה: הסיכה והצל בנפרד - הסיכות בשכבה שנופלת, הצללים בשכבה שרק מופיעה במקום
-  var PIN_BODY = L.divIcon({ className: 'pin', iconSize: [26, 34], iconAnchor: [13, 33], html: PIN.options.html.replace('<div class="sh"></div>', '') });
-  var PIN_SH = L.divIcon({ className: 'pin', iconSize: [26, 34], iconAnchor: [13, 33], html: '<div class="sh"></div>' });
+  // לנפילה: כל הסיכות של ההתרעה מצוירות על משטח ציור אחד (גם 1,400 יישובים = רכיב אחד),
+  // והצללים על משטח שני. כל המשטח נופל בתנועה אחת - חלק גם בהתרעה בכל הארץ
+  var PIN_PATH = null;
+  var PinCanvas = L.Layer.extend({
+    initialize: function (list, pane, shadow) { this._list = list; this._paneName = pane; this._shadow = shadow; },
+    onAdd: function (m) {
+      this._c = L.DomUtil.create('canvas', 'pincanvas');
+      this._c.style.position = 'absolute'; this._c.style.pointerEvents = 'none';
+      m.getPane(this._paneName).appendChild(this._c);
+      m.on('moveend zoomend resize viewreset', this._draw, this);
+      m.on('move zoom', this._soon, this);      // גם תוך כדי תנועה (התמקדות / הזזה) - הסיכות זזות עם המפה
+      m.on('zoomanim', this._hide, this);       // זום קפיצתי (לחיצה כפולה) - מוסתר לרגע ומצויר בסופו
+      this._draw();
+    },
+    onRemove: function (m) {
+      m.off('moveend zoomend resize viewreset', this._draw, this);
+      m.off('move zoom', this._soon, this);
+      m.off('zoomanim', this._hide, this);
+      L.DomUtil.remove(this._c);
+    },
+    _hide: function () { this._c.style.visibility = 'hidden'; },
+    _soon: function () {
+      if (this._raf) return;
+      var self = this;
+      this._raf = requestAnimationFrame(function () { self._raf = 0; self._draw(); });
+    },
+    _draw: function () {
+      var m = this._map; if (!m) return;
+      var size = m.getSize(), dpr = window.devicePixelRatio || 1, c = this._c;
+      L.DomUtil.setPosition(c, m.containerPointToLayerPoint([0, 0]));
+      c.width = size.x * dpr; c.height = size.y * dpr;
+      c.style.width = size.x + 'px'; c.style.height = size.y + 'px';
+      var ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (!PIN_PATH) PIN_PATH = new Path2D('M13 1C6.4 1 1 6.3 1 12.8 1 21.6 13 33 13 33s12-11.4 12-20.2C25 6.3 19.6 1 13 1z');
+      // מלמעלה למטה - סיכה נמוכה יותר מכסה את זו שמעליה
+      var pts = this._list.map(function (a) { return m.latLngToContainerPoint(a.c); })
+        .filter(function (p) { return p.x > -30 && p.y > -10 && p.x < size.x + 30 && p.y < size.y + 40; })
+        .sort(function (a, b) { return a.y - b.y; });
+      pts.forEach(function (p) {
+        ctx.save(); ctx.translate(p.x - 13, p.y - 33);
+        if (this._shadow) {
+          ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.ellipse(13, 32.5, 6, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+        } else {
+          ctx.fillStyle = '#D50000'; ctx.fill(PIN_PATH);
+          ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke(PIN_PATH);
+          ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(13, 12.8, 4.4, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      }, this);
+      c.style.visibility = 'visible';
+    }
+  });
   var DROP_N = 0;
   function dropPins(list, layer) {
     list = list.filter(function (a) { return a && a.c; });
     if (!list.length) return;
-    // סיכה אחת לכל משבצת של 30 פיקסלים במסך - בהתרעה בכל הארץ עשרות סיכות ברורות במקום אלפים
-    // שנערמות ומאטות את הטלפון
-    var cell = {}, few = [];
-    list.forEach(function (a) {
-      var pt = map.latLngToContainerPoint(a.c), k = Math.floor(pt.x / 30) + ':' + Math.floor(pt.y / 30);
-      if (!cell[k]) { cell[k] = 1; few.push(a); }
-    });
-    list = few;
     var id = 'drop' + (++DROP_N), sid = id + 's';
     var pane = map.createPane(id), sp = map.createPane(sid);
     pane.style.zIndex = 650; sp.style.zIndex = 640;
     pane.classList.add('droppane', 'pre'); sp.classList.add('shpane', 'pre');
-    list.forEach(function (a) {
-      L.marker(a.c, { icon: PIN_SH, pane: sid, interactive: false, keyboard: false }).addTo(layer);
-      L.marker(a.c, { icon: PIN_BODY, pane: id, interactive: false, keyboard: false }).addTo(layer);
-    });
+    new PinCanvas(list, sid, true).addTo(layer);
+    new PinCanvas(list, id, false).addTo(layer);
     // שני פריימים: הדפדפן מצייר את הסיכות במקום המוסתר, ורק אז מתחילה הנפילה
     requestAnimationFrame(function () { requestAnimationFrame(function () {
       pane.classList.remove('pre'); pane.classList.add('go');
