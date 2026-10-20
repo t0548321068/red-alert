@@ -323,11 +323,17 @@
     var drop = function () {
       if (MINI_LEVEL === 0) add.forEach(function (a, i) { setTimeout(function () { addPin(a, alertLayer, true); }, 150 + i * 90); });
     };
-    var target = map.getBoundsZoom(L.latLngBounds(fit), false, L.point(28, 28));
-    var inView = map.getBounds().contains(L.latLngBounds(fit)) && map.getZoom() <= Math.min(target, 15);
-    if (inView) { drop(); return; }
-    map.once('moveend', drop);
-    map.flyToBounds(fit, { padding: [14, 14], maxZoom: 15, duration: 0.9 });
+    // קודם מתמקדים באזור החדש (שם הסיכות נופלות), ואחרי רגע חוזרים לתצוגה של כל האזורים
+    var pts = []; add.forEach(function (a) { pts = pts.concat(a.p || [a.c]); });
+    clearTimeout(window._miniBack); map.off('moveend', window._miniLand);
+    window._miniLand = function () {
+      drop();
+      window._miniBack = setTimeout(function () {
+        map.flyToBounds(MINI_FIT, { padding: [14, 14], maxZoom: 15, duration: 1.0 });
+      }, 1800);
+    };
+    map.once('moveend', window._miniLand);
+    map.flyToBounds(pts, { padding: [24, 24], maxZoom: 14, duration: 0.9 });
   }
   // זום קרוב על אזור ההתרעה, בלי אנימציה. מחכה עד שלמפה יש גודל אמיתי
   // (אם מתמקדים לפני כן - יוצאת כל הארץ), ורק אז מציג אותה
