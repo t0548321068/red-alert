@@ -44,12 +44,14 @@
   .pin .sh { position: absolute; left: 7px; top: 30px; width: 12px; height: 5px; border-radius: 50%; background: rgba(0,0,0,.4); }
   .pin .pb { position: absolute; left: 0; top: 0; width: 26px; height: 34px; }
   /* מסך ההתרעה: הסיכה נופלת מלמעלה וקופצת קצת */
-  /* נפילה: הסיכה יורדת מלמעלה וקופצת קצת, והצל גדל מתחתיה. translate3d - שכבה נפרדת, חלק בלי הבהוב */
-  .pin.drop .pb { will-change: transform; backface-visibility: hidden;
-    animation: pinDrop .7s cubic-bezier(.3,1.4,.55,1) both; }
-  .pin.drop .sh { animation: pinShadow .7s ease-out both; }
-  @keyframes pinDrop { 0% { transform: translate3d(0,-80px,0); } 100% { transform: translate3d(0,0,0); } }
-  @keyframes pinShadow { 0% { transform: scale(.2); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  /* נפילה: כל הסיכות של ההתרעה בשכבה אחת, וכל השכבה זזה יחד (תנועה אחת - חלק גם בכל הארץ).
+     הסיכות נבנות כשהשכבה עוד מוסתרת למעלה, והנפילה מתחילה רק כשהכל מוכן */
+  .droppane { will-change: transform, opacity; backface-visibility: hidden; }
+  .droppane.pre { transform: translate3d(0,-80px,0); opacity: 0; }
+  .droppane.go { animation: paneDrop .7s cubic-bezier(.3,1.4,.55,1) both; }
+  .shpane.pre { opacity: 0; }
+  .shpane.go { transition: opacity .7s ease-out; opacity: 1; }
+  @keyframes paneDrop { 0% { transform: translate3d(0,-80px,0); opacity: 0; } 25% { opacity: 1; } 100% { transform: translate3d(0,0,0); opacity: 1; } }
   .leaflet-popup-content { direction: rtl; text-align: right; }
   /* מפה קטנה במסך ההתראה: רק המפה והאזורים, בלי כפתורים */
   body.mini .legend, body.mini .me-btn, body.mini .empty { display: none !important; }
@@ -79,8 +81,36 @@
   // סיכת מיקום על כל מקום בהתרעה אדומה (ירי / חדירה)
   var PIN = L.divIcon({ className: 'pin', iconSize: [26, 34], iconAnchor: [13, 33],
     html: '<div class="sh"></div><svg class="pb" viewBox="0 0 26 34" width="26" height="34"><path d="M13 1C6.4 1 1 6.3 1 12.8 1 21.6 13 33 13 33s12-11.4 12-20.2C25 6.3 19.6 1 13 1z" fill="#D50000" stroke="#fff" stroke-width="2"/><circle cx="13" cy="12.8" r="4.4" fill="#fff"/></svg>' });
-  var PIN_DROP = L.divIcon({ className: 'pin drop', iconSize: PIN.options.iconSize, iconAnchor: PIN.options.iconAnchor, html: PIN.options.html });
-  function addPin(a, layer, drop) { if (a && a.c) L.marker(a.c, { icon: drop ? PIN_DROP : PIN, interactive: false, keyboard: false }).addTo(layer); }
+  function addPin(a, layer) { if (a && a.c) L.marker(a.c, { icon: PIN, interactive: false, keyboard: false }).addTo(layer); }
+  // לנפילה: הסיכה והצל בנפרד - הסיכות בשכבה שנופלת, הצללים בשכבה שרק מופיעה במקום
+  var PIN_BODY = L.divIcon({ className: 'pin', iconSize: [26, 34], iconAnchor: [13, 33], html: PIN.options.html.replace('<div class="sh"></div>', '') });
+  var PIN_SH = L.divIcon({ className: 'pin', iconSize: [26, 34], iconAnchor: [13, 33], html: '<div class="sh"></div>' });
+  var DROP_N = 0;
+  function dropPins(list, layer) {
+    list = list.filter(function (a) { return a && a.c; });
+    if (!list.length) return;
+    // סיכה אחת לכל משבצת של 30 פיקסלים במסך - בהתרעה בכל הארץ עשרות סיכות ברורות במקום אלפים
+    // שנערמות ומאטות את הטלפון
+    var cell = {}, few = [];
+    list.forEach(function (a) {
+      var pt = map.latLngToContainerPoint(a.c), k = Math.floor(pt.x / 30) + ':' + Math.floor(pt.y / 30);
+      if (!cell[k]) { cell[k] = 1; few.push(a); }
+    });
+    list = few;
+    var id = 'drop' + (++DROP_N), sid = id + 's';
+    var pane = map.createPane(id), sp = map.createPane(sid);
+    pane.style.zIndex = 650; sp.style.zIndex = 640;
+    pane.classList.add('droppane', 'pre'); sp.classList.add('shpane', 'pre');
+    list.forEach(function (a) {
+      L.marker(a.c, { icon: PIN_SH, pane: sid, interactive: false, keyboard: false }).addTo(layer);
+      L.marker(a.c, { icon: PIN_BODY, pane: id, interactive: false, keyboard: false }).addTo(layer);
+    });
+    // שני פריימים: הדפדפן מצייר את הסיכות במקום המוסתר, ורק אז מתחילה הנפילה
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      pane.classList.remove('pre'); pane.classList.add('go');
+      sp.classList.remove('pre'); sp.classList.add('go');
+    }); });
+  }
   function css(v) { return getComputedStyle(document.body).getPropertyValue(v).trim(); }
 
   var map = L.map('map', { zoomControl: false, attributionControl: false, preferCanvas: true, minZoom: 7, maxZoom: 18 })
@@ -328,7 +358,7 @@
     if (MINI_ME && L.latLngBounds(MINI_PTS).getCenter().distanceTo(MINI_ME) < 20000) fit.push(MINI_ME);
     MINI_FIT = fit;
     var drop = function () {
-      if (MINI_LEVEL === 0) setTimeout(function () { add.forEach(function (a) { addPin(a, alertLayer, true); }); }, 150);   // כולן יחד
+      if (MINI_LEVEL === 0) setTimeout(function () { dropPins(add, alertLayer); }, 150);   // כולן יחד, בתנועה אחת
     };
     // קודם מתמקדים באזור החדש (שם הסיכות נופלות), ואחרי רגע חוזרים לתצוגה של כל האזורים
     var pts = []; add.forEach(function (a) { pts = pts.concat(a.p || [a.c]); });
@@ -357,7 +387,7 @@
     // סיכות המיקום (התרעה אדומה) נופלות באנימציה - כל הסיכות של ההתרעה יחד
     var pins = MINI_PINS; MINI_PINS = [];
     // אחרי שהמפה סיימה להופיע (מעבר של 0.35 שניות) - אחרת הנפילה קורית כשהמפה עוד שקופה
-    setTimeout(function () { pins.forEach(function (a) { addPin(a, alertLayer, true); }); }, 550);
+    setTimeout(function () { dropPins(pins, alertLayer); }, 550);
   }
   window.addEventListener('resize', function () {
     if (document.body.classList.contains('mini') && MINI_FIT) {
