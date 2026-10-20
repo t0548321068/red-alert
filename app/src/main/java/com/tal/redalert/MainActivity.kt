@@ -1257,9 +1257,11 @@ class MainActivity : Activity() {
         }
         lateinit var rebuild: () -> Unit
         rebuild = {
+            val y = page.scrollY   // אותו מקום בגלילה גם אחרי רענון
             body.removeAllViews()
             body.addView(text(title, 20f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(14), dp(24), dp(14)) })
             build(body, rebuild)
+            if (y > 0) page.post { page.scrollTo(0, y) }
         }
         rebuild()
         val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
@@ -1310,9 +1312,21 @@ class MainActivity : Activity() {
         @Suppress("DEPRECATION")
         d.window?.statusBarColor = C.BG
         edgeToEdge(d)
-        if (refreshOnFocus) d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
+        if (refreshOnFocus) onRefocus(d) { rebuild() }
         track(d, onClose)
         d.show()
+    }
+
+    /**
+     * רענון כשחוזרים לעמוד (מחלון בחירה / הגדרות המערכת) - רק אחרי שהעמוד באמת איבד פוקוס.
+     * בלי זה העמוד נבנה פעמיים ברגע הפתיחה, והשורות קפצו
+     */
+    private fun onRefocus(d: android.app.Dialog, block: () -> Unit) {
+        var lost = false
+        d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has ->
+            if (!has) lost = true
+            else if (lost) { lost = false; block() }
+        }
     }
 
     private fun ouiCard() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = graphite(26); clipToOutline = true }
@@ -1605,7 +1619,7 @@ class MainActivity : Activity() {
         d.window?.statusBarColor = C.BG
         edgeToEdge(d)
         // חוזרים מחלון של הגדרה - מעדכנים את המצבים
-        d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
+        onRefocus(d) { rebuild() }
         track(d)
         d.show()
     }
@@ -2041,7 +2055,7 @@ class MainActivity : Activity() {
         d.window?.statusBarColor = C.BG
         edgeToEdge(d)
         // חוזרים מחלון בחירה - מעדכנים את המצבים
-        d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
+        onRefocus(d) { rebuild() }
         d.show()
     }
 
