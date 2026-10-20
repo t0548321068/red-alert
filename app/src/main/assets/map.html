@@ -282,9 +282,10 @@
       syncLabels();
     });
   }
-  var MINI_PINS = [];
+  var MINI_PINS = [], MINI_SHOWN = {}, MINI_PTS = [], MINI_ME = null, MINI_LEVEL = 0;
   function miniShow(names, level, lat, lon) {
-    alertLayer.clearLayers(); MINI_PINS = [];
+    alertLayer.clearLayers(); MINI_PINS = []; MINI_SHOWN = {}; MINI_LEVEL = level;
+    names.forEach(function (n) { MINI_SHOWN[n] = 1; });
     var color = COLORS[level] || COLORS[0], pts = [];
     names.forEach(function (n) {
       var a = ALL_AREAS[n]; if (!a) return;
@@ -300,7 +301,33 @@
       if (pts.length && L.latLngBounds(pts).getCenter().distanceTo([lat, lon]) < 20000) fit.push([lat, lon]);
     }
     MINI_FIT = pts.length ? fit : null;
+    MINI_PTS = pts; MINI_ME = (lat != null && lon != null) ? [lat, lon] : null;
     miniFit(0);
+  }
+  // התרעה נוספת בזמן שהמסך פתוח: האזורים החדשים נוספים למפה, המפה מתרחבת כך שכולם נראים,
+  // וכשהיא מגיעה - הסיכות של האזורים החדשים נופלות (הקודמות נשארות במקומן)
+  function miniAdd(names) {
+    var color = COLORS[MINI_LEVEL] || COLORS[0], add = [];
+    names.forEach(function (n) {
+      var a = ALL_AREAS[n]; if (!a || MINI_SHOWN[n]) return;
+      MINI_SHOWN[n] = 1;
+      (a.p ? L.polygon(a.p, { color: color, weight: 2, fillColor: color, fillOpacity: .6, interactive: false })
+           : L.circleMarker(a.c, { radius: 8, color: color, fillOpacity: .8, interactive: false })).addTo(alertLayer);
+      MINI_PTS = MINI_PTS.concat(a.p || [a.c]);
+      add.push(a);
+    });
+    if (!add.length) return;
+    var fit = MINI_PTS.slice();
+    if (MINI_ME && L.latLngBounds(MINI_PTS).getCenter().distanceTo(MINI_ME) < 20000) fit.push(MINI_ME);
+    MINI_FIT = fit;
+    var drop = function () {
+      if (MINI_LEVEL === 0) add.forEach(function (a, i) { setTimeout(function () { addPin(a, alertLayer, true); }, 150 + i * 90); });
+    };
+    var target = map.getBoundsZoom(L.latLngBounds(fit), false, L.point(28, 28));
+    var inView = map.getBounds().contains(L.latLngBounds(fit)) && map.getZoom() <= Math.min(target, 15);
+    if (inView) { drop(); return; }
+    map.once('moveend', drop);
+    map.flyToBounds(fit, { padding: [14, 14], maxZoom: 15, duration: 0.9 });
   }
   // זום קרוב על אזור ההתרעה, בלי אנימציה. מחכה עד שלמפה יש גודל אמיתי
   // (אם מתמקדים לפני כן - יוצאת כל הארץ), ורק אז מציג אותה
