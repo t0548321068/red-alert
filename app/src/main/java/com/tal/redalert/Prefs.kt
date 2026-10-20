@@ -54,7 +54,7 @@ object Prefs {
     fun setShowGreeting(c: Context, v: Boolean) = sp(c).edit().putBoolean("greeting", v).commit()
     fun showWeather(c: Context) = sp(c).getBoolean("weather", true)
     /** כל כמה דקות לרענן את מזג האוויר והמיקום שלו */
-    fun weatherMinutes(c: Context) = sp(c).getInt("weatherMin", 2)
+    fun weatherMinutes(c: Context) = sp(c).getInt("weatherMin", 10)
     fun setWeatherMinutes(c: Context, v: Int) = sp(c).edit().putInt("weatherMin", v).commit()
     fun setShowWeather(c: Context, v: Boolean) = sp(c).edit().putBoolean("weather", v).commit()
     /** פיד ארצי במסך הראשי: כמה דקות אחורה להציג (30 דקות עד 24 שעות) */

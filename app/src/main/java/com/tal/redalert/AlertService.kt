@@ -169,7 +169,7 @@ class AlertService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     /** השומר: כמה שניות ער - החיבורים מתחדשים ופיקוד העורף נבדק - ותזמון הבא */
     fun onWatchdog() {
-        awake(20_000)
+        awake(6_000)   // מספיק לוודא שהחיבור לצופר חי ולבדיקה אחת של פיקוד העורף
         tzofar?.ensureConnected()
         // הטלפון כבר ער בשביל השומר - מנצלים את זה לבדיקת עדכון (לכל היותר פעם בחצי שעה, בקשה קטנה אחת)
         checkUpdateIfDue(30 * 60 * 1000L)
@@ -264,7 +264,7 @@ class AlertService : Service() {
         // בלי חיבור קבוע ל-ntfy (חיסכון בסוללה) - בדיקת עדכונים כל 6 שעות ובפתיחת האפליקציה
         Thread(::nearLoop, "near-me").start()
         tzofar = TzofarSource(this) { title, areas -> handle(title, areas, source = "tzofar") }.also { it.start() }
-        telegram = listOf("PikudHaOref_all", "tzevaadomm", "CumtaAlertsChannel", "Radar_Alerts").map { ch ->
+        telegram = listOf("PikudHaOref_all", "tzevaadomm")   // שניים מספיקים - כולם חוזרים על אותן התרעות.map { ch ->
             TelegramSource(ch, { telegramInterval() }) { title, areas ->
                 // רק שמות יישובים אמיתיים - בלי שורות כותרת, תאריכים ושמות ערוצים
                 val real = areas.filter { AreaData.isKnown(this, it) }
@@ -277,7 +277,7 @@ class AlertService : Service() {
     private fun telegramInterval(): Long = when {
         inEvent() -> 5_000L
         (getSystemService(POWER_SERVICE) as PowerManager).isInteractive -> 30_000L
-        else -> 120_000L
+        else -> 300_000L   // מסך כבוי - כל 5 דקות (גיבוי בלבד)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -341,19 +341,28 @@ class AlertService : Service() {
         }
     }
 
+    /**
+     * חיבור קבוע לפיקוד העורף: אותו חיבור מאובטח משמש את כל הבדיקות (כל 2 שניות),
+     * במקום לפתוח ולסגור חיבור חדש בכל בדיקה - חוסך הרבה סוללה, באותה מהירות
+     */
+    private val orefHttp = okhttp3.OkHttpClient.Builder()
+        .connectTimeout(4, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(4, java.util.concurrent.TimeUnit.SECONDS)
+        .connectionPool(okhttp3.ConnectionPool(2, 5, java.util.concurrent.TimeUnit.MINUTES))
+        .retryOnConnectionFailure(true)
+        .build()
+
     private fun fetchOref(url: String): String {
         val sep = if (url.contains("?")) "&" else "?"
-        val conn = URL(url + sep + "t=" + System.currentTimeMillis()).openConnection() as HttpURLConnection
-        conn.connectTimeout = 4000
-        conn.readTimeout = 4000
-        conn.useCaches = false
-        conn.setRequestProperty("Referer", "https://www.oref.org.il/")
-        conn.setRequestProperty("X-Requested-With", "XMLHttpRequest")
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android) RedAlert")
-        val bytes = try {
-            conn.inputStream.use { it.readBytes() }
-        } finally {
-            conn.disconnect()
+        val req = okhttp3.Request.Builder().url(url + sep + "t=" + System.currentTimeMillis())
+            .header("Referer", "https://www.oref.org.il/")
+            .header("X-Requested-With", "XMLHttpRequest")
+            .header("User-Agent", "Mozilla/5.0 (Linux; Android) RedAlert")
+            .header("Cache-Control", "no-cache")
+            .build()
+        val bytes = orefHttp.newCall(req).execute().use { r ->
+            if (!r.isSuccessful) throw java.io.IOException("HTTP " + r.code)
+            r.body?.bytes() ?: ByteArray(0)
         }
         return decode(bytes).trim()
     }
@@ -504,7 +513,15 @@ class AlertService : Service() {
                     byTitle.forEach { (k, areas) -> handle(k.first, areas, k.second, src) }
                 } catch (_: Exception) { }
             }
-            Thread.sleep(HISTORY_POLL_MS)
+            // גיבוי: מסך דלוק או אירוע - כל 30 שניות; מסך כבוי - כל 2 דקות.
+            // ממתינים בצעדים של 5 שניות - כשהמסך נדלק או מתחיל אירוע, הבדיקה הבאה מגיעה מיד
+            val from = System.currentTimeMillis()
+            while (running) {
+                Thread.sleep(5_000)
+                val every = if (inEvent() || (getSystemService(POWER_SERVICE) as PowerManager).isInteractive)
+                    HISTORY_POLL_MS else 120_000L
+                if (System.currentTimeMillis() - from >= every) break
+            }
         }
     }
 
@@ -602,7 +619,8 @@ class AlertService : Service() {
                     }
                 }
             } catch (_: Exception) { }
-            Thread.sleep(5 * 60 * 1000L)
+            // מסך דלוק - כל 5 דקות; כבוי - כל 15 (כשהטלפון בכיס הוא בדרך כלל לא זז הרבה)
+            Thread.sleep(if ((getSystemService(POWER_SERVICE) as PowerManager).isInteractive) 5 * 60 * 1000L else 15 * 60 * 1000L)
         }
     }
 
