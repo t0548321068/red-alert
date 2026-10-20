@@ -321,7 +321,7 @@
     if (MINI_ME && L.latLngBounds(MINI_PTS).getCenter().distanceTo(MINI_ME) < 20000) fit.push(MINI_ME);
     MINI_FIT = fit;
     var drop = function () {
-      if (MINI_LEVEL === 0) add.forEach(function (a, i) { setTimeout(function () { addPin(a, alertLayer, true); }, 150 + i * 90); });
+      if (MINI_LEVEL === 0) setTimeout(function () { add.forEach(function (a) { addPin(a, alertLayer, true); }); }, 150);   // כולן יחד
     };
     // קודם מתמקדים באזור החדש (שם הסיכות נופלות), ואחרי רגע חוזרים לתצוגה של כל האזורים
     var pts = []; add.forEach(function (a) { pts = pts.concat(a.p || [a.c]); });
@@ -347,9 +347,9 @@
     alertLayer.eachLayer(function (l) { if (l.bringToFront) l.bringToFront(); });   // האזורים מעל הרקע
     syncLabels();
     document.body.classList.add('ready');
-    // סיכות המיקום (התרעה אדומה) נופלות באנימציה, אחת אחרי השנייה
+    // סיכות המיקום (התרעה אדומה) נופלות באנימציה - כל הסיכות של ההתרעה יחד
     var pins = MINI_PINS; MINI_PINS = [];
-    pins.forEach(function (a, i) { setTimeout(function () { addPin(a, alertLayer, true); }, 350 + i * 90); });
+    setTimeout(function () { pins.forEach(function (a) { addPin(a, alertLayer, true); }); }, 350);
   }
   window.addEventListener('resize', function () {
     if (document.body.classList.contains('mini') && MINI_FIT) {
