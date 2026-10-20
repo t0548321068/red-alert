@@ -1339,7 +1339,8 @@ class MainActivity : Activity() {
      * (המתג עצמו קטן מדי, ולחיצה לידו פתחה את המסך של השורה)
      */
     private fun switchZone(row: LinearLayout, on: Boolean, padEnd: Int, toggle: () -> Unit) {
-        row.setPaddingRelative(row.paddingStart, row.paddingTop, 0, row.paddingBottom)
+        // בלי לשנות את הריווח של השורה (שינוי לפני שהכיוון ימין-לשמאל נקבע הזיז את הטקסט לקצה בפתיחה):
+        // האזור נמתח עד הקצה עם שוליים שליליים בגודל הריווח
         val z = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
             setPaddingRelative(dp(12), 0, padEnd, 0)
@@ -1349,7 +1350,7 @@ class MainActivity : Activity() {
         z.addView(View(this).apply { setBackgroundColor(C.SEPV) },
             LinearLayout.LayoutParams(dp(1), dp(20)).apply { marginEnd = dp(12) })
         z.addView(OuiSwitch(this, on, C.LIGHT).apply { isClickable = false })
-        row.addView(z, LinearLayout.LayoutParams(-2, -1))
+        row.addView(z, LinearLayout.LayoutParams(-2, -1).apply { marginEnd = -padEnd })
     }
 
     /**
