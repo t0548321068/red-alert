@@ -40,6 +40,9 @@
           padding: 0; text-shadow: 0 0 3px var(--sea), 0 0 3px var(--sea); }
   .city::before { display: none; }
   .pin { background: transparent; border: 0; filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
+  /* סיכה של התרעה חדשה: נופלת מלמעלה וקופצת קצת */
+  .pin.drop svg { animation: pinDrop .65s cubic-bezier(.3,1.45,.55,1) both; transform-origin: 50% 100%; }
+  @keyframes pinDrop { 0% { transform: translateY(-70px) scale(.9); opacity: 0; } 35% { opacity: 1; } 100% { transform: none; opacity: 1; } }
   .leaflet-popup-content { direction: rtl; text-align: right; }
   /* מפה קטנה במסך ההתראה: רק המפה והאזורים, בלי כפתורים */
   body.mini .legend, body.mini .me-btn, body.mini .empty { display: none !important; }
@@ -69,7 +72,8 @@
   // סיכת מיקום על כל מקום בהתרעה אדומה (ירי / חדירה)
   var PIN = L.divIcon({ className: 'pin', iconSize: [26, 34], iconAnchor: [13, 33],
     html: '<svg viewBox="0 0 26 34" width="26" height="34"><path d="M13 1C6.4 1 1 6.3 1 12.8 1 21.6 13 33 13 33s12-11.4 12-20.2C25 6.3 19.6 1 13 1z" fill="#D50000" stroke="#fff" stroke-width="2"/><circle cx="13" cy="12.8" r="4.4" fill="#fff"/></svg>' });
-  function addPin(a, layer) { if (a && a.c) L.marker(a.c, { icon: PIN, interactive: false, keyboard: false }).addTo(layer); }
+  var PIN_DROP = L.divIcon({ className: 'pin drop', iconSize: PIN.options.iconSize, iconAnchor: PIN.options.iconAnchor, html: PIN.options.html });
+  function addPin(a, layer, drop) { if (a && a.c) L.marker(a.c, { icon: drop ? PIN_DROP : PIN, interactive: false, keyboard: false }).addTo(layer); }
   function css(v) { return getComputedStyle(document.body).getPropertyValue(v).trim(); }
 
   var map = L.map('map', { zoomControl: false, attributionControl: false, preferCanvas: true, minZoom: 7, maxZoom: 18 })
@@ -177,7 +181,9 @@
     HAS_BOUNDS = pts.length > 0;
     if (pts.length) map.fitBounds(pts, { padding: [60, 60], maxZoom: 14 });
   }
-  function drawAlerts() {
+  // opts.noFit - בלי לשנות את התצוגה; opts.later - אזורים שהסיכה שלהם תיפול אחר כך (התרעה חדשה)
+  function drawAlerts(opts) {
+    opts = opts || {};
     if (FOCUS) { drawFocus(); return; }
     alertLayer.clearLayers();
     var since = Date.now() - HOURS * 3600 * 1000, latest = {};
@@ -192,16 +198,48 @@
       var shape = a.p ? L.polygon(a.p, { color: color, weight: 2, fillColor: color, fillOpacity: .55 })
                       : L.circleMarker(a.c, { radius: 8, color: color, fillOpacity: .8 });
       shape.bindPopup(info(name) + '<br>' + e.title + '<br>' + fmt(e.ts)).addTo(alertLayer);
-      if (e.level === 0) addPin(a, alertLayer);
+      if (e.level === 0 && !(opts.later && opts.later[name])) addPin(a, alertLayer);
       bounds.push(a.c);
     });
+    ALL_BOUNDS = bounds;
     var empty = document.getElementById('empty');
     empty.style.display = bounds.length ? 'none' : 'block';
     clearTimeout(window._emptyT);
     if (!bounds.length) window._emptyT = setTimeout(function () { empty.style.display = 'none'; }, 3500);
     HAS_BOUNDS = bounds.length > 0;
+    if (opts.noFit) return latest;
     if (HAS_BOUNDS) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
     else if (ME) map.setView(ME, 12);
+    return latest;
+  }
+  var ALL_BOUNDS = [];
+  function maxTs(d) { var m = 0; (d.all || []).forEach(function (e) { if (e.ts > m) m = e.ts; }); return m; }
+  var SEEN = 0;   // השעה של ההתרעה האחרונה שכבר הוצגה
+
+  // התרעות חדשות בזמן שהמפה פתוחה: המפה מתקרבת לאזורים החדשים, הסיכות נופלות,
+  // ואחרי רגע המפה מתרחקת כך שכל ההתרעות מוצגות יחד
+  var liveT = null;
+  function update(data) {
+    data.dark = DATA.dark;
+    var prev = SEEN;
+    DATA = data; SEEN = Math.max(SEEN, maxTs(data));
+    var fresh = {}, any = false;
+    (data[MODE] || []).forEach(function (e) {
+      if (e.ts > prev) e.areas.forEach(function (n) { if (ALL_AREAS[n]) { fresh[n] = e; any = true; } });
+    });
+    if (!any) { if (!FOCUS) drawAlerts({ noFit: true }); return; }
+    FOCUS = null; FOCUSED = false;   // התרעה חדשה - חוזרים לכל ההתרעות
+    var later = {}; Object.keys(fresh).forEach(function (n) { if (fresh[n].level === 0) later[n] = 1; });
+    drawAlerts({ noFit: true, later: later });
+    var pts = []; Object.keys(fresh).forEach(function (n) { var a = ALL_AREAS[n]; pts = pts.concat(a.p || [a.c]); });
+    clearTimeout(liveT); map.closePopup();
+    map.flyToBounds(pts, { padding: [70, 70], maxZoom: 13, duration: 1.1 });
+    liveT = setTimeout(function () {
+      Object.keys(later).forEach(function (n) { addPin(ALL_AREAS[n], alertLayer, true); });
+      liveT = setTimeout(function () {
+        if (ALL_BOUNDS.length > 1) map.flyToBounds(ALL_BOUNDS, { padding: [50, 50], maxZoom: 12, duration: 1.2 });
+      }, 1900);
+    }, 1150);
   }
 
   // האזור שבו אני נמצא עכשיו - מסגרת כחולה מקווקוות (יחד עם הנקודה הכחולה)
@@ -229,6 +267,7 @@
     DATA = data;
     document.body.classList.toggle('light', !data.dark);
     setStreetsTheme(!!data.dark);
+    SEEN = Math.max(SEEN, maxTs(data));
     drawBase(); drawAlerts(); syncLabels();
   }
   function setMe(lat, lon, acc) {

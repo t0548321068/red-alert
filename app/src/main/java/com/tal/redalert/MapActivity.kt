@@ -11,14 +11,16 @@ import org.json.JSONObject
 
 /** מפת ההתראות - אזורים שהותרעו, צבועים לפי סוג ההתראה האחרונה */
 class MapActivity : Activity() {
+    private var dark = false
+    private lateinit var web: WebView
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val dark = Prefs.darkTheme(this)
+        dark = Prefs.darkTheme(this)
         window.decorView.setBackgroundColor(Color.parseColor(if (dark) "#000000" else "#F2F2F7"))
 
-        val web = WebView(this).apply {
+        web = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             setBackgroundColor(Color.TRANSPARENT)
@@ -65,12 +67,35 @@ class MapActivity : Activity() {
                                 "${org.json.JSONObject.quote(intent.getStringExtra("focusTitle") ?: "")});", null)
                         }
                         locate(view)
+                        // התרעות שמגיעות בזמן שהמפה פתוחה
+                        lastFeed = Prefs.feed(this@MapActivity).hashCode()
+                        live.removeCallbacks(liveTick); live.postDelayed(liveTick, 2000)
                     }
                 }.start()
             }
         }
         web.loadUrl("file:///android_asset/map.html" + if (dark) "" else "#light")   // ערכת נושא מהרגע הראשון
     }
+
+    private val live = android.os.Handler(android.os.Looper.getMainLooper())
+    private var lastFeed = 0
+    /** כל 2 שניות: אם נוספה התרעה לפיד - שולחים למפה (היא מתקרבת לאזורים החדשים ואז מתרחקת) */
+    private val liveTick: Runnable = object : Runnable {
+        override fun run() {
+            if (isFinishing) return
+            val h = Prefs.feed(this@MapActivity).hashCode()
+            if (h != lastFeed) {
+                lastFeed = h
+                Thread {
+                    val data = buildData(dark)
+                    runOnUiThread { if (!isFinishing) web.evaluateJavascript("update($data);", null) }
+                }.start()
+            }
+            live.postDelayed(this, 2000)
+        }
+    }
+
+    override fun onDestroy() { live.removeCallbacks(liveTick); super.onDestroy() }
 
     /** מיקום עדכני ומדויק (לא רק האחרון שהטלפון זוכר) - מסומן על המפה עם עיגול דיוק */
     private fun locate(view: WebView) {
