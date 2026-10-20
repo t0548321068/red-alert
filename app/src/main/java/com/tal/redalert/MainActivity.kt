@@ -564,6 +564,7 @@ class MainActivity : Activity() {
             addView(testFab, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM or Gravity.LEFT).apply {
                 setMargins(dp(20), 0, dp(20), dp(20)) })
             applyTestFab()
+            presetBars()   // המרווח לשורת המצב כבר מההתחלה - בלי קפיצה כשהוא מגיע
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")
                 v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
@@ -792,6 +793,7 @@ class MainActivity : Activity() {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             addView(body)
         }
+        page.presetBars()   // המרווח לשורת המצב כבר מההתחלה - בלי קפיצה כשהוא מגיע
         page.setOnApplyWindowInsetsListener { v, insets ->
             @Suppress("DEPRECATION")
             v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
@@ -1249,6 +1251,7 @@ class MainActivity : Activity() {
             setBackgroundColor(C.BG)
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             addView(body)
+            presetBars()   // המרווח לשורת המצב כבר מההתחלה - בלי קפיצה כשהוא מגיע
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")
                 v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
@@ -1257,11 +1260,9 @@ class MainActivity : Activity() {
         }
         lateinit var rebuild: () -> Unit
         rebuild = {
-            val y = page.scrollY   // אותו מקום בגלילה גם אחרי רענון
             body.removeAllViews()
             body.addView(text(title, 20f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(14), dp(24), dp(14)) })
             build(body, rebuild)
-            if (y > 0) page.post { page.scrollTo(0, y) }
         }
         rebuild()
         val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
@@ -1327,6 +1328,14 @@ class MainActivity : Activity() {
             if (!has) lost = true
             else if (lost) { lost = false; block() }
         }
+    }
+
+    /** מרווח לשורת המצב ולשורת הניווט לפי המסך הראשי - עוד לפני שהחלון החדש מקבל את המידות שלו */
+    private fun View.presetBars() {
+        @Suppress("DEPRECATION")
+        val ins = window?.decorView?.rootWindowInsets ?: return
+        @Suppress("DEPRECATION")
+        setPadding(0, ins.systemWindowInsetTop, 0, ins.systemWindowInsetBottom)
     }
 
     private fun ouiCard() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = graphite(26); clipToOutline = true }
@@ -1551,6 +1560,7 @@ class MainActivity : Activity() {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             addView(body)
         }
+        page.presetBars()   // המרווח לשורת המצב כבר מההתחלה - בלי קפיצה כשהוא מגיע
         page.setOnApplyWindowInsetsListener { v, insets ->
             @Suppress("DEPRECATION")
             v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
@@ -1949,6 +1959,7 @@ class MainActivity : Activity() {
             setBackgroundColor(C.BG)
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             addView(body)
+            presetBars()   // המרווח לשורת המצב כבר מההתחלה - בלי קפיצה כשהוא מגיע
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")
                 v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
