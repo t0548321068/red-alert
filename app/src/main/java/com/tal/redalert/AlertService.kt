@@ -185,9 +185,28 @@ class AlertService : Service() {
         Thread({ try { notifyIfNewVersion() } catch (_: Exception) { } }, "update-due").start()
     }
 
-    /** פתיחת נעילת המסך: אם לא נבדק ב-10 הדקות האחרונות - בודקים (ההתראה מגיעה כשמסתכלים בטלפון) */
+    /**
+     * פתיחת נעילת המסך: אם לא נבדק ב-10 הדקות האחרונות - בודקים.
+     * בנוסף, כל עוד המסך דלוק - מחוברים ל-ntfy, וגרסה חדשה מגיעה מיד כשהיא מתפרסמת.
+     * כשהמסך כבוי - מתנתקים (בלי בזבוז סוללה), ונשארות הבדיקות בהתעוררות השומר
+     */
     private val unlockReceiver = object : android.content.BroadcastReceiver() {
-        override fun onReceive(c: Context, i: Intent) { checkUpdateIfDue(10 * 60 * 1000L) }
+        override fun onReceive(c: Context, i: Intent) {
+            when (i.action) {
+                Intent.ACTION_USER_PRESENT -> checkUpdateIfDue(10 * 60 * 1000L)
+                Intent.ACTION_SCREEN_ON -> livePush(true)
+                Intent.ACTION_SCREEN_OFF -> livePush(false)
+            }
+        }
+    }
+
+    private fun livePush(on: Boolean) {
+        if (on) {
+            if (updatePush != null) return
+            updatePush = UpdatePush(beta = { Prefs.betaUpdates(this) }, onPing = ::onUpdatePing).also { it.start() }
+        } else {
+            updatePush?.stop(); updatePush = null
+        }
     }
 
     /** מחזיק את הטלפון ער לזמן קצוב (לא כל הזמן) */
@@ -236,7 +255,11 @@ class AlertService : Service() {
         Thread(::loop, "oref-poll").start()
         Thread(::historyLoop, "oref-history").start()
         Thread(::updateLoop, "update-check").start()
-        try { registerReceiver(unlockReceiver, android.content.IntentFilter(Intent.ACTION_USER_PRESENT)) } catch (_: Exception) { }
+        try {
+            registerReceiver(unlockReceiver, android.content.IntentFilter().apply {
+                addAction(Intent.ACTION_USER_PRESENT); addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_SCREEN_OFF) })
+        } catch (_: Exception) { }
+        if ((getSystemService(POWER_SERVICE) as PowerManager).isInteractive) livePush(true)
         Thread(::watchdogLoop, "watchdog").start()
         // בלי חיבור קבוע ל-ntfy (חיסכון בסוללה) - בדיקת עדכונים כל 6 שעות ובפתיחת האפליקציה
         Thread(::nearLoop, "near-me").start()
@@ -424,9 +447,10 @@ class AlertService : Service() {
     /** הודעה מ-ntfy: בודקים מול GitHub (עם כמה ניסיונות - הפרסום לפעמים מתעכב בכמה שניות) */
     private fun onUpdatePing() {
         Thread {
-            for (i in 0 until 4) {
+            // GitHub לפעמים מציג את הגרסה החדשה רק אחרי כמה דקות - מנסים שוב במרווחים גדלים (עד ~8 דקות)
+            for (wait in longArrayOf(0, 15_000, 30_000, 60_000, 120_000, 240_000)) {
+                if (wait > 0) Thread.sleep(wait)
                 if (notifyIfNewVersion()) return@Thread
-                Thread.sleep(15_000)
             }
         }.start()
     }
