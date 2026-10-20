@@ -30,6 +30,9 @@ open class AlertActivity : Activity() {
     private var level = AlertService.LEVEL_ALERT
 
     private var stageIconV: ImageView? = null
+    private var chipsFlow: Flow? = null
+    private var miniWeb: android.webkit.WebView? = null
+    private val shownAreas = LinkedHashSet<String>()
     private var alertTitle = ""
     private var stageRes = 0
 
@@ -110,12 +113,9 @@ open class AlertActivity : Activity() {
         }
 
         // אזורים כתגיות + מקור ההתרעה - מתחת למפה, בגדול
-        val chips = Flow(this, dpx(8))
+        val chips = Flow(this, dpx(8)); chipsFlow = chips; shownAreas.clear()
         (intent.getStringExtra("body") ?: "").split(",").map { AreaData.unify(it.trim()) }.filter { it.isNotEmpty() }.distinct().forEach { a ->
-            chips.addView(tv(a, 22f, bold = true).apply {
-                setPadding(dpx(14), dpx(6), dpx(14), dpx(6))
-                background = card("#33FFFFFF", 18)
-            })
+            shownAreas += a; chips.addView(chip(a))
         }
         val maxH = (resources.displayMetrics.heightPixels * if (popup) 0.18f else 0.22f).toInt()
         val chipsScroll = object : android.widget.ScrollView(this) {
@@ -271,6 +271,11 @@ open class AlertActivity : Activity() {
         }
     }
 
+    private fun chip(a: String) = tv(a, 22f, bold = true).apply {
+        setPadding(dpx(14), dpx(6), dpx(14), dpx(6))
+        background = card("#33FFFFFF", 18)
+    }
+
     private fun dpx(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     /** מפה קטנה (בלי אינטרנט) שמסמנת את האזורים של ההתראה בצבע שלה */
@@ -292,6 +297,7 @@ open class AlertActivity : Activity() {
             if (me != null) q.put("lat", me.latitude).put("lon", me.longitude)
             loadUrl("file:///android_asset/map.html#mini=" + android.net.Uri.encode(q.toString()))
         }
+        miniWeb = web
         return web
     }
 
@@ -303,6 +309,27 @@ open class AlertActivity : Activity() {
     /** התראה חדשה כשהמסך כבר פתוח - מציגים אותה */
     override fun onNewIntent(i: Intent) {
         super.onNewIntent(i)
+        // התרעה אדומה נוספת כשמסך של התרעה אדומה כבר פתוח: לא פותחים מחדש -
+        // האזורים החדשים מתווספים (תגיות + מפה, והסיכות שלהם נופלות), והטיימר לפי ההתרעה החדשה
+        val chips = chipsFlow
+        if (level == AlertService.LEVEL_ALERT && i.getIntExtra("level", -1) == AlertService.LEVEL_ALERT && chips != null) {
+            val fresh = (i.getStringExtra("body") ?: "").split(",").map { AreaData.unify(it.trim()) }
+                .filter { it.isNotEmpty() && it !in shownAreas }.distinct()
+            fresh.forEach { a -> shownAreas += a; chips.addView(chip(a)) }
+            val names = org.json.JSONArray()
+            (i.getStringExtra("mapAreas") ?: i.getStringExtra("body") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                .forEach { raw -> try { AreaData.match(this, raw).forEach { names.put(it) } } catch (_: Exception) { } }
+            if (names.length() > 0) miniWeb?.evaluateJavascript("miniAdd($names);", null)
+            // הכוונה: אותה כותרת, כל האזורים; הטיימר - מההתרעה החדשה
+            val all = shownAreas.joinToString(", ")
+            val oldMap = intent.getStringExtra("mapAreas") ?: ""
+            setIntent(i.putExtra("body", all).putExtra("mapAreas",
+                listOf(oldMap, i.getStringExtra("mapAreas") ?: "").filter { it.isNotEmpty() }.joinToString(", ")))
+            shelterSec = i.getIntExtra("shelter", -1)
+            firedAt = i.getLongExtra("firedAt", System.currentTimeMillis())
+            ui.removeCallbacks(tick); ui.post(tick)
+            return
+        }
         setIntent(i)
         recreate()
     }
