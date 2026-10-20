@@ -171,7 +171,23 @@ class AlertService : Service() {
     fun onWatchdog() {
         awake(20_000)
         tzofar?.ensureConnected()
+        // הטלפון כבר ער בשביל השומר - מנצלים את זה לבדיקת עדכון (לכל היותר פעם בחצי שעה, בקשה קטנה אחת)
+        checkUpdateIfDue(30 * 60 * 1000L)
         scheduleWatchdog(this)
+    }
+
+    /** בדיקת גרסה חדשה רק אם עבר מספיק זמן מהבדיקה הקודמת (שעון אמיתי, כולל זמן שינה) */
+    @Volatile private var lastUpdCheck = 0L
+    private fun checkUpdateIfDue(maxAge: Long) {
+        val now = System.currentTimeMillis()
+        if (now - lastUpdCheck < maxAge) return
+        lastUpdCheck = now
+        Thread({ try { notifyIfNewVersion() } catch (_: Exception) { } }, "update-due").start()
+    }
+
+    /** פתיחת נעילת המסך: אם לא נבדק ב-10 הדקות האחרונות - בודקים (ההתראה מגיעה כשמסתכלים בטלפון) */
+    private val unlockReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) { checkUpdateIfDue(10 * 60 * 1000L) }
     }
 
     /** מחזיק את הטלפון ער לזמן קצוב (לא כל הזמן) */
@@ -220,6 +236,7 @@ class AlertService : Service() {
         Thread(::loop, "oref-poll").start()
         Thread(::historyLoop, "oref-history").start()
         Thread(::updateLoop, "update-check").start()
+        try { registerReceiver(unlockReceiver, android.content.IntentFilter(Intent.ACTION_USER_PRESENT)) } catch (_: Exception) { }
         Thread(::watchdogLoop, "watchdog").start()
         // בלי חיבור קבוע ל-ntfy (חיסכון בסוללה) - בדיקת עדכונים כל 6 שעות ובפתיחת האפליקציה
         Thread(::nearLoop, "near-me").start()
@@ -282,6 +299,7 @@ class AlertService : Service() {
         tzofar?.stop()
         telegram.forEach { it.stop() }
         updatePush?.stop()
+        try { unregisterReceiver(unlockReceiver) } catch (_: Exception) { }
         ringtone?.stop()
         main.removeCallbacks(stayDone)
         main.removeCallbacks(stayNotif)
@@ -396,7 +414,7 @@ class AlertService : Service() {
     private fun updateLoop() {
         Thread.sleep(60_000)
         while (running) {
-            notifyIfNewVersion()
+            checkUpdateIfDue(14 * 60 * 1000L)
             // כל 15 דקות של זמן ער - לא מעיר את הטלפון (כשהוא ישן, הספירה עוצרת),
             // והבדיקה דרך האתר של GitHub, בלי מגבלת ה-API
             Thread.sleep(15 * 60 * 1000L)
