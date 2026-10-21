@@ -2214,7 +2214,7 @@ class MainActivity : Activity() {
         // רמקול = צלילים, טלפון רוטט = רטט; כששניהם פועלים - שני האייקונים זה לצד זה
         val vib = Prefs.vibesOn(this)
         when {
-            Prefs.mutedNow(this) -> setInd(sndInd, R.drawable.ic_volume_off, "מושתק", C.RED)
+            Prefs.mutedNow(this) -> setInd(sndInd, R.drawable.ic_volume_off, "מושתק", C.GREEN)   // ההתרעות מגיעות - רק בלי צליל ורטט
             Shabbat.active(this) -> setSnd("שבת", Color.parseColor("#4C7DFF"), true)   // מצב שבת: תמיד עם צליל ורטט
             Prefs.loudSound(this) -> setSnd("חזק", C.GREEN, vib)
             !Prefs.soundsOn(this) && vib -> setInd(sndInd, R.drawable.ic_ind_vibrate, "רטט", C.ORANGE)
