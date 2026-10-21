@@ -2115,19 +2115,9 @@ class MainActivity : Activity() {
         v.setCompoundDrawablesRelative(null, d, null, null)
     }
 
-    /** חיווי צלילים: רמקול, ולידו טלפון רוטט כשהרטט פועל */
-    private fun setSnd(label: String, color: Int, vib: Boolean) {
-        if (!vib) { setInd(sndInd, R.drawable.ic_set_sound, label, color); return }
-        val a = getDrawable(R.drawable.ic_set_sound)!!.mutate(); val b = getDrawable(R.drawable.ic_ind_vibrate)!!.mutate()
-        val s = (a.intrinsicHeight * 1.45f).toInt(); val gap = dp(2)
-        val ld = android.graphics.drawable.LayerDrawable(arrayOf(a, b))
-        ld.setLayerInset(0, s + gap, 0, 0, 0)   // רמקול מימין
-        ld.setLayerInset(1, 0, 0, s + gap, 0)   // רטט משמאל
-        ld.setBounds(0, 0, s * 2 + gap, s)
-        sndInd.setCompoundDrawablesRelative(null, ld, null, null)
-        sndInd.compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color)
-        sndInd.text = label
-    }
+    /** חיווי צלילים: רמקול, ומסביבו קווי רטט כשהרטט פועל */
+    private fun setSnd(label: String, color: Int, vib: Boolean) =
+        setInd(sndInd, if (vib) R.drawable.ic_snd_vib else R.drawable.ic_set_sound, label, color)
 
     /** האייקון בצבע המצב, הטקסט תמיד לבן-אפור */
     private fun setInd(v: TextView, icon: Int, label: String, color: Int) {
@@ -2211,7 +2201,7 @@ class MainActivity : Activity() {
         if (Prefs.enabled(this)) setInd(protInd, R.drawable.ic_shield_ind, "מוגן", C.GREEN)
         else setInd(protInd, R.drawable.ic_shield_ind_off, "לא מוגן", C.RED)
         // חיווי צלילים
-        // רמקול = צלילים, טלפון רוטט = רטט; כששניהם פועלים - שני האייקונים זה לצד זה
+        // רמקול = צלילים, קווי רטט מסביב = רטט; רק רטט - טלפון רוטט
         val vib = Prefs.vibesOn(this)
         when {
             Prefs.mutedNow(this) -> setInd(sndInd, R.drawable.ic_volume_off, "מושתק", C.GREEN)   // ההתרעות מגיעות - רק בלי צליל ורטט
