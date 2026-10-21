@@ -2,5 +2,5 @@
 <!-- רטט: טלפון עם זיגזג רטט משני הצדדים -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
     <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2" android:strokeLineJoin="round" android:fillColor="#00000000" android:pathData="M8.5,4h7a1,1 0,0 1,1 1v14a1,1 0,0 1,-1 1h-7a1,1 0,0 1,-1 -1V5a1,1 0,0 1,1 -1z"/>
-    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2" android:strokeLineCap="round" android:fillColor="#00000000" android:strokeLineJoin="round" android:pathData="M3.4,7.5L5.2,9.6L3.4,11.8L5.2,14L3.4,16.5M18.8,7.5L20.6,9.6L18.8,11.8L20.6,14L18.8,16.5"/>
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2" android:strokeLineCap="round" android:fillColor="#00000000" android:strokeLineJoin="round" android:pathData="M5.2,7.5L3.4,9.6L5.2,11.8L3.4,14L5.2,16.5M20.6,7.5L18.8,9.6L20.6,11.8L18.8,14L20.6,16.5"/>
 </vector>
