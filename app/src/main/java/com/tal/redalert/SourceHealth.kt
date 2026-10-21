@@ -15,7 +15,9 @@ object SourceHealth {
         "archive" to "פיקוד העורף – ארכיון",
         "tzofar" to "צופר (push)",
         "tg:PikudHaOref_all" to "טלגרם – פיקוד העורף",
-        "tg:tzevaadomm" to "טלגרם – צופר"
+        "tg:tzevaadomm" to "טלגרם – צופר",
+        "tg:CumtaAlertsChannel" to "טלגרם – כומתה",
+        "tg:Radar_Alerts" to "טלגרם – רדאר"
     )
 
     private val lastOk = ConcurrentHashMap<String, Long>()
