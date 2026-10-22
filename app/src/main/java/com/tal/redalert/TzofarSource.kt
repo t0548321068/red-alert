@@ -34,7 +34,7 @@ class TzofarSource(
     }
 
     private val client = OkHttpClient.Builder()
-        .pingInterval(30, TimeUnit.SECONDS)
+        .pingInterval(90, TimeUnit.SECONDS)   // סימן חיים כל דקה וחצי - פחות התעוררויות של הרדיו (חוסך סוללה)
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .build()
 
