@@ -337,7 +337,12 @@ class AlertService : Service() {
             } catch (_: Exception) {
                 // רשת נפלה / תשובה לא תקינה - מנסים שוב בסבב הבא
             }
-            Thread.sleep(POLL_MS)
+            // מסך כבוי ואין אירוע - כל 10 שניות (צופר ממילא מתריע מיד); אחרת כל 2 שניות.
+            // ממתינים בצעדים של 2 שניות - כשהמסך נדלק או מתחיל אירוע, חוזרים מיד לקצב המהיר
+            for (step in 0 until 5) {
+                Thread.sleep(POLL_MS)
+                if (inEvent() || (getSystemService(POWER_SERVICE) as PowerManager).isInteractive) break
+            }
         }
     }
 
@@ -602,7 +607,7 @@ class AlertService : Service() {
             try {
                 if (checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) ==
                     android.content.pm.PackageManager.PERMISSION_GRANTED) main.post {
-                    awake(40_000)
+                    awake(15_000)   // מספיק למיקום מהרשת; GPS (כשצריך) מחזיק את הטלפון ער בעצמו
                     Weather.networkLocation(this) { net ->
                         val prev = lastGps
                         // מיקום מהרשת שנופל באזור אחר מהמיקום המדויק הקודם (למשל שכונה סמוכה) - בודקים עם GPS
