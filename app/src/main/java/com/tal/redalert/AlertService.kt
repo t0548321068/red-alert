@@ -39,6 +39,7 @@ class AlertService : Service() {
         const val ACTION_SILENCE = "silence"
         const val ACTION_VOICE = "voice"
         const val ACTION_PUSH = "push"
+        const val ACTION_PUSH_ALERT = "push_alert"   // התרעה מהשרת (Firebase) כשהשירות לא רץ
         const val ACTION_WATCHDOG = "watchdog"
         private const val WATCHDOG_MS = 5 * 60 * 1000L
 
@@ -255,6 +256,7 @@ class AlertService : Service() {
         Thread(::loop, "oref-poll").start()
         Thread(::historyLoop, "oref-history").start()
         Thread(::updateLoop, "update-check").start()
+        PushService.subscribe()   // התראות מיידיות מהשרת
         try {
             registerReceiver(unlockReceiver, android.content.IntentFilter().apply {
                 addAction(Intent.ACTION_USER_PRESENT); addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_SCREEN_OFF) })
@@ -288,6 +290,11 @@ class AlertService : Service() {
             // בלי מנגינה ובלי התראה כשההאזנה חוזרת לבד (אחרי עדכון / הדלקת הטלפון)
         }
         if (intent?.action == ACTION_WATCHDOG) { onWatchdog(); return START_STICKY }
+        if (intent?.action == ACTION_PUSH_ALERT) {
+            val t = intent.getStringExtra("title"); val a = intent.getStringArrayExtra("areas")
+            if (t != null && a != null) Thread { try { handle(t, a.toList(), source = "push") } catch (_: Exception) { } }.start()
+            return START_STICKY
+        }
         if (intent?.action == ACTION_PUSH) {
             updatePush?.reconnect()
             return START_STICKY

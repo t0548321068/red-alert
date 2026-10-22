@@ -1,0 +1,19 @@
+{
+  "project_info": {
+    "project_number": "869865704747",
+    "project_id": "red-alert-tal",
+    "storage_bucket": "red-alert-tal.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:869865704747:android:41bbfbfad527754569896e",
+        "android_client_info": { "package_name": "com.tal.redalert" }
+      },
+      "oauth_client": [],
+      "api_key": [ { "current_key": "AIzaSyDy68BFkplJH6omH9N5tHDjYxNgbfO3CsQ" } ],
+      "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+    }
+  ],
+  "configuration_version": "1"
+}
