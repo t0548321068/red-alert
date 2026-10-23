@@ -352,7 +352,7 @@ object Prefs {
      * בטא רק למכשירים שברשימה (לפי מזהה המכשיר). רשימה ריקה = בלי הגבלה.
      * בכל מכשיר אחר הבטא כבויה ומוסתרת, גם אם הופעלה בעבר.
      */
-    private val BETA_DEVICES = setOf("1F31D43C")   // הטלפון של טל
+    private val BETA_DEVICES = setOf("1F31D43C", "CD97E56F")   // המכשירים של טל
 
     /** מזהה קצר וקבוע של המכשיר (8 תווים) */
     fun deviceCode(c: Context): String {
