@@ -400,6 +400,10 @@ class MainActivity : Activity() {
                 android.widget.Toast.makeText(this@MainActivity, "🧪 גרסאות בטא נפתחו (⚙ ← בדיקת עדכונים)",
                     android.widget.Toast.LENGTH_SHORT).show()
             }
+            // מכשיר שלא ברשימת הבטא: 7 לחיצות מציגות את מזהה המכשיר (כדי להוסיף אותו לרשימה)
+            if (taps == 7 && !Prefs.betaAllowed(this@MainActivity))
+                android.widget.Toast.makeText(this@MainActivity, "מזהה מכשיר: ${Prefs.deviceCode(this@MainActivity)}",
+                    android.widget.Toast.LENGTH_LONG).show()
         }
         setInd(verInd, R.drawable.ic_info, "v${Updater.currentVersion(this)}" +
             if (Updater.isBetaBuild(this) && !Updater.currentVersion(this).endsWith("b")) "b" else "", C.MUTED)
