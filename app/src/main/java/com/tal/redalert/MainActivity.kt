@@ -2328,6 +2328,27 @@ class MainActivity : Activity() {
         ouiAdd(body, sum)
         if (!on) ouiNote(body, "ההאזנה כבויה")
         else ouiNote(body, "ההתראה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד")
+        // השרת שלנו: בודק את כל המקורות כל שנייה ושולח לטלפון. בלי סימן חיים 35 דקות - הטלפון בודק בעצמו
+        val hb = AlertService.serverHbAt(this)
+        val srvOk = AlertService.serverOk(this)
+        // סימן החיים הראשון מגיע תוך 10 דקות מהפעלת ההאזנה - עד אז "מתחבר" בכתום
+        val srvConnecting = on && !srvOk && hb == 0L &&
+            System.currentTimeMillis() - SourceHealth.startedAt() < 11 * 60 * 1000L
+        val srv = ouiCard()
+        val (srvLabel, srvColor) = when {
+            !on -> "כבוי" to C.MUTED
+            srvOk -> "מחובר" to C.GREEN
+            srvConnecting -> "מתחבר…" to C.ORANGE
+            else -> "מנותק" to C.RED
+        }
+        ouiRow(srv, "השרת שלנו (ירושלים)", sub = if (hb > 0) "סימן חיים ${agoText(hb)}" else "עוד לא התקבל סימן חיים",
+            subColor = C.MUTED, end = srvLabel, endColor = srvColor)
+        ouiDivider(srv)
+        ouiRow(srv, "מי בודק את המקורות", end = if (!on) "—" else if (srvOk) "השרת" else if (srvConnecting) "הטלפון (זמנית)" else "הטלפון (גיבוי)",
+            endColor = if (!on) C.MUTED else if (srvOk) C.GREEN else C.ORANGE)
+        ouiAdd(body, srv)
+        if (on) ouiNote(body, if (srvOk) "השרת בודק את כל המקורות כל שנייה ושולח לטלפון רק כשיש התרעה – חוסך סוללה"
+            else "כשהשרת לא זמין, הטלפון בודק את המקורות בעצמו")
         val list = ouiCard()
         SourceHealth.NAMES.entries.forEachIndexed { i, (k, name) ->
             if (i > 0) ouiDivider(list)
