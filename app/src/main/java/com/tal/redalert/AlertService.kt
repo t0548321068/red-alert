@@ -936,7 +936,7 @@ class AlertService : Service() {
         } catch (_: Exception) { }
     }
 
-    /** התראה "צבע אדום פעיל – מאזין" עם מנגינת האפליקציה (נעלמת לבד אחרי 15 שניות) */
+    /** התראה "צופר חירום פעיל – מאזין" עם מנגינת האפליקציה (נעלמת לבד אחרי 15 שניות) */
     private fun announceListening() {
         val n = Notification.Builder(this, CH_WATCH)
             .setSmallIcon(R.drawable.ic_stat_siren)
@@ -1014,7 +1014,7 @@ class AlertService : Service() {
         nm.createNotificationChannel(
             NotificationChannel(CH_SERVICE, "שירות רקע", NotificationManager.IMPORTANCE_MIN))
         nm.createNotificationChannel(
-            NotificationChannel(CH_ALERT, "התראות צבע אדום", NotificationManager.IMPORTANCE_HIGH).apply {
+            NotificationChannel(CH_ALERT, "התראות צופר חירום", NotificationManager.IMPORTANCE_HIGH).apply {
                 // צליל ורטט - ברירת המחדל של הטלפון
                 enableVibration(true)
                 setBypassDnd(true)
