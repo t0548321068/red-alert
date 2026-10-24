@@ -11,32 +11,36 @@ object OrefArchive {
     private const val DAY = 24 * 3600 * 1000L
 
     /**
-     * פעם אחת: משלים מהארכיון שנה אחורה (טווחי תאריכים של שבועיים), ושומר בטלפון.
+     * משלים מהארכיון שנה אחורה (טווחי תאריכים של שבוע), ושומר בטלפון.
+     * אם חלק מהבקשות נכשלו (רשת חלשה) - מנסים שוב בפעם הבאה, לכל היותר פעם ב-6 שעות, עד שהכול הושלם.
      * מחזיר true אם נוספו התרעות (כדי לרענן את הרשימה)
      */
     fun backfill(c: android.content.Context): Boolean {
         val sp = c.getSharedPreferences("archive", android.content.Context.MODE_PRIVATE)
-        if (sp.getBoolean("backfillSec2Done", false)) return false   // פעם נוספת - כדי להוסיף שניות להתרעות שכבר נשמרו
+        if (sp.getBoolean("backfill3Done", false)) return false
+        val now = System.currentTimeMillis()
+        if (now - sp.getLong("backfill3Last", 0L) < 6 * 3600 * 1000L) return false
+        sp.edit().putLong("backfill3Last", now).apply()
         val fmt = java.text.SimpleDateFormat("dd.MM.yyyy", java.util.Locale.US).apply {
             timeZone = java.util.TimeZone.getTimeZone("Asia/Jerusalem") }
-        val now = System.currentTimeMillis()
         val got = ArrayList<Prefs.Entry>()
-        var ok = 0
+        var ok = 0; var failed = 0
         var to = now - 28 * DAY   // החודש האחרון כבר מגיע מהבקשה הרגילה
         while (to > now - 366 * DAY) {
-            val from = to - 13 * DAY
+            val from = to - 6 * DAY   // שבוע בכל בקשה - פחות סיכוי להגיע לתקרת השורות של הארכיון
             try {
                 got += fetchRaw("$BASE&fromDate=${fmt.format(java.util.Date(from))}&toDate=${fmt.format(java.util.Date(to))}&mode=0")
                 ok++
-            } catch (_: Exception) { }
+            } catch (_: Exception) { failed++ }
             to = from - DAY
         }
         if (ok == 0) return false   // אין חיבור - ננסה בפעם הבאה
         val merged = LinkedHashMap<String, Prefs.Entry>()
         (got + load(c)).forEach { e -> if (e.ts >= now - 366 * DAY) merged.putIfAbsent(e.title + "|" + e.ts / 60_000, e) }
+        val before = load(c).size
         save(c, merged.values.sortedByDescending { it.ts })
-        sp.edit().putBoolean("backfillSec2Done", true).apply()
-        return got.isNotEmpty()
+        if (failed == 0) sp.edit().putBoolean("backfill3Done", true).apply()
+        return merged.size > before
     }
 
     /**
