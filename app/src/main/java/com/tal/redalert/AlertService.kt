@@ -259,7 +259,9 @@ class AlertService : Service() {
         SourceHealth.reset()   // מקורות מתחברים - "מתחבר" ולא "מנותק"
         // מצב המקורות מסימן החיים האחרון של השרת - כדי שאחרי הפעלה מחדש לא יופיעו כמנותקים עד הסימן הבא
         getSharedPreferences("server", MODE_PRIVATE).let { sp ->
-            SourceHealth.viaServer((sp.getString("up", "") ?: "").split(',').filter { it.isNotEmpty() }, sp.getLong("hb", 0L))
+            // גרסה קודמת שמרה רק את זמן סימן החיים, בלי רשימת המקורות - השרת שולח סימן חיים רק כשהוא עובד
+            val up = (sp.getString("up", null) ?: SourceHealth.NAMES.keys.joinToString(",")).split(',').filter { it.isNotEmpty() }
+            SourceHealth.viaServer(up, sp.getLong("hb", 0L))
         }
         // טיימר שהייה שהיה פעיל לפני הפעלה מחדש של השירות
         val stayLeft = Prefs.stayUntil(this) - System.currentTimeMillis()
