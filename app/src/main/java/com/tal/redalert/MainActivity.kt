@@ -2347,7 +2347,7 @@ class MainActivity : Activity() {
     private var srvCheckUp: List<String>? = null
 
     private fun showSourcesInfo() = ouiPage("מקורות התרעה",
-        button = "בדוק את השרתים" to { done ->
+        button = "בדיקה" to { done ->
             Thread {
                 val up = PushService.checkServer()
                 runOnUiThread {
