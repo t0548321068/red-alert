@@ -111,31 +111,46 @@ class MainActivity : Activity() {
         }
         if (!force && System.currentTimeMillis() - weatherAt < Prefs.weatherMinutes(this) * 60 * 1000L) return
         weatherAt = System.currentTimeMillis()
+        // מיד: השורה האחרונה ששמורה (עד 3 שעות), בלי לחכות לרשת ולמיקום
+        if (weatherLine.text.isNullOrBlank()) Prefs.weatherCache(this)?.let { (t, at) ->
+            if (System.currentTimeMillis() - at < 3 * 3600_000L) { weatherLine.text = t; weatherLine.setTextColor(C.SOFT) }
+        }
         if (force || weatherLine.text.isNullOrBlank()) {
-            weatherLine.text = "מאתר מיקום מדויק…"
+            weatherLine.text = "מאתר מיקום…"
             weatherLine.setTextColor(C.MUTED)
         }
+        // מהר: מזג אוויר לפי המיקום האחרון שהטלפון זוכר (עד חצי שעה), ובמקביל מיקום מדויק.
+        // המיקום המדויק טוען מחדש רק אם זזנו (מעל 300 מטר) - אחרת רק מעדכן את הדיוק
+        val quick = Weather.lastLocation(this)?.takeIf { System.currentTimeMillis() - it.time < 30 * 60_000L }
+        if (quick != null) loadWeather(quick)
         Weather.freshLocation(this) { loc ->
             if (loc == null) {
-                weatherLine.text = "📍 לא נמצא מיקום – לחץ לנסות שוב"
-                weatherLine.setTextColor(C.MUTED)
-                weatherAt = 0L
+                if (quick == null) {
+                    weatherLine.text = "📍 לא נמצא מיקום – לחץ לנסות שוב"
+                    weatherLine.setTextColor(C.MUTED)
+                    weatherAt = 0L
+                }
                 return@freshLocation
             }
-            Thread {
-                val w = try { Weather.fetch(this, loc) } catch (_: Exception) { null }
-                runOnUiThread {
-                    if (w == null) { weatherAt = 0L; return@runOnUiThread }
-                    val (icon, _) = Weather.describe(w.code, w.isDay)
-                    val hint = if (hasPrecise()) "" else " (לחץ למיקום מדויק)"
-                    weatherLine.text = listOf("$icon ${w.temp}°", w.place)
-                        .filter { it.isNotBlank() }.joinToString(" · ") + hint
-                    weatherLine.setTextColor(C.SOFT)
-                    weatherAccuracy = w.accuracy
-                }
-            }.start()
+            if (quick == null || loc.distanceTo(quick) > 300f) loadWeather(loc)
+            else weatherAccuracy = Math.round(loc.accuracy)
         }
     }
+
+    /** מזג האוויר והשם של המקום - במקביל, והשורה נשמרת לפתיחה הבאה */
+    private fun loadWeather(loc: android.location.Location) = Thread {
+        val w = try { Weather.fetch(this, loc) } catch (_: Exception) { null }
+        runOnUiThread {
+            if (w == null) { if (weatherLine.text.startsWith("מאתר")) weatherAt = 0L; return@runOnUiThread }
+            val (icon, _) = Weather.describe(w.code, w.isDay)
+            val hint = if (hasPrecise()) "" else " (לחץ למיקום מדויק)"
+            val line = listOf("$icon ${w.temp}°", w.place).filter { it.isNotBlank() }.joinToString(" · ") + hint
+            weatherLine.text = line
+            weatherLine.setTextColor(C.SOFT)
+            weatherAccuracy = w.accuracy
+            Prefs.setWeatherCache(this, line)
+        }
+    }.start()
 
     private fun onWeatherClick() {
         if (hasPrecise()) updateWeather(force = true)
@@ -583,6 +598,11 @@ class MainActivity : Activity() {
         if (reopenDisplay) { reopenDisplay = false; ui.post { showSettings() } }
         // טעינת נתוני האזורים ברקע, כדי שהמסך לא ייתקע בפעם הראשונה
         Thread { try { AreaData.areas(this) } catch (_: Exception) { } }.start()
+        // חימום מנוע המפות: כשהמסך פנוי, טוענים פעם אחת את רכיב הדפדפן - כך המפה (והמפה במסך ההתרעה) נפתחת מהר
+        android.os.Looper.myQueue().addIdleHandler {
+            try { android.webkit.WebView(this).destroy() } catch (_: Exception) { }
+            false
+        }
     }
 
     private var updateCheckedAt = 0L
