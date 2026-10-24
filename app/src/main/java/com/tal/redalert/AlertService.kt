@@ -791,17 +791,25 @@ class AlertService : Service() {
             (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(ID_STAY)
         }
 
+        // עקיפת מצב שקט: הטלפון על שקט/רטט - הטלפון לא ישמיע, אז האפליקציה משמיעה בעצמה.
+        // כמו בצופר: מעבירים את הטלפון לרגיל לזמן ההתרעה ומשמיעים (צליל והקראה) בעוצמת ההתראות, ואז מחזירים.
+        // אם אי אפשר (אין הרשאת נא לא להפריע / עוצמת ההתראות על 0) - בעוצמת השעון המעורר, כמו קודם
+        val speakNow = !quiet && !muted && (Prefs.speakAlerts(this) || shabbat)
+        val ringerNow = (getSystemService(AUDIO_SERVICE) as android.media.AudioManager).ringerMode
+        val bypass = PHONE_DEFAULTS && (shabbat || Prefs.bypassSilent(this)) && !quiet && !muted &&
+            ringerNow != android.media.AudioManager.RINGER_MODE_NORMAL
+        val viaNotif = bypass && !Prefs.loudSound(this) && (snd || speakNow) &&
+            ringerToNormal(if (level == LEVEL_ALERT) 30_000L else 15_000L)
+        speaker?.usage = if (viaNotif) AudioAttributes.USAGE_NOTIFICATION else AudioAttributes.USAGE_ALARM
+
         val playSound = {
-            // עקיפת מצב שקט: הטלפון על שקט/רטט - הטלפון לא ישמיע, אז האפליקציה משמיעה בעצמה (ערוץ התראה של שעון מעורר)
-            val ringer = (getSystemService(AUDIO_SERVICE) as android.media.AudioManager).ringerMode
-            val bypass = PHONE_DEFAULTS && (shabbat || Prefs.bypassSilent(this)) && snd && !quiet &&
-                ringer != android.media.AudioManager.RINGER_MODE_NORMAL
             // צליל חזק: כשמופעל - תמיד, בכל ההתרעות (מקדימה, ירי, סיום), גם בשעות שקט ובמצב שקט.
             // עוצמת השעון המעורר למקסימום למשך הצליל, ואחר כך חוזרת למה שהיה
             val loud = !muted && Prefs.loudSound(this)
             val loudMs = if (level == LEVEL_ALERT) 15000L else 4000L
             if (loud) { boostAlarmVolume(loudMs); playAlarm(level, RingtoneManager.TYPE_ALARM, loudMs) }
-            else if (bypass) playAlarm(level, RingtoneManager.TYPE_ALARM, if (level == LEVEL_ALERT) 15000 else 3000)
+            else if (bypass && snd) playAlarm(level, RingtoneManager.TYPE_ALARM, if (level == LEVEL_ALERT) 15000 else 3000,
+                if (viaNotif) AudioAttributes.USAGE_NOTIFICATION else AudioAttributes.USAGE_ALARM)
             else if (PHONE_DEFAULTS) Unit   // הטלפון משמיע את צליל ההתראה בעצמו
             else when {
                 quiet || !snd -> main.post { ringtone?.stop() }
@@ -816,7 +824,7 @@ class AlertService : Service() {
 
         // הקראה: קודם מקריאים (סוג, אזורים, זמן להגעה) ואז הצליל.
         // הרטט מתחיל מיד. אם ההקראה נתקעת - הצליל מתחיל בכל מקרה אחרי 8 שניות.
-        if (!quiet && !muted && (Prefs.speakAlerts(this) || shabbat)) {
+        if (speakNow) {
             val started = java.util.concurrent.atomic.AtomicBoolean(false)
             val once = { if (started.compareAndSet(false, true)) main.post { playSound() } }
             speaker?.speakAlert(title, areas, shelterSec) { once() } ?: once()
@@ -991,13 +999,38 @@ class AlertService : Service() {
         savedAlarmVol = -1
     }
 
-    private fun playAlarm(level: Int, type: Int, durationMs: Long) {
+    /**
+     * הטלפון על שקט/רטט: מעבירים לרגיל לזמן ההתרעה (כדי להשמיע בעוצמת ההתראות), ומחזירים אחרי ms.
+     * מחזיר false אם אי אפשר - אז משמיעים בערוץ השעון המעורר
+     */
+    private var ringerSaved = -1
+    private fun ringerToNormal(ms: Long): Boolean {
+        val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+        return try {
+            if (ringerSaved == -1) ringerSaved = am.ringerMode
+            am.ringerMode = android.media.AudioManager.RINGER_MODE_NORMAL
+            if (am.ringerMode != android.media.AudioManager.RINGER_MODE_NORMAL ||
+                am.getStreamVolume(android.media.AudioManager.STREAM_NOTIFICATION) == 0) { restoreRinger.run(); return false }
+            main.removeCallbacks(restoreRinger)
+            main.postDelayed(restoreRinger, ms)
+            true
+        } catch (_: Exception) { restoreRinger.run(); false }
+    }
+    private val restoreRinger = Runnable {
+        val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+        // מחזירים רק אם המשתמש לא שינה בינתיים בעצמו
+        if (ringerSaved != -1 && am.ringerMode == android.media.AudioManager.RINGER_MODE_NORMAL)
+            try { am.ringerMode = ringerSaved } catch (_: Exception) { }
+        ringerSaved = -1
+    }
+
+    private fun playAlarm(level: Int, type: Int, durationMs: Long, usage: Int = AudioAttributes.USAGE_ALARM) {
         val uri = Sounds.uri(this, Sounds.effective(this, level), level) ?: return
         main.post {
             ringtone?.stop()
             ringtone = RingtoneManager.getRingtone(this, uri)?.apply {
                 audioAttributes = AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setUsage(usage)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build()
                 play()
