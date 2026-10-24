@@ -2401,9 +2401,8 @@ class MainActivity : Activity() {
         if (srvCheckAt > 0) {
             val up = srvCheckUp
             val chk = ouiCard()
-            ouiRow(chk, "בדיקה אחרונה", end = agoText(srvCheckAt), endColor = C.MUTED)
-            ouiDivider(chk)
-            ouiRow(chk, "שרת התרעות", end = if (up != null) "עונה" else "לא עונה", endColor = if (up != null) C.GREEN else C.RED)
+            ouiRow(chk, "שרת התרעות", sub = "בדיקה אחרונה ${agoText(srvCheckAt)}", subColor = C.MUTED,
+                end = if (up != null) "עונה" else "לא עונה", endColor = if (up != null) C.GREEN else C.RED)
             ouiDivider(chk)
             val n = up?.count { it in SourceHealth.NAMES } ?: 0
             ouiRow(chk, "מקורות", end = if (up != null) "$n/${SourceHealth.total()} מחוברים" else "—",
