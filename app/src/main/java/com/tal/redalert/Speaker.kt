@@ -18,6 +18,8 @@ class Speaker(private val c: Context) {
     var hebrewOk: Boolean? = null
         private set
     private var onDone: (() -> Unit)? = null
+    /** ערוץ ההקראה: שעון מעורר (רגיל), או התראות כשהטלפון היה על שקט והועבר לרגיל לזמן ההתרעה (כמו בצופר) */
+    @Volatile var usage = AudioAttributes.USAGE_ALARM
 
     private val tts: TextToSpeech = TextToSpeech(c.applicationContext, { status ->
         if (status == TextToSpeech.SUCCESS) {
@@ -69,6 +71,8 @@ class Speaker(private val c: Context) {
     fun speak(text: String, done: () -> Unit) {
         if (!ready || hebrewOk != true) { done(); return }
         onDone = done
+        try { tts.setAudioAttributes(AudioAttributes.Builder().setUsage(usage)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build()) } catch (_: Exception) { }
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, Bundle(), "alert")
     }
 
@@ -96,7 +100,7 @@ class Speaker(private val c: Context) {
             val fd = c.assets.openFd(clips[i])
             val mp = android.media.MediaPlayer().apply {
                 setAudioAttributes(AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setUsage(usage)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
                 setDataSource(fd.fileDescriptor, fd.startOffset, fd.length)
                 fd.close()
