@@ -1,0 +1,12 @@
+{
+  "name": "red-alert-push",
+  "version": "1.0.0",
+  "private": true,
+  "description": "בודק את פיקוד העורף וצופר ושולח התראה מיידית לאפליקציה דרך Firebase",
+  "main": "index.js",
+  "scripts": { "start": "node index.js" },
+  "dependencies": {
+    "firebase-admin": "12.7.0",
+    "ws": "8.18.0"
+  }
+}
