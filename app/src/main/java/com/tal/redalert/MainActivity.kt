@@ -327,7 +327,7 @@ class MainActivity : Activity() {
 
         // כותרת + גלגל שיניים
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        header.addView(text("צבע אדום", 24f, C.TEXT, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) })
+        header.addView(text("צופר חירום", 24f, C.TEXT, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) })
         header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         // אייקונים למעלה בשמאל (במקום התפריט התחתון): שעון · התרעות · הגדרות (הגדרות הכי שמאלי)
         fun headerIcon(res: Int, click: () -> Unit) = header.addView(android.widget.ImageView(this).apply {
@@ -1551,7 +1551,7 @@ class MainActivity : Activity() {
         }
         val cats = listOf(
             // הפעלה / כיבוי של האפליקציה - כמו הכפתור בשורת החיווי
-            "צבע אדום" to { listOf(Row("⏻", "הגנה", { protectionLabel() },
+            "צופר חירום" to { listOf(Row("⏻", "הגנה", { protectionLabel() },
                 on = { Prefs.enabled(this) }, toggle = { toggle() }) { showProtection() }) },
             "תצוגה" to { listOf(Row("🎨", "תצוגה", { "ערכת צבעים · שעון · תאריך · מזג אוויר" }) { showDisplay() }) },
             "התרעות" to { listOf(
@@ -2547,7 +2547,7 @@ class MainActivity : Activity() {
             setPadding(0, dp(10), 0, dp(22))
             addView(android.widget.ImageView(this@MainActivity).apply { setImageResource(R.mipmap.ic_launcher) },
                 LinearLayout.LayoutParams(dp(88), dp(88)))
-            addView(text("צבע אדום", 24f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER; setPadding(0, dp(12), 0, 0) })
+            addView(text("צופר חירום", 24f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER; setPadding(0, dp(12), 0, 0) })
             addView(text("גרסה " + Updater.versionLabel(this@MainActivity), 14f, C.MUTED).apply { gravity = Gravity.CENTER; setPadding(0, dp(4), 0, 0) })
             addView(text("התראות פיקוד העורף בזמן אמת, גם כשהאפליקציה סגורה והמסך כבוי", 13f, C.MUTED2).apply {
                 gravity = Gravity.CENTER; setPadding(dp(30), dp(10), dp(30), 0) })
