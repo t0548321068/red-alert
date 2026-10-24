@@ -2352,10 +2352,7 @@ class MainActivity : Activity() {
                 val up = PushService.checkServer()
                 runOnUiThread {
                     srvCheckAt = System.currentTimeMillis(); srvCheckUp = up
-                    done()
-                    android.widget.Toast.makeText(this, if (up != null)
-                        "השרת עונה · ${up.count { it in SourceHealth.NAMES }}/${SourceHealth.total()} מקורות תקינים בשרת"
-                        else "השרת לא עונה – הטלפון בודק בעצמו", android.widget.Toast.LENGTH_LONG).show()
+                    done()   // התוצאה מוצגת בשורה "בדיקה אחרונה"
                 }
             }.start()
         }) { body, rebuild ->
