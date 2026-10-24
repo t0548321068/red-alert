@@ -2352,39 +2352,42 @@ class MainActivity : Activity() {
                 val up = PushService.checkServer()
                 runOnUiThread {
                     srvCheckAt = System.currentTimeMillis(); srvCheckUp = up
-                    done()   // התוצאה מוצגת בשורה "בדיקה אחרונה"
+                    // השרת ענה - מצב המקורות שלו מוצג מיד (סימן החיים שהוא שולח מגיע דרך Firebase)
+                    if (up != null) SourceHealth.viaServer(up, srvCheckAt)
+                    done()
                 }
             }.start()
         }) { body, rebuild ->
         val on = Prefs.enabled(this)
-        val sum = ouiCard()
-        ouiRow(sum, "מחוברים", end = if (on) "${SourceHealth.upCount()}/${SourceHealth.total()}" else "—", endBig = true)
-        // מתי הגיע מידע לאחרונה מאחד המקורות
-        ouiDivider(sum)
-        ouiRow(sum, "עודכן", end = if (on) agoText(SourceHealth.lastAny()) else "—", endColor = C.MUTED)
-        ouiAdd(body, sum)
-        if (!on) ouiNote(body, "ההאזנה כבויה")
-        else ouiNote(body, "ההתראה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד")
         // השרת שלנו: בודק את כל המקורות כל שנייה ושולח לטלפון. בלי סימן חיים 35 דקות - הטלפון בודק בעצמו
         val hb = AlertService.serverHbAt(this)
         val srvOk = AlertService.serverOk(this)
-        // סימן החיים הראשון מגיע תוך 10 דקות מהפעלת ההאזנה - עד אז "מתחבר" בכתום
+        // סימן החיים הראשון מגיע תוך 10 דקות מהפעלת ההאזנה - עד אז "מתחבר"
         val srvConnecting = on && serverConnecting()
-        val srv = ouiCard()
+        // הבדיקה האחרונה (כפתור) נכשלה ואין סימן חיים חדש יותר
+        val checkFailed = srvCheckAt > hb && srvCheckUp == null
+        val sum = ouiCard()
+        ouiRow(sum, "מחוברים", end = if (on) "${SourceHealth.upCount()}/${SourceHealth.total()}" else "—", endBig = true)
+        ouiDivider(sum)
+        val last = maxOf(SourceHealth.lastAny(), hb, srvCheckAt)
+        ouiRow(sum, "בדיקה אחרונה", end = if (on) agoText(last) else "—", endColor = C.MUTED)
+        ouiDivider(sum)
         val (srvLabel, srvColor) = when {
             !on -> "כבוי" to C.MUTED
+            checkFailed -> "לא עונה" to C.RED
             srvOk -> "מחובר" to C.GREEN
             srvConnecting -> "מתחבר…" to C.ORANGE
             else -> "מנותק" to C.RED
         }
-        ouiRow(srv, "שרת התרעות", sub = if (hb > 0) "סימן חיים ${agoText(hb)}" else "עוד לא התקבל סימן חיים",
+        ouiRow(sum, "שרת התרעות", sub = if (hb > 0) "סימן חיים ${agoText(hb)}" else "עוד לא התקבל סימן חיים",
             subColor = C.MUTED, end = srvLabel, endColor = srvColor)
-        ouiDivider(srv)
-        ouiRow(srv, "מי בודק את המקורות", end = if (!on) "—" else if (srvOk) "השרת" else if (srvConnecting) "הטלפון (זמנית)" else "הטלפון (גיבוי)",
+        ouiDivider(sum)
+        ouiRow(sum, "מי בודק את המקורות", end = if (!on) "—" else if (srvOk) "השרת" else if (srvConnecting) "הטלפון (זמנית)" else "הטלפון (גיבוי)",
             endColor = if (!on) C.MUTED else if (srvOk) C.GREEN else C.ORANGE)
-        ouiAdd(body, srv)
-        if (on) ouiNote(body, if (srvOk) "השרת בודק את כל המקורות כל שנייה ושולח לטלפון רק כשיש התרעה – חוסך סוללה"
-            else "כשהשרת לא זמין, הטלפון בודק את המקורות בעצמו")
+        ouiAdd(body, sum)
+        if (!on) ouiNote(body, "ההאזנה כבויה")
+        else ouiNote(body, (if (srvOk) "השרת בודק את כל המקורות כל שנייה ושולח לטלפון רק כשיש התרעה – חוסך סוללה"
+            else "כשהשרת לא זמין, הטלפון בודק את המקורות בעצמו") + "\nההתראה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד")
         val list = ouiCard()
         SourceHealth.NAMES.entries.forEachIndexed { i, (k, name) ->
             if (i > 0) ouiDivider(list)
@@ -2397,18 +2400,6 @@ class MainActivity : Activity() {
             ouiRow(list, name, end = label, endColor = color)
         }
         ouiAdd(body, list)
-        // תוצאת "בדוק את השרתים": האם שרת ההתרעות ענה, וכמה מקורות מחוברים אצלו
-        if (srvCheckAt > 0) {
-            val up = srvCheckUp
-            val chk = ouiCard()
-            ouiRow(chk, "שרת התרעות", sub = "בדיקה אחרונה ${agoText(srvCheckAt)}", subColor = C.MUTED,
-                end = if (up != null) "עונה" else "לא עונה", endColor = if (up != null) C.GREEN else C.RED)
-            ouiDivider(chk)
-            val n = up?.count { it in SourceHealth.NAMES } ?: 0
-            ouiRow(chk, "מקורות", end = if (up != null) "$n/${SourceHealth.total()} מחוברים" else "—",
-                endColor = if (up == null) C.MUTED else if (n == SourceHealth.total()) C.GREEN else if (n > 0) C.ORANGE else C.RED)
-            ouiAdd(body, chk)
-        }
         // מתעדכן בלייב כל שנייה כל עוד העמוד פתוח
         (body.tag as? Runnable)?.let { ui.removeCallbacks(it) }
         val live = Runnable { if (body.isAttachedToWindow) rebuild() }
