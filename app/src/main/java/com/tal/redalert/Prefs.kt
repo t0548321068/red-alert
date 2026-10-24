@@ -55,6 +55,11 @@ object Prefs {
     fun showWeather(c: Context) = sp(c).getBoolean("weather", true)
     /** כל כמה דקות לרענן את מזג האוויר והמיקום שלו */
     fun weatherMinutes(c: Context) = sp(c).getInt("weatherMin", 10)
+    /** שורת מזג האוויר האחרונה - מוצגת מיד בפתיחה, עד שמגיע עדכון */
+    fun weatherCache(c: Context): Pair<String, Long>? =
+        sp(c).getString("weatherText", null)?.let { it to sp(c).getLong("weatherTextAt", 0L) }
+    fun setWeatherCache(c: Context, text: String) =
+        sp(c).edit().putString("weatherText", text).putLong("weatherTextAt", System.currentTimeMillis()).apply()
     fun setWeatherMinutes(c: Context, v: Int) = sp(c).edit().putInt("weatherMin", v).commit()
     fun setShowWeather(c: Context, v: Boolean) = sp(c).edit().putBoolean("weather", v).commit()
     /** פיד ארצי במסך הראשי: כמה דקות אחורה להציג (30 דקות עד 24 שעות) */

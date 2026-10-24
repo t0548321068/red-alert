@@ -160,7 +160,11 @@
   var TILES_OK = false, STYLE_DARK = !document.body.classList.contains('light');
   // עברית מימין לשמאל בשמות שעל המפה
   // נטען מיד (לא בהשהיה) - אחרת השמות מופיעים רק אחרי זום
-  try { maplibregl.setRTLTextPlugin('https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-rtl-text@0.3.0/dist/mapbox-gl-rtl-text.js', false); } catch (e) { }
+  // התוסף נטען מקובץ מקומי (לא מהאינטרנט בכל פתיחה) - המפה מוכנה מהר יותר
+  try {
+    var p = maplibregl.setRTLTextPlugin(new URL('maplibre/mapbox-gl-rtl-text.min.js', location.href).href, false);
+    if (p && p.catch) p.catch(function () { });
+  } catch (e) { }
   var streets = null;
   try {
     streets = L.maplibreGL({ style: mapStyle(STYLE_DARK), interactive: false }).addTo(map);

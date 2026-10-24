@@ -158,14 +158,28 @@ object Weather {
         val url = "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
             .format(Locale.US, loc.latitude, loc.longitude) +
             "&current=temperature_2m,weather_code,is_day&timezone=auto"
+        // שם המקום במקביל למזג האוויר (במקום אחד אחרי השני), ושמור לפי מיקום - בלי לחכות פעמיים
+        val place = java.util.concurrent.FutureTask { cachedPlace(c, loc) }
+        Thread(place).start()
         val cur = getJson(url).getJSONObject("current")
         return Now(
             Math.round(cur.getDouble("temperature_2m")).toInt(),
             cur.optInt("weather_code"),
             cur.optInt("is_day", 1) == 1,
-            placeName(c, loc),
+            try { place.get(8, java.util.concurrent.TimeUnit.SECONDS) } catch (_: Exception) { "" },
             Math.round(loc.accuracy)
         )
+    }
+
+    /** שם המקום האחרון ששמור, אם לא זזנו יותר מ-150 מטר */
+    private var placeAt: Location? = null
+    private var placeText = ""
+    private fun cachedPlace(c: Context, loc: Location): String {
+        val prev = placeAt
+        if (prev != null && placeText.isNotBlank() && prev.distanceTo(loc) < 150f) return placeText
+        val name = placeName(c, loc)
+        if (name.isNotBlank()) { placeAt = loc; placeText = name }
+        return name
     }
 
     private fun getJson(url: String): JSONObject {
