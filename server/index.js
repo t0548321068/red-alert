@@ -139,7 +139,7 @@ function tzofar() {
 }
 tzofar();
 
-// ---- פיקוד העורף: היסטוריה וארכיון (גיבוי להתרעות שהקובץ החי פספס), כל 10 שניות ----
+// ---- פיקוד העורף: היסטוריה וארכיון (גיבוי להתרעות שהקובץ החי פספס), כל שנייה ----
 const OREF_H = { Referer: 'https://www.oref.org.il/', 'X-Requested-With': 'XMLHttpRequest' };
 const HISTORY = [
   ['history', 'https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json'],
@@ -155,11 +155,16 @@ function ilTime(s) {
   const off = Date.UTC(+p.year, p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - asUtc;
   return asUtc - off;
 }
-async function pollHistory() {
-  for (const [key, url] of HISTORY) {
+const busy = new Set();   // בקשה שעוד לא חזרה - לא שולחים עוד אחת לאותו מקור
+const errAt = {};
+const fail = (k, e) => { if (Date.now() - (errAt[k] || 0) > 60000) { errAt[k] = Date.now(); log('source error', k, e.message); } };
+function pollHistory() {
+  for (const [key, url] of HISTORY) (async () => {
+    if (busy.has(key)) return;
+    busy.add(key);
     try {
       const t = await get(url, OREF_H); ok(key);
-      if (!t.startsWith('[')) continue;
+      if (!t.startsWith('[')) return;
       const by = new Map();
       for (const o of JSON.parse(t)) {
         const at = ilTime(String(o.alertDate || ''));
@@ -170,12 +175,12 @@ async function pollHistory() {
         by.get(k).areas.push(o.data);
       }
       for (const e of by.values()) send(e.title, e.areas, key, e.at);
-    } catch (_) {}
-  }
+    } catch (e) { fail(key, e); } finally { busy.delete(key); }
+  })();
 }
-setInterval(pollHistory, 10 * 1000);
+setInterval(pollHistory, 1000);
 
-// ---- טלגרם: 4 ערוצים ציבוריים (t.me/s), כל 5 שניות ----
+// ---- טלגרם: 4 ערוצים ציבוריים (t.me/s), כל שנייה ----
 const CHANNELS = ['PikudHaOref_all', 'tzevaadomm', 'CumtaAlertsChannel', 'Radar_Alerts'];
 const lastPost = {};
 const decode = h => h.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '')
@@ -211,6 +216,9 @@ function parseTg(text) {
   return areas.length ? { title, areas } : null;
 }
 async function pollTg(ch) {
+  const key = 'tg:' + ch;
+  if (busy.has(key)) return;
+  busy.add(key);
   try {
     const html = await get('https://t.me/s/' + ch); ok('tg:' + ch);
     const re = new RegExp('data-post="' + ch + '/(\\d+)"', 'gi');
@@ -228,8 +236,8 @@ async function pollTg(ch) {
       if (r) send(r.title, r.areas, 'tg:' + ch);
     }
     lastPost[ch] = Math.max(lastPost[ch], newest);
-  } catch (_) {}
+  } catch (e) { fail(key, e); } finally { busy.delete(key); }
 }
-setInterval(() => CHANNELS.forEach(pollTg), 5 * 1000);
+setInterval(() => CHANNELS.forEach(pollTg), 1000);
 
 log('red-alert push server started');
