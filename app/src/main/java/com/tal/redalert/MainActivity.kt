@@ -2377,15 +2377,8 @@ class MainActivity : Activity() {
             srvConnecting -> "מתחבר…" to C.ORANGE
             else -> "מנותק" to C.RED
         }
-        ouiRow(srv, "השרת שלנו (ירושלים)", sub = if (hb > 0) "סימן חיים ${agoText(hb)}" else "עוד לא התקבל סימן חיים",
+        ouiRow(srv, "שרת התרעות", sub = if (hb > 0) "סימן חיים ${agoText(hb)}" else "עוד לא התקבל סימן חיים",
             subColor = C.MUTED, end = srvLabel, endColor = srvColor)
-        if (srvCheckAt > 0) {
-            ouiDivider(srv)
-            val up = srvCheckUp
-            ouiRow(srv, "בדיקה אחרונה", sub = agoText(srvCheckAt), subColor = C.MUTED,
-                end = if (up != null) "עונה · ${up.count { it in SourceHealth.NAMES }}/${SourceHealth.total()}" else "לא עונה",
-                endColor = if (up == null) C.RED else if (up.count { it in SourceHealth.NAMES } == SourceHealth.total()) C.GREEN else C.ORANGE)
-        }
         ouiDivider(srv)
         ouiRow(srv, "מי בודק את המקורות", end = if (!on) "—" else if (srvOk) "השרת" else if (srvConnecting) "הטלפון (זמנית)" else "הטלפון (גיבוי)",
             endColor = if (!on) C.MUTED else if (srvOk) C.GREEN else C.ORANGE)
@@ -2404,6 +2397,19 @@ class MainActivity : Activity() {
             ouiRow(list, name, end = label, endColor = color)
         }
         ouiAdd(body, list)
+        // תוצאת "בדוק את השרתים": האם שרת ההתרעות ענה, וכמה מקורות מחוברים אצלו
+        if (srvCheckAt > 0) {
+            val up = srvCheckUp
+            val chk = ouiCard()
+            ouiRow(chk, "בדיקה אחרונה", end = agoText(srvCheckAt), endColor = C.MUTED)
+            ouiDivider(chk)
+            ouiRow(chk, "שרת התרעות", end = if (up != null) "עונה" else "לא עונה", endColor = if (up != null) C.GREEN else C.RED)
+            ouiDivider(chk)
+            val n = up?.count { it in SourceHealth.NAMES } ?: 0
+            ouiRow(chk, "מקורות", end = if (up != null) "$n/${SourceHealth.total()} מחוברים" else "—",
+                endColor = if (up == null) C.MUTED else if (n == SourceHealth.total()) C.GREEN else if (n > 0) C.ORANGE else C.RED)
+            ouiAdd(body, chk)
+        }
         // מתעדכן בלייב כל שנייה כל עוד העמוד פתוח
         (body.tag as? Runnable)?.let { ui.removeCallbacks(it) }
         val live = Runnable { if (body.isAttachedToWindow) rebuild() }
