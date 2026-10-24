@@ -1348,6 +1348,9 @@ class MainActivity : Activity() {
         // בלי לשנות את הריווח של השורה (שינוי לפני שהכיוון ימין-לשמאל נקבע הזיז את הטקסט לקצה בפתיחה):
         // האזור נמתח עד הקצה עם שוליים שליליים בגודל הריווח
         val z = LinearLayout(this).apply {
+            // כיוון מפורש: הריווח היחסי נקבע מיד כימין-לשמאל. בלי זה, בבנייה לפני שהעמוד מוצג
+            // הריווח נקבע כשמאל-לימין והמתג נחתך בקצה (עד עכשיו בנייה שנייה מיד בפתיחה הסתירה את זה - והייתה קפיצה)
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
             gravity = Gravity.CENTER_VERTICAL
             setPaddingRelative(dp(12), 0, padEnd, 0)
             isClickable = true
@@ -1356,6 +1359,7 @@ class MainActivity : Activity() {
         z.addView(View(this).apply { setBackgroundColor(C.SEPV) },
             LinearLayout.LayoutParams(dp(1), dp(20)).apply { marginEnd = dp(12) })
         z.addView(OuiSwitch(this, on, C.LIGHT).apply { isClickable = false })
+        row.layoutDirection = View.LAYOUT_DIRECTION_RTL
         row.addView(z, LinearLayout.LayoutParams(-2, -1).apply { marginEnd = -padEnd })
     }
 
