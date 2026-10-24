@@ -35,7 +35,9 @@ object SourceHealth {
     /** מקורות שהשרת מדווח שתקינים (בסימן החיים) - נחשבים מחוברים עד שסימן החיים מתיישן */
     @Volatile private var serverUp: Set<String> = emptySet()
     @Volatile private var serverAt = 0L
-    fun viaServer(up: List<String>) { serverUp = up.toSet(); serverAt = System.currentTimeMillis() }
+    fun viaServer(up: List<String>, at: Long) { serverUp = up.toSet(); serverAt = at }
+    /** מתי ההאזנה התחילה (0 = עוד לא) */
+    fun startedAt() = startedAt
     fun setOpen(key: String, v: Boolean) { open[key] = v; if (v) ok(key) }
 
     /** מקור נחשב מחובר אם יש חיבור פתוח, או שהצליח בדקה וחצי האחרונות */

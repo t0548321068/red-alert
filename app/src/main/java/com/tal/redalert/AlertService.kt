@@ -65,11 +65,13 @@ class AlertService : Service() {
          * כל עוד סימן החיים מגיע - הטלפון לא בודק בעצמו (חוסך סוללה). 35 דקות בלי סימן חיים - חוזרים לבדוק לבד
          */
         private const val SERVER_STALE_MS = 35 * 60 * 1000L
-        fun serverOk(c: Context): Boolean =
-            System.currentTimeMillis() - c.getSharedPreferences("server", Context.MODE_PRIVATE).getLong("hb", 0L) < SERVER_STALE_MS
+        /** מתי הגיע סימן החיים האחרון מהשרת (0 = עוד לא) */
+        fun serverHbAt(c: Context): Long = c.getSharedPreferences("server", Context.MODE_PRIVATE).getLong("hb", 0L)
+        fun serverOk(c: Context): Boolean = System.currentTimeMillis() - serverHbAt(c) < SERVER_STALE_MS
         fun onServerHeartbeat(c: Context, up: List<String>) {
-            c.getSharedPreferences("server", Context.MODE_PRIVATE).edit().putLong("hb", System.currentTimeMillis()).apply()
-            SourceHealth.viaServer(up)
+            val now = System.currentTimeMillis()
+            c.getSharedPreferences("server", Context.MODE_PRIVATE).edit().putLong("hb", now).putString("up", up.joinToString(",")).apply()
+            SourceHealth.viaServer(up, now)
             instance?.syncLocalSources()
         }
 
@@ -255,6 +257,10 @@ class AlertService : Service() {
             startForeground(ID_SERVICE, n)
         }
         SourceHealth.reset()   // מקורות מתחברים - "מתחבר" ולא "מנותק"
+        // מצב המקורות מסימן החיים האחרון של השרת - כדי שאחרי הפעלה מחדש לא יופיעו כמנותקים עד הסימן הבא
+        getSharedPreferences("server", MODE_PRIVATE).let { sp ->
+            SourceHealth.viaServer((sp.getString("up", "") ?: "").split(',').filter { it.isNotEmpty() }, sp.getLong("hb", 0L))
+        }
         // טיימר שהייה שהיה פעיל לפני הפעלה מחדש של השירות
         val stayLeft = Prefs.stayUntil(this) - System.currentTimeMillis()
         if (stayLeft > 0) main.postDelayed(stayDone, stayLeft) else Prefs.setStayUntil(this, 0)
