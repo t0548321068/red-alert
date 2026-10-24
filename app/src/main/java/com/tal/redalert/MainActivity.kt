@@ -1303,7 +1303,7 @@ class MainActivity : Activity() {
                 }
             }
             val above = dp(10)
-            frame.addView(btn, FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.6f).toInt(), dp(46),
+            frame.addView(btn, FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.5f).toInt(), dp(46),
                 Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = navMargin() + above })
             frame.viewTreeObserver.addOnGlobalLayoutListener {
                 val want = navMargin() + above
@@ -2367,11 +2367,7 @@ class MainActivity : Activity() {
         // הבדיקה האחרונה (כפתור) נכשלה ואין סימן חיים חדש יותר
         val checkFailed = srvCheckAt > hb && srvCheckUp == null
         val sum = ouiCard()
-        ouiRow(sum, "מחוברים", end = if (on) "${SourceHealth.upCount()}/${SourceHealth.total()}" else "—", endBig = true)
-        ouiDivider(sum)
-        val last = maxOf(SourceHealth.lastAny(), hb, srvCheckAt)
-        ouiRow(sum, "בדיקה אחרונה", end = if (on) agoText(last) else "—", endColor = C.MUTED)
-        ouiDivider(sum)
+        // 1. שרת התרעות
         val (srvLabel, srvColor) = when {
             !on -> "כבוי" to C.MUTED
             checkFailed -> "לא עונה" to C.RED
@@ -2382,8 +2378,18 @@ class MainActivity : Activity() {
         ouiRow(sum, "שרת התרעות", sub = if (hb > 0) "סימן חיים ${agoText(hb)}" else "עוד לא התקבל סימן חיים",
             subColor = C.MUTED, end = srvLabel, endColor = srvColor)
         ouiDivider(sum)
-        ouiRow(sum, "מי בודק את המקורות", end = if (!on) "—" else if (srvOk) "השרת" else if (srvConnecting) "הטלפון (זמנית)" else "הטלפון (גיבוי)",
+        // 2. מקורות מחוברים - המספר בצבע: כולם ירוק, חלק כתום, אף אחד אדום
+        val upN = SourceHealth.upCount(); val all = SourceHealth.total()
+        ouiRow(sum, "מקורות מחוברים", end = if (on) "$upN/$all" else "—",
+            endColor = if (!on) C.MUTED else if (upN == all) C.GREEN else if (upN > 0) C.ORANGE else C.RED)
+        ouiDivider(sum)
+        // 3. מקור הבדיקה: השרת או הטלפון
+        ouiRow(sum, "מקור הבדיקה", end = if (!on) "—" else if (srvOk) "השרת" else if (srvConnecting) "הטלפון (זמנית)" else "הטלפון (גיבוי)",
             endColor = if (!on) C.MUTED else if (srvOk) C.GREEN else C.ORANGE)
+        ouiDivider(sum)
+        // 4. בדיקה אחרונה
+        val last = maxOf(SourceHealth.lastAny(), hb, srvCheckAt)
+        ouiRow(sum, "בדיקה אחרונה", end = if (on) agoText(last) else "—", endColor = C.MUTED)
         ouiAdd(body, sum)
         if (!on) ouiNote(body, "ההאזנה כבויה")
         else ouiNote(body, (if (srvOk) "השרת בודק את כל המקורות כל שנייה ושולח לטלפון רק כשיש התרעה – חוסך סוללה"
