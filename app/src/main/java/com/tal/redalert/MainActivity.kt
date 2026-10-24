@@ -2268,23 +2268,25 @@ class MainActivity : Activity() {
         if (!Prefs.enabled(this)) {
             setInd(srvInd, R.drawable.ic_antenna, "לא מחובר", C.MUTED); blinkServer(false)
         } else {
-            val up = SourceHealth.upCount(); val all = SourceHealth.total()
-            val connecting = up < all && SourceHealth.anyConnecting()   // אחרי הפעלה/עדכון - עוד מתחברים
-            val color = when {
-                connecting -> C.ORANGE
-                up == 0 -> C.RED; up < all / 2 -> C.ORANGE; else -> C.GREEN
-            }
-            val label = when {
-                connecting -> "מתחבר…"
-                up > 0 -> "מחובר"
-                else -> "לא מחובר"
+            // השרת שלנו מחובר - ירוק קבוע; מתחבר (עוד לא הגיע סימן חיים) - ירוק מהבהב;
+            // השרת לא זמין והטלפון בודק בעצמו (גיבוי) - כתום "מחובר"; אין שום מקור - אדום
+            val (label, color, blink) = when {
+                AlertService.serverOk(this) -> Triple("מחובר", C.GREEN, false)
+                serverConnecting() -> Triple("מתחבר…", C.GREEN, true)
+                SourceHealth.upCount() > 0 -> Triple("מחובר", C.ORANGE, false)
+                SourceHealth.anyConnecting() -> Triple("מתחבר…", C.ORANGE, true)
+                else -> Triple("לא מחובר", C.RED, false)
             }
             setInd(srvInd, R.drawable.ic_antenna, label, color)
-            blinkServer(connecting)
+            blinkServer(blink)
         }
     }
 
-    /** "מתחבר…" מהבהב עד שהמקורות מחוברים */
+    /** השרת שלנו מתחבר: עוד לא הגיע סימן חיים, וסימן החיים הראשון מגיע תוך 10 דקות מהפעלת ההאזנה */
+    private fun serverConnecting(): Boolean = Prefs.enabled(this) && !AlertService.serverOk(this) &&
+        AlertService.serverHbAt(this) == 0L && System.currentTimeMillis() - SourceHealth.startedAt() < 11 * 60 * 1000L
+
+    /** "מתחבר…" מהבהב עד שמתחבר */
     private var srvBlink: android.animation.ObjectAnimator? = null
     private fun blinkServer(on: Boolean) {
         if (on && srvBlink == null) {
@@ -2354,8 +2356,7 @@ class MainActivity : Activity() {
         val hb = AlertService.serverHbAt(this)
         val srvOk = AlertService.serverOk(this)
         // סימן החיים הראשון מגיע תוך 10 דקות מהפעלת ההאזנה - עד אז "מתחבר" בכתום
-        val srvConnecting = on && !srvOk && hb == 0L &&
-            System.currentTimeMillis() - SourceHealth.startedAt() < 11 * 60 * 1000L
+        val srvConnecting = on && serverConnecting()
         val srv = ouiCard()
         val (srvLabel, srvColor) = when {
             !on -> "כבוי" to C.MUTED
