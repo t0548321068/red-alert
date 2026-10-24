@@ -1316,7 +1316,7 @@ class MainActivity : Activity() {
         @Suppress("DEPRECATION")
         d.window?.statusBarColor = C.BG
         edgeToEdge(d)
-        if (refreshOnFocus) d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
+        if (refreshOnFocus) refreshOnReturn(d) { rebuild() }
         track(d, onClose)
         d.show()
     }
@@ -1612,7 +1612,7 @@ class MainActivity : Activity() {
         d.window?.statusBarColor = C.BG
         edgeToEdge(d)
         // חוזרים מחלון של הגדרה - מעדכנים את המצבים
-        d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
+        refreshOnReturn(d) { rebuild() }
         track(d)
         d.show()
     }
@@ -1830,6 +1830,17 @@ class MainActivity : Activity() {
         return inset + dp(10)
     }
 
+    /**
+     * חזרה לעמוד (מחלון בחירה / הגדרות הטלפון) - בונים אותו מחדש כדי לעדכן מצבים.
+     * לא בפתיחה עצמה: העמוד כבר נבנה, ובנייה כפולה מיד אחרי הפתיחה גרמה לקפיצה בשורות עם מתגים
+     */
+    private fun refreshOnReturn(d: android.app.Dialog, rebuild: () -> Unit) {
+        var opened = false
+        d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has ->
+            if (has) { if (opened) rebuild() else opened = true }
+        }
+    }
+
     private fun edgeToEdge(d: android.app.Dialog) {
         val w = d.window ?: return
         // בלי אנימציית פתיחה/סגירה - העמוד מופיע במקום, והתפריט התחתון לא זז
@@ -1854,6 +1865,12 @@ class MainActivity : Activity() {
                 android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
             w.insetsController?.setSystemBarsAppearance(light, light)
         }
+        // הריווח לשורת המצב כבר מהציור הראשון (לפי המסך הראשי) - בלי שהתוכן יקפוץ למטה כשהריווח מגיע מהמערכת
+        try {
+            window.decorView.rootWindowInsets?.let { ins ->
+                (w.decorView.findViewById<ViewGroup>(android.R.id.content))?.getChildAt(0)?.dispatchApplyWindowInsets(ins)
+            }
+        } catch (_: Exception) { }
     }
 
     /** כיתוב ממורכז + כפתור בחירה עגול (מתחת לתצוגה מקדימה) */
@@ -2048,7 +2065,7 @@ class MainActivity : Activity() {
         d.window?.statusBarColor = C.BG
         edgeToEdge(d)
         // חוזרים מחלון בחירה - מעדכנים את המצבים
-        d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has -> if (has) rebuild() }
+        refreshOnReturn(d) { rebuild() }
         d.show()
     }
 
