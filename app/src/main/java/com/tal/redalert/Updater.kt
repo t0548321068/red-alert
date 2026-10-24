@@ -166,7 +166,7 @@ object Updater {
 
         val dm = a.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val req = DownloadManager.Request(Uri.parse(url))
-            .setTitle("צבע אדום $version")
+            .setTitle("צופר חירום $version")
             .setMimeType(MIME)
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "red-alert-$version.apk")
