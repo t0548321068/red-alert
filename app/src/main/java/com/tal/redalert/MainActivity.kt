@@ -1473,6 +1473,16 @@ class MainActivity : Activity() {
             Prefs.setTestFab(this, !Prefs.testFab(this)); applyTestFab(); rebuild() }
         ouiAdd(body, fab)
         ouiNote(body, "כפתור אדום בפינת המסך הראשי שפותח את העמוד הזה")
+        // אירוע מלא: התרעה מקדימה, ירי וסיום - ברצף, כמו אירוע אמיתי (מקוצר)
+        val seq = ouiCard()
+        ouiRow(seq, "אירוע מלא", sub = "מקדימה ← ירי ← סיום") {
+            Prefs.setEnabled(this, true)
+            AlertService.startTestSequence(this)
+            pages.toList().forEach { it.dismiss() }
+            refresh()
+        }
+        ouiAdd(body, seq)
+        ouiNote(body, "ירי אחרי 15 שניות, וסיום 20 שניות אחרי שנגמר הזמן להגעה למרחב המוגן")
         // כל סוגי ההתרעה של פיקוד העורף - כל שורה עם האייקון של הסוג בצבע הרמה
         val tests = listOf(
             "התרעה מקדימה" to "בדקות הקרובות צפויות להתקבל התרעות באזורך",
