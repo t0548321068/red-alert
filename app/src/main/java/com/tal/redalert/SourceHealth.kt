@@ -51,7 +51,8 @@ object SourceHealth {
     fun lastAny(): Long = (NAMES.keys.map { k -> if (open[k] == true) System.currentTimeMillis() else lastOk[k] ?: 0L }.maxOrNull() ?: 0L)
 
     fun name(key: String): String =
-        if (key.startsWith("push:")) "שרת · " + name(key.removePrefix("push:")) else NAMES[key] ?: key
+        // התרעה דרך השרת: רק שם המקור המקורי (השרת הוא רק דרך להעביר אותה, לחיסכון בסוללה)
+        if (key.startsWith("push:")) name(key.removePrefix("push:")) else NAMES[key] ?: key
 
     fun upCount() = NAMES.keys.count { isUp(it) }
     fun total() = NAMES.size
