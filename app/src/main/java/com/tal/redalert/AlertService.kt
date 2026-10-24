@@ -36,6 +36,7 @@ class AlertService : Service() {
         private const val ID_SERVICE = 1
         private const val ID_ALERT = 2
         const val ACTION_TEST = "test"
+        const val ACTION_TEST_SEQ = "test_seq"   // בדיקת אירוע מלא: מקדימה, ירי, סיום
         const val ACTION_SILENCE = "silence"
         const val ACTION_VOICE = "voice"
         const val ACTION_PUSH = "push"
@@ -156,6 +157,12 @@ class AlertService : Service() {
                 i.putExtra("title", testTitle)
             }
             c.startForegroundService(i)
+        }
+
+        /** בדיקת אירוע מלא: התרעה מקדימה, אחרי 15 שניות ירי, ובסוף "האירוע הסתיים" */
+        fun startTestSequence(c: Context) {
+            clearOff(c)
+            c.startForegroundService(Intent(c, AlertService::class.java).putExtra("manual", true).setAction(ACTION_TEST_SEQ))
         }
 
         fun stop(c: Context) {
@@ -342,17 +349,35 @@ class AlertService : Service() {
             Vibes.stop(this)
             return START_STICKY
         }
+        if (intent?.action == ACTION_TEST_SEQ) {
+            main.removeCallbacks(seqAlert); main.removeCallbacks(seqEnd)
+            testFire("בדקות הקרובות צפויות להתקבל התרעות באזורך")
+            main.postDelayed(seqAlert, 15_000)
+            return START_STICKY
+        }
         if (intent?.action == ACTION_TEST) {
-            val title = intent.getStringExtra("title") ?: "ירי רקטות וטילים"
-            val mine = Prefs.cities(this) + Prefs.nearbyAreas(this)
-            // זמן ההתגוננות בבדיקה - לפי המיקום שלי (ולא לפי כל האזורים הנוספים: עם "כל הארץ" הקצר ביותר הוא "מיידי",
-            // ואז הבדיקה דילגה ישר ל"נשארים במרחב המוגן" ולא הראתה את אייקון סוג ההתרעה). לפחות 15 שניות
-            val shelter = (AreaData.shelterSeconds(this, Prefs.nearbyAreas(this))
-                ?: AreaData.shelterSeconds(this, mine) ?: 15).coerceAtLeast(15)
-            fire(title, listOf("התראת בדיקה"), forceScreen = true, test = true,
-                shelter = shelter, mapAreas = mine)
+            testFire(intent.getStringExtra("title") ?: "ירי רקטות וטילים")
         }
         return START_STICKY
+    }
+
+    /** שלבי בדיקת האירוע המלא */
+    private val seqEnd = Runnable { testFire("האירוע הסתיים") }
+    private val seqAlert = Runnable {
+        val shelter = testFire("ירי רקטות וטילים")
+        main.postDelayed(seqEnd, shelter * 1000L + 20_000)
+    }
+
+    /** התראת בדיקה (מחזירה את זמן ההגעה למרחב המוגן בשניות) */
+    private fun testFire(title: String): Int {
+        val mine = Prefs.cities(this) + Prefs.nearbyAreas(this)
+        // זמן ההתגוננות בבדיקה - לפי המיקום שלי (ולא לפי כל האזורים הנוספים: עם "כל הארץ" הקצר ביותר הוא "מיידי",
+        // ואז הבדיקה דילגה ישר ל"נשארים במרחב המוגן" ולא הראתה את אייקון סוג ההתרעה). לפחות 15 שניות
+        val shelter = (AreaData.shelterSeconds(this, Prefs.nearbyAreas(this))
+            ?: AreaData.shelterSeconds(this, mine) ?: 15).coerceAtLeast(15)
+        fire(title, listOf("התראת בדיקה"), forceScreen = true, test = true,
+            shelter = shelter, mapAreas = mine)
+        return shelter
     }
 
     override fun onDestroy() {
@@ -366,6 +391,7 @@ class AlertService : Service() {
         ringtone?.stop()
         main.removeCallbacks(stayDone)
         main.removeCallbacks(stayNotif)
+        main.removeCallbacks(seqAlert); main.removeCallbacks(seqEnd)
         wakeLock?.let { if (it.isHeld) it.release() }
         super.onDestroy()
     }
