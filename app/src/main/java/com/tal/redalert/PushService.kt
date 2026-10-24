@@ -20,19 +20,27 @@ class PushService : FirebaseMessagingService() {
 
     override fun onMessageReceived(msg: RemoteMessage) {
         val d = msg.data
+        if (d["type"] == "hb") {   // סימן חיים מהשרת + אילו מקורות תקינים אצלו
+            AlertService.onServerHeartbeat(this, (d["up"] ?: "").split(',').filter { it.isNotEmpty() })
+            return
+        }
         if (d["type"] != "alert") return
         val title = d["title"] ?: return
-        val areas = (d["areas"] ?: "").split('|').map { it.trim() }.filter { it.isNotEmpty() }
+        val src = d["src"] ?: ""
+        var areas = (d["areas"] ?: "").split('|').map { it.trim() }.filter { it.isNotEmpty() }
+        // טלגרם: רק שמות יישובים אמיתיים (כמו כשהטלפון קרא את הערוצים בעצמו)
+        if (src.startsWith("tg:")) areas = areas.filter { AreaData.isKnown(this, it) }
         if (areas.isEmpty()) return
-        SourceHealth.ok("push")
+        val at = d["at"]?.toLongOrNull() ?: System.currentTimeMillis()
         val svc = AlertService.instance
         if (svc != null) {
-            Thread { try { svc.handle(title, areas, source = "push") } catch (_: Exception) { } }.start()
+            Thread { try { svc.handle(title, areas, at, "push:$src") } catch (_: Exception) { } }.start()
         } else {
             // השירות לא רץ - מעירים אותו (הודעה בעדיפות גבוהה מאפשרת להפעיל אותו מהרקע)
             if (!Prefs.enabled(this)) return
             val i = Intent(this, AlertService::class.java).setAction(AlertService.ACTION_PUSH_ALERT)
                 .putExtra("title", title).putExtra("areas", areas.toTypedArray())
+                .putExtra("at", at).putExtra("src", "push:$src")
             try { startForegroundService(i) } catch (_: Exception) { }
         }
     }
