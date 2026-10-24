@@ -2342,7 +2342,23 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun showSourcesInfo() = ouiPage("מקורות התרעה") { body, rebuild ->
+    /** תוצאת "בדוק את השרתים" האחרונה: מתי, ואילו מקורות תקינים בשרת (null = השרת לא ענה) */
+    private var srvCheckAt = 0L
+    private var srvCheckUp: List<String>? = null
+
+    private fun showSourcesInfo() = ouiPage("מקורות התרעה",
+        button = "בדוק את השרתים" to { done ->
+            Thread {
+                val up = PushService.checkServer()
+                runOnUiThread {
+                    srvCheckAt = System.currentTimeMillis(); srvCheckUp = up
+                    done()
+                    android.widget.Toast.makeText(this, if (up != null)
+                        "השרת עונה · ${up.count { it in SourceHealth.NAMES }}/${SourceHealth.total()} מקורות תקינים בשרת"
+                        else "השרת לא עונה – הטלפון בודק בעצמו", android.widget.Toast.LENGTH_LONG).show()
+                }
+            }.start()
+        }) { body, rebuild ->
         val on = Prefs.enabled(this)
         val sum = ouiCard()
         ouiRow(sum, "מחוברים", end = if (on) "${SourceHealth.upCount()}/${SourceHealth.total()}" else "—", endBig = true)
@@ -2366,6 +2382,13 @@ class MainActivity : Activity() {
         }
         ouiRow(srv, "השרת שלנו (ירושלים)", sub = if (hb > 0) "סימן חיים ${agoText(hb)}" else "עוד לא התקבל סימן חיים",
             subColor = C.MUTED, end = srvLabel, endColor = srvColor)
+        if (srvCheckAt > 0) {
+            ouiDivider(srv)
+            val up = srvCheckUp
+            ouiRow(srv, "בדיקה אחרונה", sub = agoText(srvCheckAt), subColor = C.MUTED,
+                end = if (up != null) "עונה · ${up.count { it in SourceHealth.NAMES }}/${SourceHealth.total()}" else "לא עונה",
+                endColor = if (up == null) C.RED else if (up.count { it in SourceHealth.NAMES } == SourceHealth.total()) C.GREEN else C.ORANGE)
+        }
         ouiDivider(srv)
         ouiRow(srv, "מי בודק את המקורות", end = if (!on) "—" else if (srvOk) "השרת" else if (srvConnecting) "הטלפון (זמנית)" else "הטלפון (גיבוי)",
             endColor = if (!on) C.MUTED else if (srvOk) C.GREEN else C.ORANGE)

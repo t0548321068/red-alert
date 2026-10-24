@@ -13,6 +13,22 @@ class PushService : FirebaseMessagingService() {
 
     companion object {
         const val TOPIC = "alerts"
+        private const val STATUS_URL = "http://151.145.91.93:8080/status"
+
+        /**
+         * בדיקת השרת (כפתור בעמוד המקורות): אילו מקורות תקינים אצלו, או null אם לא ענה.
+         * השרת גם שולח מיד סימן חיים דרך Firebase - כך נבדקת כל הדרך עד הטלפון
+         */
+        fun checkServer(): List<String>? = try {
+            val c = java.net.URL(STATUS_URL).openConnection() as java.net.HttpURLConnection
+            c.connectTimeout = 5000; c.readTimeout = 5000; c.useCaches = false
+            try {
+                if (c.responseCode != 200) null else {
+                    val arr = org.json.JSONObject(c.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }).getJSONArray("up")
+                    List(arr.length()) { arr.getString(it) }
+                }
+            } finally { c.disconnect() }
+        } catch (_: Exception) { null }
         fun subscribe() {
             try { FirebaseMessaging.getInstance().subscribeToTopic(TOPIC) } catch (_: Exception) { }
         }
