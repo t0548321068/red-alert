@@ -2112,11 +2112,33 @@ class MainActivity : Activity() {
         if (onClick != null) setOnClickListener { onClick() }
     }
 
-    /** אייקון החיווי - מעט גדול מהגודל המקורי */
+    /**
+     * אייקון החיווי - מעט גדול מהגודל המקורי. אייקון שצויר גדול יותר (24dp) נשאר באותו גודל,
+     * אבל תופס את אותו גובה כמו השאר - כדי שהטקסט מתחת לכל החיוויים יהיה באותו קו
+     */
     private fun setIndIcon(v: TextView, icon: Int) {
         val d = getDrawable(icon)?.mutate() ?: return
-        d.setBounds(0, 0, (d.intrinsicWidth * 1.45f).toInt(), (d.intrinsicHeight * 1.45f).toInt())
-        v.setCompoundDrawablesRelative(null, d, null, null)
+        val dw = (d.intrinsicWidth * 1.45f).toInt(); val dh = (d.intrinsicHeight * 1.45f).toInt()
+        val h = (dp(18) * 1.45f).toInt()
+        val box = if (dh <= h) d.apply { setBounds(0, 0, dw, dh) } else SameHeight(d, dw, dh, h).apply { setBounds(0, 0, dw, h) }
+        v.setCompoundDrawablesRelative(null, box, null, null)
+    }
+
+    /** מצייר אייקון בגודלו, ממורכז בתוך גובה קבוע (בולט מעט למעלה ולמטה בלי להזיז את הטקסט) */
+    private class SameHeight(val d: android.graphics.drawable.Drawable, val dw: Int, val dh: Int, val h: Int) :
+        android.graphics.drawable.Drawable() {
+        override fun draw(c: android.graphics.Canvas) {
+            val top = bounds.top + (h - dh) / 2
+            d.setBounds(bounds.left, top, bounds.left + dw, top + dh); d.draw(c)
+        }
+        override fun setAlpha(a: Int) { d.alpha = a }
+        override fun setColorFilter(f: android.graphics.ColorFilter?) { d.colorFilter = f }
+        override fun setTintList(t: android.content.res.ColorStateList?) { d.setTintList(t) }
+        override fun setTintMode(m: android.graphics.PorterDuff.Mode?) { if (m != null) d.setTintMode(m) }
+        @Deprecated("Deprecated in Java")
+        override fun getOpacity() = android.graphics.PixelFormat.TRANSLUCENT
+        override fun getIntrinsicWidth() = dw
+        override fun getIntrinsicHeight() = h
     }
 
     /** חיווי צלילים: רמקול, ומסביבו קווי רטט כשהרטט פועל */
