@@ -46,9 +46,13 @@ async function send(title, areas, src, at = Date.now()) {
 const okAt = {};
 const ok = k => { okAt[k] = Date.now(); };
 let tzofarOpen = false;
-async function heartbeat() {
+function upList() {
   const up = Object.keys(okAt).filter(k => Date.now() - okAt[k] < 5 * 60 * 1000);
   if (tzofarOpen && !up.includes('tzofar')) up.push('tzofar');
+  return up;
+}
+async function heartbeat() {
+  const up = upList();
   try {
     await admin.messaging().send({
       topic: TOPIC, data: { type: 'hb', up: up.join(','), at: String(Date.now()) },
@@ -58,6 +62,17 @@ async function heartbeat() {
 }
 setInterval(heartbeat, 10 * 60 * 1000);
 setTimeout(heartbeat, 20 * 1000);
+
+// ---- בדיקה מהאפליקציה (כפתור "בדוק את השרתים"): מצב המקורות, ושליחת סימן חיים מיד ----
+// סימן החיים עובר דרך Firebase - כך נבדקת כל הדרך עד הטלפון. לכל היותר פעם ב-30 שניות
+const STARTED = Date.now();
+let lastManualHb = 0;
+require('http').createServer((req, res) => {
+  if (!req.url.startsWith('/status')) { res.writeHead(404); return res.end(); }
+  if (Date.now() - lastManualHb > 30 * 1000) { lastManualHb = Date.now(); heartbeat(); }
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ up: upList(), started: STARTED, now: Date.now() }));
+}).listen(8080);
 
 // ---- בקשת https פשוטה (חיבורים נפרדים, כדי לא לעכב את הבדיקה החיה של פיקוד העורף) ----
 const slowAgent = new https.Agent({ keepAlive: true, maxSockets: 6 });

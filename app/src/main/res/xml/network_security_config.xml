@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- השרת שלנו (בדיקת שרתים) עונה ב-http בכתובת IP, בלי דומיין - מותר רק אליו -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">151.145.91.93</domain>
+    </domain-config>
+</network-security-config>
