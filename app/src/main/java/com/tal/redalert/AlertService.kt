@@ -60,6 +60,19 @@ class AlertService : Service() {
         @Volatile var instance: AlertService? = null
         fun inEvent() = System.currentTimeMillis() - lastEventAt < 10 * 60 * 1000L
 
+        /**
+         * השרת שלנו בודק את כל המקורות ושולח כל התרעה דרך Firebase, ופעם ב-10 דקות סימן חיים.
+         * כל עוד סימן החיים מגיע - הטלפון לא בודק בעצמו (חוסך סוללה). 35 דקות בלי סימן חיים - חוזרים לבדוק לבד
+         */
+        private const val SERVER_STALE_MS = 35 * 60 * 1000L
+        fun serverOk(c: Context): Boolean =
+            System.currentTimeMillis() - c.getSharedPreferences("server", Context.MODE_PRIVATE).getLong("hb", 0L) < SERVER_STALE_MS
+        fun onServerHeartbeat(c: Context, up: List<String>) {
+            c.getSharedPreferences("server", Context.MODE_PRIVATE).edit().putLong("hb", System.currentTimeMillis()).apply()
+            SourceHealth.viaServer(up)
+            instance?.syncLocalSources()
+        }
+
         /** בטא הופעלה/כובתה - התחברות מחדש להתראות העדכון */
         fun reloadPush(c: Context) {
             c.startService(Intent(c, AlertService::class.java).setAction(ACTION_PUSH))
@@ -170,7 +183,8 @@ class AlertService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     /** השומר: כמה שניות ער - החיבורים מתחדשים ופיקוד העורף נבדק - ותזמון הבא */
     fun onWatchdog() {
-        awake(6_000)   // מספיק לוודא שהחיבור לצופר חי ולבדיקה אחת של פיקוד העורף
+        syncLocalSources()   // השרת הפסיק לשלוח סימן חיים - צופר חוזר לפעול בטלפון
+        if (!serverOk(this)) awake(6_000)   // מספיק לוודא שהחיבור לצופר חי ולבדיקה אחת של פיקוד העורף
         tzofar?.ensureConnected()
         // הטלפון כבר ער בשביל השומר - מנצלים את זה לבדיקת עדכון (לכל היותר פעם בחצי שעה, בקשה קטנה אחת)
         checkUpdateIfDue(30 * 60 * 1000L)
@@ -265,7 +279,7 @@ class AlertService : Service() {
         Thread(::watchdogLoop, "watchdog").start()
         // בלי חיבור קבוע ל-ntfy (חיסכון בסוללה) - בדיקת עדכונים כל 6 שעות ובפתיחת האפליקציה
         Thread(::nearLoop, "near-me").start()
-        tzofar = TzofarSource(this) { title, areas -> handle(title, areas, source = "tzofar") }.also { it.start() }
+        syncLocalSources()
         telegram = listOf("PikudHaOref_all", "tzevaadomm", "CumtaAlertsChannel", "Radar_Alerts").map { ch ->
             TelegramSource(ch, { telegramInterval() }) { title, areas ->
                 // רק שמות יישובים אמיתיים - בלי שורות כותרת, תאריכים ושמות ערוצים
@@ -277,9 +291,19 @@ class AlertService : Service() {
 
     /** טלגרם: 5 שניות באירוע, 30 שניות כשהמסך דלוק, 2 דקות כשהוא כבוי */
     private fun telegramInterval(): Long = when {
+        serverOk(this) -> Long.MAX_VALUE / 4   // השרת בודק את טלגרם
         inEvent() -> 5_000L
         (getSystemService(POWER_SERVICE) as PowerManager).isInteractive -> 30_000L
         else -> 300_000L   // מסך כבוי - כל 5 דקות (גיבוי בלבד)
+    }
+
+    /** צופר בטלפון רק כשהשרת לא זמין (חיבור קבוע = התעוררויות של הרדיו) */
+    @Synchronized
+    fun syncLocalSources() {
+        if (!running) return
+        if (serverOk(this)) { tzofar?.stop(); tzofar = null }
+        else if (tzofar == null)
+            tzofar = TzofarSource(this) { title, areas -> handle(title, areas, source = "tzofar") }.also { it.start() }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -292,7 +316,8 @@ class AlertService : Service() {
         if (intent?.action == ACTION_WATCHDOG) { onWatchdog(); return START_STICKY }
         if (intent?.action == ACTION_PUSH_ALERT) {
             val t = intent.getStringExtra("title"); val a = intent.getStringArrayExtra("areas")
-            if (t != null && a != null) Thread { try { handle(t, a.toList(), source = "push") } catch (_: Exception) { } }.start()
+            val at = intent.getLongExtra("at", System.currentTimeMillis()); val src = intent.getStringExtra("src") ?: "push"
+            if (t != null && a != null) Thread { try { handle(t, a.toList(), at, src) } catch (_: Exception) { } }.start()
             return START_STICKY
         }
         if (intent?.action == ACTION_PUSH) {
@@ -340,7 +365,7 @@ class AlertService : Service() {
     private fun loop() {
         while (running) {
             try {
-                check()
+                if (!serverOk(this)) check()   // השרת בודק כל שנייה - הטלפון רק כגיבוי
             } catch (_: Exception) {
                 // רשת נפלה / תשובה לא תקינה - מנסים שוב בסבב הבא
             }
@@ -505,6 +530,7 @@ class AlertService : Service() {
         }
         while (running) {
             for (url in listOf(URL_HISTORY, URL_ARCHIVE)) {
+                if (serverOk(this)) break   // השרת בודק את ההיסטוריה והארכיון
                 try {
                     val text = fetchOref(url)
                     SourceHealth.ok(if (url == URL_HISTORY) "history" else "archive")
