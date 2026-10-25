@@ -67,7 +67,7 @@ object OrefArchive {
             val o = arr.getJSONObject(i)
             // הסוג מחושב מחדש מהכותרת (לא מה שנשמר) - כך תיקוני סיווג חלים גם על התרעות ישנות
             val t = o.getString("t")
-            Prefs.Entry("", t, o.optString("b"), AlertService.levelOf(t), o.getLong("ts"))
+            Prefs.Entry("", AlertService.displayTitle(t), o.optString("b"), AlertService.levelOf(t), o.getLong("ts"))
         }
     } catch (_: Exception) { emptyList() }
 
@@ -117,7 +117,7 @@ object OrefArchive {
         }
         val list = groups.values.map { (title, ts, areas) ->
             val level = AlertService.levelOf(title)
-            Prefs.Entry("", if (level == AlertService.LEVEL_END) "האירוע הסתיים" else title,
+            Prefs.Entry("", AlertService.displayTitle(title),
                 areas.joinToString(", "), level, ts[0])
         }.sortedByDescending { it.ts }
         return list

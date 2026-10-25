@@ -112,9 +112,20 @@ class AlertService : Service() {
         /** סיווג לפי נוסח ההודעה של פיקוד העורף */
         fun levelOf(title: String): Int = when {
             title.contains("הסתיים") || title.contains("הוסר") || title.contains("ניתן לצאת") -> LEVEL_END
+            // התרעה מקדימה: "בדקות הקרובות...", "איום מלבנון" וכד', "התקרבו למרחב המוגן"
             title.contains("בדקות הקרובות") || title.contains("צפויות") ||
-                title.contains("מקדימה") -> LEVEL_PRE
+                title.contains("מקדימה") || title.contains("איום") || title.contains("התקרבו") -> LEVEL_PRE
             else -> LEVEL_ALERT
+        }
+
+        /** הכותרת שמוצגת: כל סוגי הסיום = "האירוע הסתיים"; "איום מלבנון" = "התרעה מקדימה - איום מלבנון" */
+        fun displayTitle(raw: String): String {
+            val t = raw.trim()
+            return when {
+                levelOf(t) == LEVEL_END -> "האירוע הסתיים"
+                t.contains("איום") && !t.startsWith("התרעה מקדימה") -> "התרעה מקדימה - $t"
+                else -> t
+            }
         }
 
         /**
@@ -606,8 +617,8 @@ class AlertService : Service() {
         awake(60_000)   // התראה הגיעה - הטלפון נשאר ער לזמן הטיפול בה
         lastEventAt = System.currentTimeMillis()
         val level = levelOf(rawTitle)
-        // כל סוגי הסיום ("החשש הוסר" וכו') מוצגים כ"האירוע הסתיים"
-        val title = if (level == LEVEL_END) "האירוע הסתיים" else rawTitle
+        // כל סוגי הסיום ("החשש הוסר" וכו') מוצגים כ"האירוע הסתיים"; "איום מלבנון" - "התרעה מקדימה - איום מלבנון"
+        val title = displayTitle(rawTitle)
         val now = System.currentTimeMillis()
         // בלי כפילויות בתוך ההודעה עצמה
         // "ברחבי הארץ" מאוחד ל"כל הארץ" - בכל מקום שמוצג (פיד, התרעות אחרונות, מסך ההתרעה)
