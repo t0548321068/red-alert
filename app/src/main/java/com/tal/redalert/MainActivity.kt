@@ -925,15 +925,15 @@ class MainActivity : Activity() {
                     setOnClickListener {
                         startActivity(Intent(this@MainActivity, MapActivity::class.java)
                             .putExtra("focus", e.body).putExtra("focusTs", e.ts).putExtra("focusAll", true)
-                            .putExtra("focusLevel", AlertUi.shownLevel(e.title, e.level)).putExtra("focusTitle", e.title))   // ההתרעה שנלחצה - בצבע שלה
+                            .putExtra("focusLevel", e.level).putExtra("focusTitle", e.title))   // ההתרעה שנלחצה - בצבע שלה
                     }
                 }
-                val col = when (AlertUi.shownLevel(e.title, e.level)) {
+                val col = when (e.level) {
                     AlertService.LEVEL_PRE -> "#F08C00"
                     AlertService.LEVEL_END -> "#2E7D32"
                     else -> "#E53935"
                 }
-                val icon = AlertUi.icon(e.title, AlertUi.shownLevel(e.title, e.level))
+                val icon = AlertUi.icon(e.title, e.level)
                 row.addView(FrameLayout(this).apply {
                     background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(col)) }
                     addView(android.widget.ImageView(this@MainActivity).apply { AlertUi.setIcon(this, icon) },

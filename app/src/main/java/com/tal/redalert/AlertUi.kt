@@ -10,17 +10,10 @@ object AlertUi {
 
     /** כותרת + שורה מתחתיה */
     fun head(title: String, level: Int): Pair<String, String> = when (level) {
-        AlertService.LEVEL_PRE -> "מבזק פיקוד העורף" to "התרעה מקדימה"
+        AlertService.LEVEL_PRE -> "מבזק פיקוד העורף" to (if (title.startsWith("התרעה מקדימה - ")) title else "התרעה מקדימה")
         AlertService.LEVEL_END -> "עדכון פיקוד העורף" to "האירוע הסתיים"
         else -> title to "היכנסו למרחב המוגן"
     }
-
-    /**
-     * רמה לתצוגה ברשימה ובמפה בלבד: "איום מלבנון" וכד' מוצג כמו התרעה מקדימה (אייקון וצבע כתום).
-     * הנוסח וההתנהגות (צליל, מסך וכו') לא משתנים
-     */
-    fun shownLevel(title: String, level: Int) =
-        if (level == AlertService.LEVEL_ALERT && title.contains("איום")) AlertService.LEVEL_PRE else level
 
     /** אייקון לפי סוג ההתרעה: מקדימה / סיום, ובאדום - לפי סוג האיום. לא מזוהה: צופר */
     fun icon(title: String, level: Int): Int = when {
