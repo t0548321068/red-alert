@@ -50,8 +50,6 @@ class MapActivity : Activity() {
         }, "App")
 
         web.webViewClient = object : WebViewClient() {
-            override fun shouldInterceptRequest(view: WebView, req: android.webkit.WebResourceRequest) =
-                MapWeb.intercept(this@MapActivity, req)
             override fun onPageFinished(view: WebView, url: String) {
                 Thread {
                     val data = buildData(dark)
@@ -71,7 +69,7 @@ class MapActivity : Activity() {
                 }.start()
             }
         }
-        web.loadUrl(MapWeb.URL + if (dark) "" else "#light")   // ערכת נושא מהרגע הראשון
+        web.loadUrl("file:///android_asset/map.html" + if (dark) "" else "#light")   // ערכת נושא מהרגע הראשון
     }
 
     /** מיקום עדכני ומדויק (לא רק האחרון שהטלפון זוכר) - מסומן על המפה עם עיגול דיוק */
