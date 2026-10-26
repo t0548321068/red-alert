@@ -43,6 +43,11 @@ class AlertService : Service() {
         const val ACTION_PUSH_ALERT = "push_alert"   // התרעה מהשרת (Firebase) כשהשירות לא רץ
         const val ACTION_WATCHDOG = "watchdog"
         private const val WATCHDOG_MS = 5 * 60 * 1000L
+        /** השרת מחובר (סימן החיים מוכיח שהכול עובד) - השומר מעיר את הטלפון רק כל 15 דקות */
+        private const val WATCHDOG_SERVER_MS = 15 * 60 * 1000L
+
+        /** השרת הודיע שיש גרסה חדשה - בודקים מיד (במקום שהטלפון יבדוק בעצמו כל חצי שעה) */
+        fun onServerUpdate() { instance?.onUpdatePing() }
 
         /** שומר: מעיר את השירות כל ~5 דקות גם כשהטלפון ישן */
         fun scheduleWatchdog(c: Context) {
@@ -51,7 +56,7 @@ class AlertService : Service() {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             try {
                 am.setAndAllowWhileIdle(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                    android.os.SystemClock.elapsedRealtime() + WATCHDOG_MS, pi)
+                    android.os.SystemClock.elapsedRealtime() + (if (serverOk(c)) WATCHDOG_SERVER_MS else WATCHDOG_MS), pi)
             } catch (_: Exception) { }
         }
 
@@ -207,7 +212,7 @@ class AlertService : Service() {
         if (!serverOk(this)) awake(6_000)   // מספיק לוודא שהחיבור לצופר חי ולבדיקה אחת של פיקוד העורף
         tzofar?.ensureConnected()
         // הטלפון כבר ער בשביל השומר - מנצלים את זה לבדיקת עדכון (לכל היותר פעם בחצי שעה, בקשה קטנה אחת)
-        checkUpdateIfDue(30 * 60 * 1000L)
+        if (!serverOk(this)) checkUpdateIfDue(30 * 60 * 1000L)   // כשהשרת מחובר - הוא מודיע על גרסה חדשה
         scheduleWatchdog(this)
     }
 
@@ -228,8 +233,8 @@ class AlertService : Service() {
     private val unlockReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
             when (i.action) {
-                Intent.ACTION_USER_PRESENT -> checkUpdateIfDue(10 * 60 * 1000L)
-                Intent.ACTION_SCREEN_ON -> livePush(true)
+                Intent.ACTION_USER_PRESENT -> if (!serverOk(c)) checkUpdateIfDue(10 * 60 * 1000L)
+                Intent.ACTION_SCREEN_ON -> if (!serverOk(c)) livePush(true)
                 Intent.ACTION_SCREEN_OFF -> livePush(false)
             }
         }
@@ -301,7 +306,7 @@ class AlertService : Service() {
             registerReceiver(unlockReceiver, android.content.IntentFilter().apply {
                 addAction(Intent.ACTION_USER_PRESENT); addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_SCREEN_OFF) })
         } catch (_: Exception) { }
-        if ((getSystemService(POWER_SERVICE) as PowerManager).isInteractive) livePush(true)
+        if ((getSystemService(POWER_SERVICE) as PowerManager).isInteractive && !serverOk(this)) livePush(true)
         Thread(::watchdogLoop, "watchdog").start()
         // בלי חיבור קבוע ל-ntfy (חיסכון בסוללה) - בדיקת עדכונים כל 6 שעות ובפתיחת האפליקציה
         Thread(::nearLoop, "near-me").start()
@@ -528,7 +533,7 @@ class AlertService : Service() {
     private fun updateLoop() {
         Thread.sleep(60_000)
         while (running) {
-            checkUpdateIfDue(14 * 60 * 1000L)
+            if (!serverOk(this)) checkUpdateIfDue(14 * 60 * 1000L)
             // כל 15 דקות של זמן ער - לא מעיר את הטלפון (כשהוא ישן, הספירה עוצרת),
             // והבדיקה דרך האתר של GitHub, בלי מגבלת ה-API
             Thread.sleep(15 * 60 * 1000L)
@@ -536,7 +541,7 @@ class AlertService : Service() {
     }
 
     /** הודעה מ-ntfy: בודקים מול GitHub (עם כמה ניסיונות - הפרסום לפעמים מתעכב בכמה שניות) */
-    private fun onUpdatePing() {
+    fun onUpdatePing() {
         Thread {
             // GitHub לפעמים מציג את הגרסה החדשה רק אחרי כמה דקות - מנסים שוב במרווחים גדלים (עד ~8 דקות)
             for (wait in longArrayOf(0, 15_000, 30_000, 60_000, 120_000, 240_000)) {
