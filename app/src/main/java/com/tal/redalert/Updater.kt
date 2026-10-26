@@ -36,16 +36,25 @@ object Updater {
         currentVersion(c).let { v -> if (isBetaBuild(c) && !v.endsWith("b")) "$v בטא ${buildNumber(c)}" else v }
 
     /** עדכון זמין: label לתצוגה, key לזיכרון "מאוחר יותר", url להורדה */
-    data class Update(val label: String, val key: String, val url: String)
+    data class Update(val label: String, val key: String, val url: String, val ver: String = "", val build: Int = 0)
+
+    /** יש גרסה חדשה (נמצאה בבדיקה האחרונה ועוד לא הותקנה) - לחיווי הכתום המהבהב מעל מספר הגרסה */
+    fun hasUpdate(c: Context): Boolean {
+        val (ver, build) = Prefs.updateAvail(c)
+        if (ver.isEmpty()) return false
+        val cur = currentVersion(c)
+        return isNewer(ver, cur) || (build > 0 && build > buildNumber(c) && !isNewer(cur, ver))
+    }
+    private fun remember(c: Context, u: Update?) = Prefs.setUpdateAvail(c, u?.ver ?: "", u?.build ?: 0)
 
     /** הגרסה הכי מתאימה להתקנה: יציבה חדשה, או (אם ביקשו) בטא חדשה */
     private fun best(c: Context): Update? {
         val cur = currentVersion(c)
         (cheapStable() ?: fetch(API))?.let { (ver, url, _) ->
-            if (isNewer(ver, cur)) return Update(ver, ver, url)
+            if (isNewer(ver, cur)) return Update(ver, ver, url, ver, 0)
         }
         if (Prefs.betaUpdates(c)) (cheapBeta() ?: fetch(BETA_API))?.let { (ver, url, build) ->
-            if (build > buildNumber(c) && !isNewer(cur, ver)) return Update(if (ver.endsWith("b")) "$ver (בטא)" else "$ver בטא $build", "beta-$build", url)
+            if (build > buildNumber(c) && !isNewer(cur, ver)) return Update(if (ver.endsWith("b")) "$ver (בטא)" else "$ver בטא $build", "beta-$build", url, ver, build)
         }
         return null
     }
@@ -58,6 +67,7 @@ object Updater {
         Thread {
             var failed = false
             val u = try { best(a) } catch (_: Exception) { failed = true; null }
+            if (!failed) remember(a, u)
             a.runOnUiThread {
                 done?.invoke()   // סיום הבדיקה - למשל עצירת אייקון הטעינה בכפתור
                 if (a.isFinishing) return@runOnUiThread
@@ -73,7 +83,7 @@ object Updater {
 
     /** לשירות ברקע: מחזיר גרסה חדשה (label) אם יש ולא נדחתה, אחרת null */
     fun pendingVersion(c: Context): String? {
-        val u = try { best(c) } catch (_: Exception) { null } ?: return null
+        val u = try { best(c).also { remember(c, it) } } catch (_: Exception) { null } ?: return null
         if (Prefs.skippedVersion(c) == u.key) return null
         return u.label
     }

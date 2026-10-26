@@ -376,6 +376,9 @@ object Prefs {
     fun setSkippedVersion(c: Context, v: String) = sp(c).edit().putString("skipVer", v).commit()
     /** גרסה שכבר נשלחה עליה התראה ברקע */
     fun notifiedVersion(c: Context) = sp(c).getString("notifVer", "") ?: ""
+    /** הגרסה החדשה שנמצאה בבדיקה האחרונה (ריק = אין) ומספר הבנייה שלה (בבטא) */
+    fun updateAvail(c: Context): Pair<String, Int> = (sp(c).getString("updAvail", "") ?: "") to sp(c).getInt("updAvailBuild", 0)
+    fun setUpdateAvail(c: Context, ver: String, build: Int) = sp(c).edit().putString("updAvail", ver).putInt("updAvailBuild", build).apply()
     fun setNotifiedVersion(c: Context, v: String) = sp(c).edit().putString("notifVer", v).commit()
 
     data class Entry(val time: String, val title: String, val body: String, val level: Int, val ts: Long = 0,
