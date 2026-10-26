@@ -201,7 +201,9 @@ class MainActivity : Activity() {
     /** האם המסך הראשי עצמו נגלל (רק כשכרטיס ההתרעה מוצג) */
     private var pageScrolls = false
 
-    private fun setScrollMode(on: Boolean) {
+    private fun setScrollMode(want: Boolean) {
+        // מסך מסובב (לרוחב): אין מספיק גובה - המסך הראשי תמיד נגלל
+        val on = want || resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
         pageScrolls = on
         if (!on) mainScroll?.scrollTo(0, 0)
         val lp = areasSlot.layoutParams as LinearLayout.LayoutParams
