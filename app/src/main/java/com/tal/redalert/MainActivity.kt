@@ -115,27 +115,41 @@ class MainActivity : Activity() {
             weatherLine.text = "מאתר מיקום מדויק…"
             weatherLine.setTextColor(C.MUTED)
         }
+        // קודם מיקום מהרשת (שנייה-שתיים) - מזג האוויר מופיע מיד; אחר כך ה-GPS המדויק,
+        // שטוען מחדש רק אם הוא רחוק מהמיקום הראשון (מעל 300 מטר)
+        var shown: android.location.Location? = null
+        var gpsDone = false
+        Weather.networkLocation(this) { net ->
+            if (!gpsDone && net != null && net.accuracy < 2000f) { shown = net; loadWeather(net) }
+        }
         Weather.freshLocation(this) { loc ->
+            gpsDone = true
             if (loc == null) {
-                weatherLine.text = "📍 לא נמצא מיקום – לחץ לנסות שוב"
-                weatherLine.setTextColor(C.MUTED)
-                weatherAt = 0L
+                if (shown == null) {
+                    weatherLine.text = "📍 לא נמצא מיקום – לחץ לנסות שוב"
+                    weatherLine.setTextColor(C.MUTED)
+                    weatherAt = 0L
+                }
                 return@freshLocation
             }
-            Thread {
-                val w = try { Weather.fetch(this, loc) } catch (_: Exception) { null }
-                runOnUiThread {
-                    if (w == null) { weatherAt = 0L; return@runOnUiThread }
-                    val (icon, _) = Weather.describe(w.code, w.isDay)
-                    val hint = if (hasPrecise()) "" else " (לחץ למיקום מדויק)"
-                    weatherLine.text = listOf("$icon ${w.temp}°", w.place)
-                        .filter { it.isNotBlank() }.joinToString(" · ") + hint
-                    weatherLine.setTextColor(C.SOFT)
-                    weatherAccuracy = w.accuracy
-                }
-            }.start()
+            val first = shown
+            if (first == null || loc.distanceTo(first) > 300f) loadWeather(loc)
+            else weatherAccuracy = Math.round(loc.accuracy)
         }
     }
+
+    private fun loadWeather(loc: android.location.Location) = Thread {
+        val w = try { Weather.fetch(this, loc) } catch (_: Exception) { null }
+        runOnUiThread {
+            if (w == null) { weatherAt = 0L; return@runOnUiThread }
+            val (icon, _) = Weather.describe(w.code, w.isDay)
+            val hint = if (hasPrecise()) "" else " (לחץ למיקום מדויק)"
+            weatherLine.text = listOf("$icon ${w.temp}°", w.place)
+                .filter { it.isNotBlank() }.joinToString(" · ") + hint
+            weatherLine.setTextColor(C.SOFT)
+            weatherAccuracy = w.accuracy
+        }
+    }.start()
 
     private fun onWeatherClick() {
         if (hasPrecise()) updateWeather(force = true)
