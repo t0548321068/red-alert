@@ -64,11 +64,11 @@ class ClockActivity : Activity() {
         setContentView(root)
     }
 
-    /** נשימה: השעון מחשיך ומאיר לאט (4 שניות לכל כיוון), בלי סוף */
+    /** נשימה: השעון מחשיך ומאיר לאט (10 שניות לכל כיוון), בלי סוף */
     private fun startBreathe() {
         if (breathe != null) return
         breathe = android.animation.ObjectAnimator.ofFloat(box, "alpha", 1f, 0f).apply {
-            duration = 4000
+            duration = 10_000
             interpolator = android.view.animation.AccelerateDecelerateInterpolator()
             repeatCount = android.animation.ValueAnimator.INFINITE
             repeatMode = android.animation.ValueAnimator.REVERSE
