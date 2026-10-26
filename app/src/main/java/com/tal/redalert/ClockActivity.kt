@@ -12,19 +12,18 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
-import kotlin.random.Random
 
 /**
  * מצב שעון לילה: מסך שחור עם שעון גדול ועמום בלבד, המסך נשאר דולק.
  * כשמגיעה התראה - מסך ההתראה קופץ מעליו (האפליקציה בחזית).
- * השעון זז מעט כל דקה כדי לא לצרוב את המסך.
+ * השעון לא זז: הוא מחשיך ומאיר לאט, כל כמה שניות (נשימה) - גם נגד צריבת המסך.
  */
 class ClockActivity : Activity() {
 
     private val ui = Handler(Looper.getMainLooper())
     private lateinit var box: LinearLayout
     private lateinit var time: TextView
-    private var lastShift = 0L
+    private var breathe: android.animation.ObjectAnimator? = null
 
     private val DIM = Color.parseColor("#8A8A8E")
 
@@ -35,8 +34,6 @@ class ClockActivity : Activity() {
             val now = System.currentTimeMillis()
             ui.postDelayed(this, if (now % 1000 < 500) 500 - now % 1000 else 1000 - now % 1000)
             time.text = TimeFormat.clock(this@ClockActivity, now)
-            if (now % 1000 >= 500) return
-            if (now - lastShift > 60_000) { shift(); lastShift = now }
         }
     }
 
@@ -67,12 +64,18 @@ class ClockActivity : Activity() {
         setContentView(root)
     }
 
-    /** הזזה קטנה ואקראית נגד צריבת מסך */
-    private fun shift() {
-        box.translationX = Random.nextInt(-40, 41).toFloat()
-        box.translationY = Random.nextInt(-60, 61).toFloat()
+    /** נשימה: השעון מחשיך ומאיר לאט (4 שניות לכל כיוון), בלי סוף */
+    private fun startBreathe() {
+        if (breathe != null) return
+        breathe = android.animation.ObjectAnimator.ofFloat(box, "alpha", 1f, 0.15f).apply {
+            duration = 4000
+            interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            repeatMode = android.animation.ValueAnimator.REVERSE
+            start()
+        }
     }
 
-    override fun onResume() { super.onResume(); ui.post(tick) }
-    override fun onPause() { ui.removeCallbacks(tick); super.onPause() }
+    override fun onResume() { super.onResume(); ui.post(tick); startBreathe(); breathe?.resume() }
+    override fun onPause() { ui.removeCallbacks(tick); breathe?.pause(); super.onPause() }
 }
