@@ -2334,12 +2334,12 @@ class MainActivity : Activity() {
     private fun serverConnecting(): Boolean = Prefs.enabled(this) && !AlertService.serverOk(this) &&
         AlertService.serverHbAt(this) == 0L && System.currentTimeMillis() - SourceHealth.startedAt() < 11 * 60 * 1000L
 
-    /** חיווי הגרסה: כשיש עדכון חדש - האייקון כתום ומהבהב (רק האייקון, לא מספר הגרסה) */
+    /** חיווי הגרסה: מעודכן - אייקון ירוק; יש עדכון חדש - כתום ומהבהב (רק האייקון, לא מספר הגרסה) */
     private var verBlink: android.animation.ValueAnimator? = null
     private fun updateVerInd() {
         val up = Updater.hasUpdate(this)
         val label = "v${Updater.currentVersion(this)}" + if (Updater.isBetaBuild(this) && !Updater.currentVersion(this).endsWith("b")) "b" else ""
-        if (verInd.text.toString() != label || (verBlink != null) != up) setInd(verInd, R.drawable.ic_info, label, if (up) C.ORANGE else C.MUTED)
+        if (verInd.text.toString() != label || (verBlink != null) != up) setInd(verInd, R.drawable.ic_info, label, if (up) C.ORANGE else C.GREEN)
         if (up && verBlink == null) {
             verBlink = android.animation.ValueAnimator.ofInt(255, 50).apply {
                 duration = 600
