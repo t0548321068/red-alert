@@ -51,6 +51,16 @@ class ClockActivity : Activity() {
             typeface = Typeface.create("sans-serif", Typeface.BOLD)
             gravity = Gravity.CENTER
         }
+        // מסך מסובב (לרוחב): השעון ממלא את רוחב המסך (88%), עד 75% מהגובה
+        if (resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+            val sample = TimeFormat.time(this, System.currentTimeMillis()).replace(Regex("\\d"), "8")
+            val paint = android.graphics.Paint().apply { typeface = time.typeface; textSize = 100f }
+            val dm = resources.displayMetrics
+            val byWidth = 100f * dm.widthPixels * 0.88f / paint.measureText(sample)
+            val byHeight = dm.heightPixels * 0.75f / (paint.fontMetrics.descent - paint.fontMetrics.ascent) * 100f
+            time.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, minOf(byWidth, byHeight))
+            time.includeFontPadding = false
+        }
         box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
