@@ -215,7 +215,7 @@ open class AlertActivity : Activity() {
             // שלא יוסתר מאחורי כפתורי הניווט / שורת המצב של הטלפון
             root.setOnApplyWindowInsetsListener { v, ins ->
                 @Suppress("DEPRECATION")
-                v.setPadding(0, 0, 0, ins.systemWindowInsetBottom)
+                v.setPadding(ins.systemWindowInsetLeft, 0, ins.systemWindowInsetRight, ins.systemWindowInsetBottom)
                 titleView.setPadding(dpx(16), ins.systemWindowInsetTop + dpx(12), dpx(16), dpx(14))
                 ins
             }

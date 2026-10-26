@@ -588,7 +588,7 @@ class MainActivity : Activity() {
             applyTestFab()
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")
-                v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
+                v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
                 insets
             }
         }
@@ -816,7 +816,7 @@ class MainActivity : Activity() {
         }
         page.setOnApplyWindowInsetsListener { v, insets ->
             @Suppress("DEPRECATION")
-            v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
+            v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
             insets
         }
         // כותרת כמו בשאר מסכי ההגדרות, ואם יש - כפתור פעולה בצד (למשל מפה)
@@ -1273,7 +1273,7 @@ class MainActivity : Activity() {
             addView(body)
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")
-                v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
+                v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
                 insets
             }
         }
@@ -1576,7 +1576,7 @@ class MainActivity : Activity() {
         }
         page.setOnApplyWindowInsetsListener { v, insets ->
             @Suppress("DEPRECATION")
-            v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
+            v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
             insets
         }
         val cats = listOf(
@@ -1991,7 +1991,7 @@ class MainActivity : Activity() {
             addView(body)
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")
-                v.setPadding(0, insets.systemWindowInsetTop, 0, insets.systemWindowInsetBottom)
+                v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
                 insets
             }
         }
@@ -2805,7 +2805,8 @@ class MainActivity : Activity() {
         card.isClickable = true
         frame.setOnApplyWindowInsetsListener { _, insets ->
             @Suppress("DEPRECATION")
-            (card.layoutParams as FrameLayout.LayoutParams).bottomMargin = insets.systemWindowInsetBottom + dp(10)
+            (card.layoutParams as FrameLayout.LayoutParams).apply { bottomMargin = insets.systemWindowInsetBottom + dp(10)
+                leftMargin = insets.systemWindowInsetLeft + dp(10); rightMargin = insets.systemWindowInsetRight + dp(10) }
             card.requestLayout(); insets
         }
         d.setContentView(frame)
@@ -2849,7 +2850,8 @@ class MainActivity : Activity() {
             @Suppress("DEPRECATION")
             root.setPadding(0, insets.systemWindowInsetTop, 0, 0)
             @Suppress("DEPRECATION")
-            (save.layoutParams as FrameLayout.LayoutParams).bottomMargin = insets.systemWindowInsetBottom + dp(10)
+            (save.layoutParams as FrameLayout.LayoutParams).apply { bottomMargin = insets.systemWindowInsetBottom + dp(10)
+                leftMargin = insets.systemWindowInsetLeft + dp(10); rightMargin = insets.systemWindowInsetRight + dp(10) }
             save.requestLayout()
             insets
         }
