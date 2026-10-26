@@ -30,15 +30,15 @@ async function send(title, areas, src, at = Date.now()) {
     cur.push(a);
   }
   if (cur.length) chunks.push(cur);
-  for (const part of chunks) {
-    try {
-      await admin.messaging().send({
-        topic: TOPIC,
-        data: { type: 'alert', title, areas: part.join('|'), src, at: String(at) },
-        android: { priority: 'high', ttl: 60 * 1000 },
-      });
-    } catch (e) { log('send failed', e.message); }
-  }
+  const msgs = chunks.map(part => ({
+    topic: TOPIC,
+    data: { type: 'alert', title, areas: part.join('|'), src, at: String(at) },
+    android: { priority: 'high', ttl: 60 * 1000 },
+  }));
+  const push = async () => { for (const m of msgs) { try { await admin.messaging().send(m); } catch (e) { log('send failed', e.message); } } };
+  await push();
+  // אמינות: אותה הודעה שוב אחרי 5 שניות - אם הראשונה לא הגיעה. הטלפון מסנן כפילויות (אותו זמן התרעה)
+  setTimeout(push, 5000);
   log('sent', src, title, areas.length + ' areas', chunks.length + ' msg');
 }
 
@@ -68,10 +68,12 @@ setTimeout(heartbeat, 20 * 1000);
 const STARTED = Date.now();
 let lastManualHb = 0;
 require('http').createServer((req, res) => {
-  if (!req.url.startsWith('/status')) { res.writeHead(404); return res.end(); }
+  const u = new URL(req.url, 'http://x');
+  if (u.pathname === '/archive') return serveArchive(req, res, +(u.searchParams.get('since') || 0));
+  if (u.pathname !== '/status') { res.writeHead(404); return res.end(); }
   if (Date.now() - lastManualHb > 30 * 1000) { lastManualHb = Date.now(); heartbeat(); }
   res.writeHead(200, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({ up: upList(), started: STARTED, now: Date.now() }));
+  res.end(JSON.stringify({ up: upList(), started: STARTED, now: Date.now(), version: latest }));
 }).listen(8080);
 
 // ---- בקשת https פשוטה (חיבורים נפרדים, כדי לא לעכב את הבדיקה החיה של פיקוד העורף) ----
@@ -255,4 +257,93 @@ async function pollTg(ch) {
 }
 setInterval(() => CHANNELS.forEach(pollTg), 1000);
 
+
+// ---- גרסאות חדשות: השרת בודק את GitHub כל 2 דקות, ושולח לטלפונים הודעה רק כשיש שינוי ----
+// (במקום שכל טלפון יתעורר כל חצי שעה לבדוק בעצמו)
+const REPO = 'https://github.com/t0548321068/red-alert/releases';
+let latest = { stable: '', beta: '' };
+function head(url) {
+  return new Promise(resolve => {
+    const req = https.get(url, { agent: slowAgent, timeout: 8000, headers: { 'User-Agent': 'Mozilla/5.0 RedAlertPush' } }, res => {
+      resolve(res.headers.location || ''); res.resume();
+    });
+    req.on('timeout', () => req.destroy()); req.on('error', () => resolve(''));
+  });
+}
+async function pollVersions() {
+  try {
+    const loc = await head(REPO + '/latest');
+    const stable = (loc.split('/tag/')[1] || '').replace(/^v/, '');
+    let beta = '';
+    try { const m = /red-alert-([\w.]+)-(\d+)\.apk/.exec(await get(REPO + '/expanded_assets/beta')); if (m) beta = m[1] + '-' + m[2]; } catch (_) {}
+    if (!stable && !beta) return;
+    const changed = (stable && stable !== latest.stable) || (beta && beta !== latest.beta);
+    const first = !latest.stable && !latest.beta;
+    latest = { stable: stable || latest.stable, beta: beta || latest.beta };
+    if (changed && !first) {
+      await admin.messaging().send({ topic: TOPIC, data: { type: 'update', stable: latest.stable, beta: latest.beta },
+        android: { priority: 'high', ttl: 6 * 3600 * 1000 } }).catch(e => log('update push failed', e.message));
+      log('new version', JSON.stringify(latest));
+    }
+  } catch (_) {}
+}
+setInterval(pollVersions, 2 * 60 * 1000);
+setTimeout(pollVersions, 5000);
+
+// ---- התרעות אחרונות: השרת שומר את כל ההיסטוריה של פיקוד העורף (שנה אחורה), והטלפונים מקבלים ממנו קובץ אחד ----
+// כך לכל הטלפונים אותה רשימה, בלי תקרת השורות של הארכיון
+const ARCH_FILE = path.join(__dirname, 'archive.json');
+const ARCH_BASE = 'https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he';
+const YEAR = 366 * 24 * 3600 * 1000;
+let arch = new Map();   // "כותרת|דקה" -> { t, ts, b: Set }
+try { for (const e of JSON.parse(fs.readFileSync(ARCH_FILE, 'utf8'))) arch.set(e.k, { t: e.t, ts: e.ts, b: new Set(e.b) }); } catch (_) {}
+function rowTime(o) {
+  const d = String(o.date || ''), t = String(o.time || '');
+  const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(d);
+  if (m && t.length >= 8) return ilTime(`${m[3]}-${m[2]}-${m[1]} ${t.slice(0, 8)}`);
+  return ilTime(String(o.alertDate || '').replace('T', ' '));
+}
+function addRows(rows) {
+  let added = 0;
+  for (const o of rows) {
+    const title = o.category_desc || o.title || 'התראה';
+    const minute = String(o.alertDate || '').replace('T', ' ').slice(0, 16);
+    const ts = rowTime(o); if (!ts || !minute) continue;
+    const k = title + '|' + minute;
+    let e = arch.get(k); if (!e) { e = { t: title, ts, b: new Set() }; arch.set(k, e); added++; }
+    if (ts < e.ts) e.ts = ts;
+    if (o.data && !e.b.has(o.data)) { e.b.add(o.data); added++; }
+  }
+  return added;
+}
+function saveArch() {
+  const cut = Date.now() - YEAR;
+  for (const [k, e] of arch) if (e.ts < cut) arch.delete(k);
+  try { fs.writeFileSync(ARCH_FILE + '.tmp', JSON.stringify([...arch].map(([k, e]) => ({ k, t: e.t, ts: e.ts, b: [...e.b] })))); fs.renameSync(ARCH_FILE + '.tmp', ARCH_FILE); } catch (_) {}
+}
+async function archFetch(q) { const t = await get(ARCH_BASE + q, OREF_H); return t.startsWith('[') ? JSON.parse(t) : []; }
+async function archBackfill() {
+  // פעם אחת (ואחר כך כשחסר): החודש האחרון, ושנה אחורה בטווחים של שבוע
+  const fmt = d => { const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', day: '2-digit', month: '2-digit', year: 'numeric' }).formatToParts(d); const g = x => p.find(y => y.type === x).value; return `${g('day')}.${g('month')}.${g('year')}`; };
+  try { addRows(await archFetch('&mode=3')); } catch (_) {}
+  const now = Date.now(), DAY = 24 * 3600 * 1000;
+  for (let to = now - 28 * DAY; to > now - YEAR; to -= 7 * DAY) {
+    try { addRows(await archFetch(`&fromDate=${fmt(new Date(to - 6 * DAY))}&toDate=${fmt(new Date(to))}&mode=0`)); } catch (_) {}
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  saveArch(); log('archive backfill', arch.size + ' events');
+}
+async function archPoll() {
+  try { if (addRows(await archFetch('&mode=1'))) saveArch(); } catch (_) {}
+}
+if (arch.size < 100) archBackfill(); else archPoll();
+setInterval(archPoll, 60 * 1000);
+function serveArchive(req, res, since) {
+  const list = [...arch.values()].filter(e => e.ts > since).sort((a, b) => b.ts - a.ts)
+    .map(e => ({ t: e.t, b: [...e.b].join(', '), ts: e.ts }));
+  const body = Buffer.from(JSON.stringify(list));
+  const gz = /gzip/.test(req.headers['accept-encoding'] || '');
+  res.writeHead(200, { 'Content-Type': 'application/json', ...(gz ? { 'Content-Encoding': 'gzip' } : {}) });
+  res.end(gz ? require('zlib').gzipSync(body) : body);
+}
 log('red-alert push server started');

@@ -9,6 +9,30 @@ object OrefArchive {
     private const val BASE = "https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he"
     private const val URL_MONTH = "$BASE&mode=3"
     private const val DAY = 24 * 3600 * 1000L
+    /** השרת שלנו שומר את כל ההיסטוריה (שנה אחורה) - אותה רשימה לכל הטלפונים. אם לא עונה - הארכיון של פיקוד העורף */
+    private const val SERVER = "http://151.145.91.93:8080/archive"
+
+    /** התרעות מהשרת שאחרי since (0 = הכול), או null אם השרת לא ענה */
+    private fun fetchServer(since: Long): List<Prefs.Entry>? = try {
+        val conn = URL("$SERVER?since=$since").openConnection() as HttpURLConnection
+        conn.connectTimeout = 6000; conn.readTimeout = 20000; conn.useCaches = false
+        try {
+            if (conn.responseCode != 200) null else {
+                val arr = JSONArray(conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) })
+                (0 until arr.length()).map { i ->
+                    val o = arr.getJSONObject(i); val t = o.getString("t")
+                    Prefs.Entry("", AlertService.displayTitle(t), o.optString("b"), AlertService.levelOf(t), o.getLong("ts"))
+                }
+            }
+        } finally { conn.disconnect() }
+    } catch (_: Exception) { null }
+
+    private fun merge(c: android.content.Context, fresh: List<Prefs.Entry>): List<Prefs.Entry> {
+        val yearAgo = System.currentTimeMillis() - 366 * DAY
+        val merged = LinkedHashMap<String, Prefs.Entry>()
+        (fresh + load(c)).forEach { e -> if (e.ts >= yearAgo) merged.putIfAbsent(e.title + "|" + e.ts / 60_000, e) }
+        return merged.values.sortedByDescending { it.ts }
+    }
 
     /**
      * משלים מהארכיון שנה אחורה (טווחי תאריכים של שבוע), ושומר בטלפון.
@@ -18,6 +42,13 @@ object OrefArchive {
     fun backfill(c: android.content.Context): Boolean {
         val sp = c.getSharedPreferences("archive", android.content.Context.MODE_PRIVATE)
         if (sp.getBoolean("backfill3Done", false)) return false
+        // השרת עונה - כל השנה ממנו בבקשה אחת
+        fetchServer(0)?.let { all ->
+            val before = load(c).size
+            val m = merge(c, all); save(c, m)
+            sp.edit().putBoolean("backfill3Done", true).apply()
+            return m.size > before
+        }
         val now = System.currentTimeMillis()
         if (now - sp.getLong("backfill3Last", 0L) < 6 * 3600 * 1000L) return false
         sp.edit().putLong("backfill3Last", now).apply()
@@ -49,7 +80,9 @@ object OrefArchive {
      */
     fun fetchAndKeep(c: android.content.Context): List<Prefs.Entry> {
         val stored = load(c)
-        val fresh = try { fetchRaw() } catch (_: Exception) { emptyList() }
+        // מהשרת: רק מה שחדש (עם מרווח של יום); אם השרת לא עונה - הארכיון של פיקוד העורף
+        val since = if (stored.isEmpty()) System.currentTimeMillis() - 31 * DAY else stored.maxOf { it.ts } - DAY
+        val fresh = fetchServer(since) ?: try { fetchRaw() } catch (_: Exception) { emptyList() }
         val yearAgo = System.currentTimeMillis() - 366L * 24 * 3600 * 1000
         val merged = LinkedHashMap<String, Prefs.Entry>()
         // אותה התרעה = אותו סוג + אותה דקה (החדשה - עם שניות - גוברת על מה שנשמר)

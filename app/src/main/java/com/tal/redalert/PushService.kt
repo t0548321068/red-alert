@@ -40,6 +40,7 @@ class PushService : FirebaseMessagingService() {
             AlertService.onServerHeartbeat(this, (d["up"] ?: "").split(',').filter { it.isNotEmpty() })
             return
         }
+        if (d["type"] == "update") { AlertService.onServerUpdate(); return }   // גרסה חדשה פורסמה
         if (d["type"] != "alert") return
         val title = d["title"] ?: return
         val src = d["src"] ?: ""
