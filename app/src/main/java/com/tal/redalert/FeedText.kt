@@ -5,20 +5,11 @@ import android.content.Context
 /** טקסטים לפיד הארצי */
 object FeedText {
 
-    private fun icon(level: Int) = when (level) {
-        AlertService.LEVEL_PRE -> "🟠"
-        AlertService.LEVEL_END -> "🟢"
-        else -> "🔴"
-    }
-
     private fun short(title: String) = when {
         title.contains("בדקות הקרובות") -> "מקדימה"
         title.contains("הסתיים") -> "האירוע הסתיים"
         else -> title
     }
-
-    fun line(c: Context, e: Prefs.Entry) =
-        "${icon(e.level)} ${TimeFormat.time(c, e.ts)} ${short(e.title)}: ${e.body}"
 
     /** אפשרויות חלון הזמן של הפיד, בדקות */
     val WINDOWS = intArrayOf(30, 60, 180, 360, 720, 1440)
@@ -48,7 +39,4 @@ object FeedText {
             Item("${TimeFormat.time(c, it.ts)}\n\uFFFC ${short(it.title)} \uFFFC\n${it.body}",
                 AlertUi.icon(it.title, it.level), AlertUi.color(it.level))
         }
-
-    /** שורה אחת (מסך השעון): ההתראות בחלון הזמן, או null אם אין */
-    fun latest(c: Context): String? = inWindow(c).take(8).ifEmpty { null }?.joinToString("     •     ") { line(c, it) }
 }
