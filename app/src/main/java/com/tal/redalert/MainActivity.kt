@@ -88,6 +88,7 @@ class MainActivity : Activity() {
     private lateinit var protInd: TextView   // מוגן / לא מוגן
     private lateinit var locInd: TextView
     private lateinit var srvInd: TextView
+    private lateinit var verInd: TextView   // גרסה: אייקון כתום מהבהב כשיש עדכון
     private lateinit var sndInd: TextView   // צלילים: רגיל / חזק / שקט / מושתק / כבוי
     private var weatherAt = 0L
     private var weatherAccuracy = -1
@@ -405,7 +406,7 @@ class MainActivity : Activity() {
         var taps = 0; var lastTap = 0L
         // לחיצה: בדיקת עדכונים מיד - בדיוק כמו "בדיקת עדכונים" בהגדרות.
         // לחיצות נוספות ברצף (ל-7 לחיצות של הבטא) לא בודקות שוב
-        val verInd = indicator(R.drawable.ic_info) {
+        verInd = indicator(R.drawable.ic_info) {
             val now = System.currentTimeMillis()
             val inSeries = now - lastTap < 1500
             taps = if (inSeries) taps + 1 else 1
@@ -421,8 +422,7 @@ class MainActivity : Activity() {
                 android.widget.Toast.makeText(this@MainActivity, "מזהה מכשיר: ${Prefs.deviceCode(this@MainActivity)}",
                     android.widget.Toast.LENGTH_LONG).show()
         }
-        setInd(verInd, R.drawable.ic_info, "v${Updater.currentVersion(this)}" +
-            if (Updater.isBetaBuild(this) && !Updater.currentVersion(this).endsWith("b")) "b" else "", C.MUTED)
+        updateVerInd()
         listOf(protInd, sndInd, netInd, locInd, srvInd, verInd).forEachIndexed { i, v ->
             if (i > 0) status.addView(View(this).apply { setBackgroundColor(C.LINE2) },
                 LinearLayout.LayoutParams(dp(1), dp(26)))
@@ -2271,6 +2271,7 @@ class MainActivity : Activity() {
 
     private fun updateIndicators() {
         updateFeed()
+        updateVerInd()
         if (Prefs.enabled(this)) setInd(protInd, R.drawable.ic_shield_ind, "מוגן", C.GREEN)
         else setInd(protInd, R.drawable.ic_shield_ind_off, "לא מוגן", C.RED)
         // חיווי צלילים
@@ -2332,6 +2333,26 @@ class MainActivity : Activity() {
     /** השרת שלנו מתחבר: עוד לא הגיע סימן חיים, וסימן החיים הראשון מגיע תוך 10 דקות מהפעלת ההאזנה */
     private fun serverConnecting(): Boolean = Prefs.enabled(this) && !AlertService.serverOk(this) &&
         AlertService.serverHbAt(this) == 0L && System.currentTimeMillis() - SourceHealth.startedAt() < 11 * 60 * 1000L
+
+    /** חיווי הגרסה: כשיש עדכון חדש - האייקון כתום ומהבהב (רק האייקון, לא מספר הגרסה) */
+    private var verBlink: android.animation.ValueAnimator? = null
+    private fun updateVerInd() {
+        val up = Updater.hasUpdate(this)
+        val label = "v${Updater.currentVersion(this)}" + if (Updater.isBetaBuild(this) && !Updater.currentVersion(this).endsWith("b")) "b" else ""
+        if (verInd.text.toString() != label || (verBlink != null) != up) setInd(verInd, R.drawable.ic_info, label, if (up) C.ORANGE else C.MUTED)
+        if (up && verBlink == null) {
+            verBlink = android.animation.ValueAnimator.ofInt(255, 50).apply {
+                duration = 600
+                repeatCount = android.animation.ValueAnimator.INFINITE
+                repeatMode = android.animation.ValueAnimator.REVERSE
+                addUpdateListener { a -> verInd.compoundDrawablesRelative[1]?.alpha = a.animatedValue as Int }
+                start()
+            }
+        } else if (!up && verBlink != null) {
+            verBlink?.cancel(); verBlink = null
+            verInd.compoundDrawablesRelative[1]?.alpha = 255
+        }
+    }
 
     /** "מתחבר…" מהבהב עד שמתחבר */
     private var srvBlink: android.animation.ObjectAnimator? = null
