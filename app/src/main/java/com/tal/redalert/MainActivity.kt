@@ -2999,15 +2999,23 @@ class MainActivity : Activity() {
     private fun refreshNearby() {
         if (!Prefs.nearMe(this) || checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) !=
             android.content.pm.PackageManager.PERMISSION_GRANTED) return
+        fun use(loc: android.location.Location) = Thread {
+            try {
+                Prefs.addVisits(this, AreaData.areasAt(this, loc.latitude, loc.longitude, 0.0), System.currentTimeMillis())
+                val list = AreaData.nearby(this, loc.latitude, loc.longitude)
+                if (list.isNotEmpty()) Prefs.setNearbyAreas(this, list)
+            } catch (_: Exception) { }
+        }.start()
+        // קודם מיקום מהרשת (אנטנות / Wi-Fi - שנייה-שתיים): אם זזת למקום אחר, האזור מתעדכן מיד.
+        // אחר כך המיקום המדויק (GPS, עד חצי דקה) מדייק אותו
+        var gpsDone = false
+        Weather.networkLocation(this) { net ->
+            if (!gpsDone && net != null && net.accuracy < 2000f) use(Weather.chooseLocation(net))
+        }
         Weather.freshLocation(this) { got ->
+            gpsDone = true
             val loc = got?.let { Weather.chooseLocation(it) }   // מיקום גס לא דורס מיקום מדויק
-            if (loc != null) Thread {
-                try {
-                    Prefs.addVisits(this, AreaData.areasAt(this, loc.latitude, loc.longitude, 0.0), System.currentTimeMillis())
-                    val list = AreaData.nearby(this, loc.latitude, loc.longitude)
-                    if (list.isNotEmpty()) Prefs.setNearbyAreas(this, list)
-                } catch (_: Exception) { }
-            }.start()
+            if (loc != null) use(loc)
         }
     }
 
