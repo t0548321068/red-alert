@@ -121,7 +121,7 @@ class MainActivity : Activity() {
         var shown: android.location.Location? = null
         var gpsDone = false
         Weather.networkLocation(this) { net ->
-            if (!gpsDone && net != null && net.accuracy < 2000f) { shown = net; loadWeather(net) }
+            if (!gpsDone && net != null && net.accuracy < 2000f) { shown = net; loadWeather(net, precise = false) }
         }
         Weather.freshLocation(this) { loc ->
             gpsDone = true
@@ -136,12 +136,13 @@ class MainActivity : Activity() {
             // המיקום מהרשת גס (מאות מטרים) - שם השכונה לפיו יכול להיות של השכונה הסמוכה.
             // כשמגיע המיקום המדויק - טוענים שוב (גם השם), אלא אם המיקום הראשון כבר היה מדויק וקרוב
             val first = shown
+            weatherAccuracy = Math.round(loc.accuracy)
             if (first == null || first.accuracy > 50f || loc.distanceTo(first) > 300f) loadWeather(loc)
-            else weatherAccuracy = Math.round(loc.accuracy)
         }
     }
 
-    private fun loadWeather(loc: android.location.Location) = Thread {
+    /** precise=false: מיקום מהרשת - מזג האוויר מוצג, אבל חיווי הדיוק לא מתעדכן לפיו (רק לפי ה-GPS), כדי שלא יקפוץ */
+    private fun loadWeather(loc: android.location.Location, precise: Boolean = true) = Thread {
         val w = try { Weather.fetch(this, loc) } catch (_: Exception) { null }
         runOnUiThread {
             if (w == null) { weatherAt = 0L; return@runOnUiThread }
@@ -150,7 +151,7 @@ class MainActivity : Activity() {
             weatherLine.text = listOf("$icon ${w.temp}°", w.place)
                 .filter { it.isNotBlank() }.joinToString(" · ") + hint
             weatherLine.setTextColor(C.SOFT)
-            weatherAccuracy = w.accuracy
+            if (precise) weatherAccuracy = w.accuracy
         }
     }.start()
 
