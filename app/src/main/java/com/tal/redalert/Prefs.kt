@@ -252,6 +252,9 @@ object Prefs {
 
     // ---- הקראה בקול ----
     fun speakAlerts(c: Context) = sp(c).getBoolean("speak", true)
+    /** הקראה גם בהתרעת בדיקה */
+    fun testSpeak(c: Context) = sp(c).getBoolean("testSpeak", true)
+    fun setTestSpeak(c: Context, v: Boolean) = sp(c).edit().putBoolean("testSpeak", v).commit()
     fun shabbatMode(c: Context) = sp(c).getInt("shabbatMode", Shabbat.OFF)
     fun setShabbatMode(c: Context, v: Int): Boolean {
         val ok = sp(c).edit().putInt("shabbatMode", v).commit()

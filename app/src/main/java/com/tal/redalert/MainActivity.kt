@@ -1565,6 +1565,13 @@ class MainActivity : Activity() {
                 "\"לפי זמן\" – הכפתור מוצג כשפותחים את האפליקציה או נוגעים במסך, ונעלם אחרי הזמן שבוחרים") { rebuild() } }
         ouiAdd(body, fab)
         ouiNote(body, "כפתור אדום בפינת המסך הראשי שפותח את העמוד הזה")
+        // הקראה בהתרעת בדיקה - אפשר לכבות (רק בבדיקה; בהתרעה אמיתית לפי הגדרות ההקראה)
+        val spk = ouiCard()
+        val spkOn = Prefs.testSpeak(this)
+        ouiRow(spk, "הקראה בבדיקה", sub = if (spkOn) "מוקרא" else "לא מוקרא", on = spkOn,
+            onToggle = { Prefs.setTestSpeak(this, !spkOn); rebuild() }) { Prefs.setTestSpeak(this, !spkOn); rebuild() }
+        ouiAdd(body, spk)
+        ouiNote(body, "רק בהתרעות בדיקה – בהתרעה אמיתית ההקראה לפי ההגדרות")
         // אירוע מלא: התרעה מקדימה, ירי וסיום - ברצף, כמו אירוע אמיתי (מקוצר)
         val seq = ouiCard()
         ouiRow(seq, "אירוע מלא", sub = "מקדימה ← ירי ← סיום") {

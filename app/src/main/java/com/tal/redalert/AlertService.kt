@@ -837,7 +837,8 @@ class AlertService : Service() {
         // עקיפת מצב שקט: הטלפון על שקט/רטט - הטלפון לא ישמיע, אז האפליקציה משמיעה בעצמה.
         // כמו בצופר: מעבירים את הטלפון לרגיל לזמן ההתרעה ומשמיעים (צליל והקראה) בעוצמת ההתראות, ואז מחזירים.
         // אם אי אפשר (אין הרשאת נא לא להפריע / עוצמת ההתראות על 0) - בעוצמת השעון המעורר, כמו קודם
-        val speakNow = !quiet && !muted && (Prefs.speakAlerts(this) || shabbat)
+        val speakNow = !quiet && !muted && (Prefs.speakAlerts(this) || shabbat) &&
+            !(test && !Prefs.testSpeak(this))   // בבדיקה - אפשר לבטל את ההקראה
         val ringerNow = (getSystemService(AUDIO_SERVICE) as android.media.AudioManager).ringerMode
         val bypass = PHONE_DEFAULTS && (shabbat || Prefs.bypassSilent(this)) && !quiet && !muted &&
             ringerNow != android.media.AudioManager.RINGER_MODE_NORMAL
