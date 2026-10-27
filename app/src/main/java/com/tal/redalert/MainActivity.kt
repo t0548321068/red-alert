@@ -155,10 +155,19 @@ class MainActivity : Activity() {
             weatherAccuracy = m
         }
     }
+    /** מספר ראשוני בפתיחה (נלקח פעם אחת, לא מתעדכן כל שנייה) - עד שיש מדידה */
+    private var initialAcc = -1
     private fun shownAccuracy(): Int {
         if (weatherAccuracy > 0) return weatherAccuracy
-        val (m, at, _) = Prefs.lastAcc(this)
-        return if (m > 0 && System.currentTimeMillis() - at < 30 * 60_000L) m.also { weatherAccuracy = it } else -1
+        val (m, _, _) = Prefs.lastAcc(this)
+        return if (m > 0) m else initialAcc
+    }
+    /** בכל פתיחה: מספר ראשוני מיד, ומדידה מדויקת ברקע שמעדכנת אותו (אם לא נמדד בדקה האחרונה) */
+    private fun refreshAccuracy() {
+        if (!hasLocationPerm() || !locationOn()) return
+        if (initialAcc <= 0) initialAcc = try { Weather.lastLocation(this)?.accuracy?.let { Math.round(it) } } catch (_: Exception) { null } ?: -1
+        if (System.currentTimeMillis() - Prefs.lastAcc(this).second < 60_000L) return
+        Weather.freshLocation(this) { loc -> if (loc != null) keepAccuracy(loc) }
     }
 
     private fun loadWeather(loc: android.location.Location) = Thread {
@@ -633,7 +642,8 @@ class MainActivity : Activity() {
     }
 
     override fun onResume() {
-        if (::statusRow.isInitialized) { applyStatusRow(); applyTestFab() }   // "לפי זמן": מוצגים בכל פתיחה
+        if (::statusRow.isInitialized) { applyStatusRow(); applyTestFab() }
+        refreshAccuracy()   // "לפי זמן": מוצגים בכל פתיחה
         // קיצור דרך מאייקון האפליקציה (לחיצה ארוכה)
         intent?.getStringExtra("shortcut")?.let { sc ->
             intent.removeExtra("shortcut")
@@ -3156,6 +3166,7 @@ class MainActivity : Activity() {
         }
         Weather.freshLocation(this) { got ->
             gpsDone = true
+            got?.let { keepAccuracy(it) }
             val loc = got?.let { Weather.chooseLocation(it) }   // מיקום גס לא דורס מיקום מדויק
             if (loc != null) use(loc)
         }
