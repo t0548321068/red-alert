@@ -1603,7 +1603,9 @@ class MainActivity : Activity() {
             "התרעות" to { listOf(
                 Row("🔔", "הגדרות התרעות", { "סוג תצוגה · מיקום · אזורים נוספים · צלילים ורטט · הקראה · בדיקה" }) { showAlertSettings() }) },
             "הרשאות" to { phoneRows() },
-            "כללי" to { generalRows() }
+            // עדכונים ואודות - כל אחד בכרטיס נפרד
+            "עדכונים" to { listOf(Row("⬆️", "בדיקת עדכונים", { "v" + Updater.versionLabel(this) }) { showUpdates() }) },
+            "אודות" to { listOf(Row("ℹ️", "אודות", { "" }) { showAbout() }) }
         )
         fun rebuild() {
             body.removeAllViews()
@@ -2162,14 +2164,6 @@ class MainActivity : Activity() {
         }
         ouiAdd(body, card)
         ouiNote(body, "לחיצה על הרשאה פותחת את ההגדרה בטלפון")
-    }
-
-    private fun generalRows(): List<Row> {
-        return listOf(
-            // בדיקת עדכונים + בטא + מה חדש - במסך אחד
-            Row("⬆️", "בדיקת עדכונים", { "v" + Updater.versionLabel(this) }) { showUpdates() },
-            Row("ℹ️", "אודות", { "" }) { showAbout() }
-        )
     }
 
     // ---- חיווים ----
