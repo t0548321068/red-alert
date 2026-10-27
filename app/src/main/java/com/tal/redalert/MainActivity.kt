@@ -614,7 +614,7 @@ class MainActivity : Activity() {
     }
 
     override fun onResume() {
-        if (::statusRow.isInitialized) applyStatusRow()   // "לפי זמן": מוצגת בכל פתיחה
+        if (::statusRow.isInitialized) { applyStatusRow(); applyTestFab() }   // "לפי זמן": מוצגים בכל פתיחה
         // קיצור דרך מאייקון האפליקציה (לחיצה ארוכה)
         intent?.getStringExtra("shortcut")?.let { sc ->
             intent.removeExtra("shortcut")
@@ -1483,16 +1483,26 @@ class MainActivity : Activity() {
 
     /** עמוד בדיקת התראה: שורה לכל סוג, לחיצה שולחת התראת בדיקה */
     /** הכפתור הצף מוצג / מוסתר לפי ההגדרה; כשמוצג - מקום בתחתית המסך כדי שלא יסתיר כרטיסים */
+    private val hideTestFab = Runnable { if (Prefs.testFabMode(this) == Prefs.STATUS_TIMED) testFab.visibility = View.GONE }
     private fun applyTestFab() {
-        val on = Prefs.testFab(this)
-        testFab.visibility = if (on) View.VISIBLE else View.GONE
-        mainCol.setPadding(mainCol.paddingLeft, mainCol.paddingTop, mainCol.paddingRight, dp(GAP) + if (on) dp(76) else 0)
+        ui.removeCallbacks(hideTestFab)
+        val mode = Prefs.testFabMode(this)
+        testFab.visibility = if (mode == Prefs.STATUS_HIDDEN) View.GONE else View.VISIBLE
+        if (mode == Prefs.STATUS_TIMED) ui.postDelayed(hideTestFab, Prefs.testFabSeconds(this) * 1000L)
+        // המקום בתחתית נשמר גם כשהכפתור נעלם לפי זמן - שהמסך לא יזוז
+        mainCol.setPadding(mainCol.paddingLeft, mainCol.paddingTop, mainCol.paddingRight,
+            dp(GAP) + if (mode != Prefs.STATUS_HIDDEN) dp(76) else 0)
     }
 
     private fun chooseTest() = ouiPage("בדיקת התראה") { body, rebuild ->
         val fab = ouiCard()
-        ouiRow(fab, "כפתור צף במסך הראשי", on = Prefs.testFab(this)) {
-            Prefs.setTestFab(this, !Prefs.testFab(this)); applyTestFab(); rebuild() }
+        val fm = Prefs.testFabMode(this)
+        ouiRow(fab, "כפתור צף במסך הראשי", sub = showModeLabel(fm, Prefs.testFabSeconds(this)), on = fm != Prefs.STATUS_HIDDEN,
+            onToggle = { Prefs.setTestFabMode(this, if (fm == Prefs.STATUS_HIDDEN) Prefs.STATUS_ALWAYS else Prefs.STATUS_HIDDEN)
+                applyTestFab(); rebuild() }) {
+            chooseShowMode("כפתור צף", { Prefs.testFabMode(this) }, { Prefs.setTestFabMode(this, it) },
+                { Prefs.testFabSeconds(this) }, { Prefs.setTestFabSeconds(this, it) }, ::applyTestFab,
+                "\"לפי זמן\" – הכפתור מוצג כשפותחים את האפליקציה או נוגעים במסך, ונעלם אחרי הזמן שבוחרים") { rebuild() } }
         ouiAdd(body, fab)
         ouiNote(body, "כפתור אדום בפינת המסך הראשי שפותח את העמוד הזה")
         // אירוע מלא: התרעה מקדימה, ירי וסיום - ברצף, כמו אירוע אמיתי (מקוצר)
@@ -2984,14 +2994,17 @@ class MainActivity : Activity() {
     }
     /** "לפי זמן": כל נגיעה במסך הראשי מציגה את השורה שוב לאותו זמן */
     override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
-        if (ev.action == android.view.MotionEvent.ACTION_DOWN && ::statusRow.isInitialized &&
-            Prefs.statusMode(this) == Prefs.STATUS_TIMED) applyStatusRow()
+        if (ev.action == android.view.MotionEvent.ACTION_DOWN && ::statusRow.isInitialized) {
+            if (Prefs.statusMode(this) == Prefs.STATUS_TIMED) applyStatusRow()
+            if (Prefs.testFabMode(this) == Prefs.STATUS_TIMED) applyTestFab()
+        }
         return super.dispatchTouchEvent(ev)
     }
-    private fun statusModeLabel() = when (Prefs.statusMode(this)) {
-        Prefs.STATUS_HIDDEN -> "לא מוצגת"
-        Prefs.STATUS_TIMED -> "${secLabel(Prefs.statusSeconds(this))} אחרי פתיחה"
-        else -> "מוצגת קבוע"
+    private fun statusModeLabel() = showModeLabel(Prefs.statusMode(this), Prefs.statusSeconds(this), female = true)
+    private fun showModeLabel(mode: Int, sec: Int, female: Boolean = false) = when (mode) {
+        Prefs.STATUS_HIDDEN -> if (female) "לא מוצגת" else "לא מוצג"
+        Prefs.STATUS_TIMED -> "${secLabel(sec)} אחרי פתיחה"
+        else -> if (female) "מוצגת קבוע" else "מוצג קבוע"
     }
     /** "10 שניות" / "דקה" / "1:30 דקות" */
     private fun secLabel(sec: Int) = when {
@@ -3000,35 +3013,43 @@ class MainActivity : Activity() {
         sec % 60 == 0 -> "${sec / 60} דקות"
         else -> "%d:%02d דקות".format(sec / 60, sec % 60)
     }
-    private fun chooseStatusMode(done: () -> Unit) = ouiPage("שורת חיוויים", onClose = done) { body, rebuild ->
-        val c = ouiCard()
-        listOf(Prefs.STATUS_ALWAYS to "מוצגת קבוע", Prefs.STATUS_HIDDEN to "לא מוצגת", Prefs.STATUS_TIMED to "מוצגת לפי זמן")
-            .forEachIndexed { i, (m, label) ->
-                if (i > 0) ouiDivider(c)
-                ouiRow(c, label, radio = Prefs.statusMode(this) == m) { Prefs.setStatusMode(this, m); applyStatusRow(); rebuild() }
+    private fun chooseStatusMode(done: () -> Unit) = chooseShowMode("שורת חיוויים", { Prefs.statusMode(this) },
+        { Prefs.setStatusMode(this, it) }, { Prefs.statusSeconds(this) }, { Prefs.setStatusSeconds(this, it) }, ::applyStatusRow,
+        "\"לפי זמן\" – השורה מוצגת כשפותחים את האפליקציה או נוגעים במסך, ונעלמת אחרי הזמן שבוחרים", female = true, done = done)
+
+    /** בחירה משותפת (שורת חיוויים, כפתור צף): מוצג קבוע / לא מוצג / לפי זמן - ובלפי זמן כמה שניות, כולל מותאם */
+    private fun chooseShowMode(title: String, mode: () -> Int, setMode: (Int) -> Unit, sec: () -> Int, setSec: (Int) -> Unit,
+                               apply: () -> Unit, note: String, female: Boolean = false, done: () -> Unit) =
+        ouiPage(title, onClose = done) { body, rebuild ->
+            val c = ouiCard()
+            listOf(Prefs.STATUS_ALWAYS to (if (female) "מוצגת קבוע" else "מוצג קבוע"),
+                Prefs.STATUS_HIDDEN to (if (female) "לא מוצגת" else "לא מוצג"),
+                Prefs.STATUS_TIMED to (if (female) "מוצגת לפי זמן" else "מוצג לפי זמן"))
+                .forEachIndexed { i, (m, label) ->
+                    if (i > 0) ouiDivider(c)
+                    ouiRow(c, label, radio = mode() == m) { setMode(m); apply(); rebuild() }
+                }
+            ouiAdd(body, c)
+            ouiNote(body, note)
+            if (mode() == Prefs.STATUS_TIMED) {
+                val t = ouiCard()
+                t.addView(text("כמה זמן להציג", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+                val fixed = intArrayOf(5, 10, 15, 30, 60)
+                val cur = sec()
+                fixed.forEachIndexed { i, s ->
+                    if (i > 0) ouiDivider(t)
+                    ouiRow(t, secLabel(s), radio = cur == s) { setSec(s); apply(); rebuild() }
+                }
+                // מותאם: דקות ושניות בגלגלים (כמו בחירת הזמן של הפיד), עד 10 דקות
+                val custom = cur !in fixed
+                ouiDivider(t)
+                ouiRow(t, "מותאם", if (custom) secLabel(cur) else "", radio = custom) {
+                    pickTime("זמן מותאם (דקות : שניות)", if (custom) cur else 20, hourCount = 11) { v ->
+                        setSec(v.coerceIn(3, 600)); apply(); rebuild() }
+                }
+                ouiAdd(body, t)
             }
-        ouiAdd(body, c)
-        ouiNote(body, "\"לפי זמן\" – השורה מוצגת כשפותחים את האפליקציה או נוגעים במסך, ונעלמת אחרי הזמן שבוחרים")
-        if (Prefs.statusMode(this) == Prefs.STATUS_TIMED) {
-            val t = ouiCard()
-            t.addView(text("כמה זמן להציג", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-            val fixed = intArrayOf(5, 10, 15, 30, 60)
-            val cur = Prefs.statusSeconds(this)
-            fixed.forEachIndexed { i, sec ->
-                if (i > 0) ouiDivider(t)
-                ouiRow(t, secLabel(sec), radio = cur == sec) {
-                    Prefs.setStatusSeconds(this, sec); applyStatusRow(); rebuild() }
-            }
-            // מותאם: דקות ושניות בגלגלים (כמו בחירת הזמן של הפיד), עד 10 דקות
-            val custom = cur !in fixed
-            ouiDivider(t)
-            ouiRow(t, "מותאם", if (custom) secLabel(cur) else "", radio = custom) {
-                pickTime("זמן מותאם (דקות : שניות)", if (custom) cur else 20, hourCount = 11) { v ->
-                    Prefs.setStatusSeconds(this, v.coerceIn(3, 600)); applyStatusRow(); rebuild() }
-            }
-            ouiAdd(body, t)
         }
-    }
 
     /** עמוד שעון: שניות ונקודתיים מהבהבות */
     private fun showClockPage() = ouiPage("שעון") { body, rebuild ->
