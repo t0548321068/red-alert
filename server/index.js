@@ -71,6 +71,7 @@ require('http').createServer((req, res) => {
   const u = new URL(req.url, 'http://x');
   if (u.pathname === '/archive') return serveArchive(req, res, +(u.searchParams.get('since') || 0));
   if (u.pathname === '/weather') return serveWeather(res, +u.searchParams.get('lat'), +u.searchParams.get('lon'));
+  if (u.pathname === '/shabbat') return serveShabbat(res, +u.searchParams.get('lat'), +u.searchParams.get('lon'));
   if (u.pathname !== '/status') { res.writeHead(404); return res.end(); }
   if (Date.now() - lastManualHb > 30 * 1000) { lastManualHb = Date.now(); heartbeat(); }
   res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -369,16 +370,113 @@ async function serveWeather(res, lat, lon) {
   let key = '';
   try { key = fs.readFileSync(path.join(__dirname, 'openweather.key'), 'utf8').trim(); } catch (_) {}
   if (!key || !isFinite(lat) || !isFinite(lon)) return fail(503);
-  const ck = lat.toFixed(2) + ',' + lon.toFixed(2);
+  const ck = lat.toFixed(3) + ',' + lon.toFixed(3);   // ~100 מטר - שם השכונה נשאר מדויק
   const hit = wxCache.get(ck);
   if (hit && Date.now() - hit.at < 5 * 60 * 1000) { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(hit.body); }
   try {
     const j = JSON.parse(await get(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&lang=he&appid=${encodeURIComponent(key)}`));
     const w = (j.weather || [])[0] || {};
-    const body = JSON.stringify({ temp: Math.round(j.main.temp), code: wmo(w.id || 800), isDay: String(w.icon || 'd').endsWith('d'), desc: w.description || '' });
+    const place = await placeName(lat, lon);
+    const body = JSON.stringify({ temp: Math.round(j.main.temp), code: wmo(w.id || 800), isDay: String(w.icon || 'd').endsWith('d'), desc: w.description || '', place });
     wxCache.set(ck, { at: Date.now(), body });
     if (wxCache.size > 500) wxCache.delete(wxCache.keys().next().value);
     res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(body);
   } catch (e) { log('weather failed', e.message); fail(502); }
+}
+
+// ---- שם המקום ("שכונה, עיר") - מ-OpenStreetMap, שמור לפי ~100 מטר (פחות בקשות, מהיר יותר) ----
+const placeCache = new Map();
+async function placeName(lat, lon) {
+  const k = lat.toFixed(3) + ',' + lon.toFixed(3);
+  if (placeCache.has(k)) return placeCache.get(k);
+  let name = '';
+  try {
+    const a = (JSON.parse(await get(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&lat=${lat}&lon=${lon}&accept-language=he`,
+      { 'User-Agent': 'TzofarHerumServer/1.0 (t0548321068 red-alert)' })).address) || {};
+    const city = ['city', 'town', 'village', 'municipality'].map(x => a[x]).find(Boolean);
+    const hood = ['neighbourhood', 'suburb', 'quarter', 'residential'].map(x => a[x]).find(x => x && x !== city);
+    name = [hood, city].filter(Boolean).join(', ');
+  } catch (_) {}
+  if (name) { placeCache.set(k, name); if (placeCache.size > 5000) placeCache.delete(placeCache.keys().next().value); }
+  return name;
+}
+
+// ---- זמני שבת וחג: אותו חישוב כמו באפליקציה (עתים לבינה: 162 יישובים עם מנהג המקום), במקום אחד ----
+// כך תיקון זמנים נעשה בשרת, בלי לעדכן את האפליקציה. מחזיר את השבתות והחגים של החודשיים הקרובים
+const SH_CITIES = JSON.parse(fs.readFileSync(path.join(__dirname, 'shabbat_cities.json'), 'utf8'));
+function shNearest(lat, lon) {
+  const k = Math.cos(lat * Math.PI / 180); let best = SH_CITIES[0], bd = Infinity;
+  for (const c of SH_CITIES) { const dy = c[0] - lat, dx = (c[1] - lon) * k, d = dy * dy + dx * dx; if (d < bd) { bd = d; best = c; } }
+  return best;
+}
+const ilParts = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Jerusalem', year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short' });
+const hebParts = new Intl.DateTimeFormat('en-u-ca-hebrew', { timeZone: 'Asia/Jerusalem', month: 'long', day: 'numeric' });
+function ilDay(ms) { const p = Object.fromEntries(ilParts.formatToParts(new Date(ms)).map(x => [x.type, x.value])); return { y: +p.year, m: +p.month, d: +p.day, wd: p.weekday }; }
+function isHoly(ms) {   // ms = צהרי היום
+  if (ilDay(ms).wd === 'Sat') return true;
+  const p = Object.fromEntries(hebParts.formatToParts(new Date(ms)).map(x => [x.type, x.value]));
+  const m = String(p.month || ''), d = +p.day;
+  if (/^Tishri/.test(m)) return [1, 2, 10, 15, 22].includes(d);
+  if (/^Nisan/.test(m)) return d === 15 || d === 21;
+  if (/^Sivan/.test(m)) return d === 6;
+  return false;
+}
+function sunsetUtc(y, mo, d, lat, lon, zenith) {   // NOAA - כמו באפליקציה
+  const R = Math.PI / 180;
+  const n = Math.round((Date.UTC(y, mo - 1, d) - Date.UTC(y, 0, 0)) / 86400000);
+  const lngHour = lon / 15, t = n + ((18 - lngHour) / 24), m = 0.9856 * t - 3.289;
+  let l = m + 1.916 * Math.sin(m * R) + 0.020 * Math.sin(2 * m * R) + 282.634; l = (l + 360) % 360;
+  let ra = Math.atan(0.91764 * Math.tan(l * R)) / R; ra = (ra + 360) % 360;
+  ra += Math.floor(l / 90) * 90 - Math.floor(ra / 90) * 90; ra /= 15;
+  const sinDec = 0.39782 * Math.sin(l * R), cosDec = Math.cos(Math.asin(sinDec));
+  const cosH = (Math.cos(zenith * R) - sinDec * Math.sin(lat * R)) / (cosDec * Math.cos(lat * R));
+  const h = Math.acos(Math.max(-1, Math.min(1, cosH))) / R / 15;
+  const ut = (((h + ra - 0.06571 * t - 6.622) - lngHour) % 24 + 24) % 24;
+  return Date.UTC(y, mo - 1, d) + ut * 3600000;
+}
+const roundMin = ms => Math.floor((ms + 30000) / 60000) * 60000;
+function shabbatWindows(lat, lon) {
+  const c = shNearest(lat, lon), out = [], DAY = 86400000;
+  const noon = t => { const x = ilDay(t); return Date.UTC(x.y, x.m - 1, x.d, 10); };   // ~12:00 בישראל
+  let day = noon(Date.now() - DAY);
+  for (let i = 0; i < 62 && out.length < 12; i++, day += DAY) {
+    if (!isHoly(day) || isHoly(day - DAY)) continue;
+    const p = ilDay(day - DAY);
+    const start = roundMin(sunsetUtc(p.y, p.m, p.d, lat, lon, 90.833) + c[2] * 60000);
+    let last = day; while (isHoly(last + DAY)) last += DAY;
+    const q = ilDay(last);
+    const end = roundMin(sunsetUtc(q.y, q.m, q.d, lat, lon, 98.5) + c[3] * 60000);
+    if (end > Date.now()) out.push({ in: start, out: end });
+  }
+  return out;
+}
+function serveShabbat(res, lat, lon) {
+  if (!isFinite(lat) || !isFinite(lon)) { res.writeHead(400); return res.end(); }
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ windows: shabbatWindows(lat, lon), at: Date.now() }));
+}
+
+// ---- התראה לך (רק למכשירי הבטא - נושא admin) כשמקור לא תקין יותר מ-10 דקות, וכשהוא חוזר ----
+const ALL_SOURCES = ['oref', 'history', 'archive', 'tzofar', 'tg:PikudHaOref_all', 'tg:tzevaadomm', 'tg:CumtaAlertsChannel', 'tg:Radar_Alerts'];
+const SRC_NAMES = { oref: 'פיקוד העורף – חי', history: 'פיקוד העורף – היסטוריה', archive: 'פיקוד העורף – ארכיון', tzofar: 'צופר',
+  'tg:PikudHaOref_all': 'טלגרם – פיקוד העורף', 'tg:tzevaadomm': 'טלגרם – צופר', 'tg:CumtaAlertsChannel': 'טלגרם – כומתה', 'tg:Radar_Alerts': 'טלגרם – רדאר' };
+const downSince = {}, alerted = {};
+setInterval(async () => {
+  if (Date.now() - STARTED < 5 * 60 * 1000) return;   // אחרי הפעלה מחדש - זמן להתחבר
+  const up = new Set(upList());
+  for (const k of ALL_SOURCES) {
+    if (up.has(k)) {
+      if (alerted[k]) { alerted[k] = false; adminPush(`✅ ${SRC_NAMES[k]} חזר לעבוד`); }
+      delete downSince[k];
+    } else {
+      downSince[k] = downSince[k] || Date.now();
+      if (!alerted[k] && Date.now() - downSince[k] > 10 * 60 * 1000) { alerted[k] = true; adminPush(`⚠️ ${SRC_NAMES[k]} לא עונה לשרת כבר 10 דקות`); }
+    }
+  }
+}, 60 * 1000);
+function adminPush(text) {
+  log('admin', text);
+  admin.messaging().send({ topic: 'admin', data: { type: 'admin', text }, android: { priority: 'high', ttl: 3600 * 1000 } })
+    .catch(e => log('admin push failed', e.message));
 }
 log('red-alert push server started');

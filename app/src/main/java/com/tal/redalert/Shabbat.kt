@@ -200,6 +200,41 @@ object Shabbat {
 
     fun label(mode: Int) = when (mode) { ON -> "דלוק"; AUTO -> "אוטומטי"; else -> "כבוי" }
 
+    // ---- הזמנים מהשרת: אותו חישוב, במקום אחד (תיקון זמנים בלי לעדכן את האפליקציה). אין תשובה - חישוב בטלפון ----
+    private const val SERVER = "http://151.145.91.93:8080/shabbat"
+    private fun sp(c: Context) = c.getSharedPreferences("shabbat_srv", Context.MODE_PRIVATE)
+
+    /** רענון ברקע: פעם ב-12 שעות, או כשזזת מעל 5 ק"מ */
+    fun refresh(c: Context) {
+        val (lat, lon) = where(c)
+        val s = sp(c)
+        val moved = FloatArray(1).also { android.location.Location.distanceBetween(
+            s.getFloat("lat", 0f).toDouble(), s.getFloat("lon", 0f).toDouble(), lat, lon, it) }[0] > 5000f
+        if (!moved && System.currentTimeMillis() - s.getLong("at", 0L) < 12 * 3600_000L) return
+        Thread {
+            try {
+                val conn = java.net.URL("$SERVER?lat=%.4f&lon=%.4f".format(java.util.Locale.US, lat, lon)).openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 5000; conn.readTimeout = 5000
+                val txt = try { conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) } } finally { conn.disconnect() }
+                org.json.JSONObject(txt).getJSONArray("windows")   // תקין
+                s.edit().putString("json", txt).putLong("at", System.currentTimeMillis())
+                    .putFloat("lat", lat.toFloat()).putFloat("lon", lon.toFloat()).apply()
+            } catch (_: Exception) { }
+        }.start()
+    }
+
+    /** השבתות והחגים הקרובים מהשרת (כניסה, יציאה) - אם נשמרו בשבוע האחרון ולא זזת מעל 5 ק"מ */
+    private fun serverWindows(c: Context, lat: Double, lon: Double): List<Pair<Long, Long>>? = try {
+        val s = sp(c)
+        val far = FloatArray(1).also { android.location.Location.distanceBetween(
+            s.getFloat("lat", 0f).toDouble(), s.getFloat("lon", 0f).toDouble(), lat, lon, it) }[0] > 5000f
+        if (far || System.currentTimeMillis() - s.getLong("at", 0L) > 7 * 24 * 3600_000L) null
+        else {
+            val a = org.json.JSONObject(s.getString("json", "") ?: "").getJSONArray("windows")
+            List(a.length()) { a.getJSONObject(it).let { w -> w.getLong("in") to w.getLong("out") } }
+        }
+    } catch (_: Exception) { null }
+
     fun active(c: Context, now: Long = System.currentTimeMillis()): Boolean = when (Prefs.shabbatMode(c)) {
         ON -> true
         AUTO -> try { holyNow(c, now) } catch (_: Exception) { false }
@@ -209,6 +244,7 @@ object Shabbat {
     /** מתי מצב השבת האוטומטי נגמר / מתחיל (להצגה) */
     fun endsAt(c: Context, now: Long = System.currentTimeMillis()): Long? {
         val (lat, lon) = where(c)
+        serverWindows(c, lat, lon)?.let { ws -> return ws.firstOrNull { now >= it.first - 24 * 3600_000L && now < it.second }?.second }
         val day = cal(now)
         return if (isHoly(day)) tzeit(day, lat, lon) else null
     }
@@ -216,6 +252,7 @@ object Shabbat {
     /** השבת/החג הנוכחי או הקרוב: (כניסה, יציאה) לפי המיקום - כמו שמצב השבת האוטומטי משתמש */
     fun nextWindow(c: Context, now: Long = System.currentTimeMillis()): Pair<Long, Long>? {
         val (lat, lon) = where(c)
+        serverWindows(c, lat, lon)?.firstOrNull { it.second > now }?.let { return it }
         val base = cal(now)
         for (i in -1..60) {
             val day = (base.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, i) }
@@ -243,6 +280,7 @@ object Shabbat {
 
     private fun holyNow(c: Context, now: Long): Boolean {
         val (lat, lon) = where(c)
+        serverWindows(c, lat, lon)?.let { ws -> return ws.any { now >= it.first && now < it.second } }
         val today = cal(now)
         val tomorrow = (today.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 1) }
         // היום קדוש ועוד לא יצאו הכוכבים

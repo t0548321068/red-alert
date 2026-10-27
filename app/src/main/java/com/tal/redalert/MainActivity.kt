@@ -644,6 +644,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         if (::statusRow.isInitialized) { applyStatusRow(); applyTestFab() }
         refreshAccuracy()   // "לפי זמן": מוצגים בכל פתיחה
+        try { Shabbat.refresh(this) } catch (_: Exception) { }   // זמני שבת וחג מהשרת
         // קיצור דרך מאייקון האפליקציה (לחיצה ארוכה)
         intent?.getStringExtra("shortcut")?.let { sc ->
             intent.removeExtra("shortcut")

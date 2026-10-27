@@ -209,6 +209,7 @@ class AlertService : Service() {
     /** השומר: כמה שניות ער - החיבורים מתחדשים ופיקוד העורף נבדק - ותזמון הבא */
     fun onWatchdog() {
         syncLocalSources()   // השרת הפסיק לשלוח סימן חיים - צופר חוזר לפעול בטלפון
+        try { Shabbat.refresh(this) } catch (_: Exception) { }   // זמני שבת וחג מהשרת (לכל היותר פעם ב-12 שעות)
         if (!serverOk(this)) awake(6_000)   // מספיק לוודא שהחיבור לצופר חי ולבדיקה אחת של פיקוד העורף
         tzofar?.ensureConnected()
         // הטלפון כבר ער בשביל השומר - מנצלים את זה לבדיקת עדכון (לכל היותר פעם בחצי שעה, בקשה קטנה אחת)
@@ -301,7 +302,7 @@ class AlertService : Service() {
         Thread(::loop, "oref-poll").start()
         Thread(::historyLoop, "oref-history").start()
         Thread(::updateLoop, "update-check").start()
-        PushService.subscribe()   // התראות מיידיות מהשרת
+        PushService.subscribe(this)   // התראות מיידיות מהשרת
         try {
             registerReceiver(unlockReceiver, android.content.IntentFilter().apply {
                 addAction(Intent.ACTION_USER_PRESENT); addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_SCREEN_OFF) })

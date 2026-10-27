@@ -29,8 +29,13 @@ class PushService : FirebaseMessagingService() {
                 }
             } finally { c.disconnect() }
         } catch (_: Exception) { null }
-        fun subscribe() {
+        fun subscribe(c: android.content.Context) {
             try { FirebaseMessaging.getInstance().subscribeToTopic(TOPIC) } catch (_: Exception) { }
+            // הודעות על תקלות בשרת - רק למכשירי הבטא (שלך)
+            try {
+                if (Prefs.betaAllowed(c)) FirebaseMessaging.getInstance().subscribeToTopic("admin")
+                else FirebaseMessaging.getInstance().unsubscribeFromTopic("admin")
+            } catch (_: Exception) { }
         }
     }
 
@@ -41,6 +46,7 @@ class PushService : FirebaseMessagingService() {
             return
         }
         if (d["type"] == "update") { AlertService.onServerUpdate(); return }   // גרסה חדשה פורסמה
+        if (d["type"] == "admin") { if (Prefs.betaAllowed(this)) showAdmin(d["text"] ?: return); return }
         if (d["type"] != "alert") return
         val title = d["title"] ?: return
         val src = d["src"] ?: ""
@@ -62,5 +68,18 @@ class PushService : FirebaseMessagingService() {
         }
     }
 
-    override fun onNewToken(token: String) { subscribe() }
+    override fun onNewToken(token: String) { subscribe(this) }
+
+    /** הודעה מהשרת על מקור שלא עונה / חזר לעבוד (רק במכשירי הבטא) */
+    private fun showAdmin(text: String) {
+        val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+        if (nm.getNotificationChannel("admin") == null) nm.createNotificationChannel(
+            android.app.NotificationChannel("admin", "תקלות בשרת", android.app.NotificationManager.IMPORTANCE_DEFAULT))
+        nm.notify(text.hashCode(), android.app.Notification.Builder(this, "admin")
+            .setSmallIcon(R.drawable.ic_stat_siren)
+            .setContentTitle("שרת ההתרעות")
+            .setContentText(text)
+            .setAutoCancel(true)
+            .build())
+    }
 }
