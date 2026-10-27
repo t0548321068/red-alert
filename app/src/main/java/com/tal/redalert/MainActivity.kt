@@ -432,7 +432,7 @@ class MainActivity : Activity() {
         }
         col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
         statusRow = status
-        status.visibility = if (Prefs.showStatusRow(this)) View.VISIBLE else View.GONE
+        applyStatusRow()
         weatherLine = text("", 19f, C.TEXT).apply {
             gravity = Gravity.CENTER
         }
@@ -613,6 +613,7 @@ class MainActivity : Activity() {
     }
 
     override fun onResume() {
+        if (::statusRow.isInitialized) applyStatusRow()   // "לפי זמן": מוצגת בכל פתיחה
         // קיצור דרך מאייקון האפליקציה (לחיצה ארוכה)
         intent?.getStringExtra("shortcut")?.let { sc ->
             intent.removeExtra("shortcut")
@@ -2065,10 +2066,11 @@ class MainActivity : Activity() {
             note("כשמופעל - בהיר או חשוך לפי הגדרת הטלפון")
             // שורת החיוויים במסך הראשי
             val ind = card()
-            row(ind, "שורת חיוויים", on = Prefs.showStatusRow(this), sep = false) {
-                Prefs.setShowStatusRow(this, !Prefs.showStatusRow(this))
-                statusRow.visibility = if (Prefs.showStatusRow(this)) View.VISIBLE else View.GONE
-                rebuild() }
+            val sm = Prefs.statusMode(this)
+            row(ind, "שורת חיוויים", statusModeLabel(), on = sm != Prefs.STATUS_HIDDEN, sep = false,
+                open = { chooseStatusMode { rebuild() } }) {
+                Prefs.setStatusMode(this, if (sm == Prefs.STATUS_HIDDEN) Prefs.STATUS_ALWAYS else Prefs.STATUS_HIDDEN)
+                applyStatusRow(); rebuild() }
             addCard(ind)
             note("מוגן · צלילים · רשת · מיקום · חיבור · גרסה – מעל השעון במסך הראשי")
             // שעון ותאריך, מזג אוויר וברכה - בכרטיס אחד
@@ -2970,6 +2972,45 @@ class MainActivity : Activity() {
         }
         ouiAdd(body, freq)
         ouiNote(body, "עדכון תכוף יותר משתמש קצת יותר בסוללה ובאינטרנט")
+    }
+
+    // ---- שורת החיוויים: קבוע / לא מוצגת / כמה שניות אחרי פתיחה או נגיעה ----
+    private val hideStatus = Runnable { if (Prefs.statusMode(this) == Prefs.STATUS_TIMED) statusRow.visibility = View.GONE }
+    private fun applyStatusRow() {
+        ui.removeCallbacks(hideStatus)
+        statusRow.visibility = if (Prefs.statusMode(this) == Prefs.STATUS_HIDDEN) View.GONE else View.VISIBLE
+        if (Prefs.statusMode(this) == Prefs.STATUS_TIMED) ui.postDelayed(hideStatus, Prefs.statusSeconds(this) * 1000L)
+    }
+    /** "לפי זמן": כל נגיעה במסך הראשי מציגה את השורה שוב לאותו זמן */
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        if (ev.action == android.view.MotionEvent.ACTION_DOWN && ::statusRow.isInitialized &&
+            Prefs.statusMode(this) == Prefs.STATUS_TIMED) applyStatusRow()
+        return super.dispatchTouchEvent(ev)
+    }
+    private fun statusModeLabel() = when (Prefs.statusMode(this)) {
+        Prefs.STATUS_HIDDEN -> "לא מוצגת"
+        Prefs.STATUS_TIMED -> "${Prefs.statusSeconds(this)} שניות אחרי פתיחה"
+        else -> "מוצגת קבוע"
+    }
+    private fun chooseStatusMode(done: () -> Unit) = ouiPage("שורת חיוויים", onClose = done) { body, rebuild ->
+        val c = ouiCard()
+        listOf(Prefs.STATUS_ALWAYS to "מוצגת קבוע", Prefs.STATUS_HIDDEN to "לא מוצגת", Prefs.STATUS_TIMED to "מוצגת לפי זמן")
+            .forEachIndexed { i, (m, label) ->
+                if (i > 0) ouiDivider(c)
+                ouiRow(c, label, radio = Prefs.statusMode(this) == m) { Prefs.setStatusMode(this, m); applyStatusRow(); rebuild() }
+            }
+        ouiAdd(body, c)
+        ouiNote(body, "\"לפי זמן\" – השורה מוצגת כשפותחים את האפליקציה או נוגעים במסך, ונעלמת אחרי הזמן שבוחרים")
+        if (Prefs.statusMode(this) == Prefs.STATUS_TIMED) {
+            val t = ouiCard()
+            t.addView(text("כמה זמן להציג", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+            intArrayOf(5, 10, 15, 30, 60).forEachIndexed { i, sec ->
+                if (i > 0) ouiDivider(t)
+                ouiRow(t, if (sec == 60) "דקה" else "$sec שניות", radio = Prefs.statusSeconds(this) == sec) {
+                    Prefs.setStatusSeconds(this, sec); applyStatusRow(); rebuild() }
+            }
+            ouiAdd(body, t)
+        }
     }
 
     /** עמוד שעון: שניות ונקודתיים מהבהבות */
