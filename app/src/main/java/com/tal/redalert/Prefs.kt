@@ -28,8 +28,11 @@ object Prefs {
 
     fun enabled(c: Context) = sp(c).getBoolean("enabled", false)
     /** כפתור צף לבדיקת התראה במסך הראשי */
-    fun testFab(c: Context) = sp(c).getBoolean("testFab", true)
-    fun setTestFab(c: Context, v: Boolean) = sp(c).edit().putBoolean("testFab", v).commit()
+    /** מצב הכפתור הצף: כמו שורת החיוויים (קבוע / לא מוצג / לפי זמן). מגרסה קודמת: מתג מופעל/כבוי */
+    fun testFabMode(c: Context) = sp(c).getInt("testFabMode", if (sp(c).getBoolean("testFab", true)) STATUS_ALWAYS else STATUS_HIDDEN)
+    fun setTestFabMode(c: Context, v: Int) = sp(c).edit().putInt("testFabMode", v).apply()
+    fun testFabSeconds(c: Context) = sp(c).getInt("testFabSec", 10)
+    fun setTestFabSeconds(c: Context, v: Int) = sp(c).edit().putInt("testFabSec", v).apply()
     fun setEnabled(c: Context, v: Boolean) = sp(c).edit().putBoolean("enabled", v).commit()
 
     // ---- תצוגת שעה ותאריך ----
