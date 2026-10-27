@@ -93,6 +93,8 @@ class MainActivity : Activity() {
     private lateinit var sndInd: TextView   // צלילים: רגיל / חזק / שקט / מושתק / כבוי
     private var weatherAt = 0L
     private var weatherAccuracy = -1
+    private var weatherShown = false   // יש כבר מזג אוויר על המסך
+    private var locTapAt = 0L          // לחיצה אחרונה על חיווי המיקום
     private var lastHistoryKey = ""
 
     private fun granted(p: String) =
@@ -113,7 +115,8 @@ class MainActivity : Activity() {
         }
         if (!force && System.currentTimeMillis() - weatherAt < Prefs.weatherMinutes(this) * 60 * 1000L) return
         weatherAt = System.currentTimeMillis()
-        if (force || weatherLine.text.isNullOrBlank()) {
+        // כשכבר מוצג מזג אוויר - נשאר עד שמגיע החדש (בלי להבהב "מאתר מיקום")
+        if (!weatherShown) {
             weatherLine.text = "מאתר מיקום מדויק…"
             weatherLine.setTextColor(C.MUTED)
         }
@@ -127,9 +130,11 @@ class MainActivity : Activity() {
             gpsDone = true
             if (loc == null) {
                 if (shown == null) {
-                    weatherLine.text = "📍 לא נמצא מיקום – לחץ לנסות שוב"
-                    weatherLine.setTextColor(C.MUTED)
                     weatherAt = 0L
+                    if (!weatherShown) {   // מזג אוויר קודם נשאר על המסך
+                        weatherLine.text = "📍 לא נמצא מיקום – לחץ לנסות שוב"
+                        weatherLine.setTextColor(C.MUTED)
+                    }
                 }
                 return@freshLocation
             }
@@ -179,6 +184,7 @@ class MainActivity : Activity() {
             weatherLine.text = listOf("$icon ${w.temp}°", w.place)
                 .filter { it.isNotBlank() }.joinToString(" · ") + hint
             weatherLine.setTextColor(C.SOFT)
+            weatherShown = true
 
         }
     }.start()
@@ -2436,6 +2442,10 @@ class MainActivity : Activity() {
             !hasLocationPerm() || !hasPrecise() -> onWeatherClick()
             !locationOn() -> startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
             else -> {
+                // לחיצות חוזרות בזמן שהמיקום עוד מתעדכן - לא מתחילים שוב
+                val now = System.currentTimeMillis()
+                if (now - locTapAt < 30_000L) return
+                locTapAt = now
                 android.widget.Toast.makeText(this, "מעדכן מיקום…", android.widget.Toast.LENGTH_SHORT).show()
                 refreshNearby()
                 updateWeather(force = true)
