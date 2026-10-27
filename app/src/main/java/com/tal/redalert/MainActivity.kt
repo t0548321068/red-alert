@@ -88,7 +88,8 @@ class MainActivity : Activity() {
     private lateinit var protInd: TextView   // מוגן / לא מוגן
     private lateinit var locInd: TextView
     private lateinit var srvInd: TextView
-    private lateinit var verInd: TextView   // גרסה: אייקון כתום מהבהב כשיש עדכון
+    private lateinit var verInd: TextView
+    private lateinit var statusRow: View   // שורת החיוויים - אפשר להסתיר בהגדרות התצוגה   // גרסה: אייקון כתום מהבהב כשיש עדכון
     private lateinit var sndInd: TextView   // צלילים: רגיל / חזק / שקט / מושתק / כבוי
     private var weatherAt = 0L
     private var weatherAccuracy = -1
@@ -430,6 +431,8 @@ class MainActivity : Activity() {
             status.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
         }
         col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
+        statusRow = status
+        status.visibility = if (Prefs.showStatusRow(this)) View.VISIBLE else View.GONE
         weatherLine = text("", 19f, C.TEXT).apply {
             gravity = Gravity.CENTER
         }
@@ -2060,6 +2063,14 @@ class MainActivity : Activity() {
             row(theme, "לפי המערכת", on = sys, sep = false) { setTheme(d, if (sys) 0 else 2) { rebuild() } }
             addCard(theme)
             note("כשמופעל - בהיר או חשוך לפי הגדרת הטלפון")
+            // שורת החיוויים במסך הראשי
+            val ind = card()
+            row(ind, "שורת חיוויים", on = Prefs.showStatusRow(this), sep = false) {
+                Prefs.setShowStatusRow(this, !Prefs.showStatusRow(this))
+                statusRow.visibility = if (Prefs.showStatusRow(this)) View.VISIBLE else View.GONE
+                rebuild() }
+            addCard(ind)
+            note("מוגן · צלילים · רשת · מיקום · חיבור · גרסה – מעל השעון במסך הראשי")
             // שעון ותאריך, מזג אוויר וברכה - בכרטיס אחד
             val more = card()
             row(more, "שעון", listOf(if (Prefs.showSeconds(this)) "שניות" else "", if (Prefs.blinkColon(this)) "נקודתיים מהבהבות" else "")
