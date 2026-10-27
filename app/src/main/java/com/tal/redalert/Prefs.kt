@@ -56,6 +56,11 @@ object Prefs {
     fun showGreeting(c: Context) = sp(c).getBoolean("greeting", true)
     fun setShowGreeting(c: Context, v: Boolean) = sp(c).edit().putBoolean("greeting", v).commit()
     fun showWeather(c: Context) = sp(c).getBoolean("weather", true)
+    /** דיוק המיקום האחרון שמוצג בחיווי (מטרים), מתי, ואיפה - נשמר בין פתיחות כדי שהחיווי לא יקפוץ */
+    fun lastAcc(c: Context): Triple<Int, Long, Pair<Double, Double>> = Triple(sp(c).getInt("accM", -1), sp(c).getLong("accAt", 0L),
+        sp(c).getFloat("accLat", 0f).toDouble() to sp(c).getFloat("accLon", 0f).toDouble())
+    fun setLastAcc(c: Context, m: Int, lat: Double, lon: Double) = sp(c).edit().putInt("accM", m)
+        .putLong("accAt", System.currentTimeMillis()).putFloat("accLat", lat.toFloat()).putFloat("accLon", lon.toFloat()).apply()
     /** שורת החיוויים במסך הראשי: 0 = מוצגת קבוע, 1 = לא מוצגת, 2 = כמה שניות אחרי פתיחה / נגיעה */
     const val STATUS_ALWAYS = 0; const val STATUS_HIDDEN = 1; const val STATUS_TIMED = 2
     fun statusMode(c: Context) = sp(c).getInt("statusMode", STATUS_ALWAYS)
