@@ -755,20 +755,23 @@ class MainActivity : Activity() {
         // מוגן אבל אין אינטרנט: כרטיס כתום - ההתרעות לא יגיעו עד שהרשת תחזור
         val noNet = on && network()?.second != true
         val dark = Prefs.darkTheme(this@MainActivity)
+        val off = !Prefs.enabled(this)   // כבוי לגמרי (לא לפי תזמון): כרטיס אדום
         circle.background = graphite(24).apply {
             when {
                 noNet -> setColor(Color.parseColor(if (dark) "#33240A" else "#FDEFD9"))
+                off -> setColor(Color.parseColor(if (dark) "#3A1214" else "#FBE3E4"))
                 on -> setColor(Color.parseColor(if (dark) "#12301A" else "#E3F4E5"))
             }
-            setStroke(dp(2), Color.parseColor(if (noNet) "#FF9F0A" else if (on) "#4CAF50" else "#555555")) }
+            setStroke(dp(2), Color.parseColor(if (noNet) "#FF9F0A" else if (on) "#4CAF50" else if (off) "#FF453A" else "#555555")) }
         shieldIcon.setImageResource(if (on && !noNet) R.drawable.ic_shield_green else R.drawable.ic_shield_outline)
-        shieldIcon.imageTintList = if (noNet) android.content.res.ColorStateList.valueOf(Color.parseColor("#FF9F0A")) else null
+        shieldIcon.imageTintList = if (noNet) android.content.res.ColorStateList.valueOf(Color.parseColor("#FF9F0A"))
+            else if (off) android.content.res.ColorStateList.valueOf(Color.parseColor("#FF453A")) else null
         haloOuter.background = GradientDrawable().apply { shape = GradientDrawable.OVAL
-            setColor(Color.parseColor(if (noNet) "#0FFF9F0A" else if (on) "#0F69F0AE" else "#00000000")) }
+            setColor(Color.parseColor(if (noNet) "#0FFF9F0A" else if (on) "#0F69F0AE" else if (off) "#0FFF453A" else "#00000000")) }
         haloInner.background = GradientDrawable().apply { shape = GradientDrawable.OVAL
-            setColor(Color.parseColor(if (noNet) "#24FF9F0A" else if (on) "#2469F0AE" else "#10FFFFFF")) }
+            setColor(Color.parseColor(if (noNet) "#24FF9F0A" else if (on) "#2469F0AE" else if (off) "#24FF453A" else "#10FFFFFF")) }
         circleLabel.text = if (noNet) "אין רשת – התרעות לא יגיעו" else if (on) "מוגן" else if (sched) "כבוי לפי תזמון" else "לא מוגן"
-        circleLabel.setTextColor(Color.parseColor(if (noNet) "#FF9F0A" else if (on) "#69F0AE" else "#AAAAAA"))
+        circleLabel.setTextColor(Color.parseColor(if (noNet) "#FF9F0A" else if (on) "#69F0AE" else if (off) "#FF453A" else "#AAAAAA"))
         setSweep(on && !noNet)
         updateIndicators()
 
