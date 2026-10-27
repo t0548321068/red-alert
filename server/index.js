@@ -70,6 +70,7 @@ let lastManualHb = 0;
 require('http').createServer((req, res) => {
   const u = new URL(req.url, 'http://x');
   if (u.pathname === '/archive') return serveArchive(req, res, +(u.searchParams.get('since') || 0));
+  if (u.pathname === '/weather') return serveWeather(res, +u.searchParams.get('lat'), +u.searchParams.get('lon'));
   if (u.pathname !== '/status') { res.writeHead(404); return res.end(); }
   if (Date.now() - lastManualHb > 30 * 1000) { lastManualHb = Date.now(); heartbeat(); }
   res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -345,5 +346,39 @@ function serveArchive(req, res, since) {
   const gz = /gzip/.test(req.headers['accept-encoding'] || '');
   res.writeHead(200, { 'Content-Type': 'application/json', ...(gz ? { 'Content-Encoding': 'gzip' } : {}) });
   res.end(gz ? require('zlib').gzipSync(body) : body);
+}
+
+// ---- מזג אוויר מ-OpenWeather: המפתח רק כאן בשרת (הקובץ openweather.key, לא נכנס לגיט) ----
+// הקוד מתורגם לקודי WMO שהאפליקציה מכירה (אותם אייקונים כמו קודם). שמור 5 דקות לכל ~1 ק"מ
+const wxCache = new Map();
+function wmo(id) {
+  if (id >= 200 && id < 300) return 95;
+  if (id >= 300 && id < 400) return 51;
+  if (id === 511) return 66;
+  if (id >= 520 && id < 600) return 80;
+  if (id >= 500 && id < 600) return 61;
+  if (id >= 600 && id < 700) return 71;
+  if (id >= 700 && id < 800) return 45;
+  if (id === 800) return 0;
+  if (id === 801) return 1;
+  if (id === 802) return 2;
+  return 3;
+}
+async function serveWeather(res, lat, lon) {
+  const fail = c => { res.writeHead(c); res.end(); };
+  let key = '';
+  try { key = fs.readFileSync(path.join(__dirname, 'openweather.key'), 'utf8').trim(); } catch (_) {}
+  if (!key || !isFinite(lat) || !isFinite(lon)) return fail(503);
+  const ck = lat.toFixed(2) + ',' + lon.toFixed(2);
+  const hit = wxCache.get(ck);
+  if (hit && Date.now() - hit.at < 5 * 60 * 1000) { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(hit.body); }
+  try {
+    const j = JSON.parse(await get(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&lang=he&appid=${encodeURIComponent(key)}`));
+    const w = (j.weather || [])[0] || {};
+    const body = JSON.stringify({ temp: Math.round(j.main.temp), code: wmo(w.id || 800), isDay: String(w.icon || 'd').endsWith('d'), desc: w.description || '' });
+    wxCache.set(ck, { at: Date.now(), body });
+    if (wxCache.size > 500) wxCache.delete(wxCache.keys().next().value);
+    res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(body);
+  } catch (e) { log('weather failed', e.message); fail(502); }
 }
 log('red-alert push server started');

@@ -155,6 +155,11 @@ object Weather {
 
     /** קריאת רשת - להריץ מחוץ ל-UI thread */
     fun fetch(c: Context, loc: Location): Now {
+        // קודם OpenWeather דרך השרת שלנו (המפתח שמור רק בשרת); אם השרת לא עונה - Open-Meteo כמו קודם
+        try {
+            val j = getJson("http://151.145.91.93:8080/weather?lat=%.4f&lon=%.4f".format(Locale.US, loc.latitude, loc.longitude), 4000)
+            return Now(j.getInt("temp"), j.optInt("code"), j.optBoolean("isDay", true), placeName(c, loc), Math.round(loc.accuracy))
+        } catch (_: Exception) { }
         val url = "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
             .format(Locale.US, loc.latitude, loc.longitude) +
             "&current=temperature_2m,weather_code,is_day&timezone=auto"
@@ -168,10 +173,10 @@ object Weather {
         )
     }
 
-    private fun getJson(url: String): JSONObject {
+    private fun getJson(url: String, timeout: Int = 8000): JSONObject {
         val conn = URL(url).openConnection() as HttpURLConnection
-        conn.connectTimeout = 8000
-        conn.readTimeout = 8000
+        conn.connectTimeout = timeout
+        conn.readTimeout = timeout
         conn.setRequestProperty("User-Agent", "RedAlert-Android/1.0")
         return try {
             JSONObject(conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) })
