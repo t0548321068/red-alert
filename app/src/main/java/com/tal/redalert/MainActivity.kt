@@ -2989,8 +2989,15 @@ class MainActivity : Activity() {
     }
     private fun statusModeLabel() = when (Prefs.statusMode(this)) {
         Prefs.STATUS_HIDDEN -> "לא מוצגת"
-        Prefs.STATUS_TIMED -> "${Prefs.statusSeconds(this)} שניות אחרי פתיחה"
+        Prefs.STATUS_TIMED -> "${secLabel(Prefs.statusSeconds(this))} אחרי פתיחה"
         else -> "מוצגת קבוע"
+    }
+    /** "10 שניות" / "דקה" / "1:30 דקות" */
+    private fun secLabel(sec: Int) = when {
+        sec < 60 -> "$sec שניות"
+        sec == 60 -> "דקה"
+        sec % 60 == 0 -> "${sec / 60} דקות"
+        else -> "%d:%02d דקות".format(sec / 60, sec % 60)
     }
     private fun chooseStatusMode(done: () -> Unit) = ouiPage("שורת חיוויים", onClose = done) { body, rebuild ->
         val c = ouiCard()
@@ -3004,10 +3011,19 @@ class MainActivity : Activity() {
         if (Prefs.statusMode(this) == Prefs.STATUS_TIMED) {
             val t = ouiCard()
             t.addView(text("כמה זמן להציג", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-            intArrayOf(5, 10, 15, 30, 60).forEachIndexed { i, sec ->
+            val fixed = intArrayOf(5, 10, 15, 30, 60)
+            val cur = Prefs.statusSeconds(this)
+            fixed.forEachIndexed { i, sec ->
                 if (i > 0) ouiDivider(t)
-                ouiRow(t, if (sec == 60) "דקה" else "$sec שניות", radio = Prefs.statusSeconds(this) == sec) {
+                ouiRow(t, secLabel(sec), radio = cur == sec) {
                     Prefs.setStatusSeconds(this, sec); applyStatusRow(); rebuild() }
+            }
+            // מותאם: דקות ושניות בגלגלים (כמו בחירת הזמן של הפיד), עד 10 דקות
+            val custom = cur !in fixed
+            ouiDivider(t)
+            ouiRow(t, "מותאם", if (custom) secLabel(cur) else "", radio = custom) {
+                pickTime("זמן מותאם (דקות : שניות)", if (custom) cur else 20, hourCount = 11) { v ->
+                    Prefs.setStatusSeconds(this, v.coerceIn(3, 600)); applyStatusRow(); rebuild() }
             }
             ouiAdd(body, t)
         }
