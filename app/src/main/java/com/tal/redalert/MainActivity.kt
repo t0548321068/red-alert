@@ -669,6 +669,7 @@ class MainActivity : Activity() {
             if (!Prefs.enabled(this)) ui.post { toggle() }
         }
         super.onResume()
+        restoreScroll?.let { r -> restoreScroll = null; ui.post(r); ui.postDelayed(r, 250) }
         pulseAnims.forEach { it.resume() }
         // רשת ביטחון: אם ההאזנה אמורה לפעול - לוודא שהשירות באמת רץ (בטוח לקרוא גם אם כבר רץ)
         if (Prefs.enabled(this)) AlertService.start(this)
@@ -961,10 +962,17 @@ class MainActivity : Activity() {
             // פעם אחת: השלמה מהארכיון שנה אחורה, ואז מרעננים את הרשימה
             if (try { OrefArchive.backfill(this) } catch (_: Exception) { false }) {
                 val full = try { OrefArchive.fetchAndKeep(this) } catch (_: Exception) { emptyList() }
-                if (full.isNotEmpty()) runOnUiThread { archiveCache = full; recentList?.let { fillRecent(it, full) } }
+                if (full.isNotEmpty()) runOnUiThread { archiveCache = full; recentList?.let { l ->
+                    // רענון ברקע - נשארים באותו מקום ברשימה
+                    val sv = generateSequence(l.parent) { it.parent }.filterIsInstance<ScrollView>().firstOrNull()
+                    val y = sv?.scrollY ?: 0
+                    fillRecent(l, full); sv?.post { sv.scrollTo(0, y) } } }
             }
         }.start()
     }
+
+    /** המקום ברשימת ההתרעות לפני שנפתחה המפה - חוזרים אליו כשחוזרים */
+    private var restoreScroll: (() -> Unit)? = null
 
     /** סינון ברשימת ההתרעות: הכל / האזורים שלי (נזכר עד שסוגרים את האפליקציה) */
     private var recentMine = false
@@ -993,6 +1001,10 @@ class MainActivity : Activity() {
                     setPadding(dp(16), dp(12), dp(16), dp(12))
                     // לחיצה: המפה על האזורים של ההתראה
                     setOnClickListener {
+                        // חוזרים מהמפה לאותו מקום ברשימה
+                        val sv = generateSequence(c.parent) { it.parent }.filterIsInstance<ScrollView>().firstOrNull()
+                        val y = sv?.scrollY ?: 0
+                        restoreScroll = { sv?.scrollTo(0, y) }
                         startActivity(Intent(this@MainActivity, MapActivity::class.java)
                             .putExtra("focus", e.body).putExtra("focusTs", e.ts).putExtra("focusAll", true)
                             .putExtra("focusLevel", e.level).putExtra("focusTitle", e.title))   // ההתרעה שנלחצה - בצבע שלה
