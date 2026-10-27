@@ -116,8 +116,7 @@ class MainActivity : Activity() {
             weatherLine.text = "מאתר מיקום מדויק…"
             weatherLine.setTextColor(C.MUTED)
         }
-        // קודם מיקום מהרשת (שנייה-שתיים) - מזג האוויר מופיע מיד; אחר כך ה-GPS המדויק,
-        // שטוען מחדש רק אם הוא רחוק מהמיקום הראשון (מעל 300 מטר)
+        // קודם מיקום מהרשת (שנייה-שתיים) - מזג האוויר מופיע מיד; אחר כך ה-GPS המדויק מעדכן את שם המקום
         var shown: android.location.Location? = null
         var gpsDone = false
         Weather.networkLocation(this) { net ->
@@ -133,8 +132,10 @@ class MainActivity : Activity() {
                 }
                 return@freshLocation
             }
+            // המיקום מהרשת גס (מאות מטרים) - שם השכונה לפיו יכול להיות של השכונה הסמוכה.
+            // כשמגיע המיקום המדויק - טוענים שוב (גם השם), אלא אם המיקום הראשון כבר היה מדויק וקרוב
             val first = shown
-            if (first == null || loc.distanceTo(first) > 300f) loadWeather(loc)
+            if (first == null || first.accuracy > 50f || loc.distanceTo(first) > 300f) loadWeather(loc)
             else weatherAccuracy = Math.round(loc.accuracy)
         }
     }
