@@ -53,6 +53,9 @@ object Prefs {
     fun showGreeting(c: Context) = sp(c).getBoolean("greeting", true)
     fun setShowGreeting(c: Context, v: Boolean) = sp(c).edit().putBoolean("greeting", v).commit()
     fun showWeather(c: Context) = sp(c).getBoolean("weather", true)
+    /** שורת החיוויים במסך הראשי (מוגן / צלילים / רשת / מיקום / חיבור / גרסה) */
+    fun showStatusRow(c: Context) = sp(c).getBoolean("statusRow", true)
+    fun setShowStatusRow(c: Context, v: Boolean) = sp(c).edit().putBoolean("statusRow", v).apply()
     /** כל כמה דקות לרענן את מזג האוויר והמיקום שלו */
     fun weatherMinutes(c: Context) = sp(c).getInt("weatherMin", 10)
     fun setWeatherMinutes(c: Context, v: Int) = sp(c).edit().putInt("weatherMin", v).commit()
