@@ -158,7 +158,9 @@ object Weather {
         // קודם OpenWeather דרך השרת שלנו (המפתח שמור רק בשרת); אם השרת לא עונה - Open-Meteo כמו קודם
         try {
             val j = getJson("http://151.145.91.93:8080/weather?lat=%.4f&lon=%.4f".format(Locale.US, loc.latitude, loc.longitude), 4000)
-            return Now(j.getInt("temp"), j.optInt("code"), j.optBoolean("isDay", true), placeName(c, loc), Math.round(loc.accuracy))
+            // שם המקום מגיע מהשרת יחד עם מזג האוויר (בקשה אחת); אם לא - מהטלפון
+            val place = j.optString("place").ifEmpty { placeName(c, loc) }
+            return Now(j.getInt("temp"), j.optInt("code"), j.optBoolean("isDay", true), place, Math.round(loc.accuracy))
         } catch (_: Exception) { }
         val url = "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f"
             .format(Locale.US, loc.latitude, loc.longitude) +
