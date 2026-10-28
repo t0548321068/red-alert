@@ -2,7 +2,6 @@ package com.tal.redalert
 
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.app.AlertDialog
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
@@ -352,7 +351,6 @@ class MainActivity : Activity() {
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     /** רווח אחיד בין כרטיס לכרטיס במסך הראשי */
     private val GAP = 12
-    private fun dlg() = Prefs.dialogTheme(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val dark = Prefs.darkTheme(this)
@@ -1900,11 +1898,11 @@ class MainActivity : Activity() {
         val snd = Prefs.soundsOn(this); val vib = Prefs.vibesOn(this)
         ouiRow(c, "צלילים", sub = if (!snd) "כבוי" else if (AlertService.PHONE_DEFAULTS) "של הטלפון" else "פעיל",
             on = snd, onToggle = { Prefs.setSoundsOn(this, !snd); rebuild() }) {
-            if (AlertService.PHONE_DEFAULTS) openNotificationSettings() else showSounds() }
+            openNotificationSettings() }
         ouiDivider(c)
         ouiRow(c, "רטט", sub = if (!vib) "כבוי" else if (AlertService.PHONE_DEFAULTS) "של הטלפון" else "פעיל",
             on = vib, onToggle = { Prefs.setVibesOn(this, !vib); rebuild() }) {
-            if (AlertService.PHONE_DEFAULTS) openNotificationSettings() else showVibes() }
+            openNotificationSettings() }
         ouiDivider(c)
         val loud = Prefs.loudSound(this)
         ouiRow(c, "צליל חזק", sub = if (loud) "תמיד בעוצמה מלאה – גם בווליום נמוך, בשעות שקט ובמצב שקט" else "כבוי", on = loud) {
@@ -2604,12 +2602,7 @@ class MainActivity : Activity() {
 
     private fun showWhatsNew(sinceVersion: String?) {
         val text = whatsNewText(sinceVersion) ?: return
-        AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("🆕 מה חדש")
-            .setMessage(text)
-            .setPositiveButton("הבנתי", null)
-            .show()
+        AppSheet.show(this, "🆕 מה חדש", text, "הבנתי")
     }
 
     /** מסך עדכונים: גרסה מותקנת + בדיקה, גרסאות בטא (למי שנפתח לו), ומה חדש */
@@ -2678,85 +2671,6 @@ class MainActivity : Activity() {
         refresh()
     }
 
-    private val SOUND_NAMES = arrayOf("ירי / חדירה", "התראה מקדימה", "האירוע הסתיים")
-
-    private fun showSounds() {
-        val items = Array(3) { "${SOUND_NAMES[it]}: ${Sounds.label(this, it)}" }
-        AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("🔊 צלילים")
-            .setItems(items) { _, level -> chooseSound(level) }
-            .setPositiveButton("סגור", null)
-            .show()
-    }
-
-    private var preview: android.media.Ringtone? = null
-
-    /** השמעת דוגמה של 4 שניות */
-    private fun previewSound(level: Int, value: String) {
-        preview?.stop()
-        val uri = Sounds.uri(this, value, level) ?: return
-        preview = android.media.RingtoneManager.getRingtone(this, uri)?.apply { play() }
-        ui.postDelayed({ preview?.stop() }, 4000)
-    }
-
-    private fun chooseSound(level: Int) {
-        val values = arrayOf(Sounds.APP_SIREN, Sounds.APP_BEEP, Sounds.DEVICE, "pick", Sounds.SILENT)
-        val names = arrayOf("🚨 צופר האפליקציה", "🔔 צפצוף האפליקציה", "📱 צליל הטלפון",
-            "🎵 בחירה מצלילי הטלפון…", "🔇 ללא צליל")
-        val cur = values.indexOf(Sounds.effective(this, level)).let { if (it < 0) 3 else it }
-        AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("צליל – ${SOUND_NAMES[level]}")
-            .setSingleChoiceItems(names, cur) { d, i ->
-                if (values[i] == "pick") { d.dismiss(); preview?.stop(); pickSound(level); return@setSingleChoiceItems }
-                Prefs.setSound(this, level, values[i])
-                previewSound(level, values[i])
-            }
-            .setPositiveButton("שמור") { _, _ -> preview?.stop(); showSounds() }
-            .show()
-    }
-
-    private fun pickSound(level: Int) {
-        val type = if (level == AlertService.LEVEL_ALERT) android.media.RingtoneManager.TYPE_ALARM
-                   else android.media.RingtoneManager.TYPE_NOTIFICATION
-        val cur = Prefs.sound(this, level)
-        val i = Intent(android.media.RingtoneManager.ACTION_RINGTONE_PICKER)
-            .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TYPE,
-                android.media.RingtoneManager.TYPE_ALARM or android.media.RingtoneManager.TYPE_NOTIFICATION or
-                    android.media.RingtoneManager.TYPE_RINGTONE)
-            .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_TITLE, "צליל – ${SOUND_NAMES[level]}")
-            .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
-            .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-            .putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_DEFAULT_URI,
-                android.media.RingtoneManager.getDefaultUri(type))
-        if (cur.isNotEmpty() && cur != "silent") {
-            i.putExtra(android.media.RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, Uri.parse(cur))
-        }
-        @Suppress("DEPRECATION")
-        startActivityForResult(i, 100 + level)
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        @Suppress("DEPRECATION")
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode in 100..102 && resultCode == RESULT_OK && data != null) {
-            val level = requestCode - 100
-            @Suppress("DEPRECATION")
-            val uri = data.getParcelableExtra<Uri>(android.media.RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
-            val default = android.media.RingtoneManager.getDefaultUri(
-                if (level == AlertService.LEVEL_ALERT) android.media.RingtoneManager.TYPE_ALARM
-                else android.media.RingtoneManager.TYPE_NOTIFICATION)
-            Prefs.setSound(this, level, when {
-                uri == null -> Sounds.SILENT
-                uri == default -> Sounds.DEVICE
-                else -> uri.toString()
-            })
-            showSounds()
-        }
-    }
-
     private var testSpeaker: Speaker? = null
 
     /** הקראה: הפעלה/כיבוי ודוגמה */
@@ -2818,27 +2732,6 @@ class MainActivity : Activity() {
         }
         ouiAdd(body, c)
         ouiNote(body, "מקריא סוג, אזורים וזמן להגעה – ואז הצליל. במצב שבת ההקראה פועלת תמיד")
-    }
-
-    /** רטט: בחירה לכל סוג התראה, עם דוגמה בכל לחיצה */
-    private fun showVibes() {
-        val items = Array(3) { "${SOUND_NAMES[it]}: ${Vibes.NAMES[Prefs.vibe(this, it)]}" }
-        AlertDialog.Builder(this, dlg())
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("📳 רטט")
-            .setItems(items) { _, level ->
-                AlertDialog.Builder(this, dlg())
-                    .setIcon(R.mipmap.ic_launcher)
-                    .setTitle("רטט – ${SOUND_NAMES[level]}")
-                    .setSingleChoiceItems(Vibes.NAMES, Prefs.vibe(this, level)) { _, i ->
-                        Prefs.setVibe(this, level, i)
-                        Vibes.play(this, i)          // דוגמה מיידית
-                    }
-                    .setPositiveButton("שמור") { _, _ -> showVibes() }
-                    .show()
-            }
-            .setPositiveButton("סגור", null)
-            .show()
     }
 
     /** שעות שקט: רק התראה מקדימה וסיום אירוע מושתקים. ירי תמיד נשמע. */
@@ -3223,16 +3116,11 @@ class MainActivity : Activity() {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         if (nm.canUseFullScreenIntent()) return
         lockAsked = true
-        android.app.AlertDialog.Builder(this, Prefs.dialogTheme(this))
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle("התראה על מסך נעילה")
-            .setMessage("כדי שההתראה תידלק מיד כשהמסך כבוי – צריך לאשר \"התראות במסך מלא\".")
-            .setPositiveButton("אישור") { _, _ ->
+        AppSheet.show(this, "התראה על מסך נעילה",
+            "כדי שההתראה תידלק מיד כשהמסך כבוי – צריך לאשר \"התראות במסך מלא\".", "אישור", {
                 startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
                     .setData(Uri.parse("package:$packageName")))
-            }
-            .setNegativeButton("לא עכשיו", null)
-            .show()
+            }, cancel = "לא עכשיו")
     }
 
     /**
