@@ -147,7 +147,8 @@ object Updater {
             val b = l.getOrElse(i) { 0 }
             if (a != b) return a > b
         }
-        return false
+        // אותו מספר: הגרסה הרגילה חדשה מהבטא שלפניה (3.4 אחרי 3.4b)
+        return !remote.endsWith("b") && local.endsWith("b")
     }
 
     private fun offer(a: Activity, u: Update) {
