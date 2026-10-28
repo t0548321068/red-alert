@@ -190,11 +190,7 @@ open class AlertActivity : Activity() {
                 AlertService.silence(this); l.text = "הושתק"; l.alpha = 0.6f
             })
         if (tips.isNotEmpty()) list += btn(R.drawable.ic_info_line, "הנחיות") {
-            android.app.AlertDialog.Builder(this)
-                .setTitle("הנחיות")
-                .setMessage(tips.joinToString("\n") { "• $it" })
-                .setPositiveButton("סגור", null)
-                .show()
+            AppSheet.show(this, "הנחיות", tips.joinToString("\n") { "• $it" }, "סגור")
         }
         list += btn(R.drawable.ic_close, "סגור") { close() }
         list.forEachIndexed { i, b ->

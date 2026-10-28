@@ -34,11 +34,4 @@ object Sounds {
         else -> Uri.parse(value)
     }
 
-    fun label(c: Context, level: Int): String = when (val v = effective(c, level)) {
-        APP_SIREN -> "🚨 צופר האפליקציה"
-        APP_BEEP -> "🔔 צפצוף האפליקציה"
-        DEVICE -> "📱 צליל הטלפון"
-        SILENT -> "🔇 ללא צליל"
-        else -> "🎵 " + (try { RingtoneManager.getRingtone(c, Uri.parse(v))?.getTitle(c) } catch (_: Exception) { null } ?: "מותאם")
-    }
 }

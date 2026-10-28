@@ -231,7 +231,6 @@ object Prefs {
 
     // ---- צליל לכל סוג התראה (ריק = ברירת מחדל, "silent" = בלי צליל) ----
     fun sound(c: Context, level: Int) = sp(c).getString("sound$level", "") ?: ""
-    fun setSound(c: Context, level: Int, uri: String) = sp(c).edit().putString("sound$level", uri).commit()
 
     // ---- מתג כללי לצלילים ולרטט של ההתרעות (ברירת מחדל: פעיל) ----
     fun soundsOn(c: Context) = sp(c).getBoolean("soundsOn", true)
@@ -360,9 +359,6 @@ object Prefs {
         else -> true
     }
     fun setDarkTheme(c: Context, v: Boolean) = setThemeMode(c, if (v) 0 else 1)
-    fun dialogTheme(c: Context) =
-        if (darkTheme(c)) android.R.style.Theme_DeviceDefault_Dialog_Alert
-        else android.R.style.Theme_DeviceDefault_Light_Dialog_Alert
 
     /** אפשרות הבטא נפתחה (7 לחיצות על מספר הגרסה) */
     /**

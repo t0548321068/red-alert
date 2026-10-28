@@ -1,7 +1,6 @@
 package com.tal.redalert
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.app.DownloadManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -153,16 +152,12 @@ object Updater {
 
     private fun offer(a: Activity, u: Update) {
         val beta = u.key.startsWith("beta")
-        AlertDialog.Builder(a, Prefs.dialogTheme(a))
-            .setIcon(R.mipmap.ic_launcher)
-            .setTitle((if (beta) "🧪 גרסת בטא זמינה – " else "🆕 גרסה חדשה זמינה – ") + u.label)
-            .setMessage("הגרסה שלך: ${versionLabel(a)}\nלהתקין עכשיו?" +
+        AppSheet.show(a, (if (beta) "🧪 גרסת בטא זמינה – " else "🆕 גרסה חדשה זמינה – ") + u.label,
+            "הגרסה שלך: ${versionLabel(a)}\nלהתקין עכשיו?" +
                 (if (beta) "\n\nגרסת בטא – לפני שחרור לכולם, יכולות להיות בה תקלות." else "") +
-                "\n\n\"מאוחר יותר\" – אפשר לעדכן בכל זמן דרך ⚙ ← בדיקת עדכונים")
-            .setPositiveButton("התקן עכשיו") { _, _ -> download(a, u.label.replace(" ", "-"), u.url) }
-            .setNegativeButton("מאוחר יותר") { _, _ -> Prefs.setSkippedVersion(a, u.key) }
-            .setCancelable(false)
-            .show()
+                "\n\n\"מאוחר יותר\" – אפשר לעדכן בכל זמן דרך ⚙ ← בדיקת עדכונים",
+            "התקן עכשיו", { download(a, u.label.replace(" ", "-"), u.url) },
+            cancel = "מאוחר יותר", onCancel = { Prefs.setSkippedVersion(a, u.key) }, cancelable = false)
     }
 
     private fun download(a: Activity, version: String, url: String) {

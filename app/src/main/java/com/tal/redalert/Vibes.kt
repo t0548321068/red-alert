@@ -6,8 +6,6 @@ import android.os.Build
 
 /** סוגי רטט לבחירה, לכל סוג התראה בנפרד */
 object Vibes {
-    val NAMES = arrayOf("ללא רטט", "קצר", "רגיל", "ארוך", "רציף (15 שניות)", "דופק", "SOS")
-
     const val NONE = 0; const val SHORT = 1; const val NORMAL = 2; const val LONG = 3
     const val CONTINUOUS = 4; const val HEARTBEAT = 5; const val SOS = 6
 
