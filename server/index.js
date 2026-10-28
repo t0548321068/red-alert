@@ -393,7 +393,7 @@ async function placeName(lat, lon) {
   try {
     const a = (JSON.parse(await get(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&lat=${lat}&lon=${lon}&accept-language=he`,
       { 'User-Agent': 'TzofarHerumServer/1.0 (t0548321068 red-alert)' })).address) || {};
-    const city = ['city', 'town', 'village', 'municipality'].map(x => a[x]).find(Boolean);
+    const city = ['city', 'town', 'village', 'municipality'].map(x => a[x]).find(x => x && !x.startsWith('מועצה אזורית'));   // מועצה אזורית = השטח שמסביב, לא המקום
     const hood = ['neighbourhood', 'suburb', 'quarter', 'residential'].map(x => a[x]).find(x => x && x !== city);
     name = [hood, city].filter(Boolean).join(', ');
   } catch (_) {}
