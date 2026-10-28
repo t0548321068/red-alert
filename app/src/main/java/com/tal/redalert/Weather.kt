@@ -203,7 +203,8 @@ object Weather {
             val addr = getJson(url).optJSONObject("address")
             if (addr != null) {
                 val city = listOf("city", "town", "village", "municipality")
-                    .map { addr.optString(it) }.firstOrNull { it.isNotBlank() }
+                    // "מועצה אזורית" היא השטח שמסביב (למשל מעלה אדומים מסומנת בתוך גוש עציון) - לא שם המקום
+                    .map { addr.optString(it) }.firstOrNull { it.isNotBlank() && !it.startsWith("מועצה אזורית") }
                 val hood = listOf("neighbourhood", "suburb", "quarter", "residential")
                     .map { addr.optString(it) }.firstOrNull { it.isNotBlank() && it != city }
                 val name = listOfNotNull(hood, city).joinToString(", ")
