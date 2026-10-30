@@ -152,7 +152,11 @@ function notify(alert, areas) {
 }
 
 // ---- התרעות חיות ----
+const seen = new Set();   // התרעות שכבר הוצגו - שחיבור מחדש לא יפעיל אותן שוב
 function onAlert(a, replay) {
+  const key = a.title + '|' + a.at + '|' + a.areas.join(',');
+  if (seen.has(key)) return;
+  seen.add(key);
   const lvl = level(a.title);
   for (const n of a.areas) {
     // "הסתיים" מחליף התרעה קיימת; התרעה לא נדרסת ע"י מקדימה
@@ -175,15 +179,16 @@ function expire() {
   for (const [n, a] of active) if (now - a.at > KEEP[a.lvl]) { active.delete(n); ch = true; }
   if (ch) { drawAlerts(); renderState(); if (!myActive()) $('banner').classList.remove('show'); }
 }
-let es, firstBatch = true;
+let es, firstConn = true;
 function connect() {
   es = new EventSource('/api/live');
-  const t0 = Date.now();
+  // בכניסה לאתר השרת שולח קודם את חצי השעה האחרונה ואז "ready" - אלה מוצגות בשקט (בלי צופר ובלי מסך אדום).
+  // בחיבור מחדש - מה שלא ראינו (הגיע בזמן הניתוק) מופעל כרגיל, ומה שכבר ראינו מדולג
+  let quiet = firstConn;
   es.onopen = () => { $('live').className = 'live on'; $('liveTx').textContent = 'מחובר'; };
-  // מה שמגיע בשנייה הראשונה = חצי השעה האחרונה (בלי צופר ובלי באנר)
-  es.addEventListener('alert', e => { try { onAlert(JSON.parse(e.data), Date.now() - t0 < 1500 && firstBatch); } catch (_) {} });
+  es.addEventListener('ready', () => { quiet = false; firstConn = false; });
+  es.addEventListener('alert', e => { try { onAlert(JSON.parse(e.data), quiet); } catch (_) {} });
   es.onerror = () => {
-    firstBatch = false;
     $('live').className = 'live off'; $('liveTx').textContent = 'מתחבר מחדש…';
     if (es.readyState === 2) { setTimeout(() => fetch('/api/state').then(r => { if (r.status === 401) location.reload(); else connect(); }).catch(() => setTimeout(connect, 5000)), 3000); }
   };
