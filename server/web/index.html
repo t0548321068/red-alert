@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>צופר חירום</title>
 <link rel="icon" href="/icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#000000">
 <link rel="stylesheet" href="/assets/leaflet/leaflet.css">
 <link rel="stylesheet" href="/assets/maplibre/maplibre-gl.css">
 <link rel="stylesheet" href="/web.css">
@@ -45,6 +47,16 @@
           <span class="end"><span class="seg" id="seg"><button data-m="all" class="sel">הכל</button><button data-m="mine">שלי</button></span></span>
         </div>
         <div class="list" id="list"></div>
+      </div>
+
+      <div class="card">
+        <div class="row"><b>מכשירים</b><span class="end" id="devTx"></span></div>
+        <div id="devices"></div>
+      </div>
+
+      <div class="card" id="crashCard" style="display:none">
+        <div class="row"><b>קריסות אחרונות</b><span class="end" id="crashTx"></span></div>
+        <div class="list" id="crashes"></div>
       </div>
 
       <div class="card">
