@@ -45,7 +45,7 @@ jobs:
           git show FETCH_HEAD:signing.enc | openssl enc -d -aes-256-cbc -pbkdf2 -iter 300000 -pass env:SIGNING_PASS | tar -x -C $W
           $B/zipalign -f -p 4 app/build/outputs/apk/release/app-release-unsigned.apk $W/aligned.apk
           $B/apksigner sign \
-            --ks $W/old.ks --ks-key-alias redalert --ks-pass pass:REMOVED --key-pass pass:REMOVED \
+            --ks $W/old.ks --ks-key-alias redalert --ks-pass env:SIGNING_PASS --key-pass env:SIGNING_PASS \
             --next-signer --ks $W/new.ks --ks-key-alias redalert2 --ks-pass env:SIGNING_PASS --key-pass env:SIGNING_PASS \
             --lineage $W/lineage --rotation-min-sdk-version 28 \
             --out red-alert.apk $W/aligned.apk
