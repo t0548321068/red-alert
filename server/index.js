@@ -60,6 +60,7 @@ function route(req, res) {
     case '/shabbat': return shabbat.serve(res, +q('lat'), +q('lon'));
     case '/ping': return devices.ping(res, q);
     case '/crash': if (req.method === 'POST') return devices.crash(req, res); break;
+    case '/report': if (req.method === 'POST') return devices.report(req, res); break;
     case '/beta': return files.serveBeta(res, String(q('code') || '').trim().toUpperCase());
     case '/status':
       // כפתור "בדוק את השרתים": מצב המקורות, וסימן חיים דרך Firebase - כך נבדקת כל הדרך עד הטלפון.

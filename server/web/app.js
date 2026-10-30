@@ -260,7 +260,7 @@ function loadState() {
 // ---- מכשירים וקריסות ----
 const ago = t => { const m = Math.floor((Date.now() - t) / 60e3); return m < 1 ? 'עכשיו' : m < 60 ? `לפני ${m} דק'` : m < 1440 ? `לפני ${Math.floor(m / 60)} שע'` : `לפני ${Math.floor(m / 1440)} ימים`; };
 function loadDevices() {
-  fetch('/api/devices').then(r => r.json()).then(({ devices, crashes, messages = [] }) => {
+  fetch('/api/devices').then(r => r.json()).then(({ devices, crashes, messages = [], reports = [] }) => {
     // פעיל = דיווח ב-25 הדקות האחרונות (הטלפון מדווח פעם ב-10 דקות)
     const live = d => Date.now() - d.at < 25 * 60e3;
     const n = devices.filter(d => live(d) && d.on).length;
@@ -278,6 +278,14 @@ function loadDevices() {
     const toName = t => t === 'all' ? 'כל הטלפונים' : ((devices.find(d => d.d === t) || {}).m || t);
     $('msgs').innerHTML = messages.slice(0, 5).map(m => `<div class="item"><div class="ic" style="background:var(--blue)">✉</div>
       <div class="tx"><div class="a">${esc(m.text)}</div><div class="b">אל: ${esc(toName(m.to))}</div></div><div class="tm">${dmy(new Date(m.at))} ${hm(new Date(m.at))}</div></div>`).join('');
+    // דיווחים מ"יצירת קשר" באפליקציה - לחיצה פותחת פרטים, "השב" שולח הודעה לאותו מכשיר
+    $('repCard').style.display = reports.length ? '' : 'none';
+    $('repTx').textContent = reports.length ? reports.length + '' : '';
+    $('reports').innerHTML = reports.slice(0, 20).map((r, i) => `<div class="item" data-at="${r.at}"><div class="ic" style="background:#43A047">✉</div>
+      <div class="tx"><div class="a" style="white-space:pre-wrap">${esc(r.text)}</div><div class="b">${esc(r.m || r.d)} · ${esc(r.d)} · גרסה ${esc(r.v)}</div>
+      <div class="more-info" style="display:${openReps.has(String(r.at)) ? '' : 'none'}"><pre class="log" style="margin:8px 0;direction:rtl;text-align:right">${esc(r.info || 'לא צורפו פרטי מכשיר')}</pre>
+      <button class="reply" data-d="${esc(r.d)}">השב</button></div></div>
+      <div class="tm">${dmy(new Date(r.at))} ${hm(new Date(r.at))}</div></div>`).join('');
     $('crashCard').style.display = crashes.length ? '' : 'none';
     $('crashTx').textContent = crashes.length ? crashes.length + '' : '';
     $('crashes').innerHTML = crashes.slice(0, 20).map((c, i) => `<div class="item" data-c="${i}"><div class="ic" style="background:var(--red)">!</div>
@@ -286,6 +294,15 @@ function loadDevices() {
       <div class="tm">${dmy(new Date(c.at))} ${hm(new Date(c.at))}</div></div>`).join('');
   }).catch(() => {});
 }
+$('reports').onclick = e => {
+  const rb = e.target.closest('.reply');
+  if (rb) { $('msgTo').value = rb.dataset.d; $('msgText').focus(); $('msgForm').scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
+  const it = e.target.closest('.item'); if (!it) return;
+  const m = it.querySelector('.more-info'), open = !!m.style.display;
+  m.style.display = open ? '' : 'none';
+  if (open) openReps.add(it.dataset.at); else openReps.delete(it.dataset.at);   // נשאר פתוח גם אחרי רענון
+};
+const openReps = new Set();
 $('crashes').onclick = e => { const it = e.target.closest('.item'); if (!it) return; const pre = it.querySelector('pre'); pre.style.display = pre.style.display ? '' : 'none'; };
 
 $('msgForm').onsubmit = e => {
