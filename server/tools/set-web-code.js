@@ -23,8 +23,8 @@ function ask(q) {
 }
 
 (async () => {
-  const a = await ask('קוד כניסה חדש (לפחות 8 תווים): ');
-  if (a.length < 8) { console.log('קצר מדי - לא נשמר'); process.exit(1); }
+  const a = await ask('קוד כניסה חדש (לפחות 6 תווים): ');
+  if (a.length < 6) { console.log('קצר מדי - לא נשמר'); process.exit(1); }
   const b = await ask('שוב, לאישור: ');
   if (a !== b) { console.log('לא תואם - לא נשמר'); process.exit(1); }
   const salt = crypto.randomBytes(16);
