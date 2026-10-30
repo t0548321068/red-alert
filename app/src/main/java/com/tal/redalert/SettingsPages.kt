@@ -291,6 +291,10 @@ internal fun MainActivity.showSoundSettings() = ouiPage("צלילים ורטט")
     val loud = Prefs.loudSound(this)
     ouiRow(c, "צליל חזק", sub = if (loud) "תמיד בעוצמה מלאה – גם בווליום נמוך, בשעות שקט ובמצב שקט" else "כבוי", on = loud) {
         Prefs.setLoudSound(this, !loud); rebuild() }
+    ouiDivider(c)
+    val hs = Prefs.speakerWithHeadset(this)
+    ouiRow(c, "גם מהרמקול עם אוזניות", sub = if (hs) "כשמחוברות אוזניות – הצופר וההקראה יוצאים גם מהטלפון" else "כבוי", on = hs) {
+        Prefs.setSpeakerWithHeadset(this, !hs); rebuild() }
     ouiAdd(body, c)
 
     val q = ouiCard()

@@ -261,6 +261,9 @@ object Prefs {
     fun loudSound(c: Context) = sp(c).getBoolean("loudSound", false)
     fun setLoudSound(c: Context, v: Boolean) = sp(c).edit().putBoolean("loudSound", v).commit()
     fun setBypassSilent(c: Context, v: Boolean) = sp(c).edit().putBoolean("bypassSilent", v).commit()
+    /** אוזניות מחוברות: הצופר וההקראה יוצאים גם מהרמקול של הטלפון (ברירת מחדל: דלוק) */
+    fun speakerWithHeadset(c: Context) = sp(c).getBoolean("speakerWithHeadset", true)
+    fun setSpeakerWithHeadset(c: Context, v: Boolean) = sp(c).edit().putBoolean("speakerWithHeadset", v).commit()
 
     // ---- הקראה בקול ----
     fun speakAlerts(c: Context) = sp(c).getBoolean("speak", true)

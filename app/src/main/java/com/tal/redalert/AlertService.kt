@@ -33,6 +33,15 @@ class AlertService : Service() {
         private const val CH_ALERT = "alerts_v3"   // בינתיים: צליל ורטט ברירת מחדל של הטלפון
         /** בינתיים כל הצלילים והרטטים - של הטלפון (לא של האפליקציה) */
         const val PHONE_DEFAULTS = true
+        private val HEADSETS = setOf(android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET, android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+            android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, android.media.AudioDeviceInfo.TYPE_USB_HEADSET,
+            android.media.AudioDeviceInfo.TYPE_BLE_HEADSET)
+        /** הרמקול של הטלפון */
+        fun builtinSpeaker(c: Context): android.media.AudioDeviceInfo? = try {
+            (c.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager)
+                .getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
+                .firstOrNull { it.type == android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
+        } catch (_: Exception) { null }
         private const val ID_SERVICE = 1
         private const val ID_ALERT = 2
         const val ACTION_TEST = "test"
@@ -395,7 +404,7 @@ class AlertService : Service() {
         }
         if (intent?.action == ACTION_SILENCE) {
             speaker?.stop()
-            main.post { ringtone?.stop() }
+            main.post { ringtone?.stop(); stopSpeaker() }
             Vibes.stop(this)
             return START_STICKY
         }
@@ -438,7 +447,7 @@ class AlertService : Service() {
         telegram.forEach { it.stop() }
         updatePush?.stop()
         try { unregisterReceiver(unlockReceiver) } catch (_: Exception) { }
-        ringtone?.stop()
+        ringtone?.stop(); stopSpeaker()
         main.removeCallbacks(stayDone)
         main.removeCallbacks(stayNotif)
         main.removeCallbacks(seqAlert); main.removeCallbacks(seqEnd)
@@ -879,7 +888,22 @@ class AlertService : Service() {
             ringerToNormal(if (level == LEVEL_ALERT) 30_000L else 15_000L)
         speaker?.usage = if (viaNotif) AudioAttributes.USAGE_NOTIFICATION else AudioAttributes.USAGE_ALARM
 
-        val playSound = {
+        // בשיחה (רגילה או וואטסאפ): הטלפון משתיק את צליל ההתראה - משמיעים צפצופים והקראה באוזן של השיחה.
+        // אוזניות מחוברות: הצופר וההקראה יוצאים גם מהרמקול של הטלפון (אם האוזניות לא באוזן - עדיין שומעים)
+        val am0 = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+        val inCall = am0.mode == android.media.AudioManager.MODE_IN_CALL || am0.mode == android.media.AudioManager.MODE_IN_COMMUNICATION
+        val headset = !inCall && Prefs.speakerWithHeadset(this) && headsetOn(am0)
+        speaker?.preferSpeaker = headset
+        if (inCall) speaker?.usage = AudioAttributes.USAGE_VOICE_COMMUNICATION
+
+        val playSound = playSound@{
+            if (inCall) { if (snd && !quiet) callBeeps(level); return@playSound }
+            if (headset && snd && !quiet) {
+                if (!muted && Prefs.loudSound(this)) boostAlarmVolume(if (level == LEVEL_ALERT) 15000L else 4000L)
+                playOnSpeaker(level, if (level == LEVEL_ALERT) 15000L else 3000L,
+                    if (viaNotif) AudioAttributes.USAGE_NOTIFICATION else AudioAttributes.USAGE_ALARM)
+                return@playSound
+            }
             // צליל חזק: כשמופעל - תמיד, בכל ההתרעות (מקדימה, ירי, סיום), גם בשעות שקט ובמצב שקט.
             // עוצמת השעון המעורר למקסימום למשך הצליל, ואחר כך חוזרת למה שהיה
             val loud = !muted && Prefs.loudSound(this)
@@ -901,7 +925,11 @@ class AlertService : Service() {
 
         // הקראה: קודם מקריאים (סוג, אזורים, זמן להגעה) ואז הצליל.
         // הרטט מתחיל מיד. אם ההקראה נתקעת - הצליל מתחיל בכל מקרה אחרי 8 שניות.
-        if (speakNow) {
+        if (speakNow && inCall) {
+            // בשיחה: קודם הצפצופים, ואז ההקראה באוזן
+            if (snd && !quiet) callBeeps(level)
+            main.postDelayed({ speaker?.speakAlert(title, areas, shelterSec) { } }, if (snd && !quiet) 2600L else 0L)
+        } else if (speakNow) {
             val started = java.util.concurrent.atomic.AtomicBoolean(false)
             val once = { if (started.compareAndSet(false, true)) main.post { playSound() } }
             speaker?.speakAlert(title, areas, shelterSec) { once() } ?: once()
@@ -1080,6 +1108,45 @@ class AlertService : Service() {
             }
             main.postDelayed({ ringtone?.stop() }, durationMs)
         }
+    }
+
+    /** אוזניות מחוברות (חוטיות, USB או בלוטות') */
+    private fun headsetOn(am: android.media.AudioManager): Boolean = try {
+        am.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS).any { it.type in HEADSETS }
+    } catch (_: Exception) { false }
+
+    /** הצליל מהרמקול של הטלפון בכוח - גם כשמחוברות אוזניות */
+    private var spk: android.media.MediaPlayer? = null
+    private fun playOnSpeaker(level: Int, durationMs: Long, usage: Int) {
+        val uri = Sounds.uri(this, Sounds.effective(this, level), level) ?: return
+        main.post {
+            ringtone?.stop(); stopSpeaker()
+            try {
+                spk = android.media.MediaPlayer().apply {
+                    setAudioAttributes(AudioAttributes.Builder().setUsage(usage)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+                    setDataSource(this@AlertService, uri)
+                    isLooping = level == LEVEL_ALERT
+                    builtinSpeaker(this@AlertService)?.let { setPreferredDevice(it) }
+                    prepare(); start()
+                }
+            } catch (_: Exception) { stopSpeaker(); playAlarm(level, RingtoneManager.TYPE_ALARM, durationMs, usage) }
+            main.postDelayed({ stopSpeaker() }, durationMs)
+        }
+    }
+    private fun stopSpeaker() {
+        spk?.let { try { it.stop() } catch (_: Exception) { }; try { it.release() } catch (_: Exception) { } }
+        spk = null
+    }
+
+    /** בשיחה: צפצופים באוזן של השיחה (הצד השני לא שומע). ירי - 3 צפצופים, מקדימה וסיום - אחד */
+    private fun callBeeps(level: Int) {
+        val n = if (level == LEVEL_ALERT) 3 else 1
+        try {
+            val tg = android.media.ToneGenerator(android.media.AudioManager.STREAM_VOICE_CALL, 100)
+            for (i in 0 until n) main.postDelayed({ try { tg.startTone(android.media.ToneGenerator.TONE_PROP_BEEP2, 500) } catch (_: Exception) { } }, i * 800L)
+            main.postDelayed({ try { tg.release() } catch (_: Exception) { } }, n * 800L + 600)
+        } catch (_: Exception) { }
     }
 
     private fun openApp() = PendingIntent.getActivity(
