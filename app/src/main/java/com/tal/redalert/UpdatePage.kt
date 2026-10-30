@@ -47,11 +47,11 @@ class UpdateRing(context: Context) : View(context) {
 }
 
 internal fun MainActivity.showUpdateCheck() {
-    // הכפתור הכחול למטה - בדיוק כמו "בדוק אם יש עדכונים": "בדוק שוב", וכשיש גרסה חדשה - "התקן עכשיו"
+    // הכפתור הכחול למטה - בדיוק כמו "בדוק אם יש עדכונים": "בדוק אם יש עדכונים", וכשיש גרסה חדשה - "התקן עכשיו"
     var pillLabel: TextView? = null
     var pillAction: (done: () -> Unit) -> Unit = { it() }
     ouiPage("בדיקת עדכונים", refreshOnFocus = false,
-        button = "בדוק שוב" to { done -> pillAction(done) }, buttonLabel = { pillLabel = it }) { body, _ ->
+        button = "בדוק אם יש עדכונים" to { done -> pillAction(done) }, buttonLabel = { pillLabel = it }) { body, _ ->
     val blue = Color.parseColor("#4C7DFF"); val orange = Color.parseColor("#FF9F0A"); val green = Color.parseColor("#30D158")
     val dark = !C.LIGHT
 
@@ -105,7 +105,7 @@ internal fun MainActivity.showUpdateCheck() {
         // ---- בודק ----
         content.removeAllViews()
         head("#162038", "#E3EBFF", "⬇", C.TEXT, blue, "בודק אם יש גרסה חדשה…", C.TEXT, "מתחבר לשרת העדכונים")
-        pill("בדוק שוב") { done -> check(done) }
+        pill("בדוק אם יש עדכונים") { done -> check(done) }
         ring.spin()
         val c = ouiCard()
         ouiRow(c, "גרסה מותקנת", end = Updater.versionLabel(this), endColor = C.MUTED)
