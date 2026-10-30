@@ -15,7 +15,7 @@ object Config {
         cache ?: (try { DataFiles.app?.let { JSONObject(DataFiles.text(it, "config.json")) } } catch (_: Exception) { null }
             // קובץ שהורד ופגום - חוזרים לזה שבאפליקציה
             ?: try { DataFiles.app?.let { JSONObject(it.assets.open("config.json").bufferedReader().use { r -> r.readText() }) } } catch (_: Exception) { null }
-            ?: JSONObject()).also { cache = it }
+            ?: JSONObject()).also { if (DataFiles.app != null) cache = it }   // לפני ההפעלה - לא שומרים תוצאה ריקה
     }
 
     private fun list(a: JSONArray?): List<String> = a?.let { (0 until it.length()).map(it::getString) } ?: emptyList()
