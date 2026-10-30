@@ -343,6 +343,13 @@ open class AlertActivity : Activity() {
         ui.removeCallbacks(tick)
         super.onPause()
     }
+
+    override fun onDestroy() {
+        ui.removeCallbacksAndMessages(null)   // כולל הסגירה האוטומטית במצב שבת
+        miniWeb?.let { (it.parent as? android.view.ViewGroup)?.removeView(it); it.destroy() }
+        miniWeb = null
+        super.onDestroy()
+    }
 }
 
 /** פופ-אפ: אותו תוכן בכרטיס באמצע המסך */

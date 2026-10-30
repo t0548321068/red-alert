@@ -12,6 +12,14 @@ import org.json.JSONObject
 /** מפת ההתראות - אזורים שהותרעו, צבועים לפי סוג ההתראה האחרונה */
 class MapActivity : Activity() {
 
+    private var webView: WebView? = null
+
+    override fun onDestroy() {
+        webView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it); it.destroy() }
+        webView = null
+        super.onDestroy()
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,6 +31,7 @@ class MapActivity : Activity() {
             settings.domStorageEnabled = true
             setBackgroundColor(Color.TRANSPARENT)
         }
+        webView = web
         // המפה לא נכנסת מתחת לשורת המצב ולשורת הניווט של הטלפון
         val bg = Color.parseColor(if (dark) "#000000" else "#F2F2F7")
         val frame = android.widget.FrameLayout(this).apply {
@@ -55,13 +64,17 @@ class MapActivity : Activity() {
             override fun onPageFinished(view: WebView, url: String) {
                 Thread {
                     val data = buildData(dark)
-                    runOnUiThread {
-                        view.evaluateJavascript("render($data);", null)
-                        // נפתח מהתראה ברשימה - מתמקדים באזורים שלה
-                        intent.getStringExtra("focus")?.let { body ->
-                            val names = JSONArray()
+                    // נפתח מהתראה ברשימה - האזורים שלה (מחושב ברקע, לא על המסך)
+                    val focusNames = intent.getStringExtra("focus")?.let { body ->
+                        JSONArray().also { names ->
                             body.split(",").map { it.trim() }.filter { it.isNotEmpty() }
                                 .forEach { raw -> AreaData.match(this@MapActivity, raw).forEach { names.put(it) } }
+                        }
+                    }
+                    runOnUiThread {
+                        if (isDestroyed) return@runOnUiThread   // המפה נסגרה בינתיים
+                        view.evaluateJavascript("render($data);", null)
+                        focusNames?.let { names ->
                             view.evaluateJavascript("focusOn($names, ${intent.getLongExtra("focusTs", 0L)}, " +
                                 "${intent.getBooleanExtra("focusAll", false)}, ${intent.getIntExtra("focusLevel", -1)}, " +
                                 "${org.json.JSONObject.quote(intent.getStringExtra("focusTitle") ?: "")});", null)

@@ -136,7 +136,7 @@ internal fun MainActivity.showProtection() = ouiPage("הגנה") { body, rebuild
     ouiRow(sc, "תזמון", sub = "פעיל רק בימים ובשעות שתבחר", on = on) { Prefs.setSchedOn(this, !on); refresh(); rebuild() }
     if (on) {
         // לכל יום: מתג + השעות שלו. לחיצה על השורה - בחירת שעת התחלה ואז סיום
-        DAY_NAMES.forEachIndexed { d, name ->
+        TimeFormat.NAMES.forEachIndexed { d, name ->
             ouiDivider(sc)
             val dOn = Prefs.schedDayOn(this, d)
             val f = Prefs.schedDayFrom(this, d); val t = Prefs.schedDayTo(this, d)
