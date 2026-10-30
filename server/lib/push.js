@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const admin = require('firebase-admin');
 const { log } = require('./util');
+const web = require('./web');
 
 admin.initializeApp({ credential: admin.credential.cert(require(path.join(__dirname, '..', 'service-account.json'))) });
 const TOPIC = 'alerts';
@@ -53,6 +54,7 @@ async function send(title, areas, src, at = Date.now()) {
   areas = [...new Set(areas.map(a => String(a).trim()).filter(Boolean))].filter(a => !sentAt.has(title + '|' + a));
   if (!areas.length) return;
   const keys = areas.map(a => title + '|' + a);
+  web.broadcast({ title, areas, src, at, sent: now });   // לאתר - בזמן אמת
   for (const k of keys) sentAt.set(k, now);   // בזיכרון מיד; בקובץ רק אחרי שליחה מוצלחת
   const chunks = [];
   let cur = [];
