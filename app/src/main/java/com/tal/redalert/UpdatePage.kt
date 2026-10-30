@@ -50,8 +50,14 @@ internal fun MainActivity.showUpdateCheck() {
     // הכפתור הכחול למטה - בדיוק כמו "בדוק אם יש עדכונים": "בדוק אם יש עדכונים", וכשיש גרסה חדשה - "התקן עכשיו"
     var pillLabel: TextView? = null
     var pillAction: (done: () -> Unit) -> Unit = { it() }
+    var checking = false
     ouiPage("בדיקת עדכונים", refreshOnFocus = false,
-        button = "בדוק אם יש עדכונים" to { done -> pillAction(done) }, buttonLabel = { pillLabel = it }) { body, _ ->
+        button = "בדוק אם יש עדכונים" to { done -> pillAction(done) },
+        buttonLabel = { l ->
+            pillLabel = l
+            // הכפתור נבנה אחרי שהבדיקה הראשונה כבר התחילה - מסתירים אותו מיד אם עדיין בודקים
+            ui.post { if (checking) (l.parent as? View)?.visibility = View.GONE }
+        }) { body, _ ->
     val blue = Color.parseColor("#4C7DFF"); val orange = Color.parseColor("#FF9F0A"); val green = Color.parseColor("#30D158")
     val dark = !C.LIGHT
 
@@ -135,6 +141,7 @@ internal fun MainActivity.showUpdateCheck() {
         head("#162038", "#E3EBFF", "⬇", C.TEXT, blue, "בודק אם יש גרסה חדשה…", C.TEXT, "מתחבר לשרת העדכונים")
         pill("בדוק אם יש עדכונים") { done -> check(done) }
         twoButtons(false)
+        checking = true
         showPill(false)   // בזמן הבדיקה - בלי כפתור למטה
         ring.spin()
         val c = ouiCard()
@@ -153,6 +160,7 @@ internal fun MainActivity.showUpdateCheck() {
             runOnUiThread {
                 finished()   // הכפתור למטה חוזר מטעינה למלל
                 if (isDestroyed) return@runOnUiThread
+                checking = false
                 showPill(true)
                 ring.stop()
                 content.removeAllViews()
