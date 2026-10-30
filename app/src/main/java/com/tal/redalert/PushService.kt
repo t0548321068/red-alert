@@ -59,14 +59,21 @@ class PushService : FirebaseMessagingService() {
         val at = d["at"]?.toLongOrNull() ?: System.currentTimeMillis()
         val svc = AlertService.instance
         if (svc != null) {
-            Thread { try { svc.handle(title, areas, at, "push:$src") } catch (_: Exception) { } }.start()
+            // הטלפון נשאר ער עד שההתרעה טופלה (בלי זה הוא יכול להירדם לפני הצלצול)
+            val wl = (getSystemService(POWER_SERVICE) as android.os.PowerManager)
+                .newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "redalert:push").apply { acquire(30_000) }
+            Thread {
+                try { svc.handle(title, areas, at, "push:$src") } catch (_: Exception) { }
+                finally { try { if (wl.isHeld) wl.release() } catch (_: Exception) { } }
+            }.start()
         } else {
             // השירות לא רץ - מעירים אותו (הודעה בעדיפות גבוהה מאפשרת להפעיל אותו מהרקע)
             if (!Prefs.enabled(this)) return
             val i = Intent(this, AlertService::class.java).setAction(AlertService.ACTION_PUSH_ALERT)
                 .putExtra("title", title).putExtra("areas", areas.toTypedArray())
                 .putExtra("at", at).putExtra("src", "push:$src")
-            try { startForegroundService(i) } catch (_: Exception) { }
+            // אנדרואיד לא הרשה להפעיל את השירות - לפחות התראה רגילה, שההתרעה לא תלך לאיבוד
+            try { startForegroundService(i) } catch (_: Exception) { AlertService.fallbackNotify(this, title, areas) }
         }
     }
 
