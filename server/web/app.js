@@ -260,7 +260,7 @@ function loadState() {
 // ---- מכשירים וקריסות ----
 const ago = t => { const m = Math.floor((Date.now() - t) / 60e3); return m < 1 ? 'עכשיו' : m < 60 ? `לפני ${m} דק'` : m < 1440 ? `לפני ${Math.floor(m / 60)} שע'` : `לפני ${Math.floor(m / 1440)} ימים`; };
 function loadDevices() {
-  fetch('/api/devices').then(r => r.json()).then(({ devices, crashes }) => {
+  fetch('/api/devices').then(r => r.json()).then(({ devices, crashes, messages = [] }) => {
     // פעיל = דיווח ב-25 הדקות האחרונות (הטלפון מדווח פעם ב-10 דקות)
     const live = d => Date.now() - d.at < 25 * 60e3;
     const n = devices.filter(d => live(d) && d.on).length;
@@ -271,6 +271,13 @@ function loadDevices() {
       return `<div class="row"><span class="src-dot" style="background:${color}"></span><div style="min-width:0"><div>${esc(d.m || d.d)}</div>
         <div style="font-size:12px;color:var(--muted)">${esc(d.d)} · גרסה ${esc(d.v)} · ${ago(d.at)}</div></div><span class="end">${st}</span></div>`;
     }).join('') : '<div class="hint" style="padding:12px 18px">עוד אין דיווחים – הטלפונים יופיעו אחרי העדכון הבא של האפליקציה</div>';
+    // שליחת הודעה: רשימת הנמענים + ההודעות האחרונות
+    const sel = $('msgTo'), cur = sel.value;
+    sel.innerHTML = '<option value="all">כל הטלפונים</option>' + devices.map(d => `<option value="${esc(d.d)}">${esc(d.m || d.d)} (${esc(d.d)})</option>`).join('');
+    sel.value = [...sel.options].some(o => o.value === cur) ? cur : 'all';
+    const toName = t => t === 'all' ? 'כל הטלפונים' : ((devices.find(d => d.d === t) || {}).m || t);
+    $('msgs').innerHTML = messages.slice(0, 5).map(m => `<div class="item"><div class="ic" style="background:var(--blue)">✉</div>
+      <div class="tx"><div class="a">${esc(m.text)}</div><div class="b">אל: ${esc(toName(m.to))}</div></div><div class="tm">${dmy(new Date(m.at))} ${hm(new Date(m.at))}</div></div>`).join('');
     $('crashCard').style.display = crashes.length ? '' : 'none';
     $('crashTx').textContent = crashes.length ? crashes.length + '' : '';
     $('crashes').innerHTML = crashes.slice(0, 20).map((c, i) => `<div class="item" data-c="${i}"><div class="ic" style="background:var(--red)">!</div>
@@ -280,6 +287,17 @@ function loadDevices() {
   }).catch(() => {});
 }
 $('crashes').onclick = e => { const it = e.target.closest('.item'); if (!it) return; const pre = it.querySelector('pre'); pre.style.display = pre.style.display ? '' : 'none'; };
+
+$('msgForm').onsubmit = e => {
+  e.preventDefault();
+  const text = $('msgText').value.trim(); if (!text) return;
+  const to = $('msgTo').value, btn = e.target.querySelector('button');
+  btn.disabled = true; $('msgSt').textContent = 'שולח…';
+  fetch('/api/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, to }) })
+    .then(r => { if (!r.ok) throw 0; $('msgText').value = ''; $('msgSt').textContent = '✓ נשלח'; loadDevices(); })
+    .catch(() => { $('msgSt').textContent = 'השליחה נכשלה'; })
+    .finally(() => { btn.disabled = false; setTimeout(() => { $('msgSt').textContent = ''; }, 5000); });
+};
 
 // ---- שעון ----
 function tick() {
