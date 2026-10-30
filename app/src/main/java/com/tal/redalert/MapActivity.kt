@@ -58,19 +58,29 @@ class MapActivity : Activity() {
             fun locate() = runOnUiThread { locate(web) }
         }, "App")
 
+        // הנתונים מחושבים כבר עכשיו, במקביל לטעינת המפה (לא רק אחרי שהיא נטענה)
+        val ready = java.util.concurrent.CountDownLatch(1)
+        var data = ""; var focusNames: JSONArray? = null
+        Thread {
+            try {
+                data = buildData(dark)
+                // נפתח מהתראה ברשימה - האזורים שלה
+                focusNames = intent.getStringExtra("focus")?.let { body ->
+                    JSONArray().also { names ->
+                        body.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                            .forEach { raw -> AreaData.match(this@MapActivity, raw).forEach { names.put(it) } }
+                    }
+                }
+            } finally { ready.countDown() }
+        }.start()
+
         web.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView, req: android.webkit.WebResourceRequest) =
                 DataFiles.web(this@MapActivity, req.url.toString())   // יישובים מעודכנים מהשרת
             override fun onPageFinished(view: WebView, url: String) {
                 Thread {
-                    val data = buildData(dark)
-                    // נפתח מהתראה ברשימה - האזורים שלה (מחושב ברקע, לא על המסך)
-                    val focusNames = intent.getStringExtra("focus")?.let { body ->
-                        JSONArray().also { names ->
-                            body.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                                .forEach { raw -> AreaData.match(this@MapActivity, raw).forEach { names.put(it) } }
-                        }
-                    }
+                    ready.await()
+                    if (data.isEmpty()) return@Thread
                     runOnUiThread {
                         if (isDestroyed) return@runOnUiThread   // המפה נסגרה בינתיים
                         view.evaluateJavascript("render($data);", null)
@@ -140,12 +150,6 @@ class MapActivity : Activity() {
             .put("all", all)
             .put("mine", mine)
             .put("dark", dark)
-        if (checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) ==
-            android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            Weather.lastLocation(this)?.let {
-                data.put("me", JSONArray().put(it.latitude).put(it.longitude))
-            }
-        }
         return data.toString()
     }
 }

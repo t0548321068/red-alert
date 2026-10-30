@@ -20,10 +20,12 @@
           --muted: #6E6E73; }
   html, body, #map { margin: 0; height: 100%; }
   body { font-family: system-ui, -apple-system, "Samsung One", sans-serif; background: var(--sea); }
-  #map { background: var(--sea); }
-  /* רחובות: עד שהאריחים נטענים הם מוסתרים; במצב כהה - המפה הבהירה של OSM הופכת לכהה */
-  .leaflet-tile-pane { opacity: 0; }
-  body.streets .leaflet-tile-pane { opacity: 1; }
+  /* רחובות: מוצגים מהרגע הראשון (נטענים בהדרגה, ברקע בצבע של המפה - בלי "מפה ישנה" שמתחלפת).
+     רק כשאין אינטרנט (nostreets) - מוסתרים, ובמקומם מפת האזורים */
+  #map { background: #2C3042; }
+  body.light #map { background: #F5F1E8; }
+  body.nostreets #map { background: var(--sea); }
+  body.nostreets .leaflet-tile-pane { opacity: 0; }
   .legend { position: absolute; bottom: 18px; right: 12px; z-index: 1000; background: var(--panel);
             color: var(--text); padding: 12px 16px; border-radius: 22px; font-size: 13px; line-height: 1.9;
             box-shadow: 0 2px 10px rgba(0,0,0,.25); }
@@ -155,9 +157,16 @@
   var map = L.map('map', { zoomControl: false, attributionControl: false, preferCanvas: true, minZoom: 7, maxZoom: 18 })
     .setView([31.6, 34.9], 8);
 
-  // רחובות: מפה וקטורית בסגנון גוגל מפות (OpenFreeMap, חינם ובלי מפתח). רק אחרי שבאמת נטענו רחובות -
-  // מילוי האזורים נעשה שקוף כדי שיראו אותם. בלי אינטרנט - המפה נשארת כמו קודם
-  var TILES_OK = false, STYLE_DARK = !document.body.classList.contains('light');
+  // רחובות: מפה וקטורית בסגנון גוגל מפות (OpenFreeMap, חינם ובלי מפתח) - מוצגת מיד ונטענת בהדרגה.
+  // מפת האזורים (POLY) מוצגת רק אם הרחובות לא נטענו תוך 5 שניות (אין אינטרנט), וחוזרת להיות שקופה כשהם נטענים
+  var TILES_OK = false, POLY = false, STYLE_DARK = !document.body.classList.contains('light');
+  function setPoly(on) {
+    POLY = on;
+    document.body.classList.toggle('nostreets', on);
+    var land = css('--land'), edge = css('--edge');
+    baseLayer.eachLayer(function (l) { if (l.setStyle) l.setStyle(on ? { color: edge, fillColor: land, fillOpacity: 1, opacity: 1 } : { fillOpacity: 0, opacity: 0 }); });
+    syncLabels();
+  }
   // עברית מימין לשמאל בשמות שעל המפה
   // נטען מיד (לא בהשהיה) - אחרת השמות מופיעים רק אחרי זום
   try { maplibregl.setRTLTextPlugin('https://cdn.jsdelivr.net/npm/@mapbox/mapbox-gl-rtl-text@0.3.0/dist/mapbox-gl-rtl-text.js', false); } catch (e) { }
@@ -170,11 +179,15 @@
       var f = []; try { f = gl.queryRenderedFeatures(); } catch (e) { }
       if (!f.length) return;   // עוד לא נטען כלום (או שאין רשת)
       TILES_OK = true;
-      document.body.classList.add('streets');
-      baseLayer.eachLayer(function (l) { if (l.setStyle) l.setStyle({ fillOpacity: 0, opacity: 0 }); });
-      syncLabels();
+      if (POLY) setPoly(false);
     });
+    setTimeout(function () {
+      if (TILES_OK) return;
+      var f = []; try { f = gl.queryRenderedFeatures(); } catch (e) { }
+      if (!f.length) setPoly(true);   // אין רחובות - מפת האזורים
+    }, 5000);
   } catch (e) { streets = null; }
+  if (!streets) setTimeout(function () { setPoly(true); }, 0);
   function setStreetsTheme(dark) {
     if (!streets || dark === STYLE_DARK) return;
     STYLE_DARK = dark;
@@ -197,7 +210,7 @@
     Object.keys(ALL_AREAS).forEach(function (name) {
       var a = ALL_AREAS[name];
       if (only && !only.contains(a.c)) return;   // מפת ההתרעה: רק מה שבתצוגה - מהיר
-      if (a.p) L.polygon(a.p, { color: edge, weight: .6, opacity: TILES_OK ? 0 : 1, fillColor: land, fillOpacity: TILES_OK ? 0 : 1 })
+      if (a.p) L.polygon(a.p, { color: edge, weight: .6, opacity: POLY ? 1 : 0, fillColor: land, fillOpacity: POLY ? 1 : 0 })
         .bindPopup(info(name)).addTo(baseLayer);
       L.tooltip({ permanent: true, direction: 'center', className: 'lbl' })
         .setLatLng(a.c).setContent(name).addTo(labelLayer);
@@ -215,7 +228,7 @@
   }
   // שמות היישובים רק מזום 12 - אחרת צפוף מדי
   function syncLabels() {
-    if (TILES_OK) {   // עם רחובות - בלי שמות כפולים
+    if (!POLY) {   // עם רחובות - בלי שמות כפולים
       if (map.hasLayer(labelLayer)) map.removeLayer(labelLayer);
       if (map.hasLayer(cityLayer)) map.removeLayer(cityLayer);
       return;
