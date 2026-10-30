@@ -20,6 +20,8 @@ class Speaker(private val c: Context) {
     private var onDone: (() -> Unit)? = null
     /** ערוץ ההקראה: שעון מעורר (רגיל), או התראות כשהטלפון היה על שקט והועבר לרגיל לזמן ההתרעה (כמו בצופר) */
     @Volatile var usage = AudioAttributes.USAGE_ALARM
+    /** אוזניות מחוברות: ההקלטות יוצאות מהרמקול של הטלפון (לא רק באוזניות) */
+    @Volatile var preferSpeaker = false
 
     private val tts: TextToSpeech = TextToSpeech(c.applicationContext, { status ->
         if (status == TextToSpeech.SUCCESS) {
@@ -106,6 +108,7 @@ class Speaker(private val c: Context) {
                 else c.assets.openFd(clips[i]).use { fd -> setDataSource(fd.fileDescriptor, fd.startOffset, fd.length) }
                 setOnCompletionListener { it.release(); if (player === it) player = null; playClips(clips, i + 1) }
                 setOnErrorListener { mp, _, _ -> mp.release(); if (player === mp) player = null; playClips(clips, i + 1); true }
+                if (preferSpeaker) AlertService.builtinSpeaker(c)?.let { setPreferredDevice(it) }
                 prepare()
             }
             player = mp
