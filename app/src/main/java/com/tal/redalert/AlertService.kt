@@ -91,21 +91,23 @@ class AlertService : Service() {
             // השרת שולח כל התרעה פעמיים (וכל הארץ - בכמה חלקים): מציגים כל יישוב פעם אחת
             val my = mine(c, areas).filter { fallbackSeen.put(rawTitle + "|" + it, now) == null }.ifEmpty { return }
             val nm = c.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            if (nm.getNotificationChannel(CH_ALERT) == null) nm.createNotificationChannel(
-                NotificationChannel(CH_ALERT, "התראות צופר חירום", NotificationManager.IMPORTANCE_HIGH).apply {
+            // מושתק / שעות שקט (לא בירי) - ערוץ בלי צליל ורטט
+            val silent = Prefs.mutedNow(c) || (levelOf(rawTitle) != LEVEL_ALERT && Prefs.isQuietNow(c))
+            val ch = if (silent) CH_SILENT else CH_ALERT
+            if (nm.getNotificationChannel(ch) == null) nm.createNotificationChannel(
+                if (silent) NotificationChannel(CH_SILENT, "התראות – בלי צליל ורטט", NotificationManager.IMPORTANCE_HIGH).apply {
+                    setSound(null, null); enableVibration(false); vibrationPattern = longArrayOf(0)
+                    setBypassDnd(true); lockscreenVisibility = Notification.VISIBILITY_PUBLIC }
+                else NotificationChannel(CH_ALERT, "התראות צופר חירום", NotificationManager.IMPORTANCE_HIGH).apply {
                     enableVibration(true); setBypassDnd(true); lockscreenVisibility = Notification.VISIBILITY_PUBLIC })
             val title = displayTitle(rawTitle)
             val body = my.joinToString(", ")
             val open = PendingIntent.getActivity(c, 0, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-            nm.notify(ID_ALERT, Notification.Builder(c, CH_ALERT)
+            nm.notify(ID_ALERT, Notification.Builder(c, ch)
                 .setSmallIcon(R.drawable.ic_stat_siren).setColor(0xFFD50000.toInt())
                 .setContentTitle(title).setContentText(body).setStyle(Notification.BigTextStyle().bigText(body))
                 .setCategory(Notification.CATEGORY_ALARM).setContentIntent(open).setFullScreenIntent(open, true)
-                .setAutoCancel(true).apply {
-                    // מושתק / שעות שקט (לא בירי) - בלי צליל
-                    if (Build.VERSION.SDK_INT >= 31 && (Prefs.mutedNow(c) ||
-                            (levelOf(rawTitle) != LEVEL_ALERT && Prefs.isQuietNow(c)))) setSilent(true)
-                }.build())
+                .setAutoCancel(true).build())
         }
 
         /**
