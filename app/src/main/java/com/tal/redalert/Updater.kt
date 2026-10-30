@@ -252,6 +252,9 @@ object Updater {
         val installer = app.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
             setAppPackageName(app.packageName)
+            // שם ואייקון האפליקציה בהתקנה (בלעדיהם אנדרואיד מציג אייקון כללי של אנדרואיד)
+            setAppLabel(app.getString(R.string.app_name))
+            try { setAppIcon(android.graphics.BitmapFactory.decodeResource(app.resources, R.mipmap.ic_launcher)) } catch (_: Exception) { }
             if (Build.VERSION.SDK_INT >= 31) setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
             if (Build.VERSION.SDK_INT >= 34) setRequestUpdateOwnership(true)
         }
