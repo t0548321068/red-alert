@@ -404,7 +404,7 @@ class AlertService : Service() {
         }
         if (intent?.action == ACTION_SILENCE) {
             speaker?.stop()
-            main.post { ringtone?.stop(); stopSpeaker() }
+            main.post { ringtone?.stop(); stopSpeaker(); main.removeCallbacks(releaseFocus); releaseFocus.run() }
             Vibes.stop(this)
             return START_STICKY
         }
@@ -925,6 +925,9 @@ class AlertService : Service() {
 
         // הקראה: קודם מקריאים (סוג, אזורים, זמן להגעה) ואז הצליל.
         // הרטט מתחיל מיד. אם ההקראה נתקעת - הצליל מתחיל בכל מקרה אחרי 8 שניות.
+        // מוזיקה / וידאו / ניווט מדבר: נעצרים (או מונמכים) לזמן הצופר וההקראה, וחוזרים אחרי
+        if (!inCall && !quiet && !muted && (snd || speakNow)) holdFocus(if (level == LEVEL_ALERT) 25_000L else 10_000L)
+
         if (speakNow && inCall) {
             // בשיחה: קודם הצפצופים, ואז ההקראה באוזן
             if (snd && !quiet) callBeeps(level)
@@ -1108,6 +1111,26 @@ class AlertService : Service() {
             }
             main.postDelayed({ ringtone?.stop() }, durationMs)
         }
+    }
+
+    /** עצירת השמעה של אפליקציות אחרות לזמן ההתרעה (Audio Focus) */
+    private var focusReq: android.media.AudioFocusRequest? = null
+    private val releaseFocus = Runnable {
+        focusReq?.let { try { (getSystemService(AUDIO_SERVICE) as android.media.AudioManager).abandonAudioFocusRequest(it) } catch (_: Exception) { } }
+        focusReq = null
+    }
+    private fun holdFocus(ms: Long) {
+        main.removeCallbacks(releaseFocus); releaseFocus.run()
+        try {
+            val r = android.media.AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+                .setOnAudioFocusChangeListener { }
+                .build()
+            (getSystemService(AUDIO_SERVICE) as android.media.AudioManager).requestAudioFocus(r)
+            focusReq = r
+            main.postDelayed(releaseFocus, ms)
+        } catch (_: Exception) { }
     }
 
     /** אוזניות מחוברות (חוטיות, USB או בלוטות') */
