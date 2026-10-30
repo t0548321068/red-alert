@@ -72,6 +72,7 @@ function live(req, res) {
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
   res.write('retry: 3000\n\n');
   for (const a of recent) res.write('event: alert\ndata: ' + JSON.stringify(a) + '\n\n');
+  res.write('event: ready\ndata: 1\n\n');
   clients.add(res);
   const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch (_) {} }, 20000);
   req.on('close', () => { clearInterval(ping); clients.delete(res); });
