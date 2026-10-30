@@ -433,14 +433,16 @@ class MainActivity : Activity() {
         sndInd = indicator(R.drawable.ic_set_sound) { showSoundSettings() }   // לחיצה: הגדרות צלילים ורטט
         // גרסה: 7 לחיצות מהירות - פותח את אפשרות הבטא (מוסתרת משאר המשתמשים)
         var taps = 0; var lastTap = 0L
-        // לחיצה: בדיקת עדכונים מיד - בדיוק כמו "בדיקת עדכונים" בהגדרות.
-        // לחיצות נוספות ברצף (ל-7 לחיצות של הבטא) לא בודקות שוב
+        // לחיצה: חלון בדיקת העדכונים - בדיוק כמו "בדיקת עדכונים" בהגדרות.
+        // נפתח רגע אחרי הלחיצה האחרונה, כדי שאפשר יהיה ללחוץ 7 פעמים ברצף (בטא) בלי שהחלון יסתיר את הכפתור
+        val openUpdates = Runnable { if (taps < 7) showUpdateCheck() }
         verInd = indicator(R.drawable.ic_info) {
             val now = System.currentTimeMillis()
             val inSeries = now - lastTap < 1500
             taps = if (inSeries) taps + 1 else 1
             lastTap = now
-            if (!inSeries) Updater.check(this@MainActivity, silent = false)
+            ui.removeCallbacks(openUpdates)
+            ui.postDelayed(openUpdates, 600)
             if (taps >= 7 && !Prefs.betaUnlocked(this@MainActivity) && Prefs.betaAllowed(this@MainActivity)) {
                 Prefs.setBetaUnlocked(this@MainActivity, true)
                 android.widget.Toast.makeText(this@MainActivity, "🧪 גרסאות בטא נפתחו (⚙ ← בדיקת עדכונים)",

@@ -82,6 +82,40 @@ object Updater {
         }.start()
     }
 
+    /** לחלון בדיקת העדכונים: הגרסה החדשה, או null אם מעודכן. זורק שגיאה אם אי אפשר לבדוק */
+    fun lookup(c: Context): Update? = best(c).also { remember(c, it) }
+
+    /** פרטי הגרסה החדשה לחלון הבדיקה: גודל, מתי פורסמה, ומה חדש בה */
+    data class Details(val size: Long, val date: Long, val notes: List<String>)
+    fun details(u: Update): Details {
+        var size = -1L; var date = 0L
+        try {
+            val conn = URL(u.url).openConnection() as HttpURLConnection
+            conn.requestMethod = "HEAD"; conn.connectTimeout = 6000; conn.readTimeout = 6000
+            try { size = conn.contentLengthLong; date = conn.lastModified } finally { conn.disconnect() }
+        } catch (_: Exception) { }
+        // "מה חדש" של גרסה שעוד לא הותקנה - מקובץ השינויים ב-GitHub (בענף של הגרסה: רגילה / בטא)
+        val notes = try {
+            val branch = if (u.key.startsWith("beta")) "beta" else "main"
+            val conn = URL("https://raw.githubusercontent.com/t0548321068/red-alert/$branch/app/src/main/assets/changelog.json")
+                .openConnection() as HttpURLConnection
+            conn.connectTimeout = 6000; conn.readTimeout = 6000
+            val log = try { JSONObject(conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }) } finally { conn.disconnect() }
+            notes(log, u.ver)
+        } catch (_: Exception) { emptyList() }
+        return Details(size, date, notes)
+    }
+    /** מה חדש בגרסה המותקנת (מתוך האפליקציה) */
+    fun currentNotes(c: Context): List<String> = try {
+        notes(JSONObject(c.assets.open("changelog.json").bufferedReader(Charsets.UTF_8).use { it.readText() }), currentVersion(c))
+    } catch (_: Exception) { emptyList() }
+    private fun notes(log: JSONObject, ver: String): List<String> =
+        log.optJSONArray(ver)?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList()
+
+    /** התקנה מהחלון: הורדה והתקנה (כמו "התקן עכשיו") */
+    fun install(a: Activity, u: Update) = download(a, u.label.replace(" ", "-"), u.url)
+    fun skip(c: Context, u: Update) = Prefs.setSkippedVersion(c, u.key)
+
     /** לשירות ברקע: מחזיר גרסה חדשה (label) אם יש ולא נדחתה, אחרת null */
     fun pendingVersion(c: Context): String? {
         val u = try { best(c).also { remember(c, it) } } catch (_: Exception) { null } ?: return null
