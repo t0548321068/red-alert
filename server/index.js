@@ -18,6 +18,7 @@ const weather = require('./lib/weather');
 const shabbat = require('./lib/shabbat');
 const files = require('./lib/files');
 const versions = require('./lib/versions');
+const web = require('./lib/web');
 
 // תקלה לא צפויה - רושמים ביומן וממשיכים (שהבדיקה וההתרעות לא ייעצרו)
 process.on('uncaughtException', e => log('uncaught', e && e.stack || e));
@@ -43,7 +44,12 @@ let lastManualHb = 0;
 function route(req, res) {
   const u = new URL(req.url, 'http://x');
   const q = k => u.searchParams.get(k);
-  if (tooMany(req.socket.remoteAddress || '')) { res.writeHead(429); return res.end(); }
+  // דרך האתר (Caddy על אותו שרת) - הכתובת האמיתית בכותרת X-Forwarded-For
+  const local = /^(::ffff:)?127\.0\.0\.1$|^::1$/.test(req.socket.remoteAddress || '');
+  const ip = local ? String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'local' : req.socket.remoteAddress || '';
+  if (tooMany(ip)) { res.writeHead(429); return res.end(); }
+  // האתר (רק לך, עם קוד כניסה)
+  if (web.handle(req, res, u, () => ({ up: health.upList(), started: health.STARTED, now: Date.now(), version: versions.latest, data: files.dataIndex.v }))) return;
   if ((u.pathname === '/weather' || u.pathname === '/shabbat') && !inIsrael(+q('lat'), +q('lon'))) { res.writeHead(400); return res.end(); }
   switch (u.pathname) {
     case '/archive': return archive.serve(req, res, +(q('since') || 0));

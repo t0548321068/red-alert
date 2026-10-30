@@ -1,0 +1,110 @@
+/* צופר חירום - אתר: אותו סגנון כמו האפליקציה (One UI כהה) */
+:root {
+  --bg: #000; --card: #1B1B1D; --card2: #232326; --div: #2A2A2C; --text: #F2F2F2; --muted: #9A9A9E;
+  --blue: #4C7DFF; --green: #30D158; --orange: #FF9F0A; --red: #FF453A; --alert: #D50000; --pre: #F08C00; --end: #2E7D32;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans Hebrew", Arial, sans-serif; }
+body { direction: rtl; }
+button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+
+/* ---- מסך כניסה ---- */
+.login { height: 100%; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.login form { width: 100%; max-width: 360px; background: var(--card); border-radius: 26px; padding: 30px 26px; text-align: center; }
+.login img { width: 84px; height: 84px; border-radius: 22px; }
+.login h1 { font-size: 22px; margin: 14px 0 4px; }
+.login p { color: var(--muted); font-size: 14px; margin: 0 0 22px; }
+.login input { width: 100%; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--div); background: #000; color: var(--text);
+  font-size: 17px; text-align: center; letter-spacing: 2px; outline: none; }
+.login input:focus { border-color: var(--blue); }
+.login .go { width: 100%; margin-top: 14px; height: 46px; border-radius: 23px; background: var(--blue); color: #fff; font-weight: 700; font-size: 16px; }
+.login .err { color: var(--red); font-size: 14px; min-height: 20px; margin-top: 12px; }
+
+/* ---- האתר ---- */
+.app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
+.top { display: flex; align-items: center; gap: 14px; padding: 10px 18px; border-bottom: 1px solid var(--div); }
+.top img { width: 34px; height: 34px; border-radius: 9px; }
+.top .name { font-weight: 700; font-size: 19px; }
+.live { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); background: var(--card); padding: 6px 12px; border-radius: 16px; }
+.live .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.live.on .dot { background: var(--green); box-shadow: 0 0 0 0 rgba(48, 209, 88, .6); animation: pulse 2s infinite; }
+.live.off .dot { background: var(--red); }
+@keyframes pulse { 70% { box-shadow: 0 0 0 8px rgba(48, 209, 88, 0); } 100% { box-shadow: 0 0 0 0 rgba(48, 209, 88, 0); } }
+.top .clock { margin-right: auto; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; direction: ltr; }
+.icon-btn { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.icon-btn:hover { background: var(--card); }
+.icon-btn.on { color: var(--green); }
+
+.main { display: grid; grid-template-columns: 400px 1fr; min-height: 0; }
+.side { overflow-y: auto; padding: 14px 12px 30px; border-left: 1px solid var(--div); }
+#map { min-height: 0; background: #2C3042; }
+
+.card { background: var(--card); border-radius: 22px; margin-bottom: 10px; overflow: hidden; }
+.label { color: var(--muted); font-size: 13px; padding: 10px 18px 6px; }
+.row { display: flex; align-items: center; gap: 12px; padding: 12px 18px; }
+.row + .row { border-top: 1px solid var(--div); }
+.row .end { margin-right: auto; color: var(--muted); font-size: 14px; }
+
+/* מצב: מוגן / התרעה פעילה */
+.state { padding: 18px; text-align: center; border: 2px solid #4CAF50; background: #12301A; }
+.state .shield { font-size: 34px; }
+.state .t1 { font-size: 22px; font-weight: 700; color: #69F0AE; margin-top: 4px; }
+.state .t2 { font-size: 14px; color: var(--muted); margin-top: 4px; }
+.state.alert { border-color: transparent; color: #fff; }
+.state.alert .t1 { color: #fff; font-size: 24px; }
+.state.alert .t2 { color: rgba(255, 255, 255, .9); font-size: 16px; }
+.state .areas { margin-top: 10px; font-weight: 700; font-size: 17px; background: rgba(255, 255, 255, .2); border-radius: 18px; padding: 8px 12px; }
+.state .timer { font-size: 42px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 8px; direction: ltr; }
+.state .src { font-size: 12px; opacity: .85; margin-top: 6px; }
+
+/* האזורים שלי */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 14px 12px; }
+.chip { background: var(--card2); border-radius: 16px; padding: 6px 12px; font-size: 14px; display: flex; gap: 8px; align-items: center; }
+.chip button { color: var(--muted); font-size: 15px; }
+.add { display: flex; gap: 8px; padding: 0 14px 14px; }
+.add input { flex: 1; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--div); background: #000; color: var(--text); font-size: 15px; outline: none; }
+.add input:focus { border-color: var(--blue); }
+.add button { background: var(--blue); color: #fff; border-radius: 14px; padding: 0 16px; font-weight: 700; }
+
+/* כפתורי מצב */
+.seg { display: inline-flex; background: var(--card2); border-radius: 20px; padding: 3px; }
+.seg button { padding: 6px 14px; border-radius: 16px; font-size: 14px; color: var(--muted); }
+.seg button.sel { background: var(--blue); color: #fff; font-weight: 700; }
+
+/* רשימת התרעות */
+.list .item { display: flex; align-items: center; gap: 12px; padding: 11px 16px; cursor: pointer; }
+.list .item + .item { border-top: 1px solid var(--div); }
+.list .item:hover { background: var(--card2); }
+.ic { width: 34px; height: 34px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; font-size: 15px; color: #fff; }
+.list .tx { flex: 1; min-width: 0; }
+.list .a { font-size: 15px; }
+.list .b { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.list .tm { font-size: 12px; color: var(--muted); direction: ltr; }
+.day { color: var(--muted); font-size: 13px; padding: 12px 16px 4px; }
+.more { width: 100%; padding: 12px; color: var(--blue); font-size: 14px; }
+
+/* מקורות */
+.src-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
+/* התרעה באזור שלי: פס אדום על כל המסך */
+.banner { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 2000; background: rgba(0, 0, 0, .55); }
+.banner.show { display: flex; }
+.banner .box { width: min(560px, 92vw); border-radius: 30px; padding: 30px; text-align: center; color: #fff; box-shadow: 0 20px 60px rgba(0, 0, 0, .6); animation: flash 1.2s ease-in-out infinite alternate; }
+@keyframes flash { from { filter: brightness(1); } to { filter: brightness(1.18); } }
+.banner .t1 { font-size: 34px; font-weight: 800; }
+.banner .t2 { font-size: 19px; margin-top: 6px; opacity: .95; }
+.banner .areas { font-size: 22px; font-weight: 700; margin-top: 16px; background: rgba(255, 255, 255, .2); border-radius: 20px; padding: 10px 14px; }
+.banner .timer { font-size: 64px; font-weight: 800; margin-top: 12px; font-variant-numeric: tabular-nums; direction: ltr; }
+.banner .close { margin-top: 18px; background: rgba(255, 255, 255, .22); border-radius: 22px; padding: 10px 28px; font-weight: 700; }
+
+.hint { color: var(--muted); font-size: 12px; padding: 0 18px 12px; }
+.leaflet-container { font-family: inherit; }
+.leaflet-tooltip { direction: rtl; }
+
+@media (max-width: 860px) {
+  .main { grid-template-columns: 1fr; grid-template-rows: 45vh auto; }
+  #map { order: -1; }
+  .side { border-left: 0; overflow: visible; }
+  .app { height: auto; min-height: 100%; }
+}

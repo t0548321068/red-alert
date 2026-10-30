@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>צופר חירום</title>
+<link rel="icon" href="/icon.png">
+<link rel="stylesheet" href="/assets/leaflet/leaflet.css">
+<link rel="stylesheet" href="/assets/maplibre/maplibre-gl.css">
+<link rel="stylesheet" href="/web.css">
+<script src="/assets/leaflet/leaflet.js"></script>
+<script src="/assets/maplibre/maplibre-gl.js"></script>
+<script src="/assets/maplibre/leaflet-maplibre-gl.js"></script>
+<script src="/assets/mapstyle.js"></script>
+<script src="/assets/areas.js"></script>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <img src="/icon.png" alt="">
+    <div class="name">צופר חירום</div>
+    <div class="live" id="live"><span class="dot"></span><span id="liveTx">מתחבר…</span></div>
+    <div class="clock" id="clock"></div>
+    <button class="icon-btn" id="soundBtn" title="צליל התרעה">🔇</button>
+    <button class="icon-btn" id="notifBtn" title="התראות במחשב">🔕</button>
+    <a href="/api/logout" style="color:var(--muted);text-decoration:none;font-size:14px;padding:0 6px">יציאה</a>
+  </header>
+  <div class="main">
+    <aside class="side">
+      <div class="card state" id="state"></div>
+
+      <div class="card">
+        <div class="label">האזורים שלי</div>
+        <div class="chips" id="chips"></div>
+        <form class="add" id="addForm">
+          <input id="addIn" list="areaList" placeholder="הוסף יישוב…" autocomplete="off">
+          <button type="submit">הוסף</button>
+        </form>
+        <datalist id="areaList"></datalist>
+        <div class="hint">התרעה באזור שלך: מסך אדום, צופר והתראה במחשב. בלי אזורים - כל הארץ.</div>
+      </div>
+
+      <div class="card">
+        <div class="row"><b>התרעות אחרונות</b>
+          <span class="end"><span class="seg" id="seg"><button data-m="all" class="sel">הכל</button><button data-m="mine">שלי</button></span></span>
+        </div>
+        <div class="list" id="list"></div>
+      </div>
+
+      <div class="card">
+        <div class="row"><b>מצב השרת</b><span class="end" id="srvTx"></span></div>
+        <div id="sources"></div>
+      </div>
+    </aside>
+    <div id="map"></div>
+  </div>
+</div>
+
+<div class="banner" id="banner"><div class="box" id="bannerBox">
+  <div class="t1" id="bT1"></div><div class="t2" id="bT2"></div>
+  <div class="areas" id="bAreas"></div><div class="timer" id="bTimer"></div>
+  <button class="close" id="bClose">הבנתי</button>
+</div></div>
+
+<audio id="siren" src="/assets/siren.ogg" preload="auto"></audio>
+<script src="/w/app.js"></script>
+</body>
+</html>
