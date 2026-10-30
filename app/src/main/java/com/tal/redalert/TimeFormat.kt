@@ -5,7 +5,8 @@ import java.util.Calendar
 
 /** עיצוב שעה / יום / תאריך לפי ההגדרות */
 object TimeFormat {
-    private val NAMES = arrayOf("ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת")
+    /** שמות הימים (ראשון...שבת) - גם לבחירת ימים בהגדרות */
+    val NAMES = arrayOf("ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת")
     private val LETTERS = arrayOf("א'", "ב'", "ג'", "ד'", "ה'", "ו'", "ש'")
 
     /** דוגמאות לתפריט ההגדרות */
@@ -133,13 +134,5 @@ object TimeFormat {
         if (n > 0) sb.append("אבגדהוזחט"[n - 1])
         val s = sb.toString()
         return if (s.length == 1) "$s'" else s.dropLast(1) + "\"" + s.last()
-    }
-
-    /** לשורה ברשימת ההתראות */
-    fun stamp(c: Context, ms: Long): String {
-        val t = time(c, ms)
-        if (!Prefs.showDate(c)) return t
-        val k = cal(ms)
-        return "%02d/%02d %s".format(k.get(Calendar.DAY_OF_MONTH), k.get(Calendar.MONTH) + 1, t)
     }
 }

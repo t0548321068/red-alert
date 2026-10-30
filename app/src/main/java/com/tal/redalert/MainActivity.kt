@@ -29,34 +29,28 @@ class MainActivity : Activity() {
 
     /** צבעים לפי ערכת הנושא (כהה / בהירה) */
     internal object C {
-        var BG = 0; var CARD = 0; var CHIP = 0; var TEXT = 0; var MUTED = 0
-        var GREEN = 0; var GREEN_BG = 0; var OFF = 0; var OFF_BG = 0
-        var BLUE = 0; var RED = 0; var ORANGE = 0; var END = 0
-        var CARD2 = 0; var PILL = 0; var DIV = 0; var SEPV = 0; var SOFT = 0; var MUTED2 = 0; var LINE = 0; var LINE2 = 0
+        var BG = 0; var CHIP = 0; var TEXT = 0; var MUTED = 0
+        var GREEN = 0; var OFF = 0
+        var BLUE = 0; var RED = 0; var ORANGE = 0
+        var CARD2 = 0; var DIV = 0; var SEPV = 0; var SOFT = 0; var MUTED2 = 0; var LINE2 = 0
         var LIGHT = false
 
         fun apply(dark: Boolean) {
             fun c(d: String, l: String) = Color.parseColor(if (dark) d else l)
             BG = c("#000000", "#F2F2F7")
-            CARD = c("#1C1C1E", "#FFFFFF")
             CHIP = c("#2C2C2E", "#E5E5EA")
             TEXT = c("#F2F2F2", "#1C1C1E")
             MUTED = c("#8E8E93", "#6E6E73")
             GREEN = c("#30D158", "#248A3D")
-            GREEN_BG = c("#0F2A17", "#E3F5E8")
             OFF = c("#636366", "#8E8E93")
-            OFF_BG = c("#1C1C1E", "#FFFFFF")
             BLUE = c("#0A84FF", "#007AFF")
             RED = c("#FF3B30", "#E0352B")
             ORANGE = c("#FF9F0A", "#E08600")
-            END = c("#2E7D32", "#2E7D32")
             CARD2 = c("#1B1B1D", "#FFFFFF")      // כרטיסים (One UI)
-            PILL = c("#3A3A3E", "#E3E3E8")       // גלולות / כפתורים צפים
             DIV = c("#2A2A2C", "#E0E0E5")        // קו בין שורות
             SEPV = c("#5C5C5E", "#C7C7CC")       // קו לפני מתג (לפי צילום סמסונג)
             SOFT = c("#E6FFFFFF", "#CC1C1C1E")   // טקסט משני רך
             MUTED2 = c("#AAAAAA", "#6E6E73")     // טקסט אפור
-            LINE = c("#14FFFFFF", "#14000000")
             LINE2 = c("#22FFFFFF", "#22000000")
             LIGHT = !dark
         }
@@ -689,6 +683,17 @@ class MainActivity : Activity() {
         super.onPause()
     }
 
+    /** המסך נסגר / נבנה מחדש (סיבוב, החלפת ערכת צבעים) - סוגרים עמודים וטיימרים שלא יישארו תלויים */
+    override fun onDestroy() {
+        // בלי להפעיל את פעולות הסגירה של העמודים (למשל טעינה מחדש אחרי החלפת ערכת צבעים)
+        pages.toList().forEach { try { it.setOnDismissListener(null); it.dismiss() } catch (_: Exception) { } }
+        pages.clear()
+        ui.removeCallbacksAndMessages(null)
+        pulseAnims.forEach { it.cancel() }
+        recentList = null; recentSegView = null
+        super.onDestroy()
+    }
+
     internal fun toggle() {
         val on = !Prefs.enabled(this)
         Prefs.setEnabled(this, on)
@@ -894,7 +899,6 @@ class MainActivity : Activity() {
     internal val hideTestFab = Runnable { if (Prefs.testFabMode(this) == Prefs.STATUS_TIMED) testFab.visibility = View.GONE }
     /** כל העמודים הפתוחים (הגדרות, תת-עמודים, התרעות) - כדי שהתפריט התחתון יסגור את כולם במעבר */
     internal val pages = mutableListOf<android.app.Dialog>()
-    internal val DAY_NAMES = listOf("ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת")
 
     companion object { internal var reopenDisplay = false }
 
