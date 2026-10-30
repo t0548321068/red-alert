@@ -1,7 +1,5 @@
 // צופר חירום - האתר. אותם נתונים כמו באפליקציה: התרעות חיות מהשרת, מפה, התרעות אחרונות ומצב המקורות.
 'use strict';
-// נפתח כאפליקציה מותקנת (PWA) - עוברים למסך שזהה לאפליקציה בטלפון
-if (!location.search.includes('full') && matchMedia('(display-mode: standalone)').matches || !location.search.includes('full') && matchMedia('(display-mode: fullscreen)').matches) location.replace('/app');
 const $ = id => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } },
@@ -152,9 +150,8 @@ function notify(alert, areas) {
   if (swReg) { swReg.showNotification(showTitle(alert.title), opt).catch(() => {}); return; }
   try { const n = new Notification(showTitle(alert.title), opt); n.onclick = () => { window.focus(); n.close(); }; } catch (_) {}
 }
-// התקנה כאפליקציה (PWA)
-let swReg = null;
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then(r => { swReg = r; }).catch(() => {});
+// התראות במחשב - ישירות מהדפדפן (האתר לא מותקן כאפליקציה; ה-PWA נפרד, ב-/app/)
+const swReg = null;
 
 // ---- התרעות חיות ----
 const seen = new Set();   // התרעות שכבר הוצגו - שחיבור מחדש לא יפעיל אותן שוב
