@@ -19,9 +19,11 @@ import android.widget.TextView
  * כותרת, טקסט, ולמטה כפתור אחד או שניים עם קו מפריד - במקום החלון של הטלפון
  */
 object AppSheet {
+    /** content: תוכן משלך במקום טקסט (למשל גלגלי בחירת שעה) - מקבל את הכרטיס ואת צבע הטקסט */
     fun show(a: Activity, title: String, message: String, ok: String, onOk: (() -> Unit)? = null,
-             cancel: String? = null, onCancel: (() -> Unit)? = null, cancelable: Boolean = true) {
-        if (a.isFinishing) return
+             cancel: String? = null, onCancel: (() -> Unit)? = null, cancelable: Boolean = true,
+             content: ((LinearLayout, Int) -> Unit)? = null): Dialog? {
+        if (a.isFinishing) return null
         val light = !Prefs.darkTheme(a)
         val dp = { v: Int -> TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), a.resources.displayMetrics).toInt() }
         val white = if (light) Color.parseColor("#1C1C1E") else Color.WHITE
@@ -39,14 +41,17 @@ object AppSheet {
                 setColor(if (light) Color.WHITE else Color.parseColor("#393939")); cornerRadius = dp(26).toFloat() }
         }
         card.addView(tv(title, 17f, white, true).apply { setPadding(dp(30), dp(24), dp(30), 0) })
-        // טקסט ארוך (למשל "מה חדש") נגלל בתוך החלון
-        val msg = tv(message, 15f, soft, false).apply {
-            setPadding(dp(30), dp(12), dp(30), dp(4)); setLineSpacing(0f, 1.15f) }
-        val maxH = (a.resources.displayMetrics.heightPixels * 0.6f).toInt()
-        card.addView(object : ScrollView(a) {
-            override fun onMeasure(w: Int, h: Int) =
-                super.onMeasure(w, View.MeasureSpec.makeMeasureSpec(maxH, View.MeasureSpec.AT_MOST))
-        }.apply { addView(msg) })
+        if (content != null) content(card, white)
+        else {
+            // טקסט ארוך (למשל "מה חדש") נגלל בתוך החלון
+            val msg = tv(message, 15f, soft, false).apply {
+                setPadding(dp(30), dp(12), dp(30), dp(4)); setLineSpacing(0f, 1.15f) }
+            val maxH = (a.resources.displayMetrics.heightPixels * 0.6f).toInt()
+            card.addView(object : ScrollView(a) {
+                override fun onMeasure(w: Int, h: Int) =
+                    super.onMeasure(w, View.MeasureSpec.makeMeasureSpec(maxH, View.MeasureSpec.AT_MOST))
+            }.apply { addView(msg) })
+        }
         val btns = LinearLayout(a).apply { gravity = Gravity.CENTER_VERTICAL }
         fun button(t: String, run: (() -> Unit)?) = tv(t, 17f, white, true).apply {
             gravity = Gravity.CENTER
@@ -81,5 +86,6 @@ object AppSheet {
             setWindowAnimations(0)
         }
         d.show()
+        return d
     }
 }

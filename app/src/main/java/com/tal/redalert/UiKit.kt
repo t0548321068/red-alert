@@ -244,50 +244,8 @@ internal fun MainActivity.onePage(title: String, action: Pair<Int, () -> Unit>? 
  */
 internal fun MainActivity.ouiSheet(title: String, cancel: String, ok: String, onOk: () -> Unit,
                      content: (LinearLayout, Int) -> Unit) {
-    val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
-    val white = if (C.LIGHT) C.TEXT else Color.WHITE
-    val card = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        layoutDirection = View.LAYOUT_DIRECTION_RTL
-        background = GradientDrawable().apply {
-            setColor(if (C.LIGHT) Color.WHITE else Color.parseColor("#393939")); cornerRadius = dp(26).toFloat() }
-    }
-    card.addView(text(title, 17f, white, bold = true).apply { setPadding(dp(30), dp(24), dp(30), dp(0)) })
-    content(card, white)
-    val btns = LinearLayout(this).apply {
-        gravity = Gravity.CENTER_VERTICAL
-        addView(text(cancel, 17f, white, bold = true).apply {
-            gravity = Gravity.CENTER; setOnClickListener { d.dismiss() } }, LinearLayout.LayoutParams(0, -1, 1f))
-        addView(View(this@ouiSheet).apply { setBackgroundColor(Color.parseColor(if (C.LIGHT) "#D1D1D6" else "#535353")) },
-            LinearLayout.LayoutParams(dp(1), dp(16)))
-        addView(text(ok, 17f, white, bold = true).apply {
-            gravity = Gravity.CENTER
-            setOnClickListener { onOk(); d.dismiss() }
-        }, LinearLayout.LayoutParams(0, -1, 1f))
-    }
-    card.addView(btns, LinearLayout.LayoutParams(-1, dp(64)).apply { topMargin = dp(8) })
-    val frame = FrameLayout(this)
-    frame.addView(card, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM).apply { setMargins(dp(10), 0, dp(10), dp(10)) })
-    frame.setOnClickListener { d.dismiss() }   // לחיצה מחוץ לחלון סוגרת
-    card.isClickable = true
-    frame.setOnApplyWindowInsetsListener { _, insets ->
-        @Suppress("DEPRECATION")
-        (card.layoutParams as FrameLayout.LayoutParams).apply { bottomMargin = insets.systemWindowInsetBottom + dp(10)
-            leftMargin = insets.systemWindowInsetLeft + dp(10); rightMargin = insets.systemWindowInsetRight + dp(10) }
-        card.requestLayout(); insets
-    }
-    d.setContentView(frame)
-    d.window?.apply {
-        setLayout(-1, -1)
-        setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
-        addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-        setDimAmount(0.6f)
-        @Suppress("DEPRECATION")
-        decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-        setWindowAnimations(0)
-    }
-    track(d)
-    d.show()
+    // אותו חלון כמו כל ההודעות באפליקציה (AppSheet), עם תוכן משלנו
+    AppSheet.show(this, title, "", ok, onOk, cancel = cancel, content = content)?.let { track(it) }
 }
 
 /** מסך מלא עם גלולה צפה למטה כמו בשעון של סמסונג: ביטול | שמור */
