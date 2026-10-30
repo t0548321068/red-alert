@@ -95,17 +95,41 @@ internal fun MainActivity.showUpdateCheck() {
         ouiText(c, notes.joinToString("\n") { "• $it" })
         ouiAdd(content, c)
     }
-    fun plainButton(label: String, onClick: () -> Unit) = content.addView(text(label, 15f, C.TEXT).apply {
-        gravity = Gravity.CENTER; setPadding(0, dp(12), 0, dp(12)); setOnClickListener { onClick() }
-    }, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(24), dp(6), dp(24), 0) })
 
     var check: (() -> Unit) -> Unit = {}
     fun pill(label: String, action: (done: () -> Unit) -> Unit) { pillLabel?.text = label; pillAction = action }
+    // כשיש גרסה חדשה: שני כפתורים צפים אחד ליד השני - "התקן עכשיו" משמאל, "מאוחר יותר" מימין
+    var later: TextView? = null
+    fun twoButtons(on: Boolean, onLater: () -> Unit = {}) {
+        val btn = pillLabel?.parent as? View ?: return
+        val frame = btn.parent as? FrameLayout ?: return
+        val w = resources.displayMetrics.widthPixels
+        val lp = btn.layoutParams as FrameLayout.LayoutParams
+        if (on) {
+            val l = later ?: text("מאוחר יותר", 16f, C.TEXT, bold = true).apply {
+                gravity = Gravity.CENTER; includeFontPadding = false
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor(if (dark) "#3A3A3C" else "#E5E5EA")); cornerRadius = dp(23).toFloat() }
+            }.also { later = it; frame.addView(it, FrameLayout.LayoutParams(0, dp(46))) }
+            l.setOnClickListener { onLater() }
+            l.visibility = View.VISIBLE
+            val each = (w * 0.42f).toInt(); val side = (w * 0.06f).toInt()
+            lp.width = each; lp.gravity = Gravity.BOTTOM or Gravity.LEFT; lp.leftMargin = side; lp.rightMargin = 0
+            (l.layoutParams as FrameLayout.LayoutParams).apply {
+                width = each; height = dp(46); gravity = Gravity.BOTTOM or Gravity.RIGHT; rightMargin = side; bottomMargin = lp.bottomMargin }
+            l.requestLayout()
+        } else {
+            later?.visibility = View.GONE
+            lp.width = (w * 0.5f).toInt(); lp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL; lp.leftMargin = 0
+        }
+        btn.layoutParams = lp
+    }
     check = { finished ->
         // ---- בודק ----
         content.removeAllViews()
         head("#162038", "#E3EBFF", "⬇", C.TEXT, blue, "בודק אם יש גרסה חדשה…", C.TEXT, "מתחבר לשרת העדכונים")
         pill("בדוק אם יש עדכונים") { done -> check(done) }
+        twoButtons(false)
         ring.spin()
         val c = ouiCard()
         ouiRow(c, "גרסה מותקנת", end = Updater.versionLabel(this), endColor = C.MUTED)
@@ -143,7 +167,7 @@ internal fun MainActivity.showUpdateCheck() {
                         notesCard("מה חדש בגרסה", det?.notes ?: emptyList())
                         if (beta) ouiNote(content, "גרסת בטא – לפני שחרור לכולם, יכולות להיות בה תקלות")
                         pill("התקן עכשיו") { done -> done(); Updater.install(this, u) }
-                        plainButton("מאוחר יותר") { Updater.skip(this, u); pages.lastOrNull()?.dismiss() }
+                        twoButtons(true) { Updater.skip(this, u); pages.lastOrNull()?.dismiss() }
                     }
                     failed -> {
                         // ---- אין חיבור ----
