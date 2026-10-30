@@ -12,6 +12,7 @@ import android.view.View
 import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.TextView
 import com.tal.redalert.MainActivity.C
 
 // חלון "בדיקת עדכונים": נפתח בלחיצה על "בדוק אם יש עדכונים" (או על מספר הגרסה).
@@ -45,7 +46,12 @@ class UpdateRing(context: Context) : View(context) {
     }
 }
 
-internal fun MainActivity.showUpdateCheck() = ouiPage("בדיקת עדכונים", refreshOnFocus = false) { body, _ ->
+internal fun MainActivity.showUpdateCheck() {
+    // הכפתור הכחול למטה - בדיוק כמו "בדוק אם יש עדכונים": "בדוק שוב", וכשיש גרסה חדשה - "התקן עכשיו"
+    var pillLabel: TextView? = null
+    var pillAction: (done: () -> Unit) -> Unit = { it() }
+    ouiPage("בדיקת עדכונים", refreshOnFocus = false,
+        button = "בדוק שוב" to { done -> pillAction(done) }, buttonLabel = { pillLabel = it }) { body, _ ->
     val blue = Color.parseColor("#4C7DFF"); val orange = Color.parseColor("#FF9F0A"); val green = Color.parseColor("#30D158")
     val dark = !C.LIGHT
 
@@ -79,7 +85,7 @@ internal fun MainActivity.showUpdateCheck() = ouiPage("בדיקת עדכונים
         sub.text = subText
     }
     val channel = if (Updater.isBetaBuild(this) || Prefs.betaUpdates(this)) "בטא" else "רגיל"
-    val dateFmt = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.US)
+    val dateFmt = java.text.SimpleDateFormat("HH:mm dd/MM/yyyy", java.util.Locale.US)
     fun installedAt() = try { dateFmt.format(java.util.Date(packageManager.getPackageInfo(packageName, 0).lastUpdateTime)) } catch (_: Exception) { "" }
     fun notesCard(title: String, notes: List<String>) {
         if (notes.isEmpty()) return
@@ -88,20 +94,17 @@ internal fun MainActivity.showUpdateCheck() = ouiPage("בדיקת עדכונים
         ouiText(c, notes.joinToString("\n") { "• $it" })
         ouiAdd(content, c)
     }
-    fun bigButton(label: String, onClick: () -> Unit) = content.addView(text(label, 16f, Color.WHITE, bold = true).apply {
-        gravity = Gravity.CENTER; setPadding(0, dp(14), 0, dp(14))
-        background = GradientDrawable().apply { setColor(blue); cornerRadius = dp(26).toFloat() }
-        setOnClickListener { onClick() }
-    }, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(24), dp(10), dp(24), 0) })
     fun plainButton(label: String, onClick: () -> Unit) = content.addView(text(label, 15f, C.TEXT).apply {
         gravity = Gravity.CENTER; setPadding(0, dp(12), 0, dp(12)); setOnClickListener { onClick() }
     }, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(24), dp(6), dp(24), 0) })
 
-    var check: () -> Unit = {}
-    check = {
+    var check: (() -> Unit) -> Unit = {}
+    fun pill(label: String, action: (done: () -> Unit) -> Unit) { pillLabel?.text = label; pillAction = action }
+    check = { finished ->
         // ---- בודק ----
         content.removeAllViews()
         head("#162038", "#E3EBFF", "⬇", C.TEXT, blue, "בודק אם יש גרסה חדשה…", C.TEXT, "מתחבר לשרת העדכונים")
+        pill("בדוק שוב") { done -> check(done) }
         ring.spin()
         val c = ouiCard()
         ouiRow(c, "גרסה מותקנת", end = Updater.versionLabel(this), endColor = C.MUTED)
@@ -117,6 +120,7 @@ internal fun MainActivity.showUpdateCheck() = ouiPage("בדיקת עדכונים
             val wait = 1500 - (System.currentTimeMillis() - started)
             if (wait > 0) Thread.sleep(wait)
             runOnUiThread {
+                finished()   // הכפתור למטה חוזר מטעינה למלל
                 if (isDestroyed) return@runOnUiThread
                 ring.stop()
                 content.removeAllViews()
@@ -137,7 +141,7 @@ internal fun MainActivity.showUpdateCheck() = ouiPage("בדיקת עדכונים
                         ouiAdd(content, cd)
                         notesCard("מה חדש בגרסה", det?.notes ?: emptyList())
                         if (beta) ouiNote(content, "גרסת בטא – לפני שחרור לכולם, יכולות להיות בה תקלות")
-                        bigButton("התקן עכשיו") { Updater.install(this, u) }
+                        pill("התקן עכשיו") { done -> done(); Updater.install(this, u) }
                         plainButton("מאוחר יותר") { Updater.skip(this, u); pages.lastOrNull()?.dismiss() }
                     }
                     failed -> {
@@ -146,7 +150,6 @@ internal fun MainActivity.showUpdateCheck() = ouiPage("בדיקת עדכונים
                         val cd = ouiCard()
                         ouiRow(cd, "גרסה מותקנת", end = Updater.versionLabel(this), endColor = C.MUTED)
                         ouiAdd(content, cd)
-                        plainButton("נסה שוב") { check() }
                     }
                     else -> {
                         // ---- מעודכן ----
@@ -159,12 +162,12 @@ internal fun MainActivity.showUpdateCheck() = ouiPage("בדיקת עדכונים
                         ouiRow(cd, "ערוץ", end = channel, endColor = C.MUTED)
                         ouiAdd(content, cd)
                         notesCard("מה חדש בגרסה שלך", Updater.currentNotes(this))
-                        plainButton("בדוק שוב") { check() }
                     }
                 }
                 updateVerInd()   // החיווי מעל מספר הגרסה (כתום / ירוק) לפי התוצאה
             }
         }.start()
     }
-    check()
+    check {}
+    }
 }

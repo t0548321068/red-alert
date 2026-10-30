@@ -46,7 +46,10 @@ object Updater {
         val cur = currentVersion(c)
         return isNewer(ver, cur) || (build > 0 && build > buildNumber(c) && !isNewer(cur, ver))
     }
-    private fun remember(c: Context, u: Update?) = Prefs.setUpdateAvail(c, u?.ver ?: "", u?.build ?: 0)
+    private fun remember(c: Context, u: Update?) {
+        Prefs.setUpdateAvail(c, u?.ver ?: "", u?.build ?: 0)
+        Prefs.setLastUpdateCheck(c)
+    }
 
     /** הגרסה הכי מתאימה להתקנה: יציבה חדשה, או (אם ביקשו) בטא חדשה */
     private fun best(c: Context): Update? {
