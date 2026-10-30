@@ -67,13 +67,27 @@ setTimeout(heartbeat, 20 * 1000);
 // סימן החיים עובר דרך Firebase - כך נבדקת כל הדרך עד הטלפון. לכל היותר פעם ב-30 שניות
 const STARTED = Date.now();
 let lastManualHb = 0;
+// ---- הגנה: עד 60 בקשות בדקה מכל כתובת; מזג אוויר וזמני שבת רק למיקומים בישראל ----
+const ipHits = new Map();
+function tooMany(ip) {
+  const now = Date.now(), h = ipHits.get(ip);
+  if (!h || now - h.start > 60 * 1000) { ipHits.set(ip, { start: now, n: 1 }); return false; }
+  return ++h.n > 60;
+}
+setInterval(() => { const now = Date.now(); for (const [ip, h] of ipHits) if (now - h.start > 60 * 1000) ipHits.delete(ip); }, 5 * 60 * 1000);
+const inIsrael = (lat, lon) => lat > 29.3 && lat < 33.5 && lon > 34.2 && lon < 35.95;
+
 require('http').createServer((req, res) => {
   const u = new URL(req.url, 'http://x');
+  if (tooMany(req.socket.remoteAddress || '')) { res.writeHead(429); return res.end(); }
+  if ((u.pathname === '/weather' || u.pathname === '/shabbat') &&
+      !inIsrael(+u.searchParams.get('lat'), +u.searchParams.get('lon'))) { res.writeHead(400); return res.end(); }
   if (u.pathname === '/archive') return serveArchive(req, res, +(u.searchParams.get('since') || 0));
   if (u.pathname === '/weather') return serveWeather(res, +u.searchParams.get('lat'), +u.searchParams.get('lon'));
   if (u.pathname === '/shabbat') return serveShabbat(res, +u.searchParams.get('lat'), +u.searchParams.get('lon'));
   if (u.pathname !== '/status') { res.writeHead(404); return res.end(); }
-  if (Date.now() - lastManualHb > 30 * 1000) { lastManualHb = Date.now(); heartbeat(); }
+  // סימן חיים לכל הטלפונים - לכל היותר פעם בדקה (שלא יוכלו להציף את המכשירים מבחוץ)
+  if (Date.now() - lastManualHb > 60 * 1000) { lastManualHb = Date.now(); heartbeat(); }
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ up: upList(), started: STARTED, now: Date.now(), version: latest }));
 }).listen(8080);
@@ -365,6 +379,7 @@ function wmo(id) {
   if (id === 802) return 2;
   return 3;
 }
+const owm = { start: 0, n: 0 };
 async function serveWeather(res, lat, lon) {
   const fail = c => { res.writeHead(c); res.end(); };
   let key = '';
@@ -373,6 +388,10 @@ async function serveWeather(res, lat, lon) {
   const ck = lat.toFixed(3) + ',' + lon.toFixed(3);   // ~100 מטר - שם השכונה נשאר מדויק
   const hit = wxCache.get(ck);
   if (hit && Date.now() - hit.at < 5 * 60 * 1000) { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(hit.body); }
+  // מכסה: עד 40 פניות בדקה ל-OpenWeather (החינמי - 60). מעבר לזה הטלפון עובר ל-Open-Meteo
+  const now = Date.now();
+  if (now - owm.start > 60 * 1000) { owm.start = now; owm.n = 0; }
+  if (++owm.n > 40) return fail(503);
   try {
     const j = JSON.parse(await get(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&lang=he&appid=${encodeURIComponent(key)}`));
     const w = (j.weather || [])[0] || {};
@@ -386,9 +405,15 @@ async function serveWeather(res, lat, lon) {
 
 // ---- שם המקום ("שכונה, עיר") - מ-OpenStreetMap, שמור לפי ~100 מטר (פחות בקשות, מהיר יותר) ----
 const placeCache = new Map();
+let nomNext = 0;
 async function placeName(lat, lon) {
   const k = lat.toFixed(3) + ',' + lon.toFixed(3);
   if (placeCache.has(k)) return placeCache.get(k);
+  // OpenStreetMap: לכל היותר פנייה אחת בשנייה (הכלל שלהם). תור ארוך מדי - בלי שם הפעם
+  const now = Date.now(), wait = Math.max(0, nomNext - now);
+  if (wait > 5000) return '';
+  nomNext = Math.max(now, nomNext) + 1000;
+  if (wait) await new Promise(r => setTimeout(r, wait));
   let name = '';
   try {
     const a = (JSON.parse(await get(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&lat=${lat}&lon=${lon}&accept-language=he`,
