@@ -38,7 +38,6 @@ class AlertService : Service() {
         const val ACTION_TEST = "test"
         const val ACTION_TEST_SEQ = "test_seq"   // בדיקת אירוע מלא: מקדימה, ירי, סיום
         const val ACTION_SILENCE = "silence"
-        const val ACTION_VOICE = "voice"
         const val ACTION_PUSH = "push"
         const val ACTION_PUSH_ALERT = "push_alert"   // התרעה מהשרת (Firebase) כשהשירות לא רץ
         const val ACTION_WATCHDOG = "watchdog"
@@ -117,11 +116,6 @@ class AlertService : Service() {
         /** בטא הופעלה/כובתה - התחברות מחדש להתראות העדכון */
         fun reloadPush(c: Context) {
             c.startService(Intent(c, AlertService::class.java).setAction(ACTION_PUSH))
-        }
-
-        /** החלפת קול ההקראה בשירות שכבר רץ */
-        fun reloadVoice(c: Context) {
-            c.startService(Intent(c, AlertService::class.java).setAction(ACTION_VOICE))
         }
 
         /** עוצר צליל ורטט של ההתראה הנוכחית (ההתראה עצמה נשארת) */
@@ -380,10 +374,6 @@ class AlertService : Service() {
         }
         if (intent?.action == ACTION_PUSH) {
             updatePush?.reconnect()
-            return START_STICKY
-        }
-        if (intent?.action == ACTION_VOICE) {
-            speaker?.applyVoice()
             return START_STICKY
         }
         if (intent?.action == ACTION_SILENCE) {

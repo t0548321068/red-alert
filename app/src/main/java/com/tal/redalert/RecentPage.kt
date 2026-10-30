@@ -33,8 +33,7 @@ import com.tal.redalert.MainActivity.SameHeight
 // (חלק מהמסך הראשי - MainActivity; המצב עצמו נשמר שם)
 
 /** "שלי": רק ההתרעות שהאפליקציה באמת הקפיצה לי (ההיסטוריה שלי) - לא מהארכיון */
-@Suppress("UNUSED_PARAMETER")
-internal fun MainActivity.mineOf(all: List<Prefs.Entry>): List<Prefs.Entry> = Prefs.history(this)
+internal fun MainActivity.mineOf(): List<Prefs.Entry> = Prefs.history(this)
 
 /** בורר הכל / האזורים שלי (בכותרת, ליד כפתור המפה), עם מספר ההתרעות בכל אחד */
 internal fun MainActivity.buildRecentSeg(seg: LinearLayout) {
@@ -42,7 +41,7 @@ internal fun MainActivity.buildRecentSeg(seg: LinearLayout) {
     val data = archiveCache
     listOf(false to "הכל", true to "שלי").forEach { (mine, name) ->
         val sel = recentMine == mine
-        val n = when { data == null -> null; mine -> mineOf(data).size; else -> data.size }
+        val n = when { data == null -> null; mine -> mineOf().size; else -> data.size }
         val label = if (n == null) name else "$name ($n)"
         // רוחב קבוע לכל כפתור (לפי הנוסח המודגש) - בלי קפיצה כשמחליפים בחירה
         val w = android.graphics.Paint().apply { textSize = 14f * resources.displayMetrics.scaledDensity
@@ -98,7 +97,7 @@ internal fun MainActivity.showRecent() = onePage("התרעות אחרונות",
 internal fun MainActivity.fillRecent(c: LinearLayout, all: List<Prefs.Entry>, minShown: Int = 0) {
     c.removeAllViews()
     recentSegView?.let { buildRecentSeg(it) }   // מספרים מעודכנים
-    val items = if (!recentMine) all else mineOf(all)
+    val items = if (!recentMine) all else mineOf()
     val muted = C.MUTED2
     recentItems = items; recentShown = 0; recentDay = null; recentCard = null
     if (items.isEmpty()) {

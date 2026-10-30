@@ -191,11 +191,7 @@ internal fun MainActivity.ouiRow(c: LinearLayout, title: String, sub: String = "
 internal fun MainActivity.ouiText(c: LinearLayout, t: String) =
     c.addView(text(t, 14f, C.TEXT).apply { setPadding(dp(18), dp(12), dp(18), dp(12)); setLineSpacing(dp(3).toFloat(), 1f) })
 
-/**
- * מסך "התראות אחרונות": כל ההתראות שהיו בארץ (החודש האחרון, מהארכיון של פיקוד העורף),
- * בלי סינון. לחיצה על התראה - המפה על האזור שלה.
- */
-/** עמוד בסגנון One UI: כותרת גדולה ותוכן נגלל */
+/** עמוד בסגנון One UI: כותרת גדולה ותוכן נגלל (למשל "התרעות אחרונות") */
 internal fun MainActivity.onePage(title: String, action: Pair<Int, () -> Unit>? = null, headerExtra: ((LinearLayout) -> Unit)? = null,
                     build: (LinearLayout) -> Unit) {
     val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)

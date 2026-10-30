@@ -276,11 +276,8 @@ object Prefs {
     fun setSpeakAlerts(c: Context, v: Boolean) = sp(c).edit().putBoolean("speak", v).commit()
     /** קול ההקראה: גבר (ברירת מחדל, כמו בצופר) או אישה */
     fun maleVoice(c: Context) = sp(c).getBoolean("maleVoice", true)
-    fun setMaleVoice(c: Context, v: Boolean) = sp(c).edit().putBoolean("maleVoice", v).commit()
 
     // ---- סוג רטט לכל סוג התראה ----
-    fun vibe(c: Context, level: Int) = sp(c).getInt("vibe$level", Vibes.default(level))
-    fun setVibe(c: Context, level: Int, v: Int) = sp(c).edit().putInt("vibe$level", v).commit()
 
     // ---- שעות שקט: משתיק התראה מקדימה וסיום אירוע (ירי תמיד נשמע) ----
     fun quietOn(c: Context) = sp(c).getBoolean("quietOn", false)
@@ -347,10 +344,8 @@ object Prefs {
     /** ערכת צבעים: 0 כהה, 1 בהירה, 2 לפי המערכת */
     fun themeMode(c: Context) = sp(c).getInt("themeMode", if (sp(c).getBoolean("dark", true)) 0 else 1)
     fun setThemeMode(c: Context, v: Int) = sp(c).edit().putInt("themeMode", v).commit()
-    val THEME_NAMES = arrayOf("כהה", "בהירה", "לפי המערכת")
 
     /** סוג תצוגת התרעה: 0 מסך מלא · 1 פופ-אפ · 2 כרטיס מעל השעון · 3 ממוזער */
-    val ALERT_STYLES = arrayOf("מסך מלא", "פופ-אפ", "כרטיס מעל השעון", "ממוזער")
     fun alertStyle(c: Context) = sp(c).getInt("alertStyle", 0)
     /** מפה במסך ההתרעה (מסך מלא ופופ-אפ) */
     fun alertMap(c: Context) = sp(c).getBoolean("alertMap", true)
@@ -377,7 +372,6 @@ object Prefs {
                 android.content.res.Configuration.UI_MODE_NIGHT_YES
         else -> true
     }
-    fun setDarkTheme(c: Context, v: Boolean) = setThemeMode(c, if (v) 0 else 1)
 
     /** אפשרות הבטא נפתחה (7 לחיצות על מספר הגרסה) */
     /**
