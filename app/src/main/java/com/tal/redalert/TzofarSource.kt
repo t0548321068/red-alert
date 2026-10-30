@@ -40,7 +40,7 @@ class TzofarSource(
 
     /** מזהה עיר של צופר -> שם אזור של פיקוד העורף */
     private val cityIds: Map<Int, String> by lazy {
-        ctx.assets.open("tzofar_ids.txt").bufferedReader(Charsets.UTF_8).useLines { lines ->
+        DataFiles.open(ctx, "tzofar_ids.txt").bufferedReader(Charsets.UTF_8).useLines { lines ->
             lines.mapNotNull { l ->
                 val p = l.split('\t')
                 if (p.size == 2) p[0].toIntOrNull()?.let { it to p[1] } else null

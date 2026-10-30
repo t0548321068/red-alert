@@ -55,7 +55,8 @@ async function heartbeat() {
   const up = upList();
   try {
     await admin.messaging().send({
-      topic: TOPIC, data: { type: 'hb', up: up.join(','), at: String(Date.now()) },
+      // dv = גרסת קבצי הנתונים - כשהשתנתה, הטלפון מוריד את מה שחדש
+      topic: TOPIC, data: { type: 'hb', up: up.join(','), at: String(Date.now()), dv: dataIndex.v },
       android: { priority: 'high', ttl: 5 * 60 * 1000 },
     });
   } catch (e) { log('hb failed', e.message); }
@@ -85,6 +86,7 @@ require('http').createServer((req, res) => {
   if (u.pathname === '/archive') return serveArchive(req, res, +(u.searchParams.get('since') || 0));
   if (u.pathname === '/weather') return serveWeather(res, +u.searchParams.get('lat'), +u.searchParams.get('lon'));
   if (u.pathname === '/shabbat') return serveShabbat(res, +u.searchParams.get('lat'), +u.searchParams.get('lon'));
+  if (u.pathname === '/data' || u.pathname.startsWith('/data/')) return serveData(res, decodeURIComponent(u.pathname.slice(6)));
   if (u.pathname === '/beta') return serveBeta(res, String(u.searchParams.get('code') || '').trim().toUpperCase());
   if (u.pathname !== '/status') { res.writeHead(404); return res.end(); }
   // סימן חיים לכל הטלפונים - לכל היותר פעם בדקה (שלא יוכלו להציף את המכשירים מבחוץ)
@@ -387,6 +389,30 @@ function serveBeta(res, code) {
   try { list = fs.readFileSync(path.join(__dirname, 'beta_devices.txt'), 'utf8').split('\n').map(l => l.trim().toUpperCase()).filter(l => l && !l.startsWith('#')); } catch (_) {}
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ allowed: /^[0-9A-F]{8}$/.test(code) && list.includes(code) }));
+}
+
+// ---- קבצי נתונים (תיקיית data): הגדרות, זמני מרחב מוגן, יישובים, הקלטות מתוקנות.
+// האפליקציה מורידה רק מה שהשתנה, ומעדיפה אותם על מה שארוז בה. אותם שמות נתיב כמו בתוך האפליקציה ----
+const DATA_DIR = path.join(__dirname, 'data');
+let dataIndex = { v: '', files: {} };
+(function scanData() {   // השרת עולה מחדש בכל עדכון עצמי - מספיק לסרוק בהפעלה
+  const crypto = require('crypto'), files = {};
+  const walk = (dir, rel) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.name.startsWith('.')) continue;
+      const p = path.join(dir, e.name), r = rel ? rel + '/' + e.name : e.name;
+      if (e.isDirectory()) walk(p, r);
+      else files[r] = crypto.createHash('sha1').update(fs.readFileSync(p)).digest('hex').slice(0, 12);
+    }
+  };
+  try { walk(DATA_DIR, ''); } catch (_) {}
+  dataIndex = { v: crypto.createHash('sha1').update(JSON.stringify(files)).digest('hex').slice(0, 12), files };
+})();
+function serveData(res, rel) {
+  if (!rel) { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify(dataIndex)); }
+  if (!dataIndex.files[rel]) { res.writeHead(404); return res.end(); }   // רק קבצים מהרשימה - בלי גישה לשאר השרת
+  res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
+  fs.createReadStream(path.join(DATA_DIR, rel)).on('error', () => res.end()).pipe(res);
 }
 
 const owm = { start: 0, n: 0 };

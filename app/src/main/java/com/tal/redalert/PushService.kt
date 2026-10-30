@@ -43,6 +43,8 @@ class PushService : FirebaseMessagingService() {
         val d = msg.data
         if (d["type"] == "hb") {   // סימן חיים מהשרת + אילו מקורות תקינים אצלו
             AlertService.onServerHeartbeat(this, (d["up"] ?: "").split(',').filter { it.isNotEmpty() })
+            // קבצי הנתונים בשרת השתנו (הגדרות / יישובים / הקלטות) - מורידים מיד
+            d["dv"]?.takeIf { it.isNotEmpty() && it != DataFiles.version(this) }?.let { DataFiles.sync(this, force = true) }
             return
         }
         if (d["type"] == "update") { AlertService.onServerUpdate(); return }   // גרסה חדשה פורסמה
