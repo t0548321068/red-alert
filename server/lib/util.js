@@ -1,7 +1,14 @@
 // כלים משותפים: יומן, בקשת https, זמן ישראל, ומניעת בקשות כפולות לאותו מקור
 const https = require('https');
 
-const log = (...a) => console.log(new Date().toISOString(), ...a);
+// יומן: למסוף (journald) + 500 השורות האחרונות בזיכרון - לאתר
+const logLines = [];
+const log = (...a) => {
+  const t = new Date().toISOString();
+  console.log(t, ...a);
+  logLines.push(t + ' ' + a.map(x => typeof x === 'string' ? x : x instanceof Error ? x.message : JSON.stringify(x)).join(' ').slice(0, 1000));
+  if (logLines.length > 500) logLines.shift();
+};
 
 // חיבורים נפרדים מהבדיקה החיה של פיקוד העורף - כדי לא לעכב אותה
 const slowAgent = new https.Agent({ keepAlive: true, maxSockets: 6 });
@@ -53,4 +60,4 @@ async function once(key, fn) {
 const errAt = {};
 function fail(k, e) { if (Date.now() - (errAt[k] || 0) > 60000) { errAt[k] = Date.now(); log('source error', k, e.message); } }
 
-module.exports = { log, get, head, ilTime, once, fail, slowAgent };
+module.exports = { log, logLines, get, head, ilTime, once, fail, slowAgent };
