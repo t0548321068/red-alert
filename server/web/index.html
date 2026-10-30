@@ -72,6 +72,17 @@
       <div class="card">
         <div class="row"><b>מצב השרת</b><span class="end" id="srvTx"></span></div>
         <div id="sources"></div>
+        <div id="srvInfo"></div>
+        <div class="msg-bar" style="padding:4px 14px 14px"><span id="rstSt"></span><button id="rstBtn" class="danger">הפעל מחדש</button></div>
+      </div>
+
+      <div class="card">
+        <div class="row" id="logHead" style="cursor:pointer"><b>יומן השרת</b><span class="end" id="logTx">הצג ▾</span></div>
+        <div id="logBox" style="display:none">
+          <div class="add" style="padding-top:0"><input id="logQ" placeholder="סינון… (למשל: crash, failed, אשקלון)" autocomplete="off"></div>
+          <div class="label">עדכון עצמי</div><pre class="log" id="updLog"></pre>
+          <div class="label">אירועים אחרונים</div><pre class="log" id="srvLog"></pre>
+        </div>
       </div>
     </aside>
     <div id="map"></div>

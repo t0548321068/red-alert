@@ -8,6 +8,7 @@
 // /api/state   מצב השרת והמקורות
 // /api/devices המכשירים והקריסות
 // /api/message שליחת הודעה לטלפונים (לכולם או למכשיר אחד)
+// /api/server  יומן, גרסה, עדכון עצמי;  /api/restart הפעלה מחדש
 // התקנה כאפליקציה (PWA): manifest.webmanifest + sw.js
 // /assets/...  קבצי המפה והיישובים מתוך האפליקציה (אותם קבצים בדיוק)
 const fs = require('fs');
@@ -15,6 +16,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { log } = require('./util');
 const devices = require('./devices');
+const admin = require('./admin');
 
 const AUTH_FILE = path.join(__dirname, '..', 'web_auth.json');
 const WEB_DIR = path.join(__dirname, '..', 'web');
@@ -113,6 +115,8 @@ function handle(req, res, u, state) {
   if (p === '/') { sendFile(res, path.join(WEB_DIR, 'index.html'), false); return true; }
   if (p === '/api/live') { live(req, res); return true; }
   if (p === '/api/state') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(state())); return true; }
+  if (p === '/api/server') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(admin.info(state().started))); return true; }
+  if (p === '/api/restart' && req.method === 'POST') { admin.restart(res); return true; }
   if (p === '/api/message' && req.method === 'POST') { devices.sendMessage(req, res); return true; }
   if (p === '/api/devices') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(devices.list())); return true; }
   if (p === '/api/logout') {
