@@ -69,6 +69,19 @@
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <!-- התראות מיידיות מהשרת (Firebase) -->
+        <!-- כפתורים בהגדרות המהירות: מצב ההגנה, השתקה זמנית, מצב שבת -->
+        <service android:name=".StatusTile" android:exported="true" android:label="צופר חירום"
+            android:icon="@drawable/ic_shield_ind" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service android:name=".MuteTile" android:exported="true" android:label="השתקה – צופר חירום"
+            android:icon="@drawable/ic_volume_off" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
+        <service android:name=".ShabbatTile" android:exported="true" android:label="מצב שבת – צופר חירום"
+            android:icon="@drawable/ic_tile_shabbat" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter><action android:name="android.service.quicksettings.action.QS_TILE" /></intent-filter>
+        </service>
         <service
             android:name=".PushService"
             android:exported="false">
