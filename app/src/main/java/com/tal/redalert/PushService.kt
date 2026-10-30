@@ -63,7 +63,8 @@ class PushService : FirebaseMessagingService() {
             val wl = (getSystemService(POWER_SERVICE) as android.os.PowerManager)
                 .newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "redalert:push").apply { acquire(30_000) }
             Thread {
-                try { svc.handle(title, areas, at, "push:$src") } catch (_: Exception) { }
+                // השירות נסגר באמצע / תקלה - לפחות התראה רגילה, שההתרעה לא תלך לאיבוד
+                try { svc.handle(title, areas, at, "push:$src") } catch (_: Exception) { AlertService.fallbackNotify(this, title, areas) }
                 finally { try { if (wl.isHeld) wl.release() } catch (_: Exception) { } }
             }.start()
         } else {

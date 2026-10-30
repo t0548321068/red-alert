@@ -238,10 +238,10 @@ object Shabbat {
     // המסך הראשי שואל כל שנייה - בודקים לכל היותר פעם בחצי דקה (מיקום + חישוב)
     @Volatile private var activeAt = 0L
     @Volatile private var activeVal = false
-    fun active(c: Context, now: Long = System.currentTimeMillis()): Boolean = when (Prefs.shabbatMode(c)) {
+    fun active(c: Context, now: Long = System.currentTimeMillis(), cached: Boolean = true): Boolean = when (Prefs.shabbatMode(c)) {
         ON -> true
         AUTO -> {
-            if (now != activeAt && Math.abs(now - activeAt) < 30_000) activeVal
+            if (cached && Math.abs(now - activeAt) < 30_000) activeVal
             else (try { holyNow(c, now) } catch (_: Exception) { false }).also { activeAt = now; activeVal = it }
         }
         else -> false

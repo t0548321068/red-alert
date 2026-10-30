@@ -53,8 +53,7 @@ async function send(title, areas, src, at = Date.now()) {
   areas = [...new Set(areas.map(a => String(a).trim()).filter(Boolean))].filter(a => !sentAt.has(title + '|' + a));
   if (!areas.length) return;
   const keys = areas.map(a => title + '|' + a);
-  for (const k of keys) sentAt.set(k, now);
-  saveState();
+  for (const k of keys) sentAt.set(k, now);   // בזיכרון מיד; בקובץ רק אחרי שליחה מוצלחת
   const chunks = [];
   let cur = [];
   for (const a of areas) {
@@ -68,12 +67,14 @@ async function send(title, areas, src, at = Date.now()) {
     android: { priority: 'high', ttl: 60 * 1000 },
   }));
   const first = await sendAll(msgs);
+  if (first) saveState();
   log('sent', src, title, areas.length + ' areas', chunks.length + ' msg', first ? '' : '(failed)');
   // אמינות: אותה הודעה שוב אחרי 5 שניות - אם הראשונה לא הגיעה. הטלפון מסנן כפילויות (אותו זמן התרעה)
   setTimeout(async () => {
     const second = await sendAll(msgs);
     // שתי השליחות נכשלו - משחררים את היישובים, כדי שאותה התרעה ממקור אחר כן תישלח
     if (!first && !second) { for (const k of keys) sentAt.delete(k); saveState(); }
+    else if (!first) saveState();
     sendResult(first || second);
   }, 5000);
 }
