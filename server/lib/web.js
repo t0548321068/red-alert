@@ -7,6 +7,7 @@
 // /api/live    התרעות בזמן אמת (Server-Sent Events) + ההתרעות של חצי השעה האחרונה בהתחברות
 // /api/state   מצב השרת והמקורות
 // /api/devices המכשירים והקריסות
+// /api/message שליחת הודעה לטלפונים (לכולם או למכשיר אחד)
 // התקנה כאפליקציה (PWA): manifest.webmanifest + sw.js
 // /assets/...  קבצי המפה והיישובים מתוך האפליקציה (אותם קבצים בדיוק)
 const fs = require('fs');
@@ -112,6 +113,7 @@ function handle(req, res, u, state) {
   if (p === '/') { sendFile(res, path.join(WEB_DIR, 'index.html'), false); return true; }
   if (p === '/api/live') { live(req, res); return true; }
   if (p === '/api/state') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(state())); return true; }
+  if (p === '/api/message' && req.method === 'POST') { devices.sendMessage(req, res); return true; }
   if (p === '/api/devices') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(devices.list())); return true; }
   if (p === '/api/logout') {
     res.writeHead(302, { Location: '/', 'Set-Cookie': 'tz=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict' }); res.end(); return true;

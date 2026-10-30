@@ -9,7 +9,7 @@ const { log } = require('./util');
 const adminPush = t => require('./push').adminPush(t);
 
 const FILE = path.join(__dirname, '..', 'devices.json');
-let data = { devices: {}, crashes: [] };
+let data = { devices: {}, crashes: [], messages: [] };
 try { data = Object.assign(data, JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch (_) {}
 let saveT = null;
 function save() {
@@ -52,12 +52,32 @@ function crash(req, res) {
   });
 }
 
+// ---- הודעה מהאתר לטלפונים ----
+function sendMessage(req, res) {
+  let body = '';
+  req.on('data', d => { body += d; if (body.length > 4000) req.destroy(); });
+  req.on('end', async () => {
+    let j = {};
+    try { j = JSON.parse(body); } catch (_) {}
+    const text = clean(j.text, 500).trim(), to = String(j.to || '').toUpperCase() === 'ALL' ? 'all' : String(j.to || '').toUpperCase();
+    if (!text || (to !== 'all' && !okCode(to))) { res.writeHead(400); return res.end(); }
+    try {
+      await require('./push').message(text, to);
+      data.messages.unshift({ text, to, at: Date.now() });
+      data.messages.length = Math.min(data.messages.length, 20);
+      save();
+      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"ok":true}');
+    } catch (e) { log('message failed', e.message); res.writeHead(502); res.end(); }
+  });
+}
+
 /** לאתר: המכשירים (הכי חדש למעלה) והקריסות האחרונות */
 function list() {
   return {
     devices: Object.entries(data.devices).map(([d, x]) => Object.assign({ d }, x)).sort((a, b) => b.at - a.at),
     crashes: data.crashes,
+    messages: data.messages,
   };
 }
 
-module.exports = { ping, crash, list };
+module.exports = { ping, crash, list, sendMessage };
