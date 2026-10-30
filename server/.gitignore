@@ -4,3 +4,4 @@ openweather.key
 archive.json
 state.json
 *.tmp
+web_auth.json
