@@ -59,6 +59,16 @@ jobs:
           name: red-alert-apk
           path: red-alert.apk
 
+      # גרסה ציבורית: מספר גרסה שכבר פורסם - עוצרים (שלא תוחלף גרסה קיימת בשקט ולא יגיע עדכון)
+      - name: Check version is new
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v${{ steps.ver.outputs.name }}" --repo ${{ github.repository }} >/dev/null 2>&1; then
+            echo "::error::גרסה ${{ steps.ver.outputs.name }} כבר פורסמה - צריך להעלות את מספר הגרסה"; exit 1
+          fi
+
       # פרסום כ-Release - ממנו האפליקציה מורידה עדכונים
       - uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
@@ -74,22 +84,31 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete beta --cleanup-tag -y --repo ${{ github.repository }} || true
+          R=${{ github.repository }}
           # שם קובץ ייחודי לכל בטא - שלא יורד קובץ ישן מהמטמון
           F=red-alert-${{ steps.ver.outputs.name }}-${{ github.run_number }}.apk
           cp red-alert.apk "$F"
-          gh release create beta "$F" --repo ${{ github.repository }} \
-            --prerelease --latest=false --target ${{ github.sha }} \
-            --title "בטא ${{ steps.ver.outputs.name }} · ${{ github.run_number }}" \
-            --notes "version=${{ steps.ver.outputs.name }}
+          TITLE="בטא ${{ steps.ver.outputs.name }} · ${{ github.run_number }}"
+          NOTES="version=${{ steps.ver.outputs.name }}
           build=${{ github.run_number }}"
+          if gh release view beta --repo $R >/dev/null 2>&1; then
+            # הגרסה הקיימת לא נמחקת: קודם מעלים את הקובץ החדש, ורק אז מוחקים את הישן - הבטא לא נעלמת אף רגע
+            gh release upload beta "$F" --clobber --repo $R
+            for a in $(gh release view beta --repo $R --json assets -q '.assets[].name'); do
+              [ "$a" != "$F" ] && gh release delete-asset beta "$a" -y --repo $R
+            done
+            gh release edit beta --repo $R --title "$TITLE" --notes "$NOTES" --prerelease --draft=false
+          else
+            gh release create beta "$F" --repo $R --prerelease --latest=false --target ${{ github.sha }} \
+              --title "$TITLE" --notes "$NOTES"
+          fi
           # לפעמים הגרסה נשארת כטיוטה (draft) ואז האפליקציה לא רואה אותה - מפרסמים בכוח
           for i in 1 2 3 4 5; do
-            gh release edit beta --repo ${{ github.repository }} --draft=false --prerelease && \
-              gh api repos/${{ github.repository }}/releases/tags/beta >/dev/null && break
+            gh release edit beta --repo $R --draft=false --prerelease && \
+              gh api repos/$R/releases/tags/beta >/dev/null && break
             sleep 5
           done
-          gh api repos/${{ github.repository }}/releases/tags/beta >/dev/null
+          gh api repos/$R/releases/tags/beta >/dev/null
           curl -s -H "Title: Beta" -d "beta" https://ntfy.sh/redalert-tal-beta-7f3k9q
 
       # התראה מיידית לאפליקציות המותקנות (הן מחוברות לנושא הזה ב-ntfy.sh)
