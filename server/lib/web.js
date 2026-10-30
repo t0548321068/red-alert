@@ -6,11 +6,14 @@
 // /api/login   בדיקת הקוד -> עוגייה חתומה לשנה
 // /api/live    התרעות בזמן אמת (Server-Sent Events) + ההתרעות של חצי השעה האחרונה בהתחברות
 // /api/state   מצב השרת והמקורות
+// /api/devices המכשירים והקריסות
+// התקנה כאפליקציה (PWA): manifest.webmanifest + sw.js
 // /assets/...  קבצי המפה והיישובים מתוך האפליקציה (אותם קבצים בדיוק)
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { log } = require('./util');
+const devices = require('./devices');
 
 const AUTH_FILE = path.join(__dirname, '..', 'web_auth.json');
 const WEB_DIR = path.join(__dirname, '..', 'web');
@@ -81,7 +84,7 @@ function live(req, res) {
 // ---- קבצים ----
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml',
-  '.ogg': 'audio/ogg', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
+  '.ogg': 'audio/ogg', '.webmanifest': 'application/manifest+json', '.ico': 'image/x-icon' };
 // מתוך האפליקציה - רק הקבצים האלה
 const APP_FILES = /^(areas\.js|districts\.json|migun\.txt|mapstyle\.js|leaflet\/[\w.-]+(\/[\w.-]+)?|maplibre\/[\w.-]+)$/;
 function sendFile(res, file, cache) {
@@ -97,8 +100,8 @@ function sendFile(res, file, cache) {
 function handle(req, res, u, state) {
   const p = u.pathname;
   if (p === '/api/login' && req.method === 'POST') { login(req, res); return true; }
-  if (p === '/login.html' || p === '/web.css' || p === '/icon.png' || p === '/favicon.ico') {
-    sendFile(res, path.join(WEB_DIR, p === '/favicon.ico' ? 'icon.png' : p.slice(1)), true); return true;
+  if (/^\/(login\.html|web\.css|icon\.png|icon-512\.png|favicon\.ico|manifest\.webmanifest|sw\.js)$/.test(p)) {
+    sendFile(res, path.join(WEB_DIR, p === '/favicon.ico' ? 'icon.png' : p.slice(1)), p !== '/sw.js'); return true;
   }
   const isWeb = p === '/' || p.startsWith('/api/') || p.startsWith('/assets/') || p.startsWith('/w/');
   if (!isWeb) return false;
@@ -109,6 +112,7 @@ function handle(req, res, u, state) {
   if (p === '/') { sendFile(res, path.join(WEB_DIR, 'index.html'), false); return true; }
   if (p === '/api/live') { live(req, res); return true; }
   if (p === '/api/state') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(state())); return true; }
+  if (p === '/api/devices') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(devices.list())); return true; }
   if (p === '/api/logout') {
     res.writeHead(302, { Location: '/', 'Set-Cookie': 'tz=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict' }); res.end(); return true;
   }

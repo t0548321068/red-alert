@@ -5,3 +5,4 @@ archive.json
 state.json
 *.tmp
 web_auth.json
+devices.json
