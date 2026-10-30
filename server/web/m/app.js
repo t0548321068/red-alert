@@ -10,7 +10,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const pad = n => String(n).padStart(2, '0');
 const hm = d => pad(d.getHours()) + ':' + pad(d.getMinutes());
 const hms = d => hm(d) + ':' + pad(d.getSeconds());
-const ic = (name, cls = '') => `<i class="ic ${cls}" style="--i:url(/m/ic/${name}.svg)"></i>`;
+const ic = (name, cls = '') => `<i class="ic ${cls}" style="--i:url(/app/ic/${name}.svg)"></i>`;
 const ALL_COUNTRY = 'כל הארץ';
 const fixAll = s => String(s).replace(/ברחבי הארץ/g, ALL_COUNTRY);
 
@@ -147,7 +147,7 @@ function renderAlertCard() {
     wrap.hidden = false;
   }
   const si = stageIcon(a);
-  if (si !== cardIcon) { cardIcon = si; $('aIc').style.setProperty('--i', `url(/m/ic/${si}.svg)`); }
+  if (si !== cardIcon) { cardIcon = si; $('aIc').style.setProperty('--i', `url(/app/ic/${si}.svg)`); }
   const t = timer(a);
   if (t) { $('aLbl').textContent = t[0]; $('aLbl').hidden = !t[0]; $('aTmr').textContent = t[1]; $('aTmr').classList.toggle('small', !t[0]); }
 }
@@ -162,8 +162,8 @@ function renderProtect() {
   const card = $('clockCard');
   card.className = 'clockcard ' + (noNet ? 'nonet' : enabled ? 'on' : 'off');
   const sh = $('shield');
-  if (enabled && !noNet) sh.innerHTML = '<img src="/m/ic/ic_shield_green.svg" alt="">';
-  else sh.innerHTML = `<i class="ic" style="--i:url(/m/ic/ic_shield_outline.svg);color:${noNet ? '#FF9F0A' : '#FF453A'}"></i>`;
+  if (enabled && !noNet) sh.innerHTML = '<img src="/app/ic/ic_shield_green.svg" alt="">';
+  else sh.innerHTML = `<i class="ic" style="--i:url(/app/ic/ic_shield_outline.svg);color:${noNet ? '#FF9F0A' : '#FF453A'}"></i>`;
   // אותם צבעים כמו באפליקציה (שקיפות 6% / 14%)
   $('haloOuter').style.background = noNet ? 'rgba(255,159,10,.06)' : enabled ? 'rgba(105,240,174,.06)' : 'rgba(255,69,58,.06)';
   $('haloInner').style.background = noNet ? 'rgba(255,159,10,.14)' : enabled ? 'rgba(105,240,174,.14)' : 'rgba(255,69,58,.14)';
@@ -239,7 +239,7 @@ $('cWx').onclick = () => refreshLocation(true);
 let srv = null;   // /api/state
 function setInd(id, icon, label, color, blink) {
   const b = $(id), i = b.querySelector('.ic');
-  i.style.setProperty('--i', `url(/m/ic/${icon}.svg)`); i.style.color = color;
+  i.style.setProperty('--i', `url(/app/ic/${icon}.svg)`); i.style.color = color;
   b.querySelector('span').textContent = label;
   b.classList.toggle('blink', !!blink);
 }
@@ -287,7 +287,7 @@ function feedItems() {
 }
 function feedHtml(e) {
   const lvl = levelOf(e.t), t = lvl === END ? 'האירוע הסתיים' : e.t.includes('בדקות הקרובות') ? 'מקדימה' : e.t;
-  const n = alertIcon(e.t, lvl), i = `<i class="ic fi" style="--i:url(/m/ic/${n}.svg);color:${COLOR[lvl]};transform:scale(${iconScale(n)})"></i>`;
+  const n = alertIcon(e.t, lvl), i = `<i class="ic fi" style="--i:url(/app/ic/${n}.svg);color:${COLOR[lvl]};transform:scale(${iconScale(n)})"></i>`;
   return `${hm(new Date(e.ts))}:${pad(new Date(e.ts).getSeconds())}\n${i} ${esc(t)} ${i}\n<span class="ar">${esc(fixAll(e.b))}</span>`;
 }
 function renderFeed() {
@@ -316,7 +316,7 @@ document.addEventListener('pointerdown', unlockAudio, { capture: true });
 function playSiren() { if (!soundOn || !audioOk) return; siren.currentTime = 0; siren.play().catch(() => {}); }
 function stopSiren() { siren.pause(); siren.currentTime = 0; }
 let swReg = null;
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then(r => { swReg = r; }).catch(() => {});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' }).then(r => { swReg = r; }).catch(() => {});
 function notify(a) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   const [t1] = head(a.title, a.level);
@@ -391,7 +391,7 @@ function renderRecent() {
     const dl = fullDay(e.ts), lvl = levelOf(e.t), n = alertIcon(e.t, lvl);
     if (dl !== day) { if (day !== null) h += '</div>'; day = dl; h += `<div class="day">${dl}</div><div class="rcard">`; }
     const col = lvl === PRE ? '#F08C00' : lvl === END ? '#2E7D32' : '#E53935';
-    h += `<div class="rrow" data-i="${recent.indexOf(e)}"><div class="dot" style="background:${col}"><i class="ic" style="--i:url(/m/ic/${n}.svg);transform:scale(${iconScale(n)})"></i></div>
+    h += `<div class="rrow" data-i="${recent.indexOf(e)}"><div class="dot" style="background:${col}"><i class="ic" style="--i:url(/app/ic/${n}.svg);transform:scale(${iconScale(n)})"></i></div>
       <div class="tx"><div class="a">${esc(lvl === PRE ? 'התראה מקדימה' : e.t)}</div><div class="b">${esc(fixAll(e.b))}</div></div><div class="tm">${hm(new Date(e.ts))}</div></div>`;
   });
   $('recentList').innerHTML = h + '</div>';
@@ -455,7 +455,6 @@ function renderSettings() {
       <div class="sugg" id="sugg"></div>
     </div>
     <div class="scard">
-      ${row('desk', 'ic_set_display', '#7E57C2', 'האתר המלא', 'מכשירים, הודעות ומצב השרת')}
       ${row('logout', 'ic_set_lock', '#546E7A', 'יציאה', '')}
     </div>`;
   const inp = $('addIn'), names = () => [ALL_COUNTRY, ...new Set(Object.values(DIST)), ...Object.keys(ALL_AREAS)];
@@ -477,8 +476,7 @@ $('settings').onclick = e => {
   if (k === 'sound') { soundOn = !soundOn; store.set('m_sound', soundOn); if (!soundOn) stopSiren(); }
   if (k === 'notif' && 'Notification' in window) Notification.requestPermission().then(renderSettings);
   if (k === 'near') { nearOn = !nearOn; store.set('m_near', nearOn); if (nearOn) refreshLocation(true); }
-  if (k === 'desk') location.href = '/?full=1';
-  if (k === 'logout') location.href = '/api/logout';
+  if (k === 'logout') location.href = '/api/logout?to=app';
   renderSettings(); refreshAll();
 };
 

@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>צופר חירום</title>
 <link rel="icon" href="/icon.png">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="manifest" href="/app/manifest.webmanifest">
 <meta name="theme-color" content="#000000">
 <link rel="stylesheet" href="/assets/leaflet/leaflet.css">
 <link rel="stylesheet" href="/assets/maplibre/maplibre-gl.css">
-<link rel="stylesheet" href="/m/app.css">
+<link rel="stylesheet" href="/app/app.css">
 <script src="/assets/leaflet/leaflet.js"></script>
 <script src="/assets/maplibre/maplibre-gl.js"></script>
 <script src="/assets/maplibre/leaflet-maplibre-gl.js"></script>
@@ -22,9 +22,9 @@
   <div class="header">
     <div class="title">צופר חירום</div>
     <span class="grow"></span>
-    <button class="hicon" id="goClock"><i class="ic" style="--i:url(/m/ic/ic_nav_clock.svg)"></i></button>
-    <button class="hicon" id="goRecent"><i class="ic" style="--i:url(/m/ic/ic_nav_alerts.svg)"></i></button>
-    <button class="hicon" id="goSettings"><i class="ic" style="--i:url(/m/ic/ic_gear.svg)"></i></button>
+    <button class="hicon" id="goClock"><i class="ic" style="--i:url(/app/ic/ic_nav_clock.svg)"></i></button>
+    <button class="hicon" id="goRecent"><i class="ic" style="--i:url(/app/ic/ic_nav_alerts.svg)"></i></button>
+    <button class="hicon" id="goSettings"><i class="ic" style="--i:url(/app/ic/ic_gear.svg)"></i></button>
   </div>
 
   <div class="status" id="status">
@@ -38,7 +38,7 @@
 
   <div class="alertwrap" id="alertWrap" hidden>
     <div class="alertcard" id="alertCard"></div>
-    <button class="x" id="alertX"><i class="ic" style="--i:url(/m/ic/ic_close.svg)"></i></button>
+    <button class="x" id="alertX"><i class="ic" style="--i:url(/app/ic/ic_close.svg)"></i></button>
   </div>
 
   <div class="clockcard" id="clockCard">
@@ -65,20 +65,20 @@
 
 <!-- עמודים -->
 <section class="page" id="pRecent" hidden>
-  <div class="phead"><button class="back" data-back><i class="ic" style="--i:url(/m/ic/ic_close.svg)"></i></button>
+  <div class="phead"><button class="back" data-back><i class="ic" style="--i:url(/app/ic/ic_close.svg)"></i></button>
     <div class="ptitle">התרעות אחרונות</div><span class="seg" id="seg"></span>
-    <button class="hicon" id="goMap"><i class="ic" style="--i:url(/m/ic/ic_map.svg)"></i></button></div>
+    <button class="hicon" id="goMap"><i class="ic" style="--i:url(/app/ic/ic_map.svg)"></i></button></div>
   <div id="recentList"></div>
 </section>
 
 <section class="page" id="pMap" hidden>
-  <div class="phead"><button class="back" data-back><i class="ic" style="--i:url(/m/ic/ic_close.svg)"></i></button>
+  <div class="phead"><button class="back" data-back><i class="ic" style="--i:url(/app/ic/ic_close.svg)"></i></button>
     <div class="ptitle" id="mapTitle">מפה</div></div>
   <div id="map"></div>
 </section>
 
 <section class="page" id="pSettings" hidden>
-  <div class="phead"><button class="back" data-back><i class="ic" style="--i:url(/m/ic/ic_close.svg)"></i></button>
+  <div class="phead"><button class="back" data-back><i class="ic" style="--i:url(/app/ic/ic_close.svg)"></i></button>
     <div class="ptitle">הגדרות</div></div>
   <div id="settings"></div>
 </section>
@@ -89,6 +89,6 @@
 <div class="sheetbg" id="sheetBg" hidden><div class="sheet" id="sheet"></div></div>
 
 <audio id="siren" src="/assets/siren.ogg" preload="auto"></audio>
-<script src="/m/app.js"></script>
+<script src="/app/app.js"></script>
 </body>
 </html>
