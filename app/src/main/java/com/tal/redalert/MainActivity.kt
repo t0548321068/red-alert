@@ -896,7 +896,7 @@ class MainActivity : Activity() {
     internal val pages = mutableListOf<android.app.Dialog>()
     internal val DAY_NAMES = listOf("ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת")
 
-    companion object { private var reopenDisplay = false }
+    companion object { internal var reopenDisplay = false }
 
     /** ערכת הצבעים נשמרת מיד, ומוחלת (טעינה מחדש) רק ביציאה מעמוד התצוגה - בלי קפיצות בזמן הבחירה */
     internal var themeAtOpen = -1
