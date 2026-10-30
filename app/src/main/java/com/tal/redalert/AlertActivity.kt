@@ -184,7 +184,7 @@ open class AlertActivity : Activity() {
                 setOnClickListener { click(l) }
             }
         }
-        val tips = Guidance.forTitle(title)
+        val tips = Config.guidance(title)
         val list = mutableListOf(
             btn(R.drawable.ic_volume_off, "השתק") { l ->
                 AlertService.silence(this); l.text = "הושתק"; l.alpha = 0.6f
@@ -286,6 +286,10 @@ open class AlertActivity : Activity() {
             // שקוף עד שהמפה מוכנה - רואים את צבע ההתרעה, לא מלבן כהה
             setBackgroundColor(Color.TRANSPARENT)
             isVerticalScrollBarEnabled = false; isHorizontalScrollBarEnabled = false
+            webViewClient = object : android.webkit.WebViewClient() {
+                override fun shouldInterceptRequest(view: android.webkit.WebView, req: android.webkit.WebResourceRequest) =
+                    DataFiles.web(this@AlertActivity, req.url.toString())   // יישובים מעודכנים מהשרת
+            }
             // הנתונים עוברים בכתובת - המפה נפתחת ישר במצב הקטן על אזור ההתרעה
             val me = try { Weather.lastLocation(this@AlertActivity) } catch (_: Exception) { null }
             val q = org.json.JSONObject().put("names", names).put("level", level)

@@ -97,13 +97,13 @@ class Speaker(private val c: Context) {
     private fun playClips(clips: List<String>, i: Int) {
         if (i >= clips.size) { stopClips(); finish(); return }
         try {
-            val fd = c.assets.openFd(clips[i])
+            val local = DataFiles.file(c, clips[i])   // הקלטה מתוקנת מהשרת
             val mp = android.media.MediaPlayer().apply {
                 setAudioAttributes(AudioAttributes.Builder()
                     .setUsage(usage)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
-                setDataSource(fd.fileDescriptor, fd.startOffset, fd.length)
-                fd.close()
+                if (local != null) setDataSource(local.path)
+                else c.assets.openFd(clips[i]).use { fd -> setDataSource(fd.fileDescriptor, fd.startOffset, fd.length) }
                 setOnCompletionListener { it.release(); if (player === it) player = null; playClips(clips, i + 1) }
                 setOnErrorListener { mp, _, _ -> mp.release(); if (player === mp) player = null; playClips(clips, i + 1); true }
                 prepare()
@@ -118,14 +118,15 @@ class Speaker(private val c: Context) {
         player = null
     }
 
-    private fun has(path: String) = try { c.assets.openFd(path).close(); true } catch (_: Exception) { false }
+    // הקלטה מתוקנת או חדשה מהשרת - קודמת להקלטה שבתוך האפליקציה
+    private fun has(path: String) = DataFiles.exists(c, path)
 
     /** שם אזור בעברית → קובץ (voice/areas/<שם באנגלית>.mp3) */
-    private val index: Map<String, String> by lazy {
-        try {
-            val o = org.json.JSONObject(c.assets.open("voice/index.json").bufferedReader().use { it.readText() })
+    private val index: Map<String, String> get() = indexCache ?: synchronized(Speaker) {
+        indexCache ?: try {
+            val o = org.json.JSONObject(DataFiles.text(c, "voice/index.json"))
             o.keys().asSequence().associateWith { "voice/" + o.getString(it) }
-        } catch (_: Exception) { emptyMap() }
+        } catch (_: Exception) { emptyMap() }.also { indexCache = it }
     }
 
     /** סוג → אזורים (עד 4, ואם יש עוד "ואזורים נוספים") → זמן להגעה */
@@ -161,6 +162,8 @@ class Speaker(private val c: Context) {
     fun shutdown() { stopClips(); try { tts.shutdown() } catch (_: Exception) { } }
 
     companion object {
+        @Volatile private var indexCache: Map<String, String>? = null
+        fun resetIndex() { indexCache = null }
         const val GOOGLE_TTS = "com.google.android.tts"
         /** בניית הטקסט להקראה */
         fun textFor(title: String, areas: List<String>, shelter: Int?): String {

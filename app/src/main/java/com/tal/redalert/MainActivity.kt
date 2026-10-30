@@ -650,6 +650,7 @@ class MainActivity : Activity() {
         refreshAccuracy()   // "לפי זמן": מוצגים בכל פתיחה
         try { Shabbat.refresh(this) } catch (_: Exception) { }   // זמני שבת וחג מהשרת
         Prefs.refreshBeta(this)   // מכשירי הבטא - הרשימה בשרת
+        DataFiles.sync(this)      // הגדרות, יישובים והקלטות מהשרת (לכל היותר פעם בשעה)
         // קיצור דרך מאייקון האפליקציה (לחיצה ארוכה)
         intent?.getStringExtra("shortcut")?.let { sc ->
             intent.removeExtra("shortcut")

@@ -42,9 +42,7 @@ class AlertService : Service() {
         const val ACTION_PUSH = "push"
         const val ACTION_PUSH_ALERT = "push_alert"   // התרעה מהשרת (Firebase) כשהשירות לא רץ
         const val ACTION_WATCHDOG = "watchdog"
-        private const val WATCHDOG_MS = 5 * 60 * 1000L
-        /** השרת מחובר (סימן החיים מוכיח שהכול עובד) - השומר מעיר את הטלפון רק כל 15 דקות */
-        private const val WATCHDOG_SERVER_MS = 15 * 60 * 1000L
+        // זמני השומר - מההגדרות בשרת (config.json): בלי שרת כל 5 דקות, עם שרת כל 15
 
         /** השרת הודיע שיש גרסה חדשה - בודקים מיד (במקום שהטלפון יבדוק בעצמו כל חצי שעה) */
         fun onServerUpdate() { instance?.onUpdatePing() }
@@ -56,7 +54,7 @@ class AlertService : Service() {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             try {
                 am.setAndAllowWhileIdle(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                    android.os.SystemClock.elapsedRealtime() + (if (serverOk(c)) WATCHDOG_SERVER_MS else WATCHDOG_MS), pi)
+                    android.os.SystemClock.elapsedRealtime() + (if (serverOk(c)) Config.watchdogServerMs else Config.watchdogMs), pi)
             } catch (_: Exception) { }
         }
 
@@ -70,10 +68,9 @@ class AlertService : Service() {
          * השרת שלנו בודק את כל המקורות ושולח כל התרעה דרך Firebase, ופעם ב-10 דקות סימן חיים.
          * כל עוד סימן החיים מגיע - הטלפון לא בודק בעצמו (חוסך סוללה). 35 דקות בלי סימן חיים - חוזרים לבדוק לבד
          */
-        private const val SERVER_STALE_MS = 35 * 60 * 1000L
         /** מתי הגיע סימן החיים האחרון מהשרת (0 = עוד לא) */
         fun serverHbAt(c: Context): Long = c.getSharedPreferences("server", Context.MODE_PRIVATE).getLong("hb", 0L)
-        fun serverOk(c: Context): Boolean = System.currentTimeMillis() - serverHbAt(c) < SERVER_STALE_MS
+        fun serverOk(c: Context): Boolean = System.currentTimeMillis() - serverHbAt(c) < Config.serverStaleMs
         fun onServerHeartbeat(c: Context, up: List<String>) {
             val now = System.currentTimeMillis()
             c.getSharedPreferences("server", Context.MODE_PRIVATE).edit().putLong("hb", now).putString("up", up.joinToString(",")).apply()
@@ -114,23 +111,18 @@ class AlertService : Service() {
         const val LEVEL_PRE = 1
         const val LEVEL_END = 2
 
-        /** סיווג לפי נוסח ההודעה של פיקוד העורף */
+        /** סיווג לפי נוסח ההודעה של פיקוד העורף - המילים בהגדרות מהשרת (config.json) */
         fun levelOf(title: String): Int = when {
-            title.contains("הסתיים") || title.contains("הוסר") || title.contains("ניתן לצאת") -> LEVEL_END
+            Config.endWords.any { title.contains(it) } -> LEVEL_END
             // התרעה מקדימה: "בדקות הקרובות...", "איום מלבנון" וכד', "התקרבו למרחב המוגן"
-            title.contains("בדקות הקרובות") || title.contains("צפויות") ||
-                title.contains("מקדימה") || title.contains("איום") || title.contains("התקרבו") -> LEVEL_PRE
+            Config.preWords.any { title.contains(it) } -> LEVEL_PRE
             else -> LEVEL_ALERT
         }
 
         /** הכותרת שמוצגת: כל סוגי הסיום = "האירוע הסתיים"; "איום מלבנון" = "התרעה מקדימה - איום מלבנון" */
         fun displayTitle(raw: String): String {
             val t = raw.trim()
-            return when {
-                levelOf(t) == LEVEL_END -> "האירוע הסתיים"
-                t.contains("איום") && !t.startsWith("התרעה מקדימה") -> "התרעה מקדימה - $t"
-                else -> t
-            }
+            return if (levelOf(t) == LEVEL_END) Config.endDisplay else Config.prePrefix(t) ?: t
         }
 
         /**
@@ -211,6 +203,7 @@ class AlertService : Service() {
         syncLocalSources()   // השרת הפסיק לשלוח סימן חיים - צופר חוזר לפעול בטלפון
         try { Shabbat.refresh(this) } catch (_: Exception) { }   // זמני שבת וחג מהשרת (לכל היותר פעם ב-12 שעות)
         Prefs.refreshBeta(this)   // מכשירי הבטא - הרשימה בשרת
+        DataFiles.sync(this)      // הגדרות, יישובים והקלטות מהשרת (לכל היותר פעם בשעה)
         if (!serverOk(this)) awake(6_000)   // מספיק לוודא שהחיבור לצופר חי ולבדיקה אחת של פיקוד העורף
         tzofar?.ensureConnected()
         // הטלפון כבר ער בשביל השומר - מנצלים את זה לבדיקת עדכון (לכל היותר פעם בחצי שעה, בקשה קטנה אחת)

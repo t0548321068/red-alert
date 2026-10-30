@@ -50,6 +50,8 @@ class MapActivity : Activity() {
         }, "App")
 
         web.webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(view: WebView, req: android.webkit.WebResourceRequest) =
+                DataFiles.web(this@MapActivity, req.url.toString())   // יישובים מעודכנים מהשרת
             override fun onPageFinished(view: WebView, url: String) {
                 Thread {
                     val data = buildData(dark)

@@ -14,10 +14,12 @@ import kotlin.math.sqrt
 object AreaData {
 
     @Volatile private var migunCache: Map<String, Int>? = null
+    /** קבצים חדשים מהשרת - טוענים מחדש */
+    fun reset() { migunCache = null; areasCache = null; districtCache = null; keysCache = null }
     @Volatile private var areasCache: JSONObject? = null
 
     private fun migun(c: Context): Map<String, Int> = migunCache ?: synchronized(this) {
-        migunCache ?: c.assets.open("migun.txt").bufferedReader(Charsets.UTF_8).useLines { lines ->
+        migunCache ?: DataFiles.open(c, "migun.txt").bufferedReader(Charsets.UTF_8).useLines { lines ->
             lines.mapNotNull { l ->
                 val p = l.split('\t')
                 if (p.size == 2) p[1].toIntOrNull()?.let { p[0] to it } else null
@@ -36,7 +38,7 @@ object AreaData {
     fun isNational(area: String) = area == ALL_COUNTRY || area == ALL_COUNTRY_2
     fun districtMap(c: Context): Map<String, String> = districtCache ?: synchronized(this) {
         districtCache ?: try {
-            val o = JSONObject(c.assets.open("districts.json").bufferedReader(Charsets.UTF_8).use { it.readText() })
+            val o = JSONObject(DataFiles.open(c, "districts.json").bufferedReader(Charsets.UTF_8).use { it.readText() })
             o.keys().asSequence().associateWith { o.getString(it) }
         } catch (_: Exception) { emptyMap() }.also { districtCache = it }
     }
@@ -52,7 +54,7 @@ object AreaData {
     fun areas(c: Context): JSONObject = areasCache ?: synchronized(this) {
         // אותו קובץ משמש גם את המפה (var ALL_AREAS={...};) - מורידים את העטיפה
         areasCache ?: JSONObject(
-            c.assets.open("areas.js").bufferedReader(Charsets.UTF_8).use { it.readText() }
+            DataFiles.open(c, "areas.js").bufferedReader(Charsets.UTF_8).use { it.readText() }
                 .removePrefix("var ALL_AREAS=").trimEnd().removeSuffix(";")
         ).also { areasCache = it }
     }
