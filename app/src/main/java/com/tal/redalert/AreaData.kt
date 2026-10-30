@@ -16,6 +16,10 @@ object AreaData {
     @Volatile private var migunCache: Map<String, Int>? = null
     /** קבצים חדשים מהשרת - טוענים מחדש */
     fun reset() { migunCache = null; areasCache = null; districtCache = null; keysCache = null }
+    /** נתוני היישובים כבר נטענו (הטעינה הראשונה כבדה - נעשית ברקע) */
+    fun loaded() = areasCache != null && keysCache != null
+    /** טעינה מראש ברקע - שהמסך הראשי לא יחכה לה */
+    fun preload(c: Context) = Thread { try { areas(c); keys(c); migun(c) } catch (_: Exception) { } }.start()
     @Volatile private var areasCache: JSONObject? = null
 
     private fun migun(c: Context): Map<String, Int> = migunCache ?: synchronized(this) {

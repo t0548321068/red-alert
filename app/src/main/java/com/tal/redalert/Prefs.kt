@@ -85,8 +85,21 @@ object Prefs {
     // ---- פיד ארצי: כל ההתראות בארץ, בלי קשר לאזורים שלי ----
     private const val MAX_FEED = 600   // מספיק לשבוע במפה
 
+    /**
+     * הפיד וההיסטוריה נקראים הרבה (המסך הראשי, ווידג'טים, מפה) - מנתחים אותם רק כשהם השתנו.
+     * אותו טקסט שמור = אותה רשימה מוכנה מהפעם הקודמת
+     */
+    private class Parsed(val raw: String, val list: List<Entry>)
+    @Volatile private var feedCache: Parsed? = null
+    @Volatile private var historyCache: Parsed? = null
+
     fun feed(c: Context): List<Entry> {
-        val arr = try { JSONArray(sp(c).getString("feed", "[]")) } catch (_: Exception) { JSONArray() }
+        val raw = sp(c).getString("feed", "[]") ?: "[]"
+        feedCache?.let { if (it.raw == raw) return it.list }
+        return parseFeed(c, raw).also { feedCache = Parsed(raw, it) }
+    }
+    private fun parseFeed(c: Context, raw: String): List<Entry> {
+        val arr = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
         return (0 until arr.length()).map {
             val o = arr.getJSONObject(it)
             Entry("", AlertService.displayTitle(o.optString("title")), o.optString("body"), AlertService.levelOf(o.optString("title")), o.optLong("ts"))
@@ -350,8 +363,14 @@ object Prefs {
     /** ההתרעה שהכרטיס שלה הוסתר ב-✕ (לפי זמן הירי) */
     fun alertDismissed(c: Context) = sp(c).getLong("alertDismissed", 0L)
     fun setAlertDismissed(c: Context, firedAt: Long) = sp(c).edit().putLong("alertDismissed", firedAt).apply()
-    fun activeAlert(c: Context): org.json.JSONObject? =
-        try { sp(c).getString("activeAlert", "")?.takeIf { it.isNotEmpty() }?.let { org.json.JSONObject(it) } } catch (_: Exception) { null }
+    @Volatile private var activeCache: Pair<String, org.json.JSONObject?>? = null
+    fun activeAlert(c: Context): org.json.JSONObject? {
+        val raw = sp(c).getString("activeAlert", "") ?: ""
+        activeCache?.let { if (it.first == raw) return it.second }
+        val j = try { raw.takeIf { it.isNotEmpty() }?.let { org.json.JSONObject(it) } } catch (_: Exception) { null }
+        activeCache = raw to j
+        return j
+    }
     fun darkTheme(c: Context) = when (themeMode(c)) {
         1 -> false
         2 -> (c.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
@@ -421,7 +440,12 @@ object Prefs {
 
     /** היסטוריית התראות, החדשה ראשונה */
     fun history(c: Context): List<Entry> {
-        val arr = try { JSONArray(sp(c).getString("history", "[]")) } catch (_: Exception) { JSONArray() }
+        val raw = sp(c).getString("history", "[]") ?: "[]"
+        historyCache?.let { if (it.raw == raw) return it.list }
+        return parseHistory(c, raw).also { historyCache = Parsed(raw, it) }
+    }
+    private fun parseHistory(c: Context, raw: String): List<Entry> {
+        val arr = try { JSONArray(raw) } catch (_: Exception) { JSONArray() }
         return (0 until arr.length()).map {
             val o = arr.getJSONObject(it)
             Entry(o.optString("time"), AlertService.displayTitle(o.optString("title")), o.optString("body"),

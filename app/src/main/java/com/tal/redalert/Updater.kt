@@ -24,8 +24,10 @@ object Updater {
 
     private const val BETA_API = "https://api.github.com/repos/t0548321068/red-alert/releases/tags/beta"
 
+    // הגרסה המותקנת לא משתנה כל עוד האפליקציה רצה - נקראת פעם אחת
+    @Volatile private var curVer: String? = null
     fun currentVersion(c: Context): String =
-        c.packageManager.getPackageInfo(c.packageName, 0).versionName ?: "0"
+        curVer ?: (c.packageManager.getPackageInfo(c.packageName, 0).versionName ?: "0").also { curVer = it }
 
     fun buildNumber(c: Context): Int = c.getString(R.string.build_number).toIntOrNull() ?: 0
     fun isBetaBuild(c: Context): Boolean = c.resources.getBoolean(R.bool.is_beta)
