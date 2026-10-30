@@ -2,7 +2,7 @@ name: Build APK
 
 on:
   push:
-    branches: ['**']
+    branches: [main, beta, 'pending-*']
   workflow_dispatch:
 
 permissions:
@@ -32,8 +32,27 @@ jobs:
         id: ver
         run: echo "name=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)" >> "$GITHUB_OUTPUT"
 
-      - name: Rename APK
-        run: cp app/build/outputs/apk/release/*.apk red-alert.apk
+      # חתימה: המפתח החדש, עם אישור מעבר מהמפתח הישן - הטלפונים מקבלים את העדכון כרגיל.
+      # המפתחות מוצפנים בענף signing, ונפתחים רק כאן עם הסוד SIGNING_PASS
+      - name: Sign
+        env:
+          SIGNING_PASS: ${{ secrets.SIGNING_PASS }}
+        run: |
+          set -e
+          B=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)
+          W=$(mktemp -d)
+          git fetch -q origin signing
+          git show FETCH_HEAD:signing.enc | openssl enc -d -aes-256-cbc -pbkdf2 -iter 300000 -pass env:SIGNING_PASS | tar -x -C $W
+          $B/zipalign -f -p 4 app/build/outputs/apk/release/app-release-unsigned.apk $W/aligned.apk
+          $B/apksigner sign \
+            --ks $W/old.ks --ks-key-alias redalert --ks-pass pass:REMOVED --key-pass pass:REMOVED \
+            --next-signer --ks $W/new.ks --ks-key-alias redalert2 --ks-pass env:SIGNING_PASS --key-pass env:SIGNING_PASS \
+            --lineage $W/lineage --rotation-min-sdk-version 28 \
+            --out red-alert.apk $W/aligned.apk
+          rm -rf $W
+          $B/apksigner verify -v --print-certs red-alert.apk > verify.txt
+          grep -q "Verified using v3 scheme (APK Signature Scheme v3): true" verify.txt
+          grep -E "Verified using|Number of signers" verify.txt
 
       - uses: actions/upload-artifact@v4
         with:

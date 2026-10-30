@@ -21,23 +21,10 @@ android {
         resValue("bool", "is_beta", (branch != "main").toString())
     }
 
-    // מפתח קבוע - כדי שכל גרסה חדשה תותקן מעל הקודמת
-    signingConfigs {
-        create("fixed") {
-            storeFile = file("redalert.keystore")
-            storePassword = "REMOVED"
-            keyAlias = "redalert"
-            keyPassword = "REMOVED"
-        }
-    }
-
+    // החתימה נעשית בבנייה ב-GitHub (build.yml) - המפתחות מוצפנים, לא בקוד
     buildTypes {
-        debug {
-            signingConfig = signingConfigs.getByName("fixed")
-        }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("fixed")
         }
     }
 
