@@ -37,6 +37,9 @@ class TelegramSource(
         var last = 0L
         while (running) {
             // בודקים כשעבר הזמן הנוכחי (משתנה: אירוע / מסך דלוק / כבוי) - צעדים קטנים כדי להגיב מהר לשינוי
+            // השרת בודק את טלגרם - מתחילים מחדש מבסיס עדכני כשחוזרים לבדוק בעצמנו,
+            // כדי שהודעות ישנות (מלפני שעות) לא יוקפצו כאילו הן חדשות
+            if (interval() >= Long.MAX_VALUE / 8) { lastPost = -1L; Thread.sleep(POLL_MS); continue }
             if (System.currentTimeMillis() - last >= interval()) {
                 last = System.currentTimeMillis()
                 try { check() } catch (_: Exception) { }

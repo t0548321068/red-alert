@@ -43,11 +43,9 @@ object SourceHealth {
     /** מקור נחשב מחובר אם יש חיבור פתוח, או שהצליח בדקה וחצי האחרונות */
     fun isUp(key: String): Boolean =
         open[key] == true || System.currentTimeMillis() - (lastOk[key] ?: 0L) < 90_000 ||
-            (key in serverUp && System.currentTimeMillis() - serverAt < 35 * 60 * 1000L)
+            (key in serverUp && System.currentTimeMillis() - serverAt < Config.serverStaleMs)
 
     /** מתי התקבלה תשובה אחרונה מכל מקור שהוא */
-    /** מתי התקבל מידע בפועל מאחד המקורות (בלי לספור חיבור פתוח כ"עכשיו") */
-    fun lastData(): Long = lastOk.values.maxOrNull() ?: 0L
     fun lastAny(): Long = (NAMES.keys.map { k -> if (open[k] == true) System.currentTimeMillis() else lastOk[k] ?: 0L }.maxOrNull() ?: 0L)
 
     fun name(key: String): String =
