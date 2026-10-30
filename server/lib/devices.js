@@ -5,7 +5,8 @@
 const fs = require('fs');
 const path = require('path');
 const { log } = require('./util');
-const { adminPush } = require('./push');
+// push נטען כאן מאוחר: push → web → devices → push (טעינה מעגלית)
+const adminPush = t => require('./push').adminPush(t);
 
 const FILE = path.join(__dirname, '..', 'devices.json');
 let data = { devices: {}, crashes: [] };
@@ -17,6 +18,7 @@ function save() {
 }
 
 const clean = (v, n) => String(v || '').replace(/[\u0000-\u001f]/g, ' ').slice(0, n);
+const cleanLines = (v, n) => String(v || '').replace(/[\u0000-\u0008\u000b-\u001f]/g, ' ').slice(0, n);   // שומר שורות (השגיאה)
 const okCode = c => /^[0-9A-F]{8}$/.test(c);
 
 function ping(res, q) {
@@ -39,7 +41,7 @@ function crash(req, res) {
     if (!okCode(code)) { res.writeHead(400); return res.end(); }
     if (Date.now() - (crashAt.get(code) || 0) < 60 * 1000) { res.writeHead(429); return res.end(); }
     crashAt.set(code, Date.now());
-    const c = { d: code, v: clean(j.v, 16), m: clean(j.m, 40), at: +j.at || Date.now(), got: Date.now(), err: clean(j.err, 12000) };
+    const c = { d: code, v: clean(j.v, 16), m: clean(j.m, 40), at: +j.at || Date.now(), got: Date.now(), err: cleanLines(j.err, 12000) };
     data.crashes.unshift(c);
     data.crashes.length = Math.min(data.crashes.length, 50);
     save();

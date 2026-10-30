@@ -274,8 +274,8 @@ function loadDevices() {
     $('crashCard').style.display = crashes.length ? '' : 'none';
     $('crashTx').textContent = crashes.length ? crashes.length + '' : '';
     $('crashes').innerHTML = crashes.slice(0, 20).map((c, i) => `<div class="item" data-c="${i}"><div class="ic" style="background:var(--red)">!</div>
-      <div class="tx"><div class="a">${esc(c.m || c.d)} · גרסה ${esc(c.v)}</div><div class="b">${esc((c.err.split('\n')[0] || ''))}</div>
-      <pre style="display:none;white-space:pre-wrap;direction:ltr;text-align:left;font-size:11px;color:var(--muted);margin:8px 0 0">${esc(c.err)}</pre></div>
+      <div class="tx"><div class="a">${esc(c.m || c.d)} · גרסה ${esc(c.v)}</div><div class="b" dir="ltr" style="text-align:right">${esc((c.err.split('\n')[0] || ''))}</div>
+      <pre style="display:none;white-space:pre;overflow-x:auto;max-width:100%;direction:ltr;text-align:left;font-size:11px;color:var(--muted);margin:8px 0 0">${esc(c.err)}</pre></div>
       <div class="tm">${dmy(new Date(c.at))} ${hm(new Date(c.at))}</div></div>`).join('');
   }).catch(() => {});
 }
