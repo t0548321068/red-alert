@@ -365,7 +365,8 @@ object Prefs {
      * בטא רק למכשירים שברשימה (לפי מזהה המכשיר). רשימה ריקה = בלי הגבלה.
      * בכל מכשיר אחר הבטא כבויה ומוסתרת, גם אם הופעלה בעבר.
      */
-    private val BETA_DEVICES = setOf("1F31D43C", "CD97E56F")   // המכשירים של טל
+    // המכשירים של טל - רק עד שהשרת ענה פעם ראשונה (אחר כך הרשימה בשרת קובעת)
+    private val BETA_DEVICES = setOf("1F31D43C", "CD97E56F")
 
     /** מזהה קצר וקבוע של המכשיר (8 תווים) */
     fun deviceCode(c: Context): String {
@@ -375,7 +376,28 @@ object Prefs {
         return h.take(4).joinToString("") { "%02X".format(it) }
     }
 
-    fun betaAllowed(c: Context) = BETA_DEVICES.isEmpty() || deviceCode(c).uppercase() in BETA_DEVICES
+    /** מורשה לבטא: לפי התשובה האחרונה מהשרת; אם השרת עוד לא ענה אף פעם - לפי הרשימה המקורית */
+    fun betaAllowed(c: Context): Boolean =
+        if (sp(c).contains("betaSrv")) sp(c).getBoolean("betaSrv", false) else deviceCode(c).uppercase() in BETA_DEVICES
+
+    /** שואלים את השרת אם המכשיר מורשה לבטא (לכל היותר פעם ב-10 דקות, ברקע) */
+    fun refreshBeta(c: Context) {
+        val now = System.currentTimeMillis()
+        if (now - sp(c).getLong("betaSrvAt", 0) < 10 * 60_000L) return
+        sp(c).edit().putLong("betaSrvAt", now).apply()
+        Thread {
+            try {
+                val conn = java.net.URL("http://151.145.91.93:8080/beta?code=" + deviceCode(c)).openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 4000; conn.readTimeout = 4000
+                val ok = try { if (conn.responseCode != 200) null else
+                    org.json.JSONObject(conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }).getBoolean("allowed")
+                } finally { conn.disconnect() } ?: return@Thread
+                val changed = betaAllowed(c) != ok || !sp(c).contains("betaSrv")
+                sp(c).edit().putBoolean("betaSrv", ok).apply()
+                if (changed) PushService.subscribe(c)   // הודעות התקלה - רק למכשירי הבטא
+            } catch (_: Exception) { }
+        }.start()
+    }
 
     fun betaUnlocked(c: Context) = sp(c).getBoolean("betaUnlocked", false) && betaAllowed(c)
     fun setBetaUnlocked(c: Context, v: Boolean) = sp(c).edit().putBoolean("betaUnlocked", v).commit()
