@@ -221,7 +221,8 @@ class MainActivity : Activity() {
             updateIndicators()
             updateWeather()
             updateAlertCard()
-            // שאר המסך מתעדכן רק כשמשהו השתנה
+            // שאר המסך מתעדכן רק כשמשהו השתנה (ורק אחרי שנתוני היישובים נטענו ברקע)
+            if (!AreaData.loaded()) return@Runnable
             val key = "${network()?.second == true}|${Prefs.enabled(this@MainActivity)}|${Prefs.history(this@MainActivity).firstOrNull()?.ts}|" +
                 Prefs.nearbyAreas(this@MainActivity).joinToString()   // גם כשהאזורים הקרובים משתנים
             if (key != lastHistoryKey) { lastHistoryKey = key; refresh() }
@@ -635,7 +636,7 @@ class MainActivity : Activity() {
         // אחרי החלפת ערכת צבעים (האפליקציה נטענת מחדש) - חוזרים לעמוד התצוגה
         if (reopenDisplay) { reopenDisplay = false; ui.post { showSettings() } }
         // טעינת נתוני האזורים ברקע, כדי שהמסך לא ייתקע בפעם הראשונה
-        Thread { try { AreaData.areas(this) } catch (_: Exception) { } }.start()
+        AreaData.preload(this)   // נתוני היישובים ברקע - המסך לא נתקע בפתיחה
     }
 
     private var updateCheckedAt = 0L
@@ -966,7 +967,7 @@ class MainActivity : Activity() {
                     // רענון ברקע - נשארים באותו מקום ברשימה
                     val sv = generateSequence(l.parent) { it.parent }.filterIsInstance<ScrollView>().firstOrNull()
                     val y = sv?.scrollY ?: 0
-                    fillRecent(l, full); sv?.post { sv.scrollTo(0, y) } } }
+                    fillRecent(l, full, recentShown); sv?.post { sv.scrollTo(0, y) } } }
             }
         }.start()
     }
@@ -977,61 +978,90 @@ class MainActivity : Activity() {
     /** סינון ברשימת ההתרעות: הכל / האזורים שלי (נזכר עד שסוגרים את האפליקציה) */
     private var recentMine = false
 
-    private fun fillRecent(c: LinearLayout, all: List<Prefs.Entry>) {
+    /**
+     * הרשימה נבנית בחלקים: קודם ההתרעות הראשונות, וכשגוללים למטה - עוד. כך גם שנה של התרעות
+     * (אלפי שורות) נפתחת מיד ולא נתקעת
+     */
+    private var recentItems: List<Prefs.Entry> = emptyList()
+    private var recentShown = 0
+    private var recentDay: String? = null
+    private var recentCard: LinearLayout? = null
+    private val recentTimeFmt = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
+    private val RECENT_CHUNK = 120
+
+    /** minShown: רענון ברקע - בונים לפחות כמה שכבר הוצג, כדי שהמקום ברשימה יישמר */
+    private fun fillRecent(c: LinearLayout, all: List<Prefs.Entry>, minShown: Int = 0) {
         c.removeAllViews()
         recentSegView?.let { buildRecentSeg(it) }   // מספרים מעודכנים
         val items = if (!recentMine) all else mineOf(all)
         val muted = C.MUTED2
+        recentItems = items; recentShown = 0; recentDay = null; recentCard = null
         if (items.isEmpty()) {
             c.addView(text(if (recentMine) "אין התראות באזורים שלך" else "אין התראות עדיין", 14f, muted).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) })
             return
         }
-        items.groupBy { if (it.ts > 0) fullDayLabel(it.ts) else "" }.forEach { (day, list) ->
-            if (day.isNotEmpty()) c.addView(text(day, 13f, muted).apply { setPadding(dp(28), dp(14), dp(28), dp(6)) })
-            val card = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                background = graphite(28)
-                clipToOutline = true
+        appendRecent(c, maxOf(RECENT_CHUNK, minShown))
+        // גלילה קרוב לסוף - מוסיפים עוד
+        generateSequence(c.parent) { it.parent }.filterIsInstance<ScrollView>().firstOrNull()?.let { sv ->
+            sv.setOnScrollChangeListener { v, _, y, _, _ ->
+                val content = (v as ScrollView).getChildAt(0) ?: return@setOnScrollChangeListener
+                if (recentShown < recentItems.size && y + v.height >= content.height - dp(1500)) appendRecent(c, RECENT_CHUNK)
             }
-            list.forEachIndexed { i, e ->
-                if (i > 0) card.addView(View(this).apply { setBackgroundColor(C.DIV) },
-                    LinearLayout.LayoutParams(-1, dp(1)))
-                val row = LinearLayout(this).apply {
-                    gravity = Gravity.CENTER_VERTICAL
-                    setPadding(dp(16), dp(12), dp(16), dp(12))
-                    // לחיצה: המפה על האזורים של ההתראה
-                    setOnClickListener {
-                        // חוזרים מהמפה לאותו מקום ברשימה
-                        val sv = generateSequence(c.parent) { it.parent }.filterIsInstance<ScrollView>().firstOrNull()
-                        val y = sv?.scrollY ?: 0
-                        restoreScroll = { sv?.scrollTo(0, y) }
-                        startActivity(Intent(this@MainActivity, MapActivity::class.java)
-                            .putExtra("focus", e.body).putExtra("focusTs", e.ts).putExtra("focusAll", true)
-                            .putExtra("focusLevel", e.level).putExtra("focusTitle", e.title))   // ההתרעה שנלחצה - בצבע שלה
-                    }
-                }
-                val col = when (e.level) {
-                    AlertService.LEVEL_PRE -> "#F08C00"
-                    AlertService.LEVEL_END -> "#2E7D32"
-                    else -> "#E53935"
-                }
-                val icon = AlertUi.icon(e.title, e.level)
-                row.addView(FrameLayout(this).apply {
-                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(col)) }
-                    addView(android.widget.ImageView(this@MainActivity).apply { AlertUi.setIcon(this, icon) },
-                        FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))
-                }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(12) })
-                val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-                texts.addView(text(if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title, 15f, C.TEXT))
-                texts.addView(text(e.body.replace("ברחבי הארץ", AreaData.ALL_COUNTRY), 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
-                row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
-                row.addView(text(if (e.ts > 0) java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
-                    .format(java.util.Date(e.ts)) else e.time.take(5), 12f, muted),
-                    LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
-                card.addView(row)
-            }
-            c.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), 0) })
         }
+    }
+
+    private fun appendRecent(c: LinearLayout, count: Int) {
+        val muted = C.MUTED2
+        val end = minOf(recentItems.size, recentShown + count)
+        for (idx in recentShown until end) {
+            val e = recentItems[idx]
+            val day = if (e.ts > 0) fullDayLabel(e.ts) else ""
+            var card = recentCard
+            if (card == null || day != recentDay) {
+                recentDay = day
+                if (day.isNotEmpty()) c.addView(text(day, 13f, muted).apply { setPadding(dp(28), dp(14), dp(28), dp(6)) })
+                card = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    background = graphite(28)
+                    clipToOutline = true
+                }
+                recentCard = card
+                c.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), 0) })
+            } else card.addView(View(this).apply { setBackgroundColor(C.DIV) }, LinearLayout.LayoutParams(-1, dp(1)))
+            val row = LinearLayout(this).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(16), dp(12), dp(16), dp(12))
+                // לחיצה: המפה על האזורים של ההתראה
+                setOnClickListener {
+                    // חוזרים מהמפה לאותו מקום ברשימה
+                    val sv = generateSequence(c.parent) { it.parent }.filterIsInstance<ScrollView>().firstOrNull()
+                    val y = sv?.scrollY ?: 0
+                    restoreScroll = { sv?.scrollTo(0, y) }
+                    startActivity(Intent(this@MainActivity, MapActivity::class.java)
+                        .putExtra("focus", e.body).putExtra("focusTs", e.ts).putExtra("focusAll", true)
+                        .putExtra("focusLevel", e.level).putExtra("focusTitle", e.title))   // ההתרעה שנלחצה - בצבע שלה
+                }
+            }
+            val col = when (e.level) {
+                AlertService.LEVEL_PRE -> "#F08C00"
+                AlertService.LEVEL_END -> "#2E7D32"
+                else -> "#E53935"
+            }
+            val icon = AlertUi.icon(e.title, e.level)
+            row.addView(FrameLayout(this).apply {
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(col)) }
+                addView(android.widget.ImageView(this@MainActivity).apply { AlertUi.setIcon(this, icon) },
+                    FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))
+            }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(12) })
+            val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            texts.addView(text(if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title, 15f, C.TEXT))
+            texts.addView(text(e.body.replace("ברחבי הארץ", AreaData.ALL_COUNTRY), 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
+            row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
+            row.addView(text(if (e.ts > 0) recentTimeFmt.format(java.util.Date(e.ts)) else e.time.take(5), 12f, muted),
+                LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
+            card.addView(row)
+        }
+        recentShown = end
     }
 
     /** נטען פעם אחת לכל פתיחה של האפליקציה */
@@ -2280,6 +2310,10 @@ class MainActivity : Activity() {
 
     /** האייקון בצבע המצב, הטקסט תמיד לבן-אפור */
     private fun setInd(v: TextView, icon: Int, label: String, color: Int) {
+        // מתעדכן כל שנייה - בונים את האייקון מחדש רק כשמשהו בו השתנה
+        val k = "$icon|$label|$color"
+        if (v.tag == k) return
+        v.tag = k
         setIndIcon(v, icon)
         v.compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color)
         v.text = label
