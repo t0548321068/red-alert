@@ -643,10 +643,15 @@ internal fun MainActivity.showUpdates() = ouiPage("עדכונים",
     ouiDivider(ver)
     // מתי האפליקציה עודכנה לאחרונה בטלפון
     val updatedAt = try {
-        java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.US)
+        java.text.SimpleDateFormat("HH:mm dd/MM/yyyy", java.util.Locale.US)
             .format(java.util.Date(packageManager.getPackageInfo(packageName, 0).lastUpdateTime))
     } catch (_: Exception) { "" }
     ouiRow(ver, "עודכן לאחרונה", end = updatedAt, endColor = C.MUTED)
+    ouiDivider(ver)
+    // מתי נבדק לאחרונה אם יש גרסה חדשה (גם הבדיקה האוטומטית)
+    val checkedAt = Prefs.lastUpdateCheck(this).takeIf { it > 0 }?.let {
+        java.text.SimpleDateFormat("HH:mm dd/MM/yyyy", java.util.Locale.US).format(java.util.Date(it)) } ?: "עוד לא"
+    ouiRow(ver, "בדיקה אחרונה", end = checkedAt, endColor = C.MUTED)
     ouiAdd(body, ver)
     ouiNote(body, "מהעדכון השני ההתקנה אוטומטית, בלי ללחוץ התקן")
 

@@ -41,6 +41,7 @@ internal fun MainActivity.graphite(@Suppress("UNUSED_PARAMETER") radius: Int) = 
 /** עמוד מלא: כותרת קטנה למעלה (כמו "תצוגה"), build נקרא מחדש בכל rebuild */
 internal fun MainActivity.ouiPage(title: String, refreshOnFocus: Boolean = true, onClose: (() -> Unit)? = null,
                     button: Pair<String, (done: () -> Unit) -> Unit>? = null,
+                    buttonLabel: ((TextView) -> Unit)? = null,
                     build: (LinearLayout, () -> Unit) -> Unit) {
     val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
     val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(30)) }
@@ -74,6 +75,7 @@ internal fun MainActivity.ouiPage(title: String, refreshOnFocus: Boolean = true,
             gravity = Gravity.CENTER
             includeFontPadding = false
         }
+        buttonLabel?.invoke(label)   // העמוד יכול להחליף את המלל (למשל "בדוק שוב" / "התקן עכשיו")
         val spinner = android.widget.ProgressBar(this).apply {
             isIndeterminate = true
             indeterminateTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
