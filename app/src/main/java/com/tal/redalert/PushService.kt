@@ -31,6 +31,8 @@ class PushService : FirebaseMessagingService() {
         } catch (_: Exception) { null }
         fun subscribe(c: android.content.Context) {
             try { FirebaseMessaging.getInstance().subscribeToTopic(TOPIC) } catch (_: Exception) { }
+            // הודעות מהאתר למכשיר הזה בלבד
+            try { FirebaseMessaging.getInstance().subscribeToTopic("d_" + Prefs.deviceCode(c)) } catch (_: Exception) { }
             // הודעות על תקלות בשרת - רק למכשירי הבטא (שלך)
             try {
                 if (Prefs.betaAllowed(c)) FirebaseMessaging.getInstance().subscribeToTopic("admin")
@@ -49,6 +51,7 @@ class PushService : FirebaseMessagingService() {
             return
         }
         if (d["type"] == "update") { AlertService.onServerUpdate(); return }   // גרסה חדשה פורסמה
+        if (d["type"] == "msg") { showMessage(d["text"] ?: return); return }   // הודעה מהאתר (לכולם או למכשיר הזה)
         if (d["type"] == "admin") { if (Prefs.betaAllowed(this)) showAdmin(d["text"] ?: return); return }
         if (d["type"] != "alert") return
         val title = d["title"] ?: return
@@ -80,6 +83,24 @@ class PushService : FirebaseMessagingService() {
     }
 
     override fun onNewToken(token: String) { subscribe(this) }
+
+    /** הודעה שטל שלח מהאתר - לחיצה פותחת את האפליקציה */
+    private fun showMessage(text: String) {
+        val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+        if (nm.getNotificationChannel("messages") == null) nm.createNotificationChannel(
+            android.app.NotificationChannel("messages", "הודעות", android.app.NotificationManager.IMPORTANCE_HIGH))
+        val open = android.app.PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java),
+            android.app.PendingIntent.FLAG_IMMUTABLE)
+        nm.notify(text.hashCode(), android.app.Notification.Builder(this, "messages")
+            .setSmallIcon(R.drawable.ic_stat_siren)
+            .setLargeIcon(android.graphics.drawable.Icon.createWithResource(this, R.drawable.notif_large))
+            .setContentTitle("צופר חירום")
+            .setContentText(text)
+            .setStyle(android.app.Notification.BigTextStyle().bigText(text))
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build())
+    }
 
     /** הודעה מהשרת על מקור שלא עונה / חזר לעבוד (רק במכשירי הבטא) */
     private fun showAdmin(text: String) {

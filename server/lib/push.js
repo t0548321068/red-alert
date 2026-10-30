@@ -106,4 +106,11 @@ function adminPush(text) {
     .catch(e => log('admin push failed', e.message));
 }
 
-module.exports = { send, heartbeat, updatePush, adminPush, state, saveState };
+// הודעה מהאתר: לכל הטלפונים, או למכשיר אחד (נושא d_<קוד המכשיר>)
+function message(text, to) {
+  const topic = to === 'all' ? TOPIC : 'd_' + to;
+  log('message', topic, text);
+  return admin.messaging().send({ topic, data: { type: 'msg', text }, android: { priority: 'high', ttl: 24 * 3600 * 1000 } });
+}
+
+module.exports = { send, heartbeat, updatePush, adminPush, message, state, saveState };
