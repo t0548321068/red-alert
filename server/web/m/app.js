@@ -477,7 +477,7 @@ $('settings').onclick = e => {
   if (k === 'sound') { soundOn = !soundOn; store.set('m_sound', soundOn); if (!soundOn) stopSiren(); }
   if (k === 'notif' && 'Notification' in window) Notification.requestPermission().then(renderSettings);
   if (k === 'near') { nearOn = !nearOn; store.set('m_near', nearOn); if (nearOn) refreshLocation(true); }
-  if (k === 'desk') location.href = '/';
+  if (k === 'desk') location.href = '/?full=1';
   if (k === 'logout') location.href = '/api/logout';
   renderSettings(); refreshAll();
 };
