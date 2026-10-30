@@ -254,7 +254,12 @@ object Updater {
             setAppPackageName(app.packageName)
             // שם ואייקון האפליקציה בהתקנה (בלעדיהם אנדרואיד מציג אייקון כללי של אנדרואיד)
             setAppLabel(app.getString(R.string.app_name))
-            try { setAppIcon(android.graphics.BitmapFactory.decodeResource(app.resources, R.mipmap.ic_launcher)) } catch (_: Exception) { }
+            try {
+                val d = app.packageManager.getApplicationIcon(app.packageName)
+                val bmp = android.graphics.Bitmap.createBitmap(192, 192, android.graphics.Bitmap.Config.ARGB_8888)
+                d.setBounds(0, 0, 192, 192); d.draw(android.graphics.Canvas(bmp))
+                setAppIcon(bmp)
+            } catch (_: Exception) { }
             if (Build.VERSION.SDK_INT >= 31) setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
             if (Build.VERSION.SDK_INT >= 34) setRequestUpdateOwnership(true)
         }
