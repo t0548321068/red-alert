@@ -10,6 +10,8 @@
 // lib/shabbat.js   זמני שבת וחג
 // lib/files.js     קבצי נתונים מתעדכנים ומכשירי בטא
 // lib/versions.js  הודעה על גרסה חדשה
+// lib/devices.js   המכשירים והקריסות (לאתר)
+// lib/web.js       האתר
 const { log } = require('./lib/util');
 const push = require('./lib/push');
 const health = require('./lib/health');
@@ -19,6 +21,7 @@ const shabbat = require('./lib/shabbat');
 const files = require('./lib/files');
 const versions = require('./lib/versions');
 const web = require('./lib/web');
+const devices = require('./lib/devices');
 
 // תקלה לא צפויה - רושמים ביומן וממשיכים (שהבדיקה וההתרעות לא ייעצרו)
 process.on('uncaughtException', e => log('uncaught', e && e.stack || e));
@@ -55,6 +58,8 @@ function route(req, res) {
     case '/archive': return archive.serve(req, res, +(q('since') || 0));
     case '/weather': return weather.serve(res, +q('lat'), +q('lon'));
     case '/shabbat': return shabbat.serve(res, +q('lat'), +q('lon'));
+    case '/ping': return devices.ping(res, q);
+    case '/crash': if (req.method === 'POST') return devices.crash(req, res); break;
     case '/beta': return files.serveBeta(res, String(q('code') || '').trim().toUpperCase());
     case '/status':
       // כפתור "בדוק את השרתים": מצב המקורות, וסימן חיים דרך Firebase - כך נבדקת כל הדרך עד הטלפון.

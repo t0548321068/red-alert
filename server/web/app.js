@@ -145,11 +145,14 @@ function renderNotif() {
 $('notifBtn').onclick = () => { if ('Notification' in window) Notification.requestPermission().then(renderNotif); };
 function notify(alert, areas) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  try {
-    const n = new Notification(showTitle(alert.title), { body: areas.join(', '), icon: '/icon.png', tag: alert.title, requireInteraction: level(alert.title) === 'alert' });
-    n.onclick = () => { window.focus(); n.close(); };
-  } catch (_) {}
+  const opt = { body: areas.join(', '), icon: '/icon.png', badge: '/icon.png', tag: alert.title, requireInteraction: level(alert.title) === 'alert' };
+  // דרך ה-Service Worker (בטלפון אנדרואיד זו הדרך היחידה); אם אין - ישירות
+  if (swReg) { swReg.showNotification(showTitle(alert.title), opt).catch(() => {}); return; }
+  try { const n = new Notification(showTitle(alert.title), opt); n.onclick = () => { window.focus(); n.close(); }; } catch (_) {}
 }
+// התקנה כאפליקציה (PWA)
+let swReg = null;
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then(r => { swReg = r; }).catch(() => {});
 
 // ---- התרעות חיות ----
 const seen = new Set();   // התרעות שכבר הוצגו - שחיבור מחדש לא יפעיל אותן שוב
@@ -254,6 +257,30 @@ function loadState() {
   }).catch(() => { $('srvTx').innerHTML = '<span style="color:var(--red)">השרת לא עונה</span>'; });
 }
 
+// ---- מכשירים וקריסות ----
+const ago = t => { const m = Math.floor((Date.now() - t) / 60e3); return m < 1 ? 'עכשיו' : m < 60 ? `לפני ${m} דק'` : m < 1440 ? `לפני ${Math.floor(m / 60)} שע'` : `לפני ${Math.floor(m / 1440)} ימים`; };
+function loadDevices() {
+  fetch('/api/devices').then(r => r.json()).then(({ devices, crashes }) => {
+    // פעיל = דיווח ב-25 הדקות האחרונות (הטלפון מדווח פעם ב-10 דקות)
+    const live = d => Date.now() - d.at < 25 * 60e3;
+    const n = devices.filter(d => live(d) && d.on).length;
+    $('devTx').innerHTML = devices.length ? `<span style="color:${n === devices.length ? 'var(--green)' : 'var(--orange)'}">${n}/${devices.length} מוגנים</span>` : '';
+    $('devices').innerHTML = devices.length ? devices.map(d => {
+      const ok = live(d) && d.on, color = ok ? 'var(--green)' : live(d) ? 'var(--orange)' : 'var(--red)';
+      const st = !live(d) ? 'לא מדווח' : d.on ? 'מוגן' : 'כבוי';
+      return `<div class="row"><span class="src-dot" style="background:${color}"></span><div style="min-width:0"><div>${esc(d.m || d.d)}</div>
+        <div style="font-size:12px;color:var(--muted)">${esc(d.d)} · גרסה ${esc(d.v)} · ${ago(d.at)}</div></div><span class="end">${st}</span></div>`;
+    }).join('') : '<div class="hint" style="padding:12px 18px">עוד אין דיווחים – הטלפונים יופיעו אחרי העדכון הבא של האפליקציה</div>';
+    $('crashCard').style.display = crashes.length ? '' : 'none';
+    $('crashTx').textContent = crashes.length ? crashes.length + '' : '';
+    $('crashes').innerHTML = crashes.slice(0, 20).map((c, i) => `<div class="item" data-c="${i}"><div class="ic" style="background:var(--red)">!</div>
+      <div class="tx"><div class="a">${esc(c.m || c.d)} · גרסה ${esc(c.v)}</div><div class="b" dir="ltr" style="text-align:right">${esc((c.err.split('\n')[0] || ''))}</div>
+      <pre style="display:none;white-space:pre;overflow-x:auto;max-width:100%;direction:ltr;text-align:left;font-size:11px;color:var(--muted);margin:8px 0 0">${esc(c.err)}</pre></div>
+      <div class="tm">${dmy(new Date(c.at))} ${hm(new Date(c.at))}</div></div>`).join('');
+  }).catch(() => {});
+}
+$('crashes').onclick = e => { const it = e.target.closest('.item'); if (!it) return; const pre = it.querySelector('pre'); pre.style.display = pre.style.display ? '' : 'none'; };
+
 // ---- שעון ----
 function tick() {
   const d = new Date();
@@ -273,5 +300,6 @@ renderMine();
 if (mine.length) fitTo(mine);
 loadArchive(); setInterval(loadArchive, 5 * 60e3);
 loadState(); setInterval(loadState, 30e3);
+loadDevices(); setInterval(loadDevices, 60e3);
 connect();
 tick(); setInterval(tick, 1000);
