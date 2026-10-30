@@ -83,6 +83,7 @@ internal fun MainActivity.showUpdateCheck() {
         ring.color = ringColor
         headline.text = title; headline.setTextColor(titleColor)
         sub.text = subText
+        sub.visibility = if (subText.isEmpty()) View.GONE else View.VISIBLE   // בלי שורה ריקה
     }
     val channel = if (Updater.isBetaBuild(this) || Prefs.betaUpdates(this)) "בטא" else "רגיל"
     val dateFmt = java.text.SimpleDateFormat("HH:mm dd/MM/yyyy", java.util.Locale.US)
@@ -153,7 +154,7 @@ internal fun MainActivity.showUpdateCheck() {
                     }
                     else -> {
                         // ---- מעודכן ----
-                        head("#12301A", "#E3F4E5", "✓", green, green, "הגרסה שלך מעודכנת", green, "נבדק עכשיו")
+                        head("#12301A", "#E3F4E5", "✓", green, green, "הגרסה שלך מעודכנת", green, "")
                         val cd = ouiCard()
                         ouiRow(cd, "גרסה מותקנת", end = Updater.versionLabel(this), endColor = C.MUTED)
                         ouiDivider(cd)
