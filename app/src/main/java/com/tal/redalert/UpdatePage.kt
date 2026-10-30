@@ -98,8 +98,13 @@ internal fun MainActivity.showUpdateCheck() {
 
     var check: (() -> Unit) -> Unit = {}
     fun pill(label: String, action: (done: () -> Unit) -> Unit) { pillLabel?.text = label; pillAction = action }
-    // כשיש גרסה חדשה: שני כפתורים צפים אחד ליד השני - "התקן עכשיו" משמאל, "מאוחר יותר" מימין
     var later: TextView? = null
+    /** הכפתור הכחול למטה: מוסתר בזמן הבדיקה, מופיע עם התוצאה */
+    fun showPill(on: Boolean) {
+        (pillLabel?.parent as? View)?.visibility = if (on) View.VISIBLE else View.GONE
+        if (!on) later?.visibility = View.GONE
+    }
+    // כשיש גרסה חדשה: שני כפתורים צפים אחד ליד השני - "התקן עכשיו" משמאל, "מאוחר יותר" מימין
     fun twoButtons(on: Boolean, onLater: () -> Unit = {}) {
         val btn = pillLabel?.parent as? View ?: return
         val frame = btn.parent as? FrameLayout ?: return
@@ -130,6 +135,7 @@ internal fun MainActivity.showUpdateCheck() {
         head("#162038", "#E3EBFF", "⬇", C.TEXT, blue, "בודק אם יש גרסה חדשה…", C.TEXT, "מתחבר לשרת העדכונים")
         pill("בדוק אם יש עדכונים") { done -> check(done) }
         twoButtons(false)
+        showPill(false)   // בזמן הבדיקה - בלי כפתור למטה
         ring.spin()
         val c = ouiCard()
         ouiRow(c, "גרסה מותקנת", end = Updater.versionLabel(this), endColor = C.MUTED)
@@ -147,6 +153,7 @@ internal fun MainActivity.showUpdateCheck() {
             runOnUiThread {
                 finished()   // הכפתור למטה חוזר מטעינה למלל
                 if (isDestroyed) return@runOnUiThread
+                showPill(true)
                 ring.stop()
                 content.removeAllViews()
                 when {
