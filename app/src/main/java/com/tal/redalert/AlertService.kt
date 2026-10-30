@@ -105,6 +105,7 @@ class AlertService : Service() {
             val open = PendingIntent.getActivity(c, 0, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
             nm.notify(ID_ALERT, Notification.Builder(c, ch)
                 .setSmallIcon(R.drawable.ic_stat_siren).setColor(0xFFD50000.toInt())
+                .setLargeIcon(android.graphics.drawable.Icon.createWithResource(c, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
                 .setContentTitle(title).setContentText(body).setStyle(Notification.BigTextStyle().bigText(body))
                 .setCategory(Notification.CATEGORY_ALARM).setContentIntent(open).setFullScreenIntent(open, true)
                 .setAutoCancel(true).build())
@@ -184,6 +185,7 @@ class AlertService : Service() {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             nm.notify(ID_OFF, Notification.Builder(c, CH_WATCH)
                 .setSmallIcon(R.drawable.ic_stat_siren)
+                .setLargeIcon(android.graphics.drawable.Icon.createWithResource(c, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
                 .setColor(0xFFD50000.toInt())
                 .setContentTitle("⚠️ לא מוגן")
                 .setContentText("צופר חירום כבוי – התראות לא יגיעו")
@@ -521,6 +523,7 @@ class AlertService : Service() {
                     alerted = true
                     nm.notify(ID_WATCH, Notification.Builder(this, CH_WATCH)
                         .setSmallIcon(R.drawable.ic_stat_siren)
+                        .setLargeIcon(android.graphics.drawable.Icon.createWithResource(this, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
             .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
                         .setContentTitle("⚠️ צופר חירום – לא מוגן")
                         .setContentText("$reason – התראות לא יגיעו כרגע")
@@ -532,6 +535,7 @@ class AlertService : Service() {
                 if (alerted) {
                     nm.notify(ID_WATCH, Notification.Builder(this, CH_WATCH)
                         .setSmallIcon(R.drawable.ic_stat_siren)
+                        .setLargeIcon(android.graphics.drawable.Icon.createWithResource(this, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
             .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
                         .setContentTitle("✅ צופר חירום חזר לפעול")
                         .setContentText("${SourceHealth.upCount()}/${SourceHealth.total()} מקורות מחוברים")
@@ -591,6 +595,7 @@ class AlertService : Service() {
         Prefs.setNotifiedVersion(this, v)
         val n = Notification.Builder(this, CH_UPDATE)
             .setSmallIcon(R.drawable.ic_stat_siren)
+            .setLargeIcon(android.graphics.drawable.Icon.createWithResource(this, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
             .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
             .setContentTitle("🆕 גרסה חדשה זמינה – $v")
             .setContentText("לחץ כדי להתקין")
@@ -799,6 +804,7 @@ class AlertService : Service() {
             "$body · זמן למרחב מוגן: ${AreaData.shelterText(shelterSec)}" else body
         val nb = Notification.Builder(this, channel)
             .setSmallIcon(R.drawable.ic_stat_siren)
+            .setLargeIcon(android.graphics.drawable.Icon.createWithResource(this, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
             .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
             .setContentTitle(title)
             .setContentText(text)
@@ -916,6 +922,7 @@ class AlertService : Service() {
         if (System.currentTimeMillis() >= stayEnd) return@Runnable
         val n = Notification.Builder(this, CH_STAY)
             .setSmallIcon(R.drawable.ic_stat_siren)
+            .setLargeIcon(android.graphics.drawable.Icon.createWithResource(this, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
             .setColor(0xFFD50000.toInt())
             .setContentTitle("⏳ נשארים במרחב המוגן")
             .setContentText("$stayTitle · $stayBody")
