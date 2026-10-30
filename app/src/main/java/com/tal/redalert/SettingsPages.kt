@@ -29,7 +29,7 @@ import com.tal.redalert.MainActivity.Row
 import com.tal.redalert.MainActivity.Perm
 import com.tal.redalert.MainActivity.SameHeight
 
-// עמודי ההגדרות: הגנה, התרעות, צלילים, תצוגה, שבת, בדיקה, שעות שקט, הקראה, עדכונים, אודות
+// עמודי ההגדרות: הגנה, התרעות, צלילים, תצוגה, שבת, בדיקה, שעות שקט, הקראה, עדכונים, אודות, יצירת קשר
 // (חלק מהמסך הראשי - MainActivity; המצב עצמו נשמר שם)
 
 /** הגדרות בסגנון One UI: עמוד מלא, כותרת גדולה, כל הקבוצות פתוחות */
@@ -56,7 +56,8 @@ internal fun MainActivity.showSettings() {
         "הרשאות" to { phoneRows() },
         // עדכונים ואודות - כל אחד בכרטיס נפרד
         "עדכונים" to { listOf(Row("⬆️", "בדיקת עדכונים", { "v" + Updater.versionLabel(this) }) { showUpdates() }) },
-        "אודות" to { listOf(Row("ℹ️", "אודות", { "" }) { showAbout() }) }
+        "אודות" to { listOf(Row("ℹ️", "אודות", { "" }) { showAbout() },
+            Row("✉️", "יצירת קשר", { "דיווח על בעיה למפתח" }) { showContact() }) }
     )
     fun rebuild() {
         body.removeAllViews()
@@ -905,4 +906,69 @@ internal fun MainActivity.whatsNewText(sinceVersion: String?): String? {
 internal fun MainActivity.showWhatsNew(sinceVersion: String?) {
     val text = whatsNewText(sinceVersion) ?: return
     AppSheet.show(this, "🆕 מה חדש", text, "הבנתי")
+}
+
+/**
+ * יצירת קשר: דיווח על בעיה ישירות למפתח (מגיע לאתר ולטלפון של טל).
+ * אפשר לצרף פרטי מכשיר והגדרות - כך לא צריך להסביר בטלפון. התשובה מגיעה כהודעה באפליקציה
+ */
+internal fun MainActivity.showContact() {
+    var draft = ""
+    var attach = true
+    lateinit var input: android.widget.EditText
+    ouiPage("יצירת קשר", refreshOnFocus = false, button = "שלח למפתח" to { done ->
+        val msg = input.text.toString().trim()
+        if (msg.length < 3) { android.widget.Toast.makeText(this, "כתוב מה קרה", android.widget.Toast.LENGTH_SHORT).show(); done(); return@to }
+        val info = if (attach) deviceInfo() else ""
+        Thread {
+            val ok = Reporter.sendReport(this, msg, info)
+            runOnUiThread {
+                done()
+                if (ok) { input.setText(""); draft = "" }
+                android.widget.Toast.makeText(this, if (ok) "✓ הדיווח נשלח – תודה!" else "השליחה נכשלה – בדוק את החיבור לאינטרנט", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }.start()
+    }) { body, rebuild ->
+        val c = ouiCard()
+        c.addView(text("דיווח על בעיה", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(8)) })
+        input = android.widget.EditText(this).apply {
+            hint = "מה קרה? למשל: לא קיבלתי התרעה בירושלים בשעה 14:30"
+            setText(draft); textSize = 15f; minLines = 5; gravity = Gravity.TOP or Gravity.START
+            setTextColor(C.TEXT); setHintTextColor(C.MUTED)
+            background = GradientDrawable().apply { setColor(C.CARD2); cornerRadius = dp(18).toFloat() }
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+            filters = arrayOf(android.text.InputFilter.LengthFilter(1500))
+            addTextChangedListener(object : android.text.TextWatcher {
+                override fun afterTextChanged(s: android.text.Editable?) { draft = s?.toString() ?: "" }
+                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, d: Int) {}
+                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, d: Int) {}
+            })
+        }
+        c.addView(input, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(14), 0, dp(14), dp(14)) })
+        ouiAdd(body, c)
+
+        val a = ouiCard()
+        ouiRow(a, "צרף פרטי מכשיר והגדרות", sub = if (attach) "גרסה, דגם, אזורים, צלילים ומצב החיבור" else "כבוי", on = attach) {
+            attach = !attach; rebuild() }
+        ouiAdd(body, a)
+        ouiNote(body, "הדיווח מגיע ישירות למפתח. התשובה תגיע כהודעה באפליקציה")
+    }
+}
+
+/** פרטי המכשיר וההגדרות לדיווח (בלי מיקום מדויק ובלי מידע אישי) */
+private fun MainActivity.deviceInfo(): String {
+    val yes = { b: Boolean -> if (b) "כן" else "לא" }
+    val lines = listOf(
+        "גרסה" to Updater.versionLabel(this),
+        "דגם" to "${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE}",
+        "מוגן" to yes(Prefs.enabled(this) && !Prefs.scheduleOffNow(this)),
+        "אזורים" to (Prefs.nearbyAreas(this) + Prefs.cities(this)).distinct().joinToString(", ").ifEmpty { "–" },
+        "צלילים" to yes(Prefs.soundsOn(this)), "רטט" to yes(Prefs.vibesOn(this)),
+        "מושתק" to yes(Prefs.mutedNow(this)), "צליל חזק" to yes(Prefs.loudSound(this)),
+        "עקיפת שקט" to yes(Prefs.bypassSilent(this)), "שעות שקט" to yes(Prefs.quietOn(this)),
+        "מצב שבת" to Shabbat.label(Prefs.shabbatMode(this)), "הקראה" to yes(Prefs.speakAlerts(this)),
+        "תצוגה" to listOf("מסך מלא", "פופ-אפ", "כרטיס", "ממוזער").getOrElse(Prefs.alertStyle(this)) { Prefs.alertStyle(this).toString() },
+        "רשת" to (network()?.first ?: "אין"),
+    )
+    return lines.joinToString("\n") { "${it.first}: ${it.second}" }
 }

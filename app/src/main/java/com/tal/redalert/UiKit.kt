@@ -378,14 +378,14 @@ internal fun MainActivity.track(d: android.app.Dialog, onClose: (() -> Unit)? = 
 internal fun MainActivity.setIcon(icon: String) = when (icon) {
     "⏻" -> R.drawable.ic_set_shield; "🎨" -> R.drawable.ic_set_display; "📳" -> R.drawable.ic_set_sound
     "🔔" -> R.drawable.ic_set_bell; "🛡" -> R.drawable.ic_set_lock; "⬆️" -> R.drawable.ic_set_update
-    "ℹ️" -> R.drawable.ic_set_info
+    "ℹ️" -> R.drawable.ic_set_info; "✉️" -> R.drawable.ic_set_mail
     else -> 0
 }
 
 /** צבע העיגול של כל אייקון בהגדרות (סגנון One UI) */
 internal fun MainActivity.iconColor(icon: String) = Color.parseColor(when (icon) {
     "⏻" -> "#D50000"; "🎨" -> "#7E57C2"; "📳" -> "#8E24AA"; "🔔" -> "#FB8C00"
-    "🛡" -> "#00897B"; "⬆️" -> "#1E88E5"
+    "🛡" -> "#00897B"; "⬆️" -> "#1E88E5"; "✉️" -> "#43A047"
     else -> "#546E7A"
 })
 

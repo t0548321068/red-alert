@@ -1,6 +1,7 @@
 // המכשירים והקריסות - לאתר בלבד (רק לך).
 // /ping   כל טלפון מדווח פעם ב-10 דקות (עם סימן החיים): גרסה, דגם, מוגן או לא
 // /crash  האפליקציה קרסה בטלפון - השגיאה נשמרת ונשלחת אליך כהודעת תקלה
+// /report דיווח על בעיה ממסך "יצירת קשר" באפליקציה
 // אין כאן שום מידע אישי: מזהה מכשיר מקוצר (אותו קוד של הבטא), דגם וגרסה
 const fs = require('fs');
 const path = require('path');
@@ -9,7 +10,7 @@ const { log } = require('./util');
 const adminPush = t => require('./push').adminPush(t);
 
 const FILE = path.join(__dirname, '..', 'devices.json');
-let data = { devices: {}, crashes: [], messages: [] };
+let data = { devices: {}, crashes: [], messages: [], reports: [] };
 try { data = Object.assign(data, JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch (_) {}
 let saveT = null;
 function save() {
@@ -52,6 +53,29 @@ function crash(req, res) {
   });
 }
 
+// ---- דיווח על בעיה ממסך "יצירת קשר" באפליקציה ----
+const reportAt = new Map();   // לכל מכשיר - עד 3 דיווחים ב-10 דקות
+function report(req, res) {
+  let body = '';
+  req.on('data', d => { body += d; if (body.length > 12000) req.destroy(); });
+  req.on('end', () => {
+    let j = {};
+    try { j = JSON.parse(body); } catch (_) {}
+    const code = String(j.d || '').toUpperCase(), text = cleanLines(j.text, 1500).trim();
+    if (!okCode(code) || !text) { res.writeHead(400); return res.end(); }
+    const now = Date.now(), times = (reportAt.get(code) || []).filter(t => now - t < 10 * 60 * 1000);
+    if (times.length >= 3) { res.writeHead(429); return res.end(); }
+    times.push(now); reportAt.set(code, times);
+    const r = { d: code, v: clean(j.v, 16), m: clean(j.m, 40), at: now, text, info: cleanLines(j.info, 3000) };
+    data.reports.unshift(r);
+    data.reports.length = Math.min(data.reports.length, 50);
+    save();
+    log('report', code, text.slice(0, 80));
+    adminPush(`📩 דיווח מ-${r.m || code}: ${text.replace(/\s+/g, ' ').slice(0, 120)}`);
+    res.writeHead(204); res.end();
+  });
+}
+
 // ---- הודעה מהאתר לטלפונים ----
 function sendMessage(req, res) {
   let body = '';
@@ -77,7 +101,8 @@ function list() {
     devices: Object.entries(data.devices).map(([d, x]) => Object.assign({ d }, x)).sort((a, b) => b.at - a.at),
     crashes: data.crashes,
     messages: data.messages,
+    reports: data.reports,
   };
 }
 
-module.exports = { ping, crash, list, sendMessage };
+module.exports = { ping, crash, report, list, sendMessage };
