@@ -37,7 +37,7 @@ function addRows(rows) {
     const ts = rowTime(o); if (!ts || !minute) continue;
     const k = title + '|' + minute;
     let e = arch.get(k); if (!e) { e = { t: title, ts, b: new Set() }; arch.set(k, e); added++; }
-    if (ts < e.ts) e.ts = ts;
+    if (ts < e.ts) { e.ts = ts; added++; }
     if (o.data && !e.b.has(o.data)) { e.b.add(o.data); added++; }
   }
   if (added) cache = null;

@@ -82,9 +82,14 @@ class AlertService : Service() {
          * גיבוי: התרעה מהשרת הגיעה כשהשירות לא רץ, ואנדרואיד לא הרשה להפעיל אותו -
          * מציגים לפחות התראה רגילה (עם הצליל של הטלפון), כדי שההתרעה לא תלך לאיבוד
          */
+        private val fallbackSeen = HashMap<String, Long>()
+        @Synchronized
         fun fallbackNotify(c: Context, rawTitle: String, areas: List<String>) {
             if (!Prefs.enabled(c) || Prefs.scheduleOffNow(c)) return
-            val my = mine(c, areas).ifEmpty { return }
+            val now = System.currentTimeMillis()
+            fallbackSeen.entries.removeAll { now - it.value > Prefs.DUP_MS }
+            // השרת שולח כל התרעה פעמיים (וכל הארץ - בכמה חלקים): מציגים כל יישוב פעם אחת
+            val my = mine(c, areas).filter { fallbackSeen.put(rawTitle + "|" + it, now) == null }.ifEmpty { return }
             val nm = c.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             if (nm.getNotificationChannel(CH_ALERT) == null) nm.createNotificationChannel(
                 NotificationChannel(CH_ALERT, "התראות צופר חירום", NotificationManager.IMPORTANCE_HIGH).apply {
@@ -96,7 +101,11 @@ class AlertService : Service() {
                 .setSmallIcon(R.drawable.ic_stat_siren).setColor(0xFFD50000.toInt())
                 .setContentTitle(title).setContentText(body).setStyle(Notification.BigTextStyle().bigText(body))
                 .setCategory(Notification.CATEGORY_ALARM).setContentIntent(open).setFullScreenIntent(open, true)
-                .setAutoCancel(true).build())
+                .setAutoCancel(true).apply {
+                    // מושתק / שעות שקט (לא בירי) - בלי צליל
+                    if (Build.VERSION.SDK_INT >= 31 && (Prefs.mutedNow(c) ||
+                            (levelOf(rawTitle) != LEVEL_ALERT && Prefs.isQuietNow(c)))) setSilent(true)
+                }.build())
         }
 
         /**
@@ -216,6 +225,10 @@ class AlertService : Service() {
 
     /** כתיבה להיסטוריה ולפיד - ברקע ולפי הסדר, אחרי הצלצול (שלא תעכב אותו) */
     private val bg = java.util.concurrent.Executors.newSingleThreadExecutor()
+    /** ברקע; אם השירות כבר נסגר - מיד, כאן (ההתרעה לא נזרקת בגלל זה) */
+    private fun later(r: () -> Unit) {
+        try { bg.execute(r) } catch (_: java.util.concurrent.RejectedExecutionException) { try { r() } catch (_: Exception) { } }
+    }
     /** סוג וזמן ההתרעה האחרונה שהוקפצה (לאיחוד מקורות לאותה שורה) */
     @Volatile private var lastFired: Pair<Int, Long>? = null
 
@@ -655,7 +668,7 @@ class AlertService : Service() {
         if (feedNew.isNotEmpty()) {
             feedNew.forEach { seenFeed[key(it, level)] = eventTime }
             val e = Prefs.Entry("", title, feedNew.joinToString(", "), level, now)
-            bg.execute { try { Prefs.addFeed(this, e, MERGE_MS) } catch (_: Exception) { } }
+            later { try { Prefs.addFeed(this, e, MERGE_MS) } catch (_: Exception) { } }
         }
 
         val fresh = mine(this, areas)
@@ -673,7 +686,7 @@ class AlertService : Service() {
         val last = lastFired ?: Prefs.history(this).firstOrNull()?.let { it.level to it.ts }
         if (last != null && last.first == level &&
             (now - last.second < MERGE_MS || (level == LEVEL_END && now - last.second < DEDUP_MS))) {
-            bg.execute { try { Prefs.mergeFirstHistory(this, fresh); AlertWidget.updateAll(this) } catch (_: Exception) { } }
+            later { try { Prefs.mergeFirstHistory(this, fresh); AlertWidget.updateAll(this) } catch (_: Exception) { } }
             return
         }
         lastFired = level to now
@@ -747,7 +760,7 @@ class AlertService : Service() {
 
         val level = levelOf(title)
         // מצב שבת: כל התראה במסך מלא לדקה אחת, עם הקראה (גם אם כבויה), בלי שעות שקט
-        val shabbat = Shabbat.active(this)
+        val shabbat = Shabbat.active(this, cached = false)   // בהתרעה - תמיד בדיקה עדכנית
         val quiet = !shabbat && level != LEVEL_ALERT && Prefs.isQuietNow(this)
         val shelterSec = shelter ?: if (level == LEVEL_ALERT) AreaData.shelterSeconds(this, areas) else null
         // סוג התצוגה מההגדרות (במצב שבת - תמיד מסך מלא)
@@ -889,7 +902,7 @@ class AlertService : Service() {
             playSound()
         }
 
-        bg.execute {
+        later {
             try { if (!test) Prefs.addHistory(this, entry); AlertWidget.updateAll(this) } catch (_: Exception) { }
         }
     }
@@ -927,6 +940,8 @@ class AlertService : Service() {
     /** השירות עלה מחדש אחרי שנסגר באמצע התרעה - מחזירים את ההגדרות למה שהיו */
     private fun restorePending() {
         val sp = restoreSp()
+        // רק אם השירות נסגר באמצע התרעה ממש עכשיו - אחרי זמן רב המשתמש כבר שינה בעצמו
+        if (System.currentTimeMillis() - sp.getLong("at", 0) > 10 * 60_000L) { sp.edit().clear().apply(); return }
         if (sp.contains("dnd")) { dndSaved = sp.getInt("dnd", -1); dndRestore.run() }
         if (sp.contains("ringer")) { ringerSaved = sp.getInt("ringer", -1); restoreRinger.run() }
         if (sp.contains("alarmVol")) { savedAlarmVol = sp.getInt("alarmVol", -1); restoreAlarmVol.run() }
@@ -937,7 +952,7 @@ class AlertService : Service() {
         if (!nm.isNotificationPolicyAccessGranted) return
         val cur = nm.currentInterruptionFilter
         if (cur == NotificationManager.INTERRUPTION_FILTER_ALL) return
-        if (dndSaved == -1) { dndSaved = cur; restoreSp().edit().putInt("dnd", cur).apply() }
+        if (dndSaved == -1) { dndSaved = cur; restoreSp().edit().putLong("at", System.currentTimeMillis()).putInt("dnd", cur).apply() }
         try { nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL) } catch (_: Exception) { return }
         main.removeCallbacks(dndRestore)
         main.postDelayed(dndRestore, 60_000)
@@ -1002,7 +1017,7 @@ class AlertService : Service() {
         try {
             val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
             val s = android.media.AudioManager.STREAM_ALARM
-            if (savedAlarmVol < 0) { savedAlarmVol = am.getStreamVolume(s); restoreSp().edit().putInt("alarmVol", savedAlarmVol).apply() }
+            if (savedAlarmVol < 0) { savedAlarmVol = am.getStreamVolume(s); restoreSp().edit().putLong("at", System.currentTimeMillis()).putInt("alarmVol", savedAlarmVol).apply() }
             am.setStreamVolume(s, am.getStreamMaxVolume(s), 0)
             main.removeCallbacks(restoreAlarmVol)
             main.postDelayed(restoreAlarmVol, ms + 500)
@@ -1025,7 +1040,7 @@ class AlertService : Service() {
     private fun ringerToNormal(ms: Long): Boolean {
         val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
         return try {
-            if (ringerSaved == -1) { ringerSaved = am.ringerMode; restoreSp().edit().putInt("ringer", ringerSaved).apply() }
+            if (ringerSaved == -1) { ringerSaved = am.ringerMode; restoreSp().edit().putLong("at", System.currentTimeMillis()).putInt("ringer", ringerSaved).apply() }
             am.ringerMode = android.media.AudioManager.RINGER_MODE_NORMAL
             if (am.ringerMode != android.media.AudioManager.RINGER_MODE_NORMAL ||
                 am.getStreamVolume(android.media.AudioManager.STREAM_NOTIFICATION) == 0) { restoreRinger.run(); return false }
