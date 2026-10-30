@@ -93,6 +93,12 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .msg-bar button { background: var(--blue); color: #fff; border-radius: 14px; padding: 9px 22px; font-weight: 700; }
 .msg-bar button:disabled { opacity: .5; }
 
+.msg-bar button.danger { background: #3A1214; color: var(--red); }
+.msg-bar button.danger.sure { background: var(--red); color: #fff; }
+pre.log { margin: 0 14px 12px; padding: 10px 12px; background: #000; border-radius: 14px; max-height: 340px; overflow: auto;
+  direction: ltr; text-align: left; font-size: 11.5px; line-height: 1.55; color: #C8C8CC; white-space: pre-wrap; word-break: break-word; }
+pre.log .bad { color: var(--red); } pre.log .ok { color: var(--green); } pre.log .t { color: var(--muted); }
+
 /* מקורות */
 .src-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 

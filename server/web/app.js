@@ -299,6 +299,57 @@ $('msgForm').onsubmit = e => {
     .finally(() => { btn.disabled = false; setTimeout(() => { $('msgSt').textContent = ''; }, 5000); });
 };
 
+// ---- השרת: גרסה, עדכון עצמי, יומן, הפעלה מחדש ----
+let srv = null, logOpen = false;
+const lt = iso => { const d = new Date(iso); return isNaN(d) ? '' : pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); };
+function loadServer() {
+  fetch('/api/server').then(r => r.json()).then(s => {
+    srv = s;
+    const last = s.updates[0] || '', failed = /FAILED/.test(last);
+    $('srvInfo').innerHTML = `
+      <div class="row"><span>גרסה בשרת</span><span class="end" dir="ltr">${esc(s.commit.hash)} · ${esc(s.commit.msg.slice(0, 40))}</span></div>
+      <div class="row"><span>עדכון עצמי אחרון</span><span class="end" style="color:${failed ? 'var(--red)' : 'var(--muted)'}">${failed ? 'נכשל – חזר לגרסה הקודמת' : last ? 'הצליח'  : '–'}${last ? ' · ' + esc(dmy(new Date(last.split(' ')[0])) + ' ' + lt(last.split(' ')[0]).slice(0, 5)) : ''}</span></div>
+      <div class="row"><span>זיכרון · עומס</span><span class="end">${s.mem}MB · ${esc(s.load)}</span></div>`;
+    renderLog();
+  }).catch(() => {});
+}
+function renderLog() {
+  if (!srv || !logOpen) return;
+  const q = $('logQ').value.trim().toLowerCase();
+  const show = l => !q || l.toLowerCase().includes(q);
+  const color = l => /FAILED|failed|uncaught|unhandled|crash|לא עונה/.test(l) ? 'bad' : /updated|חזר לעבוד|started/.test(l) ? 'ok' : '';
+  const fmt = l => { const i = l.indexOf(' '); return `<span class="${color(l)}"><span class="t">${lt(l.slice(0, i))}</span> ${esc(l.slice(i + 1))}</span>`; };
+  $('updLog').innerHTML = srv.updates.filter(show).map(l => fmt(l)).join('\n') || '–';
+  $('srvLog').innerHTML = srv.log.filter(show).map(l => fmt(l)).join('\n') || '–';
+}
+$('logHead').onclick = () => {
+  logOpen = !logOpen;
+  $('logBox').style.display = logOpen ? '' : 'none'; $('logTx').textContent = logOpen ? 'הסתר ▴' : 'הצג ▾';
+  if (logOpen) loadServer();
+};
+$('logQ').oninput = renderLog;
+// הפעלה מחדש: לחיצה ראשונה מבקשת אישור, שנייה (תוך 5 שניות) מפעילה
+let sureT = 0;
+$('rstBtn').onclick = () => {
+  const b = $('rstBtn');
+  if (!b.classList.contains('sure')) {
+    b.classList.add('sure'); b.textContent = 'בטוח? לחץ שוב';
+    clearTimeout(sureT); sureT = setTimeout(() => { b.classList.remove('sure'); b.textContent = 'הפעל מחדש'; }, 5000);
+    return;
+  }
+  clearTimeout(sureT); b.classList.remove('sure'); b.disabled = true; b.textContent = 'מפעיל מחדש…';
+  fetch('/api/restart', { method: 'POST' }).catch(() => {}).finally(() => {
+    // מחכים שהשרת יעלה בחזרה
+    const t0 = Date.now();
+    const wait = () => fetch('/api/state').then(r => { if (!r.ok) throw 0; return r.json(); }).then(s => {
+      if (s.started < t0 - 2000) throw 0;
+      b.disabled = false; b.textContent = 'הפעל מחדש'; $('rstSt').textContent = '✓ השרת עלה מחדש'; loadState(); loadServer();
+      setTimeout(() => { $('rstSt').textContent = ''; }, 6000);
+    }).catch(() => { if (Date.now() - t0 < 60e3) setTimeout(wait, 2000); else { b.disabled = false; b.textContent = 'הפעל מחדש'; $('rstSt').textContent = 'השרת לא חזר – בדוק'; } });
+    setTimeout(wait, 3000);
+  });
+};
+
 // ---- שעון ----
 function tick() {
   const d = new Date();
@@ -319,5 +370,6 @@ if (mine.length) fitTo(mine);
 loadArchive(); setInterval(loadArchive, 5 * 60e3);
 loadState(); setInterval(loadState, 30e3);
 loadDevices(); setInterval(loadDevices, 60e3);
+loadServer(); setInterval(() => { loadServer(); }, 15e3);
 connect();
 tick(); setInterval(tick, 1000);
