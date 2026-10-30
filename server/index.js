@@ -79,6 +79,10 @@ setInterval(() => { const now = Date.now(); for (const [ip, h] of ipHits) if (no
 const inIsrael = (lat, lon) => lat > 29.3 && lat < 33.5 && lon > 34.2 && lon < 35.95;
 
 require('http').createServer((req, res) => {
+  // בקשה פגומה (כתובת לא תקינה וכד') - עונים 400, לא מפילים את השרת
+  try { route(req, res); } catch (e) { log('bad request', e.message); try { res.writeHead(400); res.end(); } catch (_) {} }
+}).listen(8080);
+function route(req, res) {
   const u = new URL(req.url, 'http://x');
   if (tooMany(req.socket.remoteAddress || '')) { res.writeHead(429); return res.end(); }
   if ((u.pathname === '/weather' || u.pathname === '/shabbat') &&
@@ -93,7 +97,10 @@ require('http').createServer((req, res) => {
   if (Date.now() - lastManualHb > 60 * 1000) { lastManualHb = Date.now(); heartbeat(); }
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ up: upList(), started: STARTED, now: Date.now(), version: latest }));
-}).listen(8080);
+}
+// תקלה לא צפויה - רושמים ביומן וממשיכים (שהבדיקה וההתרעות לא ייעצרו)
+process.on('uncaughtException', e => log('uncaught', e && e.stack || e));
+process.on('unhandledRejection', e => log('unhandled', e && e.stack || e));
 
 // ---- בקשת https פשוטה (חיבורים נפרדים, כדי לא לעכב את הבדיקה החיה של פיקוד העורף) ----
 const slowAgent = new https.Agent({ keepAlive: true, maxSockets: 6 });
