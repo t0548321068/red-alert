@@ -636,8 +636,8 @@ internal fun MainActivity.showDisplay() {
 
 /** מסך עדכונים: גרסה מותקנת + בדיקה, גרסאות בטא (למי שנפתח לו), ומה חדש */
 internal fun MainActivity.showUpdates() = ouiPage("עדכונים",
-    // אותה בדיקה בדיוק כמו לחיצה על הגרסה בשורת החיווי
-    button = "בדוק אם יש עדכונים" to { done -> Updater.check(this, silent = false, done = done) }) { body, rebuild ->
+    // חלון בדיקת העדכונים - אותו חלון כמו לחיצה על הגרסה בשורת החיווי
+    button = "בדוק אם יש עדכונים" to { done -> done(); showUpdateCheck() }) { body, rebuild ->
     val ver = ouiCard()
     ouiRow(ver, "גרסה מותקנת", end = "v" + Updater.versionLabel(this), endColor = C.MUTED)
     ouiDivider(ver)
@@ -659,7 +659,7 @@ internal fun MainActivity.showUpdates() = ouiPage("עדכונים",
             Prefs.setSkippedVersion(this, "")
             if (Prefs.enabled(this)) AlertService.reloadPush(this)
             if (on) Prefs.setBetaUnlocked(this, false)   // כיבוי - האפשרות חוזרת להיות מוסתרת
-            else Updater.check(this, silent = false)
+            else showUpdateCheck()
             rebuild()
         }
         ouiAdd(body, beta)
