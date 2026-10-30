@@ -3,6 +3,7 @@
   "short_name": "צופר חירום",
   "lang": "he",
   "dir": "rtl",
+  "id": "/",
   "start_url": "/app",
   "scope": "/",
   "display": "standalone",
