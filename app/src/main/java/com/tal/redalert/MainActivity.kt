@@ -28,7 +28,7 @@ import android.widget.TextView
 class MainActivity : Activity() {
 
     /** צבעים לפי ערכת הנושא (כהה / בהירה) */
-    private object C {
+    internal object C {
         var BG = 0; var CARD = 0; var CHIP = 0; var TEXT = 0; var MUTED = 0
         var GREEN = 0; var GREEN_BG = 0; var OFF = 0; var OFF_BG = 0
         var BLUE = 0; var RED = 0; var ORANGE = 0; var END = 0
@@ -62,49 +62,49 @@ class MainActivity : Activity() {
         }
     }
 
-    private lateinit var circle: FrameLayout
-    private lateinit var shieldIcon: android.widget.ImageView
-    private lateinit var circleLabel: TextView
-    private lateinit var haloOuter: FrameLayout
-    private lateinit var haloInner: FrameLayout
-    private lateinit var glow: View                // זוהר מאחורי המגן
-    private lateinit var ring1: View               // גל רדאר שיוצא מהמגן
-    private val pulseAnims = mutableListOf<android.animation.Animator>()
-    private lateinit var chips: LinearLayout
-    private lateinit var historyBox: LinearLayout
-    private lateinit var clockTime: TextView
-    private lateinit var greeting: TextView
-    private lateinit var clockDay: TextView
-    private lateinit var weatherLine: TextView
-    private lateinit var shelterLine: TextView
-    private lateinit var quietLine: TextView
-    private lateinit var feedLine: TextView
-    private lateinit var feedCard: FrameLayout
-    private lateinit var mainCol: LinearLayout
-    private lateinit var testFab: View
-    private var feedText = ""
-    private lateinit var netInd: TextView
-    private lateinit var protInd: TextView   // מוגן / לא מוגן
-    private lateinit var locInd: TextView
-    private lateinit var srvInd: TextView
-    private lateinit var verInd: TextView
-    private lateinit var statusRow: View   // שורת החיוויים - אפשר להסתיר בהגדרות התצוגה   // גרסה: אייקון כתום מהבהב כשיש עדכון
-    private lateinit var sndInd: TextView   // צלילים: רגיל / חזק / שקט / מושתק / כבוי
-    private var weatherAt = 0L
-    private var weatherAccuracy = -1
-    private var weatherShown = false   // יש כבר מזג אוויר על המסך
-    private var locTapAt = 0L          // לחיצה אחרונה על חיווי המיקום
-    private var lastHistoryKey = ""
+    internal lateinit var circle: FrameLayout
+    internal lateinit var shieldIcon: android.widget.ImageView
+    internal lateinit var circleLabel: TextView
+    internal lateinit var haloOuter: FrameLayout
+    internal lateinit var haloInner: FrameLayout
+    internal lateinit var glow: View                // זוהר מאחורי המגן
+    internal lateinit var ring1: View               // גל רדאר שיוצא מהמגן
+    internal val pulseAnims = mutableListOf<android.animation.Animator>()
+    internal lateinit var chips: LinearLayout
+    internal lateinit var historyBox: LinearLayout
+    internal lateinit var clockTime: TextView
+    internal lateinit var greeting: TextView
+    internal lateinit var clockDay: TextView
+    internal lateinit var weatherLine: TextView
+    internal lateinit var shelterLine: TextView
+    internal lateinit var quietLine: TextView
+    internal lateinit var feedLine: TextView
+    internal lateinit var feedCard: FrameLayout
+    internal lateinit var mainCol: LinearLayout
+    internal lateinit var testFab: View
+    internal var feedText = ""
+    internal lateinit var netInd: TextView
+    internal lateinit var protInd: TextView   // מוגן / לא מוגן
+    internal lateinit var locInd: TextView
+    internal lateinit var srvInd: TextView
+    internal lateinit var verInd: TextView
+    internal lateinit var statusRow: View   // שורת החיוויים - אפשר להסתיר בהגדרות התצוגה   // גרסה: אייקון כתום מהבהב כשיש עדכון
+    internal lateinit var sndInd: TextView   // צלילים: רגיל / חזק / שקט / מושתק / כבוי
+    internal var weatherAt = 0L
+    internal var weatherAccuracy = -1
+    internal var weatherShown = false   // יש כבר מזג אוויר על המסך
+    internal var locTapAt = 0L          // לחיצה אחרונה על חיווי המיקום
+    internal var lastHistoryKey = ""
 
-    private fun granted(p: String) =
+    internal fun granted(p: String) =
         checkSelfPermission(p) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    private fun hasLocationPerm() =
+    internal fun hasLocationPerm() =
         granted(android.Manifest.permission.ACCESS_COARSE_LOCATION) ||
             granted(android.Manifest.permission.ACCESS_FINE_LOCATION)
-    private fun hasPrecise() = granted(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    internal fun hasPrecise() = granted(android.Manifest.permission.ACCESS_FINE_LOCATION)
 
     /** מתעדכן כל 15 דקות, או מיד כשמכריחים (לחיצה על השורה) */
-    private fun updateWeather(force: Boolean = false) {
+    internal fun updateWeather(force: Boolean = false) {
         if (!Prefs.showWeather(this)) { weatherLine.visibility = View.GONE; return }
         weatherLine.visibility = View.VISIBLE
         if (!hasLocationPerm()) {
@@ -149,7 +149,7 @@ class MainActivity : Activity() {
      * חיווי הדיוק יציב: מציג את הדיוק הטוב ביותר שנמדד לאחרונה (נשמר גם אחרי סגירה ופתיחה).
      * מתעדכן רק כשה-GPS מוצא דיוק טוב יותר, כשזזת (מעל 200 מטר), או כשהמדידה האחרונה בת יותר מחצי שעה
      */
-    private fun keepAccuracy(loc: android.location.Location) {
+    internal fun keepAccuracy(loc: android.location.Location) {
         val m = Math.round(loc.accuracy)
         val (prev, at, pos) = Prefs.lastAcc(this)
         val moved = FloatArray(1).also { android.location.Location.distanceBetween(pos.first, pos.second, loc.latitude, loc.longitude, it) }[0] > 200f
@@ -160,21 +160,21 @@ class MainActivity : Activity() {
         }
     }
     /** מספר ראשוני בפתיחה (נלקח פעם אחת, לא מתעדכן כל שנייה) - עד שיש מדידה */
-    private var initialAcc = -1
-    private fun shownAccuracy(): Int {
+    internal var initialAcc = -1
+    internal fun shownAccuracy(): Int {
         if (weatherAccuracy > 0) return weatherAccuracy
         val (m, _, _) = Prefs.lastAcc(this)
         return if (m > 0) m else initialAcc
     }
     /** בכל פתיחה: מספר ראשוני מיד, ומדידה מדויקת ברקע שמעדכנת אותו (אם לא נמדד בדקה האחרונה) */
-    private fun refreshAccuracy() {
+    internal fun refreshAccuracy() {
         if (!hasLocationPerm() || !locationOn()) return
         if (initialAcc <= 0) initialAcc = try { Weather.lastLocation(this)?.accuracy?.let { Math.round(it) } } catch (_: Exception) { null } ?: -1
         if (System.currentTimeMillis() - Prefs.lastAcc(this).second < 60_000L) return
         Weather.freshLocation(this) { loc -> if (loc != null) keepAccuracy(loc) }
     }
 
-    private fun loadWeather(loc: android.location.Location) = Thread {
+    internal fun loadWeather(loc: android.location.Location) = Thread {
         val w = try { Weather.fetch(this, loc) } catch (_: Exception) { null }
         runOnUiThread {
             if (w == null) { weatherAt = 0L; return@runOnUiThread }
@@ -188,7 +188,7 @@ class MainActivity : Activity() {
         }
     }.start()
 
-    private fun onWeatherClick() {
+    internal fun onWeatherClick() {
         if (hasPrecise()) updateWeather(force = true)
         else requestPermissions(arrayOf(
             android.Manifest.permission.ACCESS_FINE_LOCATION,
@@ -201,12 +201,12 @@ class MainActivity : Activity() {
         if (requestCode == 3 && hasPrecise()) toggleNearMe()
     }
 
-    private val ui = Handler(Looper.getMainLooper())
+    internal val ui = Handler(Looper.getMainLooper())
     /**
      * השעון: קל ומהיר, מתוזמן קודם כל - כך שתקלה או עיכוב בשאר המסך לא עוצרים את השניות וההבהוב.
      * רץ כל חצי שנייה (שנייה מלאה + אמצע השנייה להבהוב הנקודתיים).
      */
-    private val tick = object : Runnable {
+    internal val tick = object : Runnable {
         override fun run() {
             ui.removeCallbacks(this)
             val ms = System.currentTimeMillis() % 1000
@@ -216,7 +216,7 @@ class MainActivity : Activity() {
             if (ms < 500) ui.post(slowTick)
         }
     }
-    private val slowTick = Runnable {
+    internal val slowTick = Runnable {
         try {
             updateIndicators()
             updateWeather()
@@ -229,17 +229,17 @@ class MainActivity : Activity() {
         } catch (_: Exception) { }
     }
 
-    private lateinit var alertCard: LinearLayout
-    private lateinit var alertWrap: FrameLayout
-    private lateinit var areasSlot: FrameLayout
+    internal lateinit var alertCard: LinearLayout
+    internal lateinit var alertWrap: FrameLayout
+    internal lateinit var areasSlot: FrameLayout
 
     /** כשכרטיס ההתרעה מוצג - האזורים בגובה מלא והמסך נגלל; בלעדיו - האזורים ממלאים את מה שנשאר */
-    private lateinit var clockArea: LinearLayout
-    private var mainScroll: ScrollView? = null
+    internal lateinit var clockArea: LinearLayout
+    internal var mainScroll: ScrollView? = null
     /** האם המסך הראשי עצמו נגלל (רק כשכרטיס ההתרעה מוצג) */
-    private var pageScrolls = false
+    internal var pageScrolls = false
 
-    private fun setScrollMode(want: Boolean) {
+    internal fun setScrollMode(want: Boolean) {
         // מסך מסובב (לרוחב): אין מספיק גובה - המסך הראשי תמיד נגלל
         val on = want || resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
         pageScrolls = on
@@ -248,15 +248,15 @@ class MainActivity : Activity() {
         val h = if (on) -2 else 0; val w = if (on) 0f else 1f
         if (lp.height != h || lp.weight != w) { lp.height = h; lp.weight = w; areasSlot.layoutParams = lp }
     }
-    private var alertCardKey = ""
-    private var alertCardIcon: android.widget.ImageView? = null
-    private var alertCardIconRes = 0
-    private var alertCardTimer: TextView? = null
-    private var alertCardLabel: TextView? = null
+    internal var alertCardKey = ""
+    internal var alertCardIcon: android.widget.ImageView? = null
+    internal var alertCardIconRes = 0
+    internal var alertCardTimer: TextView? = null
+    internal var alertCardLabel: TextView? = null
 
     /** רקע המסך הראשי נצבע לפי ההתרעה הפעילה (אדום / כתום / ירוק, בגוון כהה); null = הרקע הרגיל */
-    private var mainTint = 0
-    private fun applyMainTint(level: Int?) {
+    internal var mainTint = 0
+    internal fun applyMainTint(level: Int?) {
         val c = if (level == null) C.BG else {
             val a = Color.parseColor(AlertUi.color(level)); val f = if (Prefs.darkTheme(this)) 0.30f else 0.18f
             Color.rgb((Color.red(a) * f + Color.red(C.BG) * (1 - f)).toInt(),
@@ -273,7 +273,7 @@ class MainActivity : Activity() {
     }
 
     /** כרטיס ההתרעה מעל השעון: נבנה כשההתרעה משתנה, והטיימר מתעדכן כל שנייה */
-    private fun updateAlertCard() {
+    internal fun updateAlertCard() {
         val j = Prefs.activeAlert(this)
         val level = j?.optInt("level") ?: 0
         val firedAt = j?.optLong("firedAt") ?: 0L
@@ -331,7 +331,7 @@ class MainActivity : Activity() {
     }
 
     /** לחיצה על הכרטיס - מסך ההתרעה המלא */
-    private fun openActiveAlert() {
+    internal fun openActiveAlert() {
         val j = Prefs.activeAlert(this) ?: return
         startActivity(Intent(this, AlertActivity::class.java)
             .putExtra("title", j.optString("title")).putExtra("body", j.optString("body"))
@@ -340,7 +340,7 @@ class MainActivity : Activity() {
             .putExtra("mapAreas", j.optString("mapAreas", j.optString("body"))))   // המפה - כמו בהתרעה עצמה
     }
 
-    private fun updateClock() {
+    internal fun updateClock() {
         val now = System.currentTimeMillis()
         clockTime.text = TimeFormat.clock(this, now)
         clockDay.text = TimeFormat.dayLine(this, now)
@@ -349,9 +349,8 @@ class MainActivity : Activity() {
         if (g) greeting.text = TimeFormat.greeting(now)
     }
 
-    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     /** רווח אחיד בין כרטיס לכרטיס במסך הראשי */
-    private val GAP = 12
+    internal val GAP = 12
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val dark = Prefs.darkTheme(this)
@@ -639,7 +638,7 @@ class MainActivity : Activity() {
         AreaData.preload(this)   // נתוני היישובים ברקע - המסך לא נתקע בפתיחה
     }
 
-    private var updateCheckedAt = 0L
+    internal var updateCheckedAt = 0L
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -690,7 +689,7 @@ class MainActivity : Activity() {
         super.onPause()
     }
 
-    private fun toggle() {
+    internal fun toggle() {
         val on = !Prefs.enabled(this)
         Prefs.setEnabled(this, on)
         if (on) AlertService.start(this, manual = true) else AlertService.stop(this)
@@ -698,7 +697,7 @@ class MainActivity : Activity() {
         refresh()
     }
 
-    private fun evenClockGaps() {
+    internal fun evenClockGaps() {
         if (circleLabel.height == 0 || clockTime.height == 0) return
         // אזור ההתרעה יושב בין "מוגן" לשעון - הרווחים קבועים, לא מיישרים
         if (clockArea.childCount > 0) {
@@ -721,7 +720,7 @@ class MainActivity : Activity() {
     }
 
     /** אנימציית מוגן: זוהר שמאיר ונכבה + שני גלים - רק כשמוגן ורק כשהמסך מוצג */
-    private fun setSweep(on: Boolean) {
+    internal fun setSweep(on: Boolean) {
         if (!on) {
             pulseAnims.forEach { it.cancel() }; pulseAnims.clear()
             glow.alpha = 0f; ring1.alpha = 0f
@@ -748,7 +747,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun refresh() {
+    internal fun refresh() {
         val sched = Prefs.enabled(this) && Prefs.scheduleOffNow(this)   // פעיל, אבל עכשיו מחוץ לתזמון
         val on = Prefs.enabled(this) && !sched
         val color = if (on) C.GREEN else C.OFF
@@ -782,7 +781,7 @@ class MainActivity : Activity() {
     }
 
     /** אזורי התרעה: פס בולט עם המיקום שלי, ומתחתיו האזורים הנוספים */
-    private fun renderChips() {
+    internal fun renderChips() {
         chips.removeAllViews()
         val list = Prefs.cities(this)
         val nearOn = Prefs.nearMe(this)
@@ -809,7 +808,7 @@ class MainActivity : Activity() {
     }
 
     /** כרטיס במסך הראשי: היישובים והאזורים הנוספים (תצוגה בלבד) */
-    private fun renderExtraCard() {
+    internal fun renderExtraCard() {
         areasSlot.removeAllViews()
         val (towns, dists) = extraSelection()
         val dmap = AreaData.districtMap(this)
@@ -845,7 +844,7 @@ class MainActivity : Activity() {
     }
 
     /** במסך הראשי: שורת סיכום של ההתראה האחרונה */
-    private fun renderHistory() {
+    internal fun renderHistory() {
         historyBox.removeAllViews()
         val e = Prefs.history(this).firstOrNull()
         val muted = C.MUTED2
@@ -856,259 +855,31 @@ class MainActivity : Activity() {
             12f, muted).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
     }
 
-    /**
-     * מסך "התראות אחרונות": כל ההתראות שהיו בארץ (החודש האחרון, מהארכיון של פיקוד העורף),
-     * בלי סינון. לחיצה על התראה - המפה על האזור שלה.
-     */
-    /** עמוד בסגנון One UI: כותרת גדולה ותוכן נגלל */
-    private fun onePage(title: String, action: Pair<Int, () -> Unit>? = null, headerExtra: ((LinearLayout) -> Unit)? = null,
-                        build: (LinearLayout) -> Unit) {
-        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
-        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val page = ScrollView(this).apply {
-            setBackgroundColor(C.BG)
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            addView(body)
-        }
-        page.setOnApplyWindowInsetsListener { v, insets ->
-            @Suppress("DEPRECATION")
-            v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
-            insets
-        }
-        // כותרת כמו בשאר מסכי ההגדרות, ואם יש - כפתור פעולה בצד (למשל מפה)
-        body.addView(LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(24), dp(14), dp(12), dp(14))
-            addView(text(title, 20f, C.TEXT, bold = true), LinearLayout.LayoutParams(0, -2, 1f))
-            headerExtra?.invoke(this)
-            action?.let { (icon, run) ->
-                // כמו האייקונים בראש המסך הראשי: בלי רקע, רק הבהוב בלחיצה
-                addView(android.widget.ImageView(this@MainActivity).apply {
-                    setImageResource(icon)
-                    imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT)
-                    setPadding(dp(11), dp(11), dp(11), dp(11))
-                    background = android.graphics.drawable.RippleDrawable(
-                        android.content.res.ColorStateList.valueOf(C.LINE2), null,
-                        GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) })
-                    setOnClickListener { run() }
-                }, LinearLayout.LayoutParams(dp(46), dp(46)))
-            }
-        })
-        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        body.addView(content)
-        body.addView(View(this), LinearLayout.LayoutParams(-1, dp(30)))
-        build(content)
-        d.setContentView(page)
-        d.window?.setLayout(-1, -1)
-        @Suppress("DEPRECATION")
-        d.window?.statusBarColor = C.BG
-        edgeToEdge(d)
-        track(d)
-        d.show()
-    }
-
     /** התראות אחרונות בסגנון One UI: מחולקות לימים, כל יום בכרטיס */
-    private var recentList: LinearLayout? = null
-    private var recentSegView: LinearLayout? = null
-    /** "שלי": רק ההתרעות שהאפליקציה באמת הקפיצה לי (ההיסטוריה שלי) - לא מהארכיון */
-    @Suppress("UNUSED_PARAMETER")
-    private fun mineOf(all: List<Prefs.Entry>): List<Prefs.Entry> = Prefs.history(this)
-
-    /** בורר הכל / האזורים שלי (בכותרת, ליד כפתור המפה), עם מספר ההתרעות בכל אחד */
-    private fun buildRecentSeg(seg: LinearLayout) {
-        seg.removeAllViews()
-        val data = archiveCache
-        listOf(false to "הכל", true to "שלי").forEach { (mine, name) ->
-            val sel = recentMine == mine
-            val n = when { data == null -> null; mine -> mineOf(data).size; else -> data.size }
-            val label = if (n == null) name else "$name ($n)"
-            // רוחב קבוע לכל כפתור (לפי הנוסח המודגש) - בלי קפיצה כשמחליפים בחירה
-            val w = android.graphics.Paint().apply { textSize = 14f * resources.displayMetrics.scaledDensity
-                typeface = android.graphics.Typeface.DEFAULT_BOLD }.measureText(label).toInt() + dp(28)
-            seg.addView(text(label, 14f, if (sel) Color.WHITE else C.MUTED, bold = sel).apply {
-                gravity = Gravity.CENTER
-                minWidth = w
-                setPadding(0, dp(7), 0, dp(7))
-                if (sel) background = GradientDrawable().apply { setColor(Color.parseColor("#4C7DFF")); cornerRadius = dp(16).toFloat() }
-                setOnClickListener {
-                    if (sel) return@setOnClickListener
-                    recentMine = mine; buildRecentSeg(seg)
-                    val c = recentList; val data = archiveCache
-                    if (c != null && data != null) fillRecent(c, data)
-                }
-            }, LinearLayout.LayoutParams(-2, -2))
-        }
-    }
-
-    private fun showRecent() = onePage("התרעות אחרונות",
-        action = R.drawable.ic_map to { startActivity(Intent(this, MapActivity::class.java)) },
-        headerExtra = { h ->
-            val seg = LinearLayout(this).apply { background = graphite(22); setPadding(dp(3), dp(3), dp(3), dp(3)) }
-            buildRecentSeg(seg); recentSegView = seg
-            h.addView(seg, LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(10) })
-        }) { c ->
-        recentList = c
-        val cached = archiveCache
-        if (cached != null) { fillRecent(c, cached); return@onePage }
-        val loading = text("טוען את כל ההתראות…", 14f, C.MUTED2).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) }
-        c.addView(loading)
-        Thread {
-            // הארכיון + מה שנשמר בטלפון מפעמים קודמות (נשמר עד שנה אחורה)
-            val list = try { OrefArchive.fetchAndKeep(this) } catch (_: Exception) { emptyList() }
-                .ifEmpty { Prefs.feed(this) }   // אין כלום - מה שהאפליקציה קלטה בעצמה
-            runOnUiThread {
-                archiveCache = list
-                fillRecent(c, list)
-            }
-            // פעם אחת: השלמה מהארכיון שנה אחורה, ואז מרעננים את הרשימה
-            if (try { OrefArchive.backfill(this) } catch (_: Exception) { false }) {
-                val full = try { OrefArchive.fetchAndKeep(this) } catch (_: Exception) { emptyList() }
-                if (full.isNotEmpty()) runOnUiThread { archiveCache = full; recentList?.let { l ->
-                    // רענון ברקע - נשארים באותו מקום ברשימה
-                    val sv = generateSequence(l.parent) { it.parent }.filterIsInstance<ScrollView>().firstOrNull()
-                    val y = sv?.scrollY ?: 0
-                    fillRecent(l, full, recentShown); sv?.post { sv.scrollTo(0, y) } } }
-            }
-        }.start()
-    }
-
+    internal var recentList: LinearLayout? = null
+    internal var recentSegView: LinearLayout? = null
     /** המקום ברשימת ההתרעות לפני שנפתחה המפה - חוזרים אליו כשחוזרים */
-    private var restoreScroll: (() -> Unit)? = null
+    internal var restoreScroll: (() -> Unit)? = null
 
     /** סינון ברשימת ההתרעות: הכל / האזורים שלי (נזכר עד שסוגרים את האפליקציה) */
-    private var recentMine = false
+    internal var recentMine = false
 
     /**
      * הרשימה נבנית בחלקים: קודם ההתרעות הראשונות, וכשגוללים למטה - עוד. כך גם שנה של התרעות
      * (אלפי שורות) נפתחת מיד ולא נתקעת
      */
-    private var recentItems: List<Prefs.Entry> = emptyList()
-    private var recentShown = 0
-    private var recentDay: String? = null
-    private var recentCard: LinearLayout? = null
-    private val recentTimeFmt = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
-    private val RECENT_CHUNK = 120
-
-    /** minShown: רענון ברקע - בונים לפחות כמה שכבר הוצג, כדי שהמקום ברשימה יישמר */
-    private fun fillRecent(c: LinearLayout, all: List<Prefs.Entry>, minShown: Int = 0) {
-        c.removeAllViews()
-        recentSegView?.let { buildRecentSeg(it) }   // מספרים מעודכנים
-        val items = if (!recentMine) all else mineOf(all)
-        val muted = C.MUTED2
-        recentItems = items; recentShown = 0; recentDay = null; recentCard = null
-        if (items.isEmpty()) {
-            c.addView(text(if (recentMine) "אין התראות באזורים שלך" else "אין התראות עדיין", 14f, muted).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) })
-            return
-        }
-        appendRecent(c, maxOf(RECENT_CHUNK, minShown))
-        // גלילה קרוב לסוף - מוסיפים עוד
-        generateSequence(c.parent) { it.parent }.filterIsInstance<ScrollView>().firstOrNull()?.let { sv ->
-            sv.setOnScrollChangeListener { v, _, y, _, _ ->
-                val content = (v as ScrollView).getChildAt(0) ?: return@setOnScrollChangeListener
-                if (recentShown < recentItems.size && y + v.height >= content.height - dp(1500)) appendRecent(c, RECENT_CHUNK)
-            }
-        }
-    }
-
-    private fun appendRecent(c: LinearLayout, count: Int) {
-        val muted = C.MUTED2
-        val end = minOf(recentItems.size, recentShown + count)
-        for (idx in recentShown until end) {
-            val e = recentItems[idx]
-            val day = if (e.ts > 0) fullDayLabel(e.ts) else ""
-            var card = recentCard
-            if (card == null || day != recentDay) {
-                recentDay = day
-                if (day.isNotEmpty()) c.addView(text(day, 13f, muted).apply { setPadding(dp(28), dp(14), dp(28), dp(6)) })
-                card = LinearLayout(this).apply {
-                    orientation = LinearLayout.VERTICAL
-                    background = graphite(28)
-                    clipToOutline = true
-                }
-                recentCard = card
-                c.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), 0) })
-            } else card.addView(View(this).apply { setBackgroundColor(C.DIV) }, LinearLayout.LayoutParams(-1, dp(1)))
-            val row = LinearLayout(this).apply {
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(16), dp(12), dp(16), dp(12))
-                // לחיצה: המפה על האזורים של ההתראה
-                setOnClickListener {
-                    // חוזרים מהמפה לאותו מקום ברשימה
-                    val sv = generateSequence(c.parent) { it.parent }.filterIsInstance<ScrollView>().firstOrNull()
-                    val y = sv?.scrollY ?: 0
-                    restoreScroll = { sv?.scrollTo(0, y) }
-                    startActivity(Intent(this@MainActivity, MapActivity::class.java)
-                        .putExtra("focus", e.body).putExtra("focusTs", e.ts).putExtra("focusAll", true)
-                        .putExtra("focusLevel", e.level).putExtra("focusTitle", e.title))   // ההתרעה שנלחצה - בצבע שלה
-                }
-            }
-            val col = when (e.level) {
-                AlertService.LEVEL_PRE -> "#F08C00"
-                AlertService.LEVEL_END -> "#2E7D32"
-                else -> "#E53935"
-            }
-            val icon = AlertUi.icon(e.title, e.level)
-            row.addView(FrameLayout(this).apply {
-                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(col)) }
-                addView(android.widget.ImageView(this@MainActivity).apply { AlertUi.setIcon(this, icon) },
-                    FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))
-            }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(12) })
-            val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-            texts.addView(text(if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title, 15f, C.TEXT))
-            texts.addView(text(e.body.replace("ברחבי הארץ", AreaData.ALL_COUNTRY), 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
-            row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
-            row.addView(text(if (e.ts > 0) recentTimeFmt.format(java.util.Date(e.ts)) else e.time.take(5), 12f, muted),
-                LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
-            card.addView(row)
-        }
-        recentShown = end
-    }
+    internal var recentItems: List<Prefs.Entry> = emptyList()
+    internal var recentShown = 0
+    internal var recentDay: String? = null
+    internal var recentCard: LinearLayout? = null
+    internal val recentTimeFmt = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
+    internal val RECENT_CHUNK = 120
 
     /** נטען פעם אחת לכל פתיחה של האפליקציה */
-    private var archiveCache: List<Prefs.Entry>? = null
-
-    /** "היום" / "אתמול" / תאריך */
-    private fun dayLabel(ts: Long): String {
-        val k = java.util.Calendar.getInstance()
-        fun key(c: java.util.Calendar) = c.get(java.util.Calendar.YEAR) * 1000 + c.get(java.util.Calendar.DAY_OF_YEAR)
-        val today = key(k)
-        val e = java.util.Calendar.getInstance().apply { timeInMillis = ts }
-        k.add(java.util.Calendar.DAY_OF_YEAR, -1)
-        return when (key(e)) {
-            today -> "היום"
-            key(k) -> "אתמול"
-            else -> "%02d/%02d".format(e.get(java.util.Calendar.DAY_OF_MONTH), e.get(java.util.Calendar.MONTH) + 1)
-        }
-    }
-
-    /** כותרת יום ב"התרעות אחרונות": כינוי (היום / אתמול / שלשום / לפני שבוע...) + תאריך מלא */
-    private fun fullDayLabel(ts: Long): String {
-        val date = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US).format(java.util.Date(ts))
-        fun midnight(ms: Long) = java.util.Calendar.getInstance().apply {
-            timeInMillis = ms
-            set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
-            set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
-        }.timeInMillis
-        // הפרש בימים קלנדריים (עיגול - בגלל מעבר שעון קיץ/חורף)
-        val days = Math.round((midnight(System.currentTimeMillis()) - midnight(ts)) / 86_400_000.0).toInt()
-        val nick = when {
-            days <= 0 -> "היום"
-            days == 1 -> "אתמול"
-            days == 2 -> "שלשום"
-            days < 7 -> ""
-            days < 14 -> "לפני שבוע"
-            days < 21 -> "לפני שבועיים"
-            days < 30 -> "לפני 3 שבועות"
-            days < 60 -> "לפני חודש"
-            days < 90 -> "לפני חודשיים"
-            days < 120 -> "לפני 3 חודשים"
-            else -> ""
-        }
-        return if (nick.isEmpty()) date else "$nick · $date"
-    }
+    internal var archiveCache: List<Prefs.Entry>? = null
 
     /** עיגול בחירה כמו בבחירת קבצים בסמסונג: טבעת, ובנבחר עיגול כחול מלא עם וי */
-    private inner class CheckDot(var on: Boolean) : View(this@MainActivity) {
+    internal inner class CheckDot(var on: Boolean) : View(this@MainActivity) {
         private val d = resources.displayMetrics.density
         private val ring = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
             style = android.graphics.Paint.Style.STROKE; strokeWidth = 1.6f * d; color = Color.parseColor("#8E8E93") }
@@ -1126,1169 +897,30 @@ class MainActivity : Activity() {
         }
     }
 
-    /** חלון אזורים נוספים: הוספת יישוב / הוספת אזור שלם */
-    /** היישובים והאזורים הנוספים שנבחרו (בנפרד); נבחרו כולם - "כל הארץ" */
-    private fun extraSelection(): Pair<List<String>, List<String>> {
-        val P = AreaData.DISTRICT_PREFIX
-        val mine = Prefs.cities(this)
-        val allDists = AreaData.districts(this)
-        val pickedD = mine.filter { it.startsWith(P) }.map { it.removePrefix(P) }
-        val dists = if (AreaData.ALL_COUNTRY in pickedD || (allDists.isNotEmpty() && pickedD.containsAll(allDists)))
-            listOf(AreaData.ALL_COUNTRY) else pickedD.sorted()
-        val pickedT = mine.filterNot { it.startsWith(P) }
-        // רשימת כל היישובים נטענת רק כשיש יישובים שנבחרו (טעינה כבדה - שלא יתקע את המסך הראשי)
-        val allAreas = if (pickedT.isEmpty()) emptyList()
-            else AreaData.areas(this).keys().asSequence().filter { !AreaData.isNational(it) }.toList()
-        val towns = if (allAreas.isNotEmpty() && pickedT.toSet().containsAll(allAreas)) listOf(AreaData.ALL_COUNTRY) else pickedT.sorted()
-        return towns to dists
-    }
-
-    private fun showExtraAreas() = ouiPage("אזורים נוספים") { body, rebuild ->
-        // שתי קבוצות: הוספת יישוב + היישובים שנבחרו, הוספת אזור + האזורים שנבחרו
-        val P = AreaData.DISTRICT_PREFIX
-        val dmap = AreaData.districtMap(this)
-        val (towns, dists) = extraSelection()
-        /** מחיקת שורה: יישוב / אזור; "כל הארץ" - מוחק את כל היישובים (או כל האזורים) */
-        fun remove(name: String, whole: Boolean) {
-            val keep = Prefs.cities(this).filter { k ->
-                val isDist = k.startsWith(P)
-                when {
-                    whole != isDist -> true
-                    name == AreaData.ALL_COUNTRY -> false
-                    whole -> k != P + name
-                    else -> k != name
-                }
-            }
-            Prefs.setCities(this, keep); refresh(); rebuild()
-        }
-        fun group(add: String, onAdd: () -> Unit, title: String, names: List<String>, empty: String, whole: Boolean, small: (String) -> String) {
-            val card = ouiCard()
-            ouiRow(card, add) { onAdd() }
-            ouiDivider(card)
-            card.addView(text(title, 13f, C.MUTED).apply { setPadding(dp(18), dp(12), dp(18), dp(2)) })
-            if (names.isEmpty()) ouiRow(card, empty, subColor = C.MUTED)
-            names.forEachIndexed { i, name ->
-                if (i > 0) ouiDivider(card)
-                val r = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), 0, dp(18), 0) }
-                // שם היישוב, ומתחתיו האזור שלו
-                val s = small(name)
-                r.addView(LinearLayout(this).apply {
-                    orientation = LinearLayout.VERTICAL
-                    addView(text(name, 16f, C.TEXT).apply { includeFontPadding = false })
-                    if (s.isNotEmpty()) addView(text(s, 12f, C.MUTED).apply { includeFontPadding = false; setPadding(0, dp(4), 0, 0) })
-                }, LinearLayout.LayoutParams(0, -2, 1f))
-                // סימן מחיקה בקצה השורה: קו אדום קצר (כמו ברשימות של סמסונג)
-                r.addView(FrameLayout(this).apply {
-                    addView(View(this@MainActivity).apply {
-                        background = GradientDrawable().apply { setColor(C.RED); cornerRadius = dp(1).toFloat() }
-                    }, FrameLayout.LayoutParams(dp(16), dp(2), Gravity.CENTER))
-                    setOnClickListener { remove(name, whole) }
-                }, LinearLayout.LayoutParams(dp(44), dp(44)).apply { marginEnd = -dp(12) })
-                card.addView(r, LinearLayout.LayoutParams(-1, dp(if (s.isEmpty()) 48 else 56)))
-            }
-            ouiAdd(body, card)
-        }
-        group("הוספת יישוב", { showAreaPicker(whole = false) }, "יישובים שנבחרו", towns, "לא נבחרו יישובים", false) { if (it == AreaData.ALL_COUNTRY) "" else dmap[it] ?: "" }
-        body.addView(View(this), LinearLayout.LayoutParams(-1, dp(10)))   // רווח בין הקבוצות
-        group("הוספת אזור", { showAreaPicker(whole = true) }, "אזורים שנבחרו", dists, "לא נבחרו אזורים", true) { "" }
-    }
-
-    /**
-     * בחירת אזורים נוספים בסגנון בחירת קבצים בסמסונג: "N נבחרו" למעלה, "הכל" (= כל הארץ) ו"ביטול",
-     * חיפוש, ורשימה עם עיגול בחירה בכל שורה.
-     * whole = בחירת אזורים שלמים (כל שורה אזור)
-     */
-    private fun showAreaPicker(whole: Boolean) {
-        val dmap = AreaData.districtMap(this)
-        val sel = LinkedHashSet(Prefs.cities(this))
-        val P = AreaData.DISTRICT_PREFIX
-        val allKey = P + AreaData.ALL_COUNTRY
-        // "ברחבי הארץ" מאוחד עם "כל הארץ"
-        val all = AreaData.areas(this).keys().asSequence().filter { !AreaData.isNational(it) }.toList()
-        val districts = AreaData.districts(this)
-        var query = ""
-        val distCount: Map<String?, Int> = if (!whole) emptyMap() else all.groupingBy { dmap[it] }.eachCount()
-        // זמן ההתגוננות של אזור שלם: מהקצר לארוך מבין היישובים שבו
-        val distTime: Map<String, String> = if (!whole) emptyMap() else
-            all.groupBy { dmap[it] }.mapNotNull { (dist, names) ->
-                val secs = names.mapNotNull { AreaData.shelterSeconds(this, it) }
-                if (dist == null || secs.isEmpty()) null else {
-                    val lo = secs.min(); val hi = secs.max()
-                    dist to (if (lo == hi) AreaData.shelterText(lo) else AreaData.shelterText(lo) + " – " + AreaData.shelterText(hi))
-                }
-            }.toMap()
-
-        // הפרדה מלאה: חלון יישובים מטפל רק ביישובים, חלון אזורים רק באזורים
-        // "כל הארץ" ישן (מגרסה קודמת) הופך לכל האזורים אחד אחד
-        if (sel.remove(allKey)) sel.addAll(districts.map { P + it })
-        fun key(name: String) = if (whole) P + name else name
-        val kind = if (whole) districts else all
-        fun covered(name: String) = key(name) in sel
-        fun allOn() = kind.all { key(it) in sel }
-        lateinit var render: () -> Unit
-
-        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setBackgroundColor(C.BG); layoutDirection = View.LAYOUT_DIRECTION_RTL }
-
-        // כותרת: [עיגול "הכל"] "N נבחרו"
-        val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(14), dp(20), dp(10)) }
-        val allDot = CheckDot(false)
-        top.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
-            addView(allDot, LinearLayout.LayoutParams(dp(22), dp(22)))
-            addView(text("הכל", 12f, C.TEXT).apply { setPadding(0, dp(2), 0, 0) })
-            setOnClickListener {
-                // "הכל" - בוחר / מבטל את כל היישובים (או כל האזורים) בחלון הזה בלבד
-                if (allOn()) kind.forEach { sel.remove(key(it)) } else kind.forEach { sel.add(key(it)) }
-                render()
-            }
-        }, LinearLayout.LayoutParams(dp(44), -2))
-        val count = text("", 26f, C.TEXT, bold = true)
-        top.addView(count, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(12) })
-        root.addView(top)
-
-        // חיפוש
-        val search = EditText(this).apply {
-            hint = if (whole) "חיפוש אזור" else "חיפוש יישוב"; setSingleLine(); textSize = 16f
-            setTextColor(C.TEXT); setHintTextColor(C.MUTED)
-            background = GradientDrawable().apply { setColor(C.CARD2); cornerRadius = dp(24).toFloat() }
-            setPadding(dp(20), 0, dp(20), 0)
-        }
-        root.addView(search, LinearLayout.LayoutParams(-1, dp(48)).apply { setMargins(dp(12), 0, dp(12), dp(10)) })
-
-        // הרשימה
-        val items = ArrayList<String>()
-        val adapter = object : android.widget.BaseAdapter() {
-            override fun getCount() = items.size
-            override fun getItem(p: Int) = items[p]
-            override fun getItemId(p: Int) = p.toLong()
-            override fun getView(p: Int, cv: View?, parent: ViewGroup): View {
-                val name = items[p]
-                val v = (cv as? LinearLayout) ?: LinearLayout(this@MainActivity).apply {
-                    gravity = Gravity.CENTER_VERTICAL; setPadding(dp(20), 0, dp(20), 0)
-                    minimumHeight = dp(66)
-                    addView(CheckDot(false), LinearLayout.LayoutParams(dp(22), dp(22)))
-                    // שם היישוב ומתחתיו האזור; בסוף השורה "זמן התגוננות" ומתחתיו הזמן במילים
-                    addView(LinearLayout(this@MainActivity).apply {
-                        orientation = LinearLayout.VERTICAL
-                        addView(text("", 17f, C.TEXT).apply { setSingleLine(); ellipsize = TextUtils.TruncateAt.END })
-                        addView(text("", 13f, C.MUTED).apply { setSingleLine(); setPadding(0, dp(2), 0, 0) })
-                    }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(18) })
-                    // זמן ההתגוננות מיושר לשמאל (צמוד לקצה המסך)
-                    addView(LinearLayout(this@MainActivity).apply {
-                        orientation = LinearLayout.VERTICAL
-                        addView(text("זמן התגוננות", 12f, C.MUTED).apply { gravity = Gravity.LEFT }, LinearLayout.LayoutParams(-1, -2))
-                        addView(text("", 14f, C.TEXT).apply { gravity = Gravity.LEFT; setPadding(0, dp(2), 0, 0) },
-                            LinearLayout.LayoutParams(-1, -2))
-                    }, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
-                }
-                (v.getChildAt(0) as CheckDot).apply { on = covered(name); invalidate() }
-                val names = v.getChildAt(1) as LinearLayout
-                (names.getChildAt(0) as TextView).text = name
-                (names.getChildAt(1) as TextView).apply {
-                    // באזור שלם: מספר היישובים - כדי שהשורה תהיה בשתי שורות ותתיישר כמו ביישובים
-                    text = if (whole) distCount[name]?.let { "$it יישובים" } ?: "" else dmap[name] ?: ""
-                    visibility = if (text.isEmpty()) View.GONE else View.VISIBLE
-                }
-                val time = if (whole) distTime[name]
-                    else AreaData.shelterSeconds(this@MainActivity, name)?.let { AreaData.shelterText(it) }
-                val end = v.getChildAt(2) as LinearLayout
-                end.visibility = if (time == null) View.GONE else View.VISIBLE
-                (end.getChildAt(1) as TextView).text = time ?: ""
-                return v
-            }
-        }
-        val list = android.widget.ListView(this).apply {
-            this.adapter = adapter; divider = null; selector = android.graphics.drawable.ColorDrawable(0)
-            clipToPadding = false; setPadding(0, 0, 0, dp(120))
-        }
-        root.addView(list, LinearLayout.LayoutParams(-1, 0, 1f))
-
-        val fill = {
-            val t = query.trim(); val k = Prefs.areaKey(t)
-            items.clear()
-            items.addAll((if (whole) districts else all).filter {
-                t.isEmpty() || it.contains(t) || (k.isNotEmpty() && Prefs.areaKey(it).contains(k))
-            }.sortedWith(compareBy<String>({ if (t.isNotEmpty() && it.startsWith(t)) 0 else 1 }, { it })))
-            adapter.notifyDataSetChanged()
-        }
-        render = {
-            // תמיד "N נבחרו" (גם כשנבחר הכל); "כל הארץ" מופיע ברשימת הנבחרים
-            val n = kind.count { key(it) in sel }
-            val full = n == kind.size && n > 0
-            count.text = when { n == 0 -> if (whole) "בחירת אזור שלם" else "בחירת יישוב"; else -> "$n נבחרו" }
-            allDot.on = full; allDot.invalidate()
-            adapter.notifyDataSetChanged()
-        }
-        list.setOnItemClickListener { _, _, p, _ ->
-            val name = items[p]
-            if (!sel.remove(key(name))) sel.add(key(name))
-            render()
-        }
-        search.addTextChangedListener(object : android.text.TextWatcher {
-            override fun afterTextChanged(e: android.text.Editable?) { query = e.toString(); fill() }
-            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-        })
-        fill(); render()
-
-        // שומרים רק שמות אמיתיים - מנקה שאריות של שמות שנחתכו בפסיק בגרסאות קודמות
-        val valid = all.toHashSet() + districts.map { P + it }
-        showWithCancelSave(d, root) { Prefs.setCities(this@MainActivity, sel.filter { it in valid }); refresh() }
-    }
-
-    // ---- מסך הגדרות: כפתור לכל קטגוריה, וכל קטגוריה במסך משלה ----
-
     /** on != null - השורה מציגה מתג (לחיצה על השורה מדליקה/מכבה) */
-    private class Row(val icon: String, val title: String, val value: () -> String,
+    internal class Row(val icon: String, val title: String, val value: () -> String,
                       val on: (() -> Boolean)? = null, val toggle: (() -> Unit)? = null, val action: () -> Unit)
 
-    // סגנון One UI: כרטיס אפור כהה אחיד עם פינות מעוגלות מאוד
-    private fun graphite(@Suppress("UNUSED_PARAMETER") radius: Int) = GradientDrawable().apply {
-        setColor(C.CARD2); cornerRadius = dp(28).toFloat() }
-    /** גלולה צפה (כפתורים) */
-    private fun pill() = GradientDrawable().apply { setColor(C.PILL); cornerRadius = dp(30).toFloat() }
-
     /** קטגוריה פתוחה במגירת ההגדרות (נשמרת בין פתיחות) */
-    private var openCat = -1
-
-    /** הגדרות: מגירה שנפתחת מצד ימין, כל קטגוריה נפתחת/נסגרת במקום */
-    // ---- עמודי הגדרות בסגנון One UI - אותם רכיבים כמו בעמוד "תצוגה" ----
-    private val OUI_BLUE get() = Color.parseColor("#5AA9FF")
-
-    /** עמוד מלא: כותרת קטנה למעלה (כמו "תצוגה"), build נקרא מחדש בכל rebuild */
-    private fun ouiPage(title: String, refreshOnFocus: Boolean = true, onClose: (() -> Unit)? = null,
-                        button: Pair<String, (done: () -> Unit) -> Unit>? = null,
-                        build: (LinearLayout, () -> Unit) -> Unit) {
-        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
-        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(30)) }
-        val page = ScrollView(this).apply {
-            setBackgroundColor(C.BG)
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            addView(body)
-            setOnApplyWindowInsetsListener { v, insets ->
-                @Suppress("DEPRECATION")
-                v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
-                insets
-            }
-        }
-        lateinit var rebuild: () -> Unit
-        rebuild = {
-            body.removeAllViews()
-            body.addView(text(title, 20f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(14), dp(24), dp(14)) })
-            build(body, rebuild)
-        }
-        rebuild()
-        val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
-        frame.addView(page, FrameLayout.LayoutParams(-1, -1))
-        frame.setOnApplyWindowInsetsListener { _, insets -> page.dispatchApplyWindowInsets(insets) }
-        body.setPadding(0, 0, 0, dp(if (button == null) 30 else 100))
-        if (button == null) d.setContentView(frame)
-        else {
-            // כפתור כחול גדול קבוע מעל התפריט (כמו "בדוק אם יש עדכונים" בסמסונג)
-            // מידות לפי הצילום מסמסונג: 60% רוחב, גובה 46, עיגול מלא, כחול #4C7DFF, טקסט 16 מודגש
-            // בלחיצה: המלל מתחלף לאייקון טעינה מונפש עד שהפעולה מסתיימת
-            val label = text(button.first, 16f, Color.WHITE, bold = true).apply {
-                gravity = Gravity.CENTER
-                includeFontPadding = false
-            }
-            val spinner = android.widget.ProgressBar(this).apply {
-                isIndeterminate = true
-                indeterminateTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
-                visibility = View.GONE
-            }
-            var busy = false
-            val btn = FrameLayout(this).apply {
-                background = GradientDrawable().apply { setColor(Color.parseColor("#4C7DFF")); cornerRadius = dp(23).toFloat() }
-                addView(label, FrameLayout.LayoutParams(-1, -1))
-                addView(spinner, FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER))
-                setOnClickListener {
-                    if (busy) return@setOnClickListener
-                    busy = true; label.visibility = View.INVISIBLE; spinner.visibility = View.VISIBLE
-                    val started = System.currentTimeMillis()
-                    button.second {
-                        // לפחות חצי שנייה של טעינה - שלא יהבהב
-                        postDelayed({ busy = false; spinner.visibility = View.GONE; label.visibility = View.VISIBLE },
-                            (500 - (System.currentTimeMillis() - started)).coerceAtLeast(0))
-                    }
-                }
-            }
-            val above = dp(10)
-            frame.addView(btn, FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.5f).toInt(), dp(46),
-                Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = navMargin() + above })
-            frame.viewTreeObserver.addOnGlobalLayoutListener {
-                val want = navMargin() + above
-                val lp = btn.layoutParams as FrameLayout.LayoutParams
-                if (lp.bottomMargin != want) { lp.bottomMargin = want; btn.layoutParams = lp }
-            }
-            d.setContentView(frame)
-        }
-        d.window?.setLayout(-1, -1)
-        @Suppress("DEPRECATION")
-        d.window?.statusBarColor = C.BG
-        edgeToEdge(d)
-        if (refreshOnFocus) refreshOnReturn(d) { rebuild() }
-        track(d, onClose)
-        d.show()
-    }
-
-    private fun ouiCard() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = graphite(26); clipToOutline = true }
-    private fun ouiAdd(body: LinearLayout, c: View) =
-        body.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(8)) })
-    private fun ouiNote(body: LinearLayout, t: String) =
-        body.addView(text(t, 11f, C.MUTED2).apply { setPadding(dp(26), 0, dp(26), dp(14)) })
-    private fun ouiDivider(c: LinearLayout) = c.addView(View(this).apply { setBackgroundColor(C.DIV) },
-        LinearLayout.LayoutParams(-1, dp(1)).apply { setMargins(dp(18), 0, dp(18), 0) })
-
-    /** כפתור בחירה כמו בסמסונג: טבעת, ובנבחר נקודה כחולה */
-    private fun ouiRadio(sel: Boolean) = FrameLayout(this).apply {
-        background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setStroke(dp(2), Color.parseColor(if (sel) "#3E82F7" else "#6E6E73"))
-        }
-        if (sel) addView(View(this@MainActivity).apply {
-            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#3E82F7")) }
-        }, FrameLayout.LayoutParams(dp(10), dp(10), Gravity.CENTER))
-    }
-
-    /**
-     * אזור המתג בשורה: מהקו המפריד ועד קצה השורה, לכל גובה השורה - לחיצה בכל האזור מדליקה/מכבה
-     * (המתג עצמו קטן מדי, ולחיצה לידו פתחה את המסך של השורה)
-     */
-    private fun switchZone(row: LinearLayout, on: Boolean, padEnd: Int, toggle: () -> Unit) {
-        // בלי לשנות את הריווח של השורה (שינוי לפני שהכיוון ימין-לשמאל נקבע הזיז את הטקסט לקצה בפתיחה):
-        // האזור נמתח עד הקצה עם שוליים שליליים בגודל הריווח
-        val z = LinearLayout(this).apply {
-            // כיוון מפורש: הריווח היחסי נקבע מיד כימין-לשמאל. בלי זה, בבנייה לפני שהעמוד מוצג
-            // הריווח נקבע כשמאל-לימין והמתג נחתך בקצה (עד עכשיו בנייה שנייה מיד בפתיחה הסתירה את זה - והייתה קפיצה)
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            gravity = Gravity.CENTER_VERTICAL
-            setPaddingRelative(dp(12), 0, padEnd, 0)
-            isClickable = true
-            setOnClickListener { toggle() }
-        }
-        z.addView(View(this).apply { setBackgroundColor(C.SEPV) },
-            LinearLayout.LayoutParams(dp(1), dp(20)).apply { marginEnd = dp(12) })
-        z.addView(OuiSwitch(this, on, C.LIGHT).apply { isClickable = false })
-        row.layoutDirection = View.LAYOUT_DIRECTION_RTL
-        row.addView(z, LinearLayout.LayoutParams(-2, -1).apply { marginEnd = -padEnd })
-    }
-
-    /**
-     * שורה בגובה קבוע (48, או 56 עם שורת מצב): שם, מצב בכחול מתחת,
-     * ובצד: ערך (end), כפתור בחירה (radio) או מתג (on)
-     */
-    private fun ouiRow(c: LinearLayout, title: String, sub: String = "", subColor: Int = OUI_BLUE,
-                       end: String? = null, endColor: Int = C.TEXT, endBig: Boolean = false,
-                       radio: Boolean? = null, on: Boolean? = null, onToggle: (() -> Unit)? = null,
-                       click: (() -> Unit)? = null) {
-        val r = LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(18), 0, dp(18), 0)
-            if (click != null) setOnClickListener { click() }
-        }
-        val t = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        t.addView(text(title, 16f, C.TEXT).apply { includeFontPadding = false })
-        if (sub.isNotEmpty()) t.addView(text(sub, 12f, subColor).apply { includeFontPadding = false; setPadding(0, dp(4), 0, 0) })
-        r.addView(t, LinearLayout.LayoutParams(0, -2, 1f))
-        if (end != null) r.addView(text(end, if (endBig) 22f else 14f, endColor, bold = endBig).apply { includeFontPadding = false },
-            LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
-        if (radio != null) r.addView(ouiRadio(radio), LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginStart = dp(10) })
-        // onToggle: לחיצה על השורה פותחת הגדרה, והמתג לבד מדליק/מכבה (כמו בעמוד תצוגה)
-        // רווחים זהים בכל האפליקציה: 12 מהטקסט לקו, והקו צמוד למתג
-        if (on != null && onToggle != null) switchZone(r, on, dp(18)) { onToggle() }
-        else if (on != null) r.addView(OuiSwitch(this, on, C.LIGHT).apply { isClickable = false },
-            LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
-        c.addView(r, LinearLayout.LayoutParams(-1, dp(if (sub.isEmpty()) 48 else 56)))
-    }
-
-    /** טקסט חופשי בתוך כרטיס (הסברים, מה חדש) */
-    private fun ouiText(c: LinearLayout, t: String) =
-        c.addView(text(t, 14f, C.TEXT).apply { setPadding(dp(18), dp(12), dp(18), dp(12)); setLineSpacing(dp(3).toFloat(), 1f) })
+    internal var openCat = -1
 
     /** מסך מצב שבת: בחירת מצב, עיר וזמני כניסה ויציאה, והסבר מה המצב עושה */
-    private var shabbatLocAsked = 0L
-    private fun chooseShabbat() = ouiPage("מצב שבת") { body, rebuild ->
-        // מיקום עדכני (מהרשת) בכל פתיחה - והזמנים מחושבים מחדש לפיו
-        if (System.currentTimeMillis() - shabbatLocAsked > 60_000) {
-            shabbatLocAsked = System.currentTimeMillis()
-            try { Weather.networkLocation(this) { l -> if (l != null) runOnUiThread { rebuild() } } } catch (_: Exception) { }
-        }
-        // מצב
-        val modes = ouiCard()
-        listOf(Shabbat.OFF to "כבוי", Shabbat.ON to "דלוק", Shabbat.AUTO to "אוטומטי")
-            .forEachIndexed { i, (mode, label) ->
-                if (i > 0) ouiDivider(modes)
-                ouiRow(modes, label, sub = if (mode == Shabbat.AUTO) "בשבת ובחג לפי המיקום" else "",
-                    radio = Prefs.shabbatMode(this) == mode) { Prefs.setShabbatMode(this, mode); rebuild() }
-            }
-        ouiAdd(body, modes)
-        ouiNote(body, "באוטומטי מצב השבת נדלק בכניסה ונכבה ביציאה, בלי לגעת")
-
-        // זמנים
-        val fmtDay = java.text.SimpleDateFormat("EEEE, d בMMMM", java.util.Locale("iw"))
-        val fmtTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
-        val w = try { Shabbat.nextWindow(this) } catch (_: Exception) { null }
-        val times = ouiCard()
-        val now = System.currentTimeMillis()
-        times.addView(text(if (w != null && now >= w.first) "השבת עכשיו" else "השבת הקרובה", 16f, C.TEXT)
-            .apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-        // מיקום (עיר) שלפיו מחושבים הזמנים - נטען ברקע
-        val hasLoc = Shabbat.hasLocation(this)
-        ouiRow(times, "מיקום", sub = if (hasLoc) "…" else "מרכז הארץ (אין מיקום)")
-        if (hasLoc) {
-            val row = times.getChildAt(times.childCount - 1) as LinearLayout
-            val subView = (row.getChildAt(0) as LinearLayout).getChildAt(1) as TextView
-            (try { Weather.lastLocation(this) } catch (_: Exception) { null })?.let { loc ->
-                Thread {
-                    val city = try { Weather.cityName(this, loc) } catch (_: Exception) { "" }
-                    runOnUiThread { subView.text = city.ifBlank { "המיקום שלך" } }
-                }.start()
-            }
-        }
-        if (w == null) { ouiDivider(times); ouiRow(times, "לא הצלחנו לחשב את הזמנים") }
-        else {
-            ouiDivider(times)
-            ouiRow(times, "כניסה", sub = fmtDay.format(java.util.Date(w.first)), subColor = C.MUTED,
-                end = fmtTime.format(java.util.Date(w.first)), endBig = true)
-            ouiDivider(times)
-            ouiRow(times, "יציאה", sub = fmtDay.format(java.util.Date(w.second)), subColor = C.MUTED,
-                end = fmtTime.format(java.util.Date(w.second)), endBig = true)
-        }
-        ouiAdd(body, times)
-        ouiNote(body, "לפי המיקום ושיטת אתר ישיבה: כניסה לפי מנהג המקום (ירושלים 40 דק׳, חיפה 30, תל אביב 21...), יציאה בצאת הכוכבים")
-
-        // מה מצב שבת עושה
-        val info = ouiCard()
-        info.addView(text("מה מצב שבת עושה", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), 0) })
-        ouiText(info, listOf(
-            "כל התרעה נפתחת במסך מלא, גם כשהטלפון בשימוש",
-            "ההתרעה מוקראת בקול, גם אם ההקראה כבויה בהגדרות",
-            "מסך ההתרעה נסגר לבד אחרי דקה – אין צורך לגעת בטלפון",
-            "עוקף הכל: שעות שקט, נא לא להפריע, מצב שקט של הטלפון, וגם צלילים ורטט כבויים"
-        ).joinToString("\n") { "• $it" })
-        ouiAdd(body, info)
-    }
-
+    internal var shabbatLocAsked = 0L
     /** עמוד בדיקת התראה: שורה לכל סוג, לחיצה שולחת התראת בדיקה */
     /** הכפתור הצף מוצג / מוסתר לפי ההגדרה; כשמוצג - מקום בתחתית המסך כדי שלא יסתיר כרטיסים */
-    private val hideTestFab = Runnable { if (Prefs.testFabMode(this) == Prefs.STATUS_TIMED) testFab.visibility = View.GONE }
-    private fun applyTestFab() {
-        ui.removeCallbacks(hideTestFab)
-        val mode = Prefs.testFabMode(this)
-        testFab.visibility = if (mode == Prefs.STATUS_HIDDEN) View.GONE else View.VISIBLE
-        if (mode == Prefs.STATUS_TIMED) ui.postDelayed(hideTestFab, Prefs.testFabSeconds(this) * 1000L)
-        // המקום בתחתית נשמר גם כשהכפתור נעלם לפי זמן - שהמסך לא יזוז
-        mainCol.setPadding(mainCol.paddingLeft, mainCol.paddingTop, mainCol.paddingRight,
-            dp(GAP) + if (mode != Prefs.STATUS_HIDDEN) dp(76) else 0)
-    }
-
-    private fun chooseTest() = ouiPage("בדיקת התראה") { body, rebuild ->
-        val fab = ouiCard()
-        val fm = Prefs.testFabMode(this)
-        ouiRow(fab, "כפתור צף במסך הראשי", sub = showModeLabel(fm, Prefs.testFabSeconds(this)), on = fm != Prefs.STATUS_HIDDEN,
-            onToggle = { Prefs.setTestFabMode(this, if (fm == Prefs.STATUS_HIDDEN) Prefs.STATUS_ALWAYS else Prefs.STATUS_HIDDEN)
-                applyTestFab(); rebuild() }) {
-            chooseShowMode("כפתור צף", { Prefs.testFabMode(this) }, { Prefs.setTestFabMode(this, it) },
-                { Prefs.testFabSeconds(this) }, { Prefs.setTestFabSeconds(this, it) }, ::applyTestFab,
-                "\"לפי זמן\" – הכפתור מוצג כשפותחים את האפליקציה או נוגעים במסך, ונעלם אחרי הזמן שבוחרים") { rebuild() } }
-        ouiAdd(body, fab)
-        ouiNote(body, "כפתור אדום בפינת המסך הראשי שפותח את העמוד הזה")
-        // הקראה בהתרעת בדיקה - אפשר לכבות (רק בבדיקה; בהתרעה אמיתית לפי הגדרות ההקראה)
-        val spk = ouiCard()
-        val spkOn = Prefs.testSpeak(this)
-        ouiRow(spk, "הקראה בבדיקה", sub = if (spkOn) "מוקרא" else "לא מוקרא", on = spkOn,
-            onToggle = { Prefs.setTestSpeak(this, !spkOn); rebuild() }) { Prefs.setTestSpeak(this, !spkOn); rebuild() }
-        ouiAdd(body, spk)
-        ouiNote(body, "רק בהתרעות בדיקה – בהתרעה אמיתית ההקראה לפי ההגדרות")
-        // אירוע מלא: התרעה מקדימה, ירי וסיום - ברצף, כמו אירוע אמיתי (מקוצר)
-        val seq = ouiCard()
-        ouiRow(seq, "אירוע מלא", sub = "מקדימה ← ירי ← סיום") {
-            Prefs.setEnabled(this, true)
-            AlertService.startTestSequence(this)
-            pages.toList().forEach { it.dismiss() }
-            refresh()
-        }
-        ouiAdd(body, seq)
-        ouiNote(body, "ירי אחרי 15 שניות, וסיום 20 שניות אחרי שנגמר הזמן להגעה למרחב המוגן")
-        // כל סוגי ההתרעה של פיקוד העורף - כל שורה עם האייקון של הסוג בצבע הרמה
-        val tests = listOf(
-            "התרעה מקדימה" to "בדקות הקרובות צפויות להתקבל התרעות באזורך",
-            "ירי רקטות וטילים" to "ירי רקטות וטילים",
-            "חדירת כלי טיס עוין" to "חדירת כלי טיס עוין",
-            "חדירת מחבלים" to "חדירת מחבלים",
-            "רעידת אדמה" to "רעידת אדמה",
-            "צונאמי" to "צונאמי",
-            "אירוע רדיולוגי" to "אירוע רדיולוגי",
-            "חומרים מסוכנים" to "חומרים מסוכנים",
-            "האירוע הסתיים" to "האירוע הסתיים")
-        val c = ouiCard()
-        tests.forEachIndexed { i, (label, title) ->
-            if (i > 0) ouiDivider(c)
-            val level = AlertService.levelOf(title)
-            c.addView(LinearLayout(this).apply {
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(18), 0, dp(18), 0)
-                addView(FrameLayout(this@MainActivity).apply {
-                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(AlertUi.color(level))) }
-                    addView(android.widget.ImageView(this@MainActivity).apply {
-                        AlertUi.setIcon(this, AlertUi.icon(title, level))
-                        imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
-                    }, FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))   // כמו בהתרעות אחרונות
-                }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(14) })
-                addView(text(label, 16f, C.TEXT), LinearLayout.LayoutParams(0, -2, 1f))
-                setOnClickListener {
-                    Prefs.setEnabled(this@MainActivity, true)
-                    AlertService.start(this@MainActivity, testTitle = title)
-                    if (level != AlertService.LEVEL_ALERT && Prefs.isQuietNow(this@MainActivity)) {
-                        android.widget.Toast.makeText(this@MainActivity,
-                            "שעות שקט פעילות – ההתראה נשלחה בשקט, בלי צליל ומסך מלא",
-                            android.widget.Toast.LENGTH_LONG).show()
-                    }
-                    // סוגרים את עמודי ההגדרות - ההתרעה מוצגת מיד (גם כרטיס / ממוזער שבמסך הראשי)
-                    pages.toList().forEach { it.dismiss() }
-                    refresh()
-                }
-            }, LinearLayout.LayoutParams(-1, dp(56)))
-        }
-        ouiAdd(body, c)
-        ouiNote(body, "ההתראה נשלחת מיד, בדיוק כמו התרעה אמיתית")
-    }
-
-    /** אייקון בקו לבן לכל שורה בהגדרות (לפי האמוג'י שלה) */
-    private fun setIcon(icon: String) = when (icon) {
-        "⏻" -> R.drawable.ic_set_shield; "🎨" -> R.drawable.ic_set_display; "📳" -> R.drawable.ic_set_sound
-        "🔔" -> R.drawable.ic_set_bell; "🛡" -> R.drawable.ic_set_lock; "⬆️" -> R.drawable.ic_set_update
-        "ℹ️" -> R.drawable.ic_set_info
-        else -> 0
-    }
-
-    /** צבע העיגול של כל אייקון בהגדרות (סגנון One UI) */
-    private fun iconColor(icon: String) = Color.parseColor(when (icon) {
-        "⏻" -> "#D50000"; "🎨" -> "#7E57C2"; "📳" -> "#8E24AA"; "🔔" -> "#FB8C00"
-        "🛡" -> "#00897B"; "⬆️" -> "#1E88E5"
-        else -> "#546E7A"
-    })
-
+    internal val hideTestFab = Runnable { if (Prefs.testFabMode(this) == Prefs.STATUS_TIMED) testFab.visibility = View.GONE }
     /** כל העמודים הפתוחים (הגדרות, תת-עמודים, התרעות) - כדי שהתפריט התחתון יסגור את כולם במעבר */
-    private val pages = mutableListOf<android.app.Dialog>()
-    private fun track(d: android.app.Dialog, onClose: (() -> Unit)? = null) {
-        pages.add(d)
-        d.setOnDismissListener { pages.remove(d); onClose?.invoke() }
-    }
-
-    /** הגדרות בסגנון One UI: עמוד מלא, כותרת גדולה, כל הקבוצות פתוחות */
-    private fun showSettings() {
-        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
-        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val page = ScrollView(this).apply {
-            setBackgroundColor(C.BG)
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            addView(body)
-        }
-        page.setOnApplyWindowInsetsListener { v, insets ->
-            @Suppress("DEPRECATION")
-            v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
-            insets
-        }
-        val cats = listOf(
-            // הפעלה / כיבוי של האפליקציה - כמו הכפתור בשורת החיווי
-            "צופר חירום" to { listOf(Row("⏻", "הגנה", { protectionLabel() },
-                on = { Prefs.enabled(this) }, toggle = { toggle() }) { showProtection() }) },
-            "תצוגה" to { listOf(Row("🎨", "תצוגה", { "ערכת צבעים · שעון · תאריך · מזג אוויר" }) { showDisplay() }) },
-            "התרעות" to { listOf(
-                Row("🔔", "הגדרות התרעות", { "סוג תצוגה · מיקום · אזורים נוספים · צלילים ורטט · הקראה · בדיקה" }) { showAlertSettings() }) },
-            "הרשאות" to { phoneRows() },
-            // עדכונים ואודות - כל אחד בכרטיס נפרד
-            "עדכונים" to { listOf(Row("⬆️", "בדיקת עדכונים", { "v" + Updater.versionLabel(this) }) { showUpdates() }) },
-            "אודות" to { listOf(Row("ℹ️", "אודות", { "" }) { showAbout() }) }
-        )
-        fun rebuild() {
-            body.removeAllViews()
-            // כותרת כמו בשאר מסכי ההגדרות
-            body.addView(text("הגדרות", 20f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(14), dp(24), dp(14)) })
-            cats.forEach { (_, rows) ->
-                // בלי כותרת מעל כל כרטיס - רק רווח בין הכרטיסים
-                val card = LinearLayout(this).apply {
-                    orientation = LinearLayout.VERTICAL
-                    background = graphite(28)
-                    clipToOutline = true
-                }
-                val list = rows()
-                list.forEachIndexed { i, r ->
-                    if (i > 0) card.addView(View(this).apply { setBackgroundColor(C.DIV) },
-                        LinearLayout.LayoutParams(-1, dp(1)))
-                    val row = LinearLayout(this).apply {
-                        gravity = Gravity.CENTER_VERTICAL
-                        setPadding(dp(16), dp(12), dp(16), dp(12))
-                        setOnClickListener { r.action(); rebuild() }
-                    }
-                    // אייקון פשוט בקו לבן בתוך עיגול צבעוני
-                    row.addView(FrameLayout(this).apply {
-                        background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(iconColor(r.icon)) }
-                        val res = setIcon(r.icon)
-                        if (res != 0) addView(android.widget.ImageView(this@MainActivity).apply { setImageResource(res) },
-                            FrameLayout.LayoutParams(dp(20), dp(20), Gravity.CENTER))
-                        else addView(text(r.icon, 16f, Color.WHITE).apply { gravity = Gravity.CENTER }, FrameLayout.LayoutParams(-1, -1))
-                    }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(14) })
-                    val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-                    texts.addView(text(r.title, 16f, C.TEXT))
-                    val v = r.value()
-                    if (v.isNotEmpty()) texts.addView(text(v, 12f, Color.parseColor("#5AA9FF")))
-                    row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
-                    r.on?.let { isOn ->
-                        val on = isOn()
-                        // מתג נפרד: קו מפריד, והמתג לבד מדליק/מכבה; לחיצה על השורה פותחת את המסך
-                        val t = r.toggle
-                        if (t != null) switchZone(row, on, dp(16)) { t(); rebuild() }
-                        else row.addView(OuiSwitch(this, on, C.LIGHT).apply { isClickable = false })
-                    }
-                    card.addView(row)
-                }
-                body.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(12)) })
-            }
-            body.addView(View(this), LinearLayout.LayoutParams(-1, dp(30)))
-        }
-        rebuild()
-        d.setContentView(page)
-        d.window?.setLayout(-1, -1)
-        @Suppress("DEPRECATION")
-        d.window?.statusBarColor = C.BG
-        edgeToEdge(d)
-        // חוזרים מחלון של הגדרה - מעדכנים את המצבים
-        refreshOnReturn(d) { rebuild() }
-        track(d)
-        d.show()
-    }
-
-    private fun onOff(b: Boolean) = if (b) "פעיל" else "כבוי"
-
-    private fun protectionLabel(): String = when {
-        !Prefs.enabled(this) -> "כבוי – לא מקבל התרעות"
-        Prefs.scheduleOffNow(this) -> "כבוי עכשיו לפי תזמון"
-        Prefs.schedOn(this) -> "פעיל – מוגן · לפי תזמון"
-        else -> "פעיל – מוגן"
-    }
-
-    private val DAY_NAMES = listOf("ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת")
-
-    /** מסך הגנה: הפעלה/כיבוי, ותזמון - באילו ימים ושעות האפליקציה פעילה */
-    private fun showProtection() = ouiPage("הגנה") { body, rebuild ->
-        val main = ouiCard()
-        ouiRow(main, "הגנה", sub = protectionLabel(), on = Prefs.enabled(this)) { toggle(); rebuild() }
-        ouiAdd(body, main)
-
-        val sc = ouiCard()
-        val on = Prefs.schedOn(this)
-        ouiRow(sc, "תזמון", sub = "פעיל רק בימים ובשעות שתבחר", on = on) { Prefs.setSchedOn(this, !on); refresh(); rebuild() }
-        if (on) {
-            // לכל יום: מתג + השעות שלו. לחיצה על השורה - בחירת שעת התחלה ואז סיום
-            DAY_NAMES.forEachIndexed { d, name ->
-                ouiDivider(sc)
-                val dOn = Prefs.schedDayOn(this, d)
-                val f = Prefs.schedDayFrom(this, d); val t = Prefs.schedDayTo(this, d)
-                val range = when { !dOn -> "כבוי כל היום"; f == t -> "כל היום"; else -> hhmm(f) + "–" + hhmm(t) + if (t < f) " (עד למחרת)" else "" }
-                ouiRow(sc, name, sub = range, on = dOn,
-                    onToggle = { Prefs.setSchedDay(this, d, !dOn, f, t); refresh(); rebuild() }) {
-                    pickTime("$name – פעיל משעה", f) { nf ->
-                        pickTime("$name – פעיל עד שעה", t) { nt -> Prefs.setSchedDay(this, d, true, nf, nt); refresh(); rebuild() }
-                    }
-                }
-            }
-        }
-        ouiAdd(body, sc)
-        ouiNote(body, if (on) "מחוץ לשעות האלה האפליקציה לא מקבלת התרעות. לחיצה על יום – שינוי השעות. סיום לפני התחלה = עד למחרת"
-                      else "כשהתזמון כבוי - ההגנה פעילה כל הזמן")
-    }
-
-    /** עמוד התרעות: כל ההגדרות של ההתרעה במקום אחד */
-    private fun showAlertSettings() = ouiPage("הגדרות התרעות") { body, rebuild ->
-        // סוג תצוגת התרעה: הדמיה קטנה של כל סוג + בחירה (הועבר מעמוד תצוגה)
-        val style = ouiCard()
-        style.addView(text("סוג תצוגת התרעה", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-        val opts = LinearLayout(this).apply { setPadding(dp(6), dp(10), dp(6), dp(16)) }
-        listOf("מסך מלא", "פופ-אפ", "כרטיס", "ממוזער").forEachIndexed { i, label ->
-            val sel = Prefs.alertStyle(this) == i
-            opts.addView(LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER_HORIZONTAL
-                addView(alertStylePreview(i), LinearLayout.LayoutParams(dp(58), dp(116)))
-                addLabelRadio(this, label, sel)
-                setOnClickListener { Prefs.setAlertStyle(this@MainActivity, i); rebuild() }
-            }, LinearLayout.LayoutParams(0, -2, 1f))
-        }
-        style.addView(opts)
-        ouiDivider(style)
-        ouiRow(style, "מפה במסך ההתרעה", on = Prefs.alertMap(this)) {
-            Prefs.setAlertMap(this, !Prefs.alertMap(this)); rebuild() }
-        ouiAdd(body, style)
-        ouiNote(body, "המפה מוצגת במסך מלא ובפופ-אפ")
-
-        val c = ouiCard()
-        // מתג = הדלקה/כיבוי, לחיצה על השם = ההגדרות המלאות
-        ouiRow(c, "אזור התרעה", sub = onOff(Prefs.nearMe(this)), on = Prefs.nearMe(this)) { toggleNearMe(); rebuild() }
-        ouiDivider(c)
-        ouiRow(c, "מרחק מקסימלי", sub = Prefs.radiusLabel(Prefs.nearRadiusKm(this))) { showNearRadius() }
-        ouiAdd(body, c)
-
-        // אזורים נוספים - שורה אחת שפותחת את חלון האזורים
-        val extra = ouiCard()
-        ouiRow(extra, "אזורים נוספים") { showExtraAreas() }
-        ouiAdd(body, extra)
-        // צלילים ורטט (הועבר מההגדרות הראשיות) - כרטיס נפרד מעל הקראה
-        val snd = ouiCard()
-        ouiRow(snd, "צלילים ורטט", sub = "שעות שקט · נא לא להפריע · מצב שקט · שבת") { showSoundSettings() }
-        ouiAdd(body, snd)
-        // הקראה - כרטיס נפרד
-        val sp = ouiCard()
-        ouiRow(sp, "הקראה", sub = onOff(Prefs.speakAlerts(this)), on = Prefs.speakAlerts(this),
-            onToggle = { Prefs.setSpeakAlerts(this, !Prefs.speakAlerts(this)); rebuild() }) { showSpeech() }
-        ouiAdd(body, sp)
-        // בדיקת התראה (עברה מהכפתור שבמסך הראשי)
-        val t = ouiCard()
-        ouiRow(t, "בדיקת התראה", sub = "מקדימה · ירי · סיום") { chooseTest() }
-        ouiAdd(body, t)
-    }
-
-    /** עמוד מרחק מקסימלי: בחירת מרחק, והיישובים שבקרבתי לפי המרחק הזה */
-    private fun showNearRadius() = ouiPage("מרחק מקסימלי") { body, rebuild ->
-        val r = ouiCard()
-        val radii = Prefs.NEAR_RADII
-        val cur = radii.indexOfFirst { it == Prefs.nearRadiusKm(this) }.coerceAtLeast(0)
-        ouiRow(r, "מרחק", sub = Prefs.radiusLabel(radii[cur]))
-        // הכיתוב הכחול מתחת ל"מרחק" - מתעדכן תוך כדי גרירה
-        val distLabel = ((r.getChildAt(r.childCount - 1) as LinearLayout).getChildAt(0) as LinearLayout).getChildAt(1) as TextView
-        // פס בחירה בשלבים באותו כרטיס, מתחת לשורת "מרחק": קרוב מימין, רחוק משמאל
-        val bar = LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(18), 0, dp(18), dp(10))
-        }
-        bar.addView(StepSlider(this, radii.size, cur, C.LIGHT) { i ->
-            distLabel.text = Prefs.radiusLabel(radii[i])
-            val km = radii[i]
-            Prefs.setNearRadiusKm(this, km)
-            // חישוב מחדש מיד לפי המיקום האחרון (אם אין - מיקום חדש)
-            val last = Prefs.lastNearLoc(this)
-            if (last != null) Thread {
-                try { Prefs.setNearbyAreas(this, AreaData.nearby(this, last.first, last.second)) } catch (_: Exception) { }
-                runOnUiThread { rebuild() }
-            }.start() else { refreshNearby(); rebuild() }
-        }.apply { onMove = { i -> distLabel.text = Prefs.radiusLabel(radii[i]) } },
-            LinearLayout.LayoutParams(0, -2, 1f))   // מימין: באזורך · משמאל: 10 ק"מ
-        r.addView(bar)
-        ouiAdd(body, r)
-        ouiNote(body, "התרעות יגיעו לאזורים שבמרחק הזה מהמיקום שלך, בנוסף לאזורים שהוספת")
-
-        val near = ouiCard()
-        near.addView(text("יישובים בקרבתי", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-        val list = Prefs.nearbyAreas(this).filterNot { AreaData.isNational(it) }
-        if (!Prefs.nearMe(this)) ouiRow(near, "אזור התרעה כבוי")
-        else if (list.isEmpty()) ouiRow(near, "עוד לא זוהה מיקום")
-        else list.forEachIndexed { i, a -> if (i > 0) ouiDivider(near); ouiRow(near, a) }
-        ouiAdd(body, near)
-    }
-
-    /** עמוד צלילים ורטט: צלילים, רטט, שעות שקט, נא לא להפריע, מצב שקט ומצב שבת */
-    private fun muteLabel(): String {
-        val u = Prefs.muteUntil(this)
-        return when {
-            u <= System.currentTimeMillis() -> "כבוי"
-            u == Long.MAX_VALUE -> "מושתק עד שתבטל"
-            else -> "מושתק עד " + java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(java.util.Date(u))
-        }
-    }
-
-    /** השתקה זמנית: בחירת משך */
-    private fun chooseMute(done: () -> Unit) = ouiPage("השתקה זמנית", onClose = done) { body, rebuild ->
-        val c = ouiCard()
-        val opts = listOf("כבוי" to 0L, "30 דקות" to 30L, "שעה" to 60L, "שעתיים" to 120L, "4 שעות" to 240L, "8 שעות" to 480L, "עד שאבטל" to -1L)
-        val u = Prefs.muteUntil(this); val active = u > System.currentTimeMillis()
-        opts.forEachIndexed { i, (label, min) ->
-            if (i > 0) ouiDivider(c)
-            val sel = if (min == 0L) !active else if (min == -1L) u == Long.MAX_VALUE else false
-            ouiRow(c, label, radio = sel) {
-                Prefs.setMuteUntil(this, when (min) { 0L -> 0L; -1L -> Long.MAX_VALUE
-                    else -> System.currentTimeMillis() + min * 60_000 })
-                refresh(); rebuild()
-            }
-        }
-        ouiAdd(body, c)
-        ouiNote(body, if (active) muteLabel() + ". ההתרעות מוצגות כרגיל, בלי צליל, רטט והקראה" else "ההתרעות יוצגו כרגיל, אבל בלי צליל, רטט והקראה")
-    }
-
-    private fun showSoundSettings() = ouiPage("צלילים ורטט") { body, rebuild ->
-        // השתקה זמנית - כרטיס נפרד למעלה
-        val m = ouiCard()
-        val muted = Prefs.mutedNow(this)
-        ouiRow(m, "השתקה זמנית", sub = muteLabel(), on = muted,
-            onToggle = { if (muted) Prefs.setMuteUntil(this, 0L) else Prefs.setMuteUntil(this, System.currentTimeMillis() + 60 * 60_000); rebuild() }) {
-            chooseMute { rebuild() } }
-        ouiAdd(body, m)
-        ouiNote(body, "כל ההתרעות מתקבלות בלי צליל ורטט – לזמן שתבחר")
-        val c = ouiCard()
-        val snd = Prefs.soundsOn(this); val vib = Prefs.vibesOn(this)
-        ouiRow(c, "צלילים", sub = if (!snd) "כבוי" else if (AlertService.PHONE_DEFAULTS) "של הטלפון" else "פעיל",
-            on = snd, onToggle = { Prefs.setSoundsOn(this, !snd); rebuild() }) {
-            openNotificationSettings() }
-        ouiDivider(c)
-        ouiRow(c, "רטט", sub = if (!vib) "כבוי" else if (AlertService.PHONE_DEFAULTS) "של הטלפון" else "פעיל",
-            on = vib, onToggle = { Prefs.setVibesOn(this, !vib); rebuild() }) {
-            openNotificationSettings() }
-        ouiDivider(c)
-        val loud = Prefs.loudSound(this)
-        ouiRow(c, "צליל חזק", sub = if (loud) "תמיד בעוצמה מלאה – גם בווליום נמוך, בשעות שקט ובמצב שקט" else "כבוי", on = loud) {
-            Prefs.setLoudSound(this, !loud); rebuild() }
-        ouiAdd(body, c)
-
-        val q = ouiCard()
-        ouiRow(q, "שעות שקט",
-            sub = if (Prefs.quietOn(this)) "${hhmm(Prefs.quietFrom(this))}–${hhmm(Prefs.quietTo(this))}" else "כבוי",
-            on = Prefs.quietOn(this),
-            onToggle = { Prefs.setQuietOn(this, !Prefs.quietOn(this)); rebuild() }) { showQuietHours() }
-        ouiDivider(q)
-        // רק הדלקה/כיבוי - ההרשאה עצמה במסך ההרשאות
-        ouiRow(q, "עקיפת נא לא להפריע", sub = onOff(Prefs.dndOverride(this)), on = Prefs.dndOverride(this)) {
-            Prefs.setDndOverride(this, !Prefs.dndOverride(this)); rebuild() }
-        ouiDivider(q)
-        ouiRow(q, "עקיפת מצב שקט", sub = if (Prefs.bypassSilent(this)) "צליל גם כשהטלפון על שקט או רטט" else "כבוי",
-            on = Prefs.bypassSilent(this)) { Prefs.setBypassSilent(this, !Prefs.bypassSilent(this)); rebuild() }
-        ouiDivider(q)
-        // מצב שבת: המתג מדליק "אוטומטי" או מכבה. דלוק תמיד - בעמוד מצב שבת
-        val sh = Prefs.shabbatMode(this)
-        ouiRow(q, "מצב שבת", sub = Shabbat.label(sh), on = sh != Shabbat.OFF,
-            onToggle = { Prefs.setShabbatMode(this, if (sh == Shabbat.OFF) Shabbat.AUTO else Shabbat.OFF); rebuild() }) { chooseShabbat() }
-        ouiAdd(body, q)
-        ouiNote(body, "מצב שבת עוקף את שעות השקט, נא לא להפריע ומצב שקט")
-    }
+    internal val pages = mutableListOf<android.app.Dialog>()
+    internal val DAY_NAMES = listOf("ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת")
 
     companion object { private var reopenDisplay = false }
 
-    /**
-     * עמודים שנפתחים כחלון (הגדרות, התרעות, תצוגה) - מצוירים מתחת לשורת המצב ולסרגל הניווט כמו המסך הראשי,
-     * כדי שהתפריט התחתון יישב בדיוק באותו מקום בכל המסכים (בלי לזוז במעבר בין לשוניות)
-     */
-    /** מרחק התפריט התחתון מהתחתית - מחושב מיד (לא מחכים לאירוע insets), כדי שלא יקפוץ בפתיחה */
-    private fun navMargin(): Int {
-        @Suppress("DEPRECATION")
-        val inset = window?.decorView?.rootWindowInsets?.systemWindowInsetBottom ?: 0
-        return inset + dp(10)
-    }
-
-    /**
-     * חזרה לעמוד (מחלון בחירה / הגדרות הטלפון) - בונים אותו מחדש כדי לעדכן מצבים.
-     * לא בפתיחה עצמה: העמוד כבר נבנה, ובנייה כפולה מיד אחרי הפתיחה גרמה לקפיצה בשורות עם מתגים
-     */
-    private fun refreshOnReturn(d: android.app.Dialog, rebuild: () -> Unit) {
-        var opened = false
-        d.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener { has ->
-            if (has) { if (opened) rebuild() else opened = true }
-        }
-    }
-
-    private fun edgeToEdge(d: android.app.Dialog) {
-        val w = d.window ?: return
-        // בלי אנימציית פתיחה/סגירה - העמוד מופיע במקום, והתפריט התחתון לא זז
-        w.setWindowAnimations(0)
-        // החלונות בנויים על ערכת "Theme.Black" הישנה - בה המערכת מציירת לשורת המצב רקע שחור משלה.
-        // בעיצוב בהיר האייקונים כהים, אז על השחור לא רואים שעה/סוללה. מבקשים לצייר את הרקע בעצמנו בצבע העמוד
-        @Suppress("DEPRECATION")
-        w.clearFlags(android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS or
-            android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION)
-        w.addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-        @Suppress("DEPRECATION")
-        w.statusBarColor = C.BG
-        w.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(C.BG))
-        if (Build.VERSION.SDK_INT >= 30) w.setDecorFitsSystemWindows(false)
-        else @Suppress("DEPRECATION") { w.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
-            (if (C.LIGHT) View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR else 0) }
-        @Suppress("DEPRECATION")
-        w.navigationBarColor = Color.TRANSPARENT
-        if (Build.VERSION.SDK_INT >= 30 && C.LIGHT) {
-            val light = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
-                android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-            w.insetsController?.setSystemBarsAppearance(light, light)
-        }
-        // הריווח לשורת המצב כבר מהציור הראשון (לפי המסך הראשי) - בלי שהתוכן יקפוץ למטה כשהריווח מגיע מהמערכת
-        try {
-            window.decorView.rootWindowInsets?.let { ins ->
-                (w.decorView.findViewById<ViewGroup>(android.R.id.content))?.getChildAt(0)?.dispatchApplyWindowInsets(ins)
-            }
-        } catch (_: Exception) { }
-    }
-
-    /** כיתוב ממורכז + כפתור בחירה עגול (מתחת לתצוגה מקדימה) */
-    private fun addLabelRadio(parent: LinearLayout, label: String, sel: Boolean) {
-        parent.addView(text(label, 13f, if (sel) Color.parseColor("#5AA9FF") else C.MUTED2, bold = sel).apply {
-            gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(8))
-        }, LinearLayout.LayoutParams(-1, -2))
-        // כפתור בחירה כמו בסמסונג: טבעת, ובנבחר - נקודה כחולה בתוכה עם רווח
-        parent.addView(FrameLayout(this).apply {
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setStroke(dp(2), Color.parseColor(if (sel) "#3E82F7" else "#6E6E73"))
-            }
-            if (sel) addView(View(this@MainActivity).apply {
-                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#3E82F7")) }
-            }, FrameLayout.LayoutParams(dp(10), dp(10), Gravity.CENTER))
-        }, LinearLayout.LayoutParams(dp(20), dp(20)))
-    }
-
-    /** הדמיה קטנה של סוג תצוגת ההתרעה: 0 מסך מלא · 1 פופ-אפ · 2 כרטיס · 3 ממוזער */
-    private fun alertStylePreview(kind: Int): View {
-        fun rect(c: String, r: Int) = GradientDrawable().apply { setColor(Color.parseColor(c)); cornerRadius = dp(r).toFloat() }
-        // בהיר / חשוך לפי ערכת הצבעים
-        val bg = if (C.LIGHT) "#D9D9DC" else "#2B2B2E"
-        val block = if (C.LIGHT) "#BDBDC2" else "#3E3E42"
-        val red = "#D50000"
-        val f = FrameLayout(this).apply { background = rect(bg, 10); clipToOutline = true }
-        // רשימת כרטיסים עם רווח שווה; בכרטיס/ממוזער - ההתרעה היא אחד הכרטיסים ברשימה
-        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(5), dp(5), dp(5), dp(5)) }
-        listOf(10, 20, 30, 20).forEachIndexed { i, h ->
-            val isAlert = (kind == 3 && i == 0) || (kind == 2 && i == 1)
-            list.addView(View(this).apply { background = rect(if (isAlert) red else block, 4) },
-                LinearLayout.LayoutParams(-1, dp(h)).apply { bottomMargin = dp(4) })
-        }
-        f.addView(list, FrameLayout.LayoutParams(-1, -1))
-        when (kind) {
-            0 -> f.addView(LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.parseColor(red))
-                addView(View(this@MainActivity).apply { background = rect("#B3FFFFFF", 3) },
-                    LinearLayout.LayoutParams(-1, dp(7)).apply { setMargins(dp(10), dp(8), dp(10), dp(4)) })
-                if (Prefs.alertMap(this@MainActivity))
-                    addView(View(this@MainActivity).apply { setBackgroundColor(Color.parseColor(if (C.LIGHT) "#BDBDC2" else "#333333")) }, LinearLayout.LayoutParams(-1, dp(30)))   // המפה
-                addView(View(this@MainActivity).apply { background = rect("#40000000", 5) },
-                    LinearLayout.LayoutParams(-1, dp(18)).apply { setMargins(dp(8), dp(6), dp(8), 0) })
-            }, FrameLayout.LayoutParams(-1, -1))
-            // פופ-אפ: כרטיס אדום באמצע, עם המפה בתוכו (כמו במסך המלא)
-            1 -> f.addView(LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                background = rect(red, 8); clipToOutline = true
-                addView(View(this@MainActivity).apply { background = rect("#B3FFFFFF", 2) },
-                    LinearLayout.LayoutParams(-1, dp(5)).apply { setMargins(dp(8), dp(6), dp(8), dp(4)) })
-                if (Prefs.alertMap(this@MainActivity))
-                    addView(View(this@MainActivity).apply { setBackgroundColor(Color.parseColor(if (C.LIGHT) "#BDBDC2" else "#333333")) },
-                        LinearLayout.LayoutParams(-1, dp(18)))
-                addView(View(this@MainActivity).apply { background = rect("#40000000", 3) },
-                    LinearLayout.LayoutParams(-1, dp(12)).apply { setMargins(dp(6), dp(5), dp(6), dp(6)) })
-            }, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER).apply { setMargins(dp(6), 0, dp(6), 0) })
-        }
-        return f
-    }
-
     /** ערכת הצבעים נשמרת מיד, ומוחלת (טעינה מחדש) רק ביציאה מעמוד התצוגה - בלי קפיצות בזמן הבחירה */
-    private var themeAtOpen = -1
-    private fun setTheme(d: android.app.Dialog, mode: Int, rebuild: () -> Unit) {
-        if (Prefs.themeMode(this) == mode) return
-        Prefs.setThemeMode(this, mode)
-        // עמוד התצוגה מתחלף מיד לצבעים החדשים; שאר האפליקציה - ביציאה מהעמוד
-        C.apply(Prefs.darkTheme(this))
-        (d.window?.decorView?.findViewWithTag<View>("displayPage"))?.setBackgroundColor(C.BG)
-        @Suppress("DEPRECATION")
-        d.window?.statusBarColor = C.BG
-        if (Build.VERSION.SDK_INT >= 30) {
-            val light = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
-                android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-            d.window?.insetsController?.setSystemBarsAppearance(if (C.LIGHT) light else 0, light)
-        }
-        rebuild()
-    }
-
-    /** עמוד "תצוגה" בסגנון One UI (כמו בהגדרות של סמסונג) */
-    private fun showDisplay() {
-        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
-        val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(30)) }
-        val page = ScrollView(this).apply {
-            tag = "displayPage"
-            setBackgroundColor(C.BG)
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            addView(body)
-            setOnApplyWindowInsetsListener { v, insets ->
-                @Suppress("DEPRECATION")
-                v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
-                insets
-            }
-        }
-        val blue = Color.parseColor("#5AA9FF")
-        fun card() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = graphite(26); clipToOutline = true }
-        fun addCard(c: View) = body.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(8)) })
-        fun note(t: String) = body.addView(text(t, 11f, C.MUTED2).apply { setPadding(dp(26), 0, dp(26), dp(14)) })
-        // קו מפריד עם שוליים מהצדדים (לא מקצה לקצה), כמו בהגדרות של סמסונג
-        fun divider(c: LinearLayout) = c.addView(View(this).apply { setBackgroundColor(C.DIV) },
-            LinearLayout.LayoutParams(-1, dp(1)).apply { setMargins(dp(18), 0, dp(18), 0) })
-        /** שורה: שם, מצב בכחול, ומתג (אם יש) */
-        /** שורה: שם + מצב בכחול + מתג. open = לחיצה על השם פותחת הגדרה נוספת (והמתג לבד מדליק/מכבה) */
-        fun row(c: LinearLayout, title: String, sub: String = "", on: Boolean? = null, sep: Boolean = true,
-                open: (() -> Unit)? = null, click: () -> Unit) {
-            // גובה קבוע כמו בסמסונג: שורה רגילה 48, שורה עם מצב מתחת 56 (המתג לא מגביה)
-            val r = LinearLayout(this).apply {
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(18), 0, dp(18), 0)
-                setOnClickListener { (open ?: click)() }
-            }
-            val t = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-            t.addView(text(title, 16f, C.TEXT).apply { includeFontPadding = false })
-            if (sub.isNotEmpty()) t.addView(text(sub, 12f, blue).apply { includeFontPadding = false; setPadding(0, dp(4), 0, 0) })
-            r.addView(t, LinearLayout.LayoutParams(0, -2, 1f))
-            if (on != null) {
-                if (open != null) switchZone(r, on, dp(18)) { click() }
-                else {
-                    if (sep) r.addView(View(this).apply { setBackgroundColor(C.SEPV) },
-                        LinearLayout.LayoutParams(dp(1), dp(20)).apply { setMargins(dp(12), 0, dp(12), 0) })
-                    r.addView(OuiSwitch(this, on, C.LIGHT).apply { isClickable = false })
-                }
-            }
-            c.addView(r, LinearLayout.LayoutParams(-1, dp(if (sub.isEmpty()) 48 else 56)))
-        }
-        fun rebuild() {
-            body.removeAllViews()
-            // כותרת עם חזרה
-            body.addView(text("תצוגה", 20f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(14), dp(24), dp(14)) })
-            // ערכת צבעים: תצוגה מקדימה חשוך / בהיר + "לפי המערכת"
-            val mode = Prefs.themeMode(this)
-            val theme = card()
-            val pick = LinearLayout(this).apply { gravity = Gravity.CENTER; setPadding(dp(10), dp(20), dp(10), dp(16)) }
-            fun preview(light: Boolean, label: String, sel: Boolean, value: Int) = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER_HORIZONTAL
-                val box = LinearLayout(this@MainActivity).apply {
-                    orientation = LinearLayout.VERTICAL
-                    setPadding(dp(6), dp(6), dp(6), dp(6))
-                    background = GradientDrawable().apply { setColor(Color.parseColor(if (light) "#D9D9DC" else "#2B2B2E")); cornerRadius = dp(12).toFloat() }
-                    listOf(12, 26, 40, 26).forEach { h ->
-                        addView(View(this@MainActivity).apply {
-                            background = GradientDrawable().apply { setColor(Color.parseColor(if (light) "#BDBDC2" else "#3E3E42")); cornerRadius = dp(6).toFloat() }
-                        }, LinearLayout.LayoutParams(-1, dp(h)).apply { bottomMargin = dp(5) })
-                    }
-                }
-                addView(box, LinearLayout.LayoutParams(dp(76), dp(150)))
-                addLabelRadio(this, label, sel)
-                setOnClickListener { setTheme(d, value) { rebuild() } }
-            }
-            val sys = mode == 2
-            pick.addView(preview(false, "חשוך", !sys && mode == 0, 0), LinearLayout.LayoutParams(0, -2, 1f))
-            pick.addView(preview(true, "בהיר", !sys && mode == 1, 1), LinearLayout.LayoutParams(0, -2, 1f))
-            theme.addView(pick)
-            divider(theme)
-            row(theme, "לפי המערכת", on = sys, sep = false) { setTheme(d, if (sys) 0 else 2) { rebuild() } }
-            addCard(theme)
-            note("כשמופעל - בהיר או חשוך לפי הגדרת הטלפון")
-            // שורת החיוויים במסך הראשי
-            val ind = card()
-            val sm = Prefs.statusMode(this)
-            row(ind, "שורת חיוויים", statusModeLabel(), on = sm != Prefs.STATUS_HIDDEN, sep = false,
-                open = { chooseStatusMode { rebuild() } }) {
-                Prefs.setStatusMode(this, if (sm == Prefs.STATUS_HIDDEN) Prefs.STATUS_ALWAYS else Prefs.STATUS_HIDDEN)
-                applyStatusRow(); rebuild() }
-            addCard(ind)
-            note("מוגן · צלילים · רשת · מיקום · חיבור · גרסה – מעל השעון במסך הראשי")
-            // שעון ותאריך, מזג אוויר וברכה - בכרטיס אחד
-            val more = card()
-            row(more, "שעון", listOf(if (Prefs.showSeconds(this)) "שניות" else "", if (Prefs.blinkColon(this)) "נקודתיים מהבהבות" else "")
-                .filter { it.isNotEmpty() }.joinToString(" · ")) { showClockPage() }
-            divider(more)
-            row(more, "תאריך", TimeFormat.dayOptions()[Prefs.dayStyle(this)], on = Prefs.showDate(this),
-                open = { chooseDayStyle { rebuild() } }) {
-                Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); rebuild() }
-            divider(more)
-            row(more, "מזג אוויר", "עדכון " + weatherLabel(Prefs.weatherMinutes(this)), on = Prefs.showWeather(this),
-                open = { chooseWeatherInterval { rebuild() } }) {
-                Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); rebuild() }
-            divider(more)
-            row(more, "ברכה", on = Prefs.showGreeting(this), sep = false) {
-                Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock(); rebuild() }
-            addCard(more)
-            note("מזג אוויר וברכה בכרטיס השעון במסך הראשי")
-            // פיד ארצי - כמה זמן אחורה להציג
-            val feed = card()
-            row(feed, "פיד ארצי", FeedText.windowLabel(Prefs.feedMinutes(this)), on = Prefs.feedAlways(this),
-                open = { chooseFeedWindow { rebuild() } }) {
-                Prefs.setFeedAlways(this, !Prefs.feedAlways(this)); updateFeed(); rebuild() }
-            addCard(feed)
-            note("ההתראות בכל הארץ בתחתית המסך הראשי. כשהמתג מופעל - הפיד מוצג תמיד, גם כשאין התראות")
-        }
-        themeAtOpen = Prefs.themeMode(this)
-        rebuild()
-        // יציאה מהעמוד: אם ערכת הצבעים השתנתה - טוענים מחדש וחוזרים להגדרות
-        track(d) { if (Prefs.themeMode(this) != themeAtOpen) { reopenDisplay = true; recreate() } }
-        body.setPadding(0, 0, 0, dp(30))
-        d.setContentView(page)
-        d.window?.setLayout(-1, -1)
-        @Suppress("DEPRECATION")
-        d.window?.statusBarColor = C.BG
-        edgeToEdge(d)
-        // חוזרים מחלון בחירה - מעדכנים את המצבים
-        refreshOnReturn(d) { rebuild() }
-        d.show()
-    }
-
-    /** הרשאות: שורה אחת שפותחת מסך עם כל ההרשאות והמצב של כל אחת */
-    private fun phoneRows(): List<Row> = listOf(
-        Row("🛡", "הרשאות", {
-            val bad = permissionItems().count { !it.ok }
-            if (bad == 0) "הכל תקין ✓" else "$bad דורש טיפול"
-        }) { showPermissions() }
-    )
-
-    private class Perm(val icon: String, val title: String, val note: String, val ok: Boolean, val open: () -> Unit)
-
-    private fun permissionItems(): List<Perm> {
-        val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
-        val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
-        return listOf(
-            Perm("📱", "מסך מלא בהתראה", when {
-                    !overlayAllowed() -> "חסר: הצגה מעל אפליקציות אחרות"
-                    !fullScreenIntentAllowed() -> "חסר: התראות במסך מלא"
-                    else -> "התרעה נפתחת על כל המסך גם כשהטלפון בשימוש"
-                }, fullScreenOk()) { openFullScreenSettings() },
-            Perm("🔋", "חיסכון בסוללה", "האפליקציה לא נעצרת ברקע",
-                pm.isIgnoringBatteryOptimizations(packageName)) { openBatterySettings() },
-            Perm("🔔", "התראות בטלפון", "התראות האפליקציה מופעלות",
-                nm.areNotificationsEnabled()) { openNotificationSettings() },
-            Perm("🔕", "נא לא להפריע", "מאפשר לעקוף נא לא להפריע בזמן התרעה",
-                dndAccess()) { startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) }
-        )
-    }
-
-    /** מסך הרשאות: כל הרשאה עם מצב, לחיצה פותחת את ההגדרה בטלפון */
-    private fun showPermissions() = ouiPage("הרשאות") { body, _ ->
-        val card = ouiCard()
-        permissionItems().forEachIndexed { i, p ->
-            if (i > 0) ouiDivider(card)
-            ouiRow(card, p.title, sub = p.note, subColor = C.MUTED,
-                end = if (p.ok) "תקין" else "דורש טיפול", endColor = if (p.ok) C.GREEN else C.RED) { p.open() }
-        }
-        ouiAdd(body, card)
-        ouiNote(body, "לחיצה על הרשאה פותחת את ההגדרה בטלפון")
-    }
-
-    // ---- חיווים ----
-
-    /** חיווי: אייקון למעלה, טקסט מתחת */
-    private fun indicator(icon: Int, onClick: (() -> Unit)?) = text("", 12f, C.TEXT).apply {
-        setIndIcon(this, icon)
-        maxLines = 1; ellipsize = TextUtils.TruncateAt.END   // 6 חיוויים בשורה - שורה אחת
-        // האייקון גדל ב-15%, והרווח שמתחת לו קטן באותה מידה - גובה השורה לא משתנה
-        compoundDrawablePadding = (dp(4) - (dp(18) * 0.15f).toInt()).coerceAtLeast(0)
-        gravity = Gravity.CENTER
-        if (onClick != null) setOnClickListener { onClick() }
-    }
-
-    /**
-     * אייקון החיווי - מעט גדול מהגודל המקורי. אייקון שצויר גדול יותר (24dp) נשאר באותו גודל,
-     * אבל תופס את אותו גובה כמו השאר - כדי שהטקסט מתחת לכל החיוויים יהיה באותו קו
-     */
-    private fun setIndIcon(v: TextView, icon: Int) {
-        val d = getDrawable(icon)?.mutate() ?: return
-        val dw = (d.intrinsicWidth * 1.45f).toInt(); val dh = (d.intrinsicHeight * 1.45f).toInt()
-        val h = (dp(18) * 1.45f).toInt()
-        val box = if (dh <= h) d.apply { setBounds(0, 0, dw, dh) } else SameHeight(d, dw, dh, h).apply { setBounds(0, 0, dw, h) }
-        v.setCompoundDrawablesRelative(null, box, null, null)
-    }
+    internal var themeAtOpen = -1
+    internal class Perm(val icon: String, val title: String, val note: String, val ok: Boolean, val open: () -> Unit)
 
     /** מצייר אייקון בגודלו, ממורכז בתוך גובה קבוע (בולט מעט למעלה ולמטה בלי להזיז את הטקסט) */
-    private class SameHeight(val d: android.graphics.drawable.Drawable, val dw: Int, val dh: Int, val h: Int) :
+    internal class SameHeight(val d: android.graphics.drawable.Drawable, val dw: Int, val dh: Int, val h: Int) :
         android.graphics.drawable.Drawable() {
         override fun draw(c: android.graphics.Canvas) {
             val top = bounds.top + (h - dh) / 2
@@ -2304,687 +936,25 @@ class MainActivity : Activity() {
         override fun getIntrinsicHeight() = h
     }
 
-    /** חיווי צלילים: רמקול, ומסביבו קווי רטט כשהרטט פועל */
-    private fun setSnd(label: String, color: Int, vib: Boolean) =
-        setInd(sndInd, if (vib) R.drawable.ic_snd_vib else R.drawable.ic_set_sound, label, color)
-
-    /** האייקון בצבע המצב, הטקסט תמיד לבן-אפור */
-    private fun setInd(v: TextView, icon: Int, label: String, color: Int) {
-        // מתעדכן כל שנייה - בונים את האייקון מחדש רק כשמשהו בו השתנה
-        val k = "$icon|$label|$color"
-        if (v.tag == k) return
-        v.tag = k
-        setIndIcon(v, icon)
-        v.compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color)
-        v.text = label
-    }
-
-    /** סוג החיבור: וויפי / נתונים / אחר, והאם יש אינטרנט בפועל */
-    private fun network(): Pair<String, Boolean>? {
-        val cm = getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-        val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return null) ?: return null
-        val type = when {
-            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
-            caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) -> "cell"
-            else -> "other"
-        }
-        return type to caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-    }
-
-    private fun locationOn(): Boolean {
-        val lm = getSystemService(LOCATION_SERVICE) as android.location.LocationManager
-        return hasLocationPerm() && lm.isLocationEnabled
-    }
-
     /** הפיד הארצי: ההתראות בחלון הזמן מההגדרות, אחת בכל פעם, מתחלפות בגלילה כלפי מעלה */
-    private var feedItems: List<FeedText.Item> = emptyList()
-    private var feedIdx = 0
-    private var feedTick = 0
-    private var feedWin = -1
-    private var feedAlwaysShown: Boolean? = null
-
-    /** הטקסט של פריט בפיד, עם אייקון סוג ההתרעה (בצבע הרמה) במקום תווי המקום */
-    private fun feedSpan(it: FeedText.Item): CharSequence {
-        val sp = android.text.SpannableString(it.text)
-        val size = (feedLine.textSize * 1.25f).toInt()
-        var i = it.text.indexOf('\uFFFC')
-        while (i >= 0) {
-            val d = getDrawable(it.icon)?.mutate()
-            if (d != null) {
-                d.setTint(Color.parseColor(it.color))
-                val s = (size * AlertUi.scale(it.icon)).toInt()
-                d.setBounds(0, 0, s, s)
-                sp.setSpan(CenteredIcon(d), i, i + 1, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            }
-            i = it.text.indexOf('\uFFFC', i + 1)
-        }
-        return sp
-    }
-
-    private fun updateFeed() {
-        val items = FeedText.recent(this)
-        val win = Prefs.feedMinutes(this)
-        val always = Prefs.feedAlways(this)
-        if (items != feedItems || win != feedWin || always != feedAlwaysShown) {
-            feedItems = items; feedWin = win; feedAlwaysShown = always; feedIdx = 0; feedTick = 0
-            // הכרטיס מוצג כשיש התראות בטווח הזמן שנבחר, או תמיד (מתג בהגדרות › תצוגה)
-            val first = items.firstOrNull()
-            feedCard.visibility = if (first == null && !always) View.GONE else View.VISIBLE
-            feedText = first?.text ?: ""
-            feedLine.text = if (first != null) feedSpan(first)
-                else FeedText.windowLabel(win).let { "אין התראות ב" + (if (it[0].isDigit()) "-" else "") + it }
-            feedLine.setTextColor(C.TEXT)
-            return
-        }
-        // כל 3 שניות - ההתראה הבאה עולה מלמטה
-        if (items.size < 2 || ++feedTick < 3) return
-        feedTick = 0
-        feedIdx = (feedIdx + 1) % items.size
-        val next = items[feedIdx]
-        val h = feedLine.height.coerceAtLeast(dp(40)) / 2f
-        feedLine.animate().translationY(-h).alpha(0f).setDuration(220).withEndAction {
-            feedText = next.text; feedLine.text = feedSpan(next)
-            feedLine.translationY = h
-            feedLine.animate().translationY(0f).alpha(1f).setDuration(220).start()
-        }.start()
-    }
-
-    private fun updateIndicators() {
-        updateFeed()
-        updateVerInd()
-        if (Prefs.enabled(this)) setInd(protInd, R.drawable.ic_shield_ind, "מוגן", C.GREEN)
-        else setInd(protInd, R.drawable.ic_shield_ind_off, "לא מוגן", C.RED)
-        // חיווי צלילים
-        // רמקול = צלילים, קווי רטט מסביב = רטט; רק רטט - טלפון רוטט
-        val vib = Prefs.vibesOn(this)
-        when {
-            Prefs.mutedNow(this) -> setInd(sndInd, R.drawable.ic_volume_off, "מושתק", C.GREEN)   // ההתרעות מגיעות - רק בלי צליל ורטט
-            Shabbat.active(this) -> setSnd("שבת", Color.parseColor("#4C7DFF"), true)   // מצב שבת: תמיד עם צליל ורטט
-            Prefs.loudSound(this) -> setSnd("חזק", C.GREEN, vib)
-            !Prefs.soundsOn(this) && vib -> setInd(sndInd, R.drawable.ic_ind_vibrate, "רטט", C.ORANGE)
-            !Prefs.soundsOn(this) -> setInd(sndInd, R.drawable.ic_volume_off, "כבוי", C.RED)
-            Prefs.isQuietNow(this) -> setSnd("שקט", C.ORANGE, vib)
-            else -> setSnd("צלילים", C.GREEN, vib)
-        }
-        if (Prefs.isQuietNow(this)) {
-            quietLine.text = "🌙 שעות שקט עד ${hhmm(Prefs.quietTo(this))} · מקדימה וסיום בשקט"
-            quietLine.setTextColor(C.ORANGE)
-            quietLine.visibility = View.VISIBLE
-        } else if (Prefs.quietOn(this)) {
-            quietLine.text = "🌙 שעות שקט ${hhmm(Prefs.quietFrom(this))}–${hhmm(Prefs.quietTo(this))}"
-            quietLine.setTextColor(C.MUTED)
-            quietLine.visibility = View.VISIBLE
-        } else {
-            quietLine.text = ""
-            quietLine.visibility = View.GONE
-        }
-        val net = network()
-        // רשת: אייקון קבוע, מתחתיו סוג החיבור
-        when {
-            net == null -> setInd(netInd, R.drawable.ic_globe, "אין רשת", C.RED)
-            net.first == "wifi" -> setInd(netInd, R.drawable.ic_globe, "Wi-Fi", if (net.second) C.GREEN else C.ORANGE)
-            net.first == "cell" -> setInd(netInd, R.drawable.ic_globe, "נתונים", if (net.second) C.GREEN else C.ORANGE)
-            else -> setInd(netInd, R.drawable.ic_globe, "מחובר", if (net.second) C.GREEN else C.ORANGE)
-        }
-        // מיקום: מתחתיו דיוק המיקום במטרים
-        val accM = shownAccuracy()
-        val acc = if (accM > 0) "$accM מ׳" else "—"
-        if (locationOn()) setInd(locInd, R.drawable.ic_location, acc, if (hasPrecise()) C.GREEN else C.ORANGE)
-        else setInd(locInd, R.drawable.ic_location, "כבוי", C.MUTED)
-
-        if (!Prefs.enabled(this)) {
-            setInd(srvInd, R.drawable.ic_antenna, "לא מחובר", C.MUTED); blinkServer(false)
-        } else {
-            // השרת שלנו מחובר - ירוק קבוע; מתחבר (עוד לא הגיע סימן חיים) - ירוק מהבהב;
-            // השרת לא זמין והטלפון בודק בעצמו (גיבוי) - כתום "מחובר"; אין שום מקור - אדום
-            val (label, color, blink) = when {
-                AlertService.serverOk(this) -> Triple("מחובר", C.GREEN, false)
-                serverConnecting() -> Triple("מתחבר…", C.GREEN, true)
-                SourceHealth.upCount() > 0 -> Triple("מחובר", C.ORANGE, false)
-                SourceHealth.anyConnecting() -> Triple("מתחבר…", C.ORANGE, true)
-                else -> Triple("לא מחובר", C.RED, false)
-            }
-            setInd(srvInd, R.drawable.ic_antenna, label, color)
-            blinkServer(blink)
-        }
-    }
-
-    /** השרת שלנו מתחבר: עוד לא הגיע סימן חיים, וסימן החיים הראשון מגיע תוך 10 דקות מהפעלת ההאזנה */
-    private fun serverConnecting(): Boolean = Prefs.enabled(this) && !AlertService.serverOk(this) &&
-        AlertService.serverHbAt(this) == 0L && System.currentTimeMillis() - SourceHealth.startedAt() < 11 * 60 * 1000L
+    internal var feedItems: List<FeedText.Item> = emptyList()
+    internal var feedIdx = 0
+    internal var feedTick = 0
+    internal var feedWin = -1
+    internal var feedAlwaysShown: Boolean? = null
 
     /** חיווי הגרסה: מעודכן - אייקון ירוק; יש עדכון חדש - כתום ומהבהב (רק האייקון, לא מספר הגרסה) */
-    private var verBlink: android.animation.ValueAnimator? = null
-    private fun updateVerInd() {
-        val up = Updater.hasUpdate(this)
-        val label = "v${Updater.currentVersion(this)}" + if (Updater.isBetaBuild(this) && !Updater.currentVersion(this).endsWith("b")) "b" else ""
-        if (verInd.text.toString() != label || (verBlink != null) != up) setInd(verInd, R.drawable.ic_info, label, if (up) C.ORANGE else C.GREEN)
-        if (up && verBlink == null) {
-            verBlink = android.animation.ValueAnimator.ofInt(255, 50).apply {
-                duration = 600
-                repeatCount = android.animation.ValueAnimator.INFINITE
-                repeatMode = android.animation.ValueAnimator.REVERSE
-                addUpdateListener { a -> verInd.compoundDrawablesRelative[1]?.alpha = a.animatedValue as Int }
-                start()
-            }
-        } else if (!up && verBlink != null) {
-            verBlink?.cancel(); verBlink = null
-            verInd.compoundDrawablesRelative[1]?.alpha = 255
-        }
-    }
-
+    internal var verBlink: android.animation.ValueAnimator? = null
     /** "מתחבר…" מהבהב עד שמתחבר */
-    private var srvBlink: android.animation.ObjectAnimator? = null
-    private fun blinkServer(on: Boolean) {
-        if (on && srvBlink == null) {
-            srvBlink = android.animation.ObjectAnimator.ofFloat(srvInd, "alpha", 1f, 0.25f).apply {
-                duration = 500
-                repeatCount = android.animation.ValueAnimator.INFINITE
-                repeatMode = android.animation.ValueAnimator.REVERSE
-                start()
-            }
-        } else if (!on && srvBlink != null) {
-            srvBlink?.cancel(); srvBlink = null
-            srvInd.alpha = 1f
-        }
-    }
-
-    /** לחיצה על חיווי הרשת: הודעה קצרה עם סוג החיבור (כמו "מעדכן מיקום…") */
-    private fun showNetworkInfo() {
-        val net = network()
-        val msg = when {
-            net == null -> "אין רשת – התרעות לא יגיעו"
-            !net.second -> "מחובר, אבל אין אינטרנט"
-            net.first == "wifi" -> "מחובר ל-Wi-Fi"
-            net.first == "cell" -> "מחובר לנתונים ניידים"
-            else -> "מחובר לאינטרנט"
-        }
-        android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
-    }
-
-    private fun onLocationIndicator() {
-        when {
-            !hasLocationPerm() || !hasPrecise() -> onWeatherClick()
-            !locationOn() -> startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-            else -> {
-                // לחיצות חוזרות בזמן שהמיקום עוד מתעדכן - לא מתחילים שוב
-                val now = System.currentTimeMillis()
-                if (now - locTapAt < 30_000L) return
-                locTapAt = now
-                android.widget.Toast.makeText(this, "מעדכן מיקום…", android.widget.Toast.LENGTH_SHORT).show()
-                refreshNearby()
-                updateWeather(force = true)
-            }
-        }
-    }
-
-    /** עמוד מקורות ההתרעה: כמה מחוברים, ומצב כל מקור - מתעדכן כל שנייה */
-    /** "לפני X שניות / דקות / שעות" */
-    private fun agoText(t: Long): String {
-        if (t <= 0) return "עוד לא"
-        val sec = ((System.currentTimeMillis() - t) / 1000).coerceAtLeast(0)
-        return when {
-            sec < 3 -> "עכשיו"
-            sec < 60 -> "לפני $sec שניות"
-            sec < 120 -> "לפני דקה"
-            sec < 3600 -> "לפני ${sec / 60} דקות"
-            sec < 7200 -> "לפני שעה"
-            else -> "לפני ${sec / 3600} שעות"
-        }
-    }
-
+    internal var srvBlink: android.animation.ObjectAnimator? = null
     /** תוצאת "בדוק את השרתים" האחרונה: מתי, ואילו מקורות תקינים בשרת (null = השרת לא ענה) */
-    private var srvCheckAt = 0L
-    private var srvCheckUp: List<String>? = null
+    internal var srvCheckAt = 0L
+    internal var srvCheckUp: List<String>? = null
 
-    private fun showSourcesInfo() = ouiPage("מקורות התרעה",
-        button = "בדיקה" to { done ->
-            Thread {
-                val up = PushService.checkServer()
-                runOnUiThread {
-                    srvCheckAt = System.currentTimeMillis(); srvCheckUp = up
-                    // השרת ענה - מצב המקורות שלו מוצג מיד (סימן החיים שהוא שולח מגיע דרך Firebase)
-                    if (up != null) SourceHealth.viaServer(up, srvCheckAt)
-                    done()
-                }
-            }.start()
-        }) { body, rebuild ->
-        val on = Prefs.enabled(this)
-        // השרת שלנו: בודק את כל המקורות כל שנייה ושולח לטלפון. בלי סימן חיים 35 דקות - הטלפון בודק בעצמו
-        val hb = AlertService.serverHbAt(this)
-        val srvOk = AlertService.serverOk(this)
-        // סימן החיים הראשון מגיע תוך 10 דקות מהפעלת ההאזנה - עד אז "מתחבר"
-        val srvConnecting = on && serverConnecting()
-        // הבדיקה האחרונה (כפתור) נכשלה ואין סימן חיים חדש יותר
-        val checkFailed = srvCheckAt > hb && srvCheckUp == null
-        val sum = ouiCard()
-        // 1. שרת התרעות
-        val (srvLabel, srvColor) = when {
-            !on -> "כבוי" to C.MUTED
-            checkFailed -> "לא עונה" to C.RED
-            srvOk -> "מחובר" to C.GREEN
-            srvConnecting -> "מתחבר…" to C.ORANGE
-            else -> "מנותק" to C.RED
-        }
-        ouiRow(sum, "שרת התרעות", sub = if (hb > 0) "סימן חיים ${agoText(hb)}" else "עוד לא התקבל סימן חיים",
-            subColor = C.MUTED, end = srvLabel, endColor = srvColor)
-        ouiDivider(sum)
-        // 2. מקורות מחוברים - המספר בצבע: כולם ירוק, חלק כתום, אף אחד אדום
-        val upN = SourceHealth.upCount(); val all = SourceHealth.total()
-        ouiRow(sum, "מקורות מחוברים", end = if (on) "$upN/$all" else "—",
-            endColor = if (!on) C.MUTED else if (upN == all) C.GREEN else if (upN > 0) C.ORANGE else C.RED)
-        ouiDivider(sum)
-        // 3. מקור הבדיקה: השרת או הטלפון
-        ouiRow(sum, "מקור הבדיקה", end = if (!on) "—" else if (srvOk) "השרת" else if (srvConnecting) "הטלפון (זמנית)" else "הטלפון (גיבוי)",
-            endColor = if (!on) C.MUTED else if (srvOk) C.GREEN else C.ORANGE)
-        ouiDivider(sum)
-        // 4. בדיקה אחרונה
-        val last = maxOf(SourceHealth.lastAny(), hb, srvCheckAt)
-        ouiRow(sum, "בדיקה אחרונה", end = if (on) agoText(last) else "—", endColor = C.MUTED)
-        ouiAdd(body, sum)
-        if (!on) ouiNote(body, "ההאזנה כבויה")
-        else ouiNote(body, (if (srvOk) "השרת בודק את כל המקורות כל שנייה ושולח לטלפון רק כשיש התרעה – חוסך סוללה"
-            else "כשהשרת לא זמין, הטלפון בודק את המקורות בעצמו") + "\nההתראה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד")
-        val list = ouiCard()
-        SourceHealth.NAMES.entries.forEachIndexed { i, (k, name) ->
-            if (i > 0) ouiDivider(list)
-            val (label, color) = when {
-                !on -> "כבוי" to C.MUTED
-                SourceHealth.isUp(k) -> "מחובר" to C.GREEN
-                SourceHealth.connecting(k) -> "מתחבר…" to C.ORANGE
-                else -> "מנותק" to C.RED
-            }
-            ouiRow(list, name, end = label, endColor = color)
-        }
-        ouiAdd(body, list)
-        // מתעדכן בלייב כל שנייה כל עוד העמוד פתוח
-        (body.tag as? Runnable)?.let { ui.removeCallbacks(it) }
-        val live = Runnable { if (body.isAttachedToWindow) rebuild() }
-        body.tag = live
-        ui.postDelayed(live, 1000)
-    }
-
-    // ---- מה חדש ----
-
-    /** אחרי עדכון: פעם אחת, כל מה שהשתנה מאז הגרסה הקודמת שהייתה מותקנת */
-    private fun showWhatsNewIfUpdated() {
-        val cur = Updater.currentVersion(this)
-        val seen = Prefs.seenVersion(this)
-        Prefs.setSeenVersion(this, cur)
-        when {
-            seen.isNotEmpty() && seen != cur -> showWhatsNew(sinceVersion = seen)
-            // גרסאות ישנות לא שמרו את הערך - אם זו לא התקנה חדשה, מציגים את הגרסה הנוכחית
-            seen.isEmpty() && (Prefs.enabled(this) || Prefs.history(this).isNotEmpty()) ->
-                showWhatsNew(sinceVersion = null)
-        }
-    }
-
-    /** הטקסט של "מה חדש". sinceVersion = null: רק הגרסה הנוכחית */
-    private fun whatsNewText(sinceVersion: String?): String? {
-        val log = try {
-            org.json.JSONObject(assets.open("changelog.json").bufferedReader(Charsets.UTF_8).use { it.readText() })
-        } catch (_: Exception) { return null }
-        val cur = Updater.currentVersion(this)
-        val versions = log.keys().asSequence()
-            .filter { v -> if (sinceVersion == null) v == cur else Updater.isNewer(v, sinceVersion) && !Updater.isNewer(v, cur) }
-            .sortedWith { a, b -> if (Updater.isNewer(a, b)) -1 else if (a == b) 0 else 1 }
-            .toList()
-        if (versions.isEmpty()) return null
-        return versions.joinToString("\n\n") { v ->
-            val items = log.getJSONArray(v)
-            "גרסה $v\n" + (0 until items.length()).joinToString("\n") { "• " + items.getString(it) }
-        }
-    }
-
-    private fun showWhatsNew(sinceVersion: String?) {
-        val text = whatsNewText(sinceVersion) ?: return
-        AppSheet.show(this, "🆕 מה חדש", text, "הבנתי")
-    }
-
-    /** מסך עדכונים: גרסה מותקנת + בדיקה, גרסאות בטא (למי שנפתח לו), ומה חדש */
-    private fun showUpdates() = ouiPage("עדכונים",
-        // אותה בדיקה בדיוק כמו לחיצה על הגרסה בשורת החיווי
-        button = "בדוק אם יש עדכונים" to { done -> Updater.check(this, silent = false, done = done) }) { body, rebuild ->
-        val ver = ouiCard()
-        ouiRow(ver, "גרסה מותקנת", end = "v" + Updater.versionLabel(this), endColor = C.MUTED)
-        ouiDivider(ver)
-        // מתי האפליקציה עודכנה לאחרונה בטלפון
-        val updatedAt = try {
-            java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.US)
-                .format(java.util.Date(packageManager.getPackageInfo(packageName, 0).lastUpdateTime))
-        } catch (_: Exception) { "" }
-        ouiRow(ver, "עודכן לאחרונה", end = updatedAt, endColor = C.MUTED)
-        ouiAdd(body, ver)
-        ouiNote(body, "מהעדכון השני ההתקנה אוטומטית, בלי ללחוץ התקן")
-
-        // גרסאות בטא - רק למי שפתח אותן (7 לחיצות על הגרסה)
-        if (Prefs.betaUnlocked(this) || Prefs.betaUpdates(this)) {
-            val on = Prefs.betaUpdates(this)
-            val beta = ouiCard()
-            ouiRow(beta, "גרסאות בטא", sub = if (on) "מקבל גרסאות ניסיון" else "כבוי", on = on) {
-                Prefs.setBetaUpdates(this, !on)
-                Prefs.setSkippedVersion(this, "")
-                if (Prefs.enabled(this)) AlertService.reloadPush(this)
-                if (on) Prefs.setBetaUnlocked(this, false)   // כיבוי - האפשרות חוזרת להיות מוסתרת
-                else Updater.check(this, silent = false)
-                rebuild()
-            }
-            ouiAdd(body, beta)
-            ouiNote(body, "גרסאות לפני שהן משוחררות לכולם · מזהה מכשיר: ${Prefs.deviceCode(this)}")
-        }
-
-        // מה חדש בגרסה המותקנת
-        val news = ouiCard()
-        news.addView(text("מה חדש", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), 0) })
-        ouiText(news, whatsNewText(null) ?: "אין פירוט לגרסה הזו")
-        ouiAdd(body, news)
-    }
-
-    private fun hhmm(min: Int) = "%02d:%02d".format(min / 60, min % 60)
-
-    /** התרעות לפי מיקום: צריך מיקום מדויק. מיקום ברקע נקרא דרך השירות */
-    private fun toggleNearMe() {
-        val on = !Prefs.nearMe(this)
-        if (on && !hasPrecise()) {
-            requestPermissions(arrayOf(
-                android.Manifest.permission.ACCESS_FINE_LOCATION,
-                android.Manifest.permission.ACCESS_COARSE_LOCATION), 3)
-            return
-        }
-        Prefs.setNearMe(this, on)
-        if (on) {
-            // זיהוי ראשון מיד, בלי לחכות לשירות
-            Weather.freshLocation(this) { loc ->
-                if (loc != null) Thread {
-                    val list = AreaData.nearby(this, loc.latitude, loc.longitude)
-                    Prefs.setNearbyAreas(this, list)
-                    runOnUiThread { refresh() }
-                }.start()
-            }
-            // השירות צריך לעלות מחדש כדי לקבל גישה למיקום ברקע
-            if (Prefs.enabled(this)) { stopService(Intent(this, AlertService::class.java)); AlertService.start(this, manual = true) }
-        }
-        refresh()
-    }
-
-    private var testSpeaker: Speaker? = null
-
-    /** הקראה: הפעלה/כיבוי ודוגמה */
-    private fun dndAccess() =
-        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).isNotificationPolicyAccessGranted
-    /** עמוד אודות: אייקון, שם וגרסה, מקורות, רישיונות והבהרה */
-    private fun showAbout() = ouiPage("אודות") { body, _ ->
-        // ראש העמוד כמו "אודות" בסמסונג: אייקון גדול, שם וגרסה
-        body.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(0, dp(10), 0, dp(22))
-            addView(android.widget.ImageView(this@MainActivity).apply { setImageResource(R.mipmap.ic_launcher) },
-                LinearLayout.LayoutParams(dp(88), dp(88)))
-            addView(text("צופר חירום", 24f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER; setPadding(0, dp(12), 0, 0) })
-            addView(text("גרסה " + Updater.versionLabel(this@MainActivity), 14f, C.MUTED).apply { gravity = Gravity.CENTER; setPadding(0, dp(4), 0, 0) })
-            addView(text("התראות פיקוד העורף בזמן אמת, גם כשהאפליקציה סגורה והמסך כבוי", 13f, C.MUTED2).apply {
-                gravity = Gravity.CENTER; setPadding(dp(30), dp(10), dp(30), 0) })
-        }, LinearLayout.LayoutParams(-1, -2))
-
-        val note = ouiCard()
-        note.addView(text("הבהרה", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), 0) })
-        ouiText(note, listOf(
-            "זו אפליקציה פרטית ולא רשמית. היא אינה קשורה לפיקוד העורף, לצה\"ל או לכל גוף ממשלתי",
-            "המידע מגיע ממקורות ציבוריים, וייתכנו עיכובים, תקלות או התראות חסרות",
-            "האפליקציה משלימה ואינה מחליפה את האפליקציה הרשמית של פיקוד העורף, את הצופרים ואת ההנחיות הרשמיות",
-            "השימוש באחריות המשתמש בלבד. ההנחיות הרשמיות באתר פיקוד העורף גוברות תמיד"
-        ).joinToString("\n") { "• $it" })
-        ouiAdd(body, note)
-
-        val src = ouiCard()
-        src.addView(text("מקורות (${SourceHealth.total()})", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-        SourceHealth.NAMES.values.forEachIndexed { i, n -> if (i > 0) ouiDivider(src); ouiRow(src, n) }
-        ouiAdd(body, src)
-        ouiNote(body, "ההתראה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד")
-
-        val lic = ouiCard()
-        lic.addView(text("רישיונות", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-        listOf("מפה" to "Leaflet · BSD-2", "גבולות אזורים וזמני הגעה" to "oref_alert · MIT",
-            "רשת" to "OkHttp · Apache 2.0", "מזג אוויר ושמות מקומות" to "Open-Meteo · OpenStreetMap")
-            .forEachIndexed { i, (a, b) -> if (i > 0) ouiDivider(lic); ouiRow(lic, a, sub = b, subColor = C.MUTED) }
-        ouiAdd(body, lic)
-
-        body.addView(text("נבנתה על ידי טל ששון · © ${java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)} כל הזכויות שמורות",
-            12f, C.MUTED).apply { gravity = Gravity.CENTER; setPadding(dp(20), dp(10), dp(20), 0) }, LinearLayout.LayoutParams(-1, -2))
-    }
-
-    /** עמוד הקראה: הדלקה/כיבוי והשמעת דוגמה */
-    private fun showSpeech() = ouiPage("הקראה") { body, rebuild ->
-        val c = ouiCard()
-        ouiRow(c, "הקראה בקול", on = Prefs.speakAlerts(this)) {
-            Prefs.setSpeakAlerts(this, !Prefs.speakAlerts(this)); rebuild() }
-        ouiDivider(c)
-        ouiRow(c, "השמע דוגמה", sub = "ירי רקטות וטילים באזורים שלך") {
-            // דוגמה בקול של ההתראות (הקלטות "אבר")
-            val sp = testSpeaker ?: Speaker(this).also { testSpeaker = it }
-            val mine = Prefs.cities(this) + Prefs.nearbyAreas(this)
-            val areas = mine.ifEmpty { listOf("תל אביב - מרכז העיר") }.take(3)
-            sp.speakAlert("ירי רקטות וטילים", areas, AreaData.shelterSeconds(this, areas) ?: 90) {}
-        }
-        ouiAdd(body, c)
-        ouiNote(body, "מקריא סוג, אזורים וזמן להגעה – ואז הצליל. במצב שבת ההקראה פועלת תמיד")
-    }
-
-    /** שעות שקט: רק התראה מקדימה וסיום אירוע מושתקים. ירי תמיד נשמע. */
-    /** עמוד שעות שקט: הדלקה/כיבוי, שעת התחלה וסיום */
-    private fun showQuietHours() = ouiPage("שעות שקט") { body, rebuild ->
-        val on = Prefs.quietOn(this)
-        val sw = ouiCard()
-        ouiRow(sw, "שעות שקט", on = on) { Prefs.setQuietOn(this, !on); rebuild() }
-        ouiAdd(body, sw)
-        ouiNote(body, "בשעות האלה התרעה מקדימה וסיום אירוע מגיעים בשקט. ירי תמיד נשמע")
-        val t = ouiCard()
-        ouiRow(t, "התחלה", end = hhmm(Prefs.quietFrom(this)), endBig = true) {
-            pickTime("שעת התחלה", Prefs.quietFrom(this)) { Prefs.setQuiet(this, it, Prefs.quietTo(this)); rebuild() } }
-        ouiDivider(t)
-        ouiRow(t, "סיום", end = hhmm(Prefs.quietTo(this)), endBig = true) {
-            pickTime("שעת סיום", Prefs.quietTo(this)) { Prefs.setQuiet(this, Prefs.quietFrom(this), it); rebuild() } }
-        ouiAdd(body, t)
-        ouiNote(body, "מצב שבת עוקף את שעות השקט")
-    }
-
-    /** בחירת שעה - חלון השעה של הטלפון (בסמסונג: גלגלים, "ביטול | סיום") */
-    /**
-     * בחירת שעה בדיוק כמו "הגדר שעה" בהגדרות של סמסונג: חלון אפור מעוגל בתחתית המסך,
-     * כותרת, גלגל שעות וגלגל דקות, ולמטה ביטול | סיום
-     */
-    /** hourCount = כמה ערכים בגלגל השעות (24 = 00–23 לשעון; 25 = 00–24 למשך זמן) */
-    private fun pickTime(title: String, cur: Int, hourCount: Int = 24, done: (Int) -> Unit) {
-        // גלגלים: שעה משמאל, דקות מימין (כמו בצילום)
-        val hours = TimeWheel(this, hourCount, cur / 60)
-        val mins = TimeWheel(this, 60, cur % 60)
-        ouiSheet(title, cancel = "ביטול", ok = "סיום", onOk = { done(hours.value * 60 + mins.value) }) { card, white ->
-            card.addView(LinearLayout(this).apply {
-                layoutDirection = View.LAYOUT_DIRECTION_LTR
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(44), 0, dp(44), 0)
-                addView(hours, LinearLayout.LayoutParams(0, -2, 1f))
-                addView(text(":", 32f, white, bold = true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(40), -2))
-                addView(mins, LinearLayout.LayoutParams(0, -2, 1f))
-            }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(22) })
-        }
-    }
-
-    /**
-     * חלון קופץ בסגנון סמסונג (כמו "הגדר שעה"): כרטיס אפור מעוגל בתחתית המסך, כותרת מודגשת,
-     * תוכן, ולמטה שני כפתורים עם קו מפריד
-     */
-    private fun ouiSheet(title: String, cancel: String, ok: String, onOk: () -> Unit,
-                         content: (LinearLayout, Int) -> Unit) {
-        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
-        val white = if (C.LIGHT) C.TEXT else Color.WHITE
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            background = GradientDrawable().apply {
-                setColor(if (C.LIGHT) Color.WHITE else Color.parseColor("#393939")); cornerRadius = dp(26).toFloat() }
-        }
-        card.addView(text(title, 17f, white, bold = true).apply { setPadding(dp(30), dp(24), dp(30), dp(0)) })
-        content(card, white)
-        val btns = LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            addView(text(cancel, 17f, white, bold = true).apply {
-                gravity = Gravity.CENTER; setOnClickListener { d.dismiss() } }, LinearLayout.LayoutParams(0, -1, 1f))
-            addView(View(this@MainActivity).apply { setBackgroundColor(Color.parseColor(if (C.LIGHT) "#D1D1D6" else "#535353")) },
-                LinearLayout.LayoutParams(dp(1), dp(16)))
-            addView(text(ok, 17f, white, bold = true).apply {
-                gravity = Gravity.CENTER
-                setOnClickListener { onOk(); d.dismiss() }
-            }, LinearLayout.LayoutParams(0, -1, 1f))
-        }
-        card.addView(btns, LinearLayout.LayoutParams(-1, dp(64)).apply { topMargin = dp(8) })
-        val frame = FrameLayout(this)
-        frame.addView(card, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM).apply { setMargins(dp(10), 0, dp(10), dp(10)) })
-        frame.setOnClickListener { d.dismiss() }   // לחיצה מחוץ לחלון סוגרת
-        card.isClickable = true
-        frame.setOnApplyWindowInsetsListener { _, insets ->
-            @Suppress("DEPRECATION")
-            (card.layoutParams as FrameLayout.LayoutParams).apply { bottomMargin = insets.systemWindowInsetBottom + dp(10)
-                leftMargin = insets.systemWindowInsetLeft + dp(10); rightMargin = insets.systemWindowInsetRight + dp(10) }
-            card.requestLayout(); insets
-        }
-        d.setContentView(frame)
-        d.window?.apply {
-            setLayout(-1, -1)
-            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
-            addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            setDimAmount(0.6f)
-            @Suppress("DEPRECATION")
-            decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-            setWindowAnimations(0)
-        }
-        track(d)
-        d.show()
-    }
-
-    /** מסך מלא עם גלולה צפה למטה כמו בשעון של סמסונג: ביטול | שמור */
-    private fun showWithCancelSave(d: android.app.Dialog, root: View, onSave: () -> Unit) {
-        val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
-        frame.addView(root, FrameLayout.LayoutParams(-1, -1))
-        val save = LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
-            // כמו בשעון של סמסונג: גלולה כהה, טקסט לבן מודגש, קו מפריד דק
-            background = GradientDrawable().apply { setColor(if (C.LIGHT) Color.parseColor("#E3E3E8") else Color.parseColor("#252525")) }
-            addView(text("ביטול", 17f, C.TEXT, bold = true).apply {
-                gravity = Gravity.CENTER; setOnClickListener { d.dismiss() } }, LinearLayout.LayoutParams(0, -1, 1f))
-            addView(View(this@MainActivity).apply { setBackgroundColor(C.SEPV) }, LinearLayout.LayoutParams(dp(1), dp(20)))
-            addView(text("שמור", 17f, C.TEXT, bold = true).apply {
-                gravity = Gravity.CENTER
-                setOnClickListener { onSave(); d.dismiss() }
-            }, LinearLayout.LayoutParams(0, -1, 1f))
-        }
-        // מידות לפי הצילום מהשעון של סמסונג: רוחב 47% מהמסך, גובה 12.35% מרוחב המסך
-        val pillW = (resources.displayMetrics.widthPixels * 0.47f).toInt()
-        val pillH = (resources.displayMetrics.widthPixels * 0.1235f).toInt()
-        (save.background as GradientDrawable).cornerRadius = pillH / 2f
-        frame.addView(save, FrameLayout.LayoutParams(pillW, pillH,
-            Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = navMargin() })
-        frame.setOnApplyWindowInsetsListener { _, insets ->
-            @Suppress("DEPRECATION")
-            root.setPadding(0, insets.systemWindowInsetTop, 0, 0)
-            @Suppress("DEPRECATION")
-            (save.layoutParams as FrameLayout.LayoutParams).apply { bottomMargin = insets.systemWindowInsetBottom + dp(10)
-                leftMargin = insets.systemWindowInsetLeft + dp(10); rightMargin = insets.systemWindowInsetRight + dp(10) }
-            save.requestLayout()
-            insets
-        }
-        d.setContentView(frame)
-        d.window?.setLayout(-1, -1)
-        @Suppress("DEPRECATION")
-        d.window?.statusBarColor = C.BG
-        edgeToEdge(d)
-        track(d)
-        d.show()
-    }
-
-    private fun weatherLabel(min: Int) = when (min) {
-        1 -> "כל דקה"
-        60 -> "כל שעה"
-        else -> "כל $min דקות"
-    }
-
-    /** עמוד תאריך: הצגה + סגנון היום - כל שינוי נראה מיד בשעון */
-    private fun chooseDayStyle(done: () -> Unit) = ouiPage("תאריך", onClose = done) { body, rebuild ->
-        val show = ouiCard()
-        ouiRow(show, "הצגת תאריך", on = Prefs.showDate(this)) {
-            Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); rebuild() }
-        ouiAdd(body, show)
-        ouiNote(body, "התאריך מוצג מתחת לשעון במסך הראשי")
-        // סוג תאריך: לועזי / עברי / שניהם
-        val kinds = ouiCard()
-        kinds.addView(text("סוג תאריך", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-        val now = System.currentTimeMillis()
-        listOf("לועזי" to TimeFormat.date(now), "עברי" to TimeFormat.hebrewDate(now),
-            "לועזי ועברי" to TimeFormat.date(now) + " · " + TimeFormat.hebrewDate(now)).forEachIndexed { i, (label, ex) ->
-            if (i > 0) ouiDivider(kinds)
-            ouiRow(kinds, label, sub = ex, radio = Prefs.dateKind(this) == i) {
-                Prefs.setDateKind(this, i); updateClock(); refresh(); rebuild() }
-        }
-        ouiAdd(body, kinds)
-        val styles = ouiCard()
-        styles.addView(text("סגנון יום", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-        TimeFormat.dayOptions().forEachIndexed { i, label ->
-            if (i > 0) ouiDivider(styles)
-            ouiRow(styles, label, radio = Prefs.dayStyle(this) == i) {
-                Prefs.setDayStyle(this, i); updateClock(); refresh(); rebuild() }
-        }
-        ouiAdd(body, styles)
-    }
-
-    /** עמוד מזג אוויר: הצגה + תדירות עדכון */
-    /** עמוד פיד ארצי: כמה זמן אחורה להציג - מ-30 דקות ועד 24 שעות */
-    private fun chooseFeedWindow(done: () -> Unit) = ouiPage("פיד ארצי", onClose = done) { body, rebuild ->
-        val opts = ouiCard()
-        opts.addView(text("הצגת התראות מ…", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-        val cur = Prefs.feedMinutes(this)
-        FeedText.WINDOWS.forEachIndexed { i, m ->
-            if (i > 0) ouiDivider(opts)
-            ouiRow(opts, FeedText.windowLabel(m), radio = cur == m) {
-                Prefs.setFeedMinutes(this, m); updateFeed(); rebuild() }
-        }
-        // מותאם אישית: שעות ודקות בגלגלים (כמו "הגדר שעה" של סמסונג)
-        val custom = cur !in FeedText.WINDOWS
-        ouiDivider(opts)
-        ouiRow(opts, "מותאם אישית", if (custom) FeedText.windowLabel(cur) else "", radio = custom) {
-            // עד 24:00 בדיוק (24 שעות) - בגלגל השעות 00 עד 24
-            pickTime("זמן מותאם אישית (שעות : דקות)", if (custom) cur else 90, hourCount = 25) { m ->
-                Prefs.setFeedMinutes(this, m.coerceIn(1, 24 * 60)); updateFeed(); rebuild() }
-        }
-        ouiAdd(body, opts)
-        ouiNote(body, "ההתראות מתחלפות אחת אחרי השנייה בגלילה כלפי מעלה")
-    }
-
-    private fun chooseWeatherInterval(done: () -> Unit) = ouiPage("מזג אוויר", onClose = done) { body, rebuild ->
-        val show = ouiCard()
-        ouiRow(show, "הצגת מזג אוויר", on = Prefs.showWeather(this)) {
-            Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); rebuild() }
-        ouiAdd(body, show)
-        ouiNote(body, "טמפרטורה ומצב מזג האוויר לפי המיקום, בכרטיס השעון")
-        val opts = intArrayOf(1, 2, 5, 10, 15, 30, 60)
-        val freq = ouiCard()
-        freq.addView(text("תדירות עדכון", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-        opts.forEachIndexed { i, m ->
-            if (i > 0) ouiDivider(freq)
-            ouiRow(freq, weatherLabel(m), radio = Prefs.weatherMinutes(this) == m) {
-                Prefs.setWeatherMinutes(this, m); rebuild() }
-        }
-        ouiAdd(body, freq)
-        ouiNote(body, "עדכון תכוף יותר משתמש קצת יותר בסוללה ובאינטרנט")
-    }
+    internal var testSpeaker: Speaker? = null
 
     // ---- שורת החיוויים: קבוע / לא מוצגת / כמה שניות אחרי פתיחה או נגיעה ----
-    private val hideStatus = Runnable { if (Prefs.statusMode(this) == Prefs.STATUS_TIMED) statusRow.visibility = View.GONE }
-    private fun applyStatusRow() {
-        ui.removeCallbacks(hideStatus)
-        statusRow.visibility = if (Prefs.statusMode(this) == Prefs.STATUS_HIDDEN) View.GONE else View.VISIBLE
-        if (Prefs.statusMode(this) == Prefs.STATUS_TIMED) ui.postDelayed(hideStatus, Prefs.statusSeconds(this) * 1000L)
-    }
+    internal val hideStatus = Runnable { if (Prefs.statusMode(this) == Prefs.STATUS_TIMED) statusRow.visibility = View.GONE }
     /** "לפי זמן": כל נגיעה במסך הראשי מציגה את השורה שוב לאותו זמן */
     override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
         if (ev.action == android.view.MotionEvent.ACTION_DOWN && ::statusRow.isInitialized) {
@@ -2993,204 +963,7 @@ class MainActivity : Activity() {
         }
         return super.dispatchTouchEvent(ev)
     }
-    private fun statusModeLabel() = showModeLabel(Prefs.statusMode(this), Prefs.statusSeconds(this), female = true)
-    private fun showModeLabel(mode: Int, sec: Int, female: Boolean = false) = when (mode) {
-        Prefs.STATUS_HIDDEN -> if (female) "לא מוצגת" else "לא מוצג"
-        Prefs.STATUS_TIMED -> "${secLabel(sec)} אחרי פתיחה"
-        else -> if (female) "מוצגת קבוע" else "מוצג קבוע"
-    }
-    /** "10 שניות" / "דקה" / "1:30 דקות" */
-    private fun secLabel(sec: Int) = when {
-        sec < 60 -> "$sec שניות"
-        sec == 60 -> "דקה"
-        sec % 60 == 0 -> "${sec / 60} דקות"
-        else -> "%d:%02d דקות".format(sec / 60, sec % 60)
-    }
-    private fun chooseStatusMode(done: () -> Unit) = chooseShowMode("שורת חיוויים", { Prefs.statusMode(this) },
-        { Prefs.setStatusMode(this, it) }, { Prefs.statusSeconds(this) }, { Prefs.setStatusSeconds(this, it) }, ::applyStatusRow,
-        "\"לפי זמן\" – השורה מוצגת כשפותחים את האפליקציה או נוגעים במסך, ונעלמת אחרי הזמן שבוחרים", female = true, done = done)
-
-    /** בחירה משותפת (שורת חיוויים, כפתור צף): מוצג קבוע / לא מוצג / לפי זמן - ובלפי זמן כמה שניות, כולל מותאם */
-    private fun chooseShowMode(title: String, mode: () -> Int, setMode: (Int) -> Unit, sec: () -> Int, setSec: (Int) -> Unit,
-                               apply: () -> Unit, note: String, female: Boolean = false, done: () -> Unit) =
-        ouiPage(title, onClose = done) { body, rebuild ->
-            val c = ouiCard()
-            listOf(Prefs.STATUS_ALWAYS to (if (female) "מוצגת קבוע" else "מוצג קבוע"),
-                Prefs.STATUS_HIDDEN to (if (female) "לא מוצגת" else "לא מוצג"),
-                Prefs.STATUS_TIMED to (if (female) "מוצגת לפי זמן" else "מוצג לפי זמן"))
-                .forEachIndexed { i, (m, label) ->
-                    if (i > 0) ouiDivider(c)
-                    ouiRow(c, label, radio = mode() == m) { setMode(m); apply(); rebuild() }
-                }
-            ouiAdd(body, c)
-            ouiNote(body, note)
-            if (mode() == Prefs.STATUS_TIMED) {
-                val t = ouiCard()
-                t.addView(text("כמה זמן להציג", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-                val fixed = intArrayOf(5, 10, 15, 30, 60)
-                val cur = sec()
-                fixed.forEachIndexed { i, s ->
-                    if (i > 0) ouiDivider(t)
-                    ouiRow(t, secLabel(s), radio = cur == s) { setSec(s); apply(); rebuild() }
-                }
-                // מותאם: דקות ושניות בגלגלים (כמו בחירת הזמן של הפיד), עד 10 דקות
-                val custom = cur !in fixed
-                ouiDivider(t)
-                ouiRow(t, "מותאם", if (custom) secLabel(cur) else "", radio = custom) {
-                    pickTime("זמן מותאם (דקות : שניות)", if (custom) cur else 20, hourCount = 11) { v ->
-                        setSec(v.coerceIn(3, 600)); apply(); rebuild() }
-                }
-                ouiAdd(body, t)
-            }
-        }
-
-    /** עמוד שעון: שניות ונקודתיים מהבהבות */
-    private fun showClockPage() = ouiPage("שעון") { body, rebuild ->
-        val c = ouiCard()
-        ouiRow(c, "הצגת שניות", on = Prefs.showSeconds(this)) {
-            Prefs.setShowSeconds(this, !Prefs.showSeconds(this)); refresh(); updateClock(); rebuild() }
-        ouiDivider(c)
-        ouiRow(c, "נקודתיים מהבהבות", on = Prefs.blinkColon(this)) {
-            Prefs.setBlinkColon(this, !Prefs.blinkColon(this)); updateClock(); rebuild() }
-        ouiAdd(body, c)
-        ouiNote(body, "השינוי נראה מיד בשעון במסך הראשי")
-    }
-
-
-    // ---- רכיבים ----
-
-    private fun text(s: String, size: Float, color: Int, bold: Boolean = false) = TextView(this).apply {
-        text = s
-        textSize = size
-        setTextColor(color)
-        if (bold) typeface = Typeface.DEFAULT_BOLD
-    }
-
-    /** קטע במסך - בלי רקע (עיצוב נקי) */
-    private fun card() = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        setPadding(dp(2), dp(12), dp(2), dp(4))
-    }
-
-    private fun chip(label: String, removable: Boolean, onRemove: () -> Unit) =
-        text(if (removable) "$label  ×" else label, 13f, C.TEXT).apply {
-            setPadding(dp(12), dp(5), dp(12), dp(5))
-            background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(C.CHIP) }
-            if (removable) setOnClickListener { onRemove() }
-        }
-
-    // ---- הרשאות והגדרות מערכת ----
-
-    @SuppressLint("BatteryLife")
-    private fun askPermissions() {
-        if (Build.VERSION.SDK_INT >= 33) {
-            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
-        }
-        val pm = getSystemService(POWER_SERVICE) as PowerManager
-        if (!pm.isIgnoringBatteryOptimizations(packageName)) openBatterySettings()
-    }
-
-    @SuppressLint("BatteryLife")
-    /**
-     * סוללה: אם עוד לא מוחרגת - בקשת המערכת. אם כבר מוחרגת (או שהבקשה לא נפתחת, כמו בחלק ממכשירי סמסונג)
-     * - פרטי האפליקציה, שם "סוללה" ← "ללא הגבלה". כך לחיצה תמיד פותחת משהו
-     */
-    private fun openBatterySettings() {
-        val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
-        if (!pm.isIgnoringBatteryOptimizations(packageName)) {
-            try {
-                startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                    .setData(Uri.parse("package:$packageName")))
-                return
-            } catch (_: Exception) { }
-        }
-        openAppDetails()
-    }
-
-    private fun openAppDetails() {
-        try {
-            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:$packageName")))
-        } catch (_: Exception) { }
-    }
-
-    private fun openNotificationSettings() {
-        startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-            .putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
-    }
-
-    /** בכל פתיחה - מיקום עדכני ל"התרעות לפי מיקום" (בנוסף לעדכון של השירות כל 2 דקות) */
-    private fun refreshNearby() {
-        if (!Prefs.nearMe(this) || checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) !=
-            android.content.pm.PackageManager.PERMISSION_GRANTED) return
-        fun use(loc: android.location.Location) = Thread {
-            try {
-                Prefs.addVisits(this, AreaData.areasAt(this, loc.latitude, loc.longitude, 0.0), System.currentTimeMillis())
-                val list = AreaData.nearby(this, loc.latitude, loc.longitude)
-                if (list.isNotEmpty()) Prefs.setNearbyAreas(this, list)
-            } catch (_: Exception) { }
-        }.start()
-        // קודם מיקום מהרשת (אנטנות / Wi-Fi - שנייה-שתיים): אם זזת למקום אחר, האזור מתעדכן מיד.
-        // אחר כך המיקום המדויק (GPS, עד חצי דקה) מדייק אותו
-        var gpsDone = false
-        Weather.networkLocation(this) { net ->
-            if (!gpsDone && net != null && net.accuracy < 2000f) use(Weather.chooseLocation(net))
-        }
-        Weather.freshLocation(this) { got ->
-            gpsDone = true
-            got?.let { keepAccuracy(it) }
-            val loc = got?.let { Weather.chooseLocation(it) }   // מיקום גס לא דורס מיקום מדויק
-            if (loc != null) use(loc)
-        }
-    }
-
-    private var lockAsked = false
-    /** אנדרואיד 14+: בלי ההרשאה הזו ההתראה לא נדלקת על מסך נעילה */
-    private fun askLockScreen() {
-        if (lockAsked || Build.VERSION.SDK_INT < 34 || !Prefs.enabled(this)) return
-        // עם "הצגה מעל אפליקציות" המסך נדלק ומוצג גם בלי ההרשאה הזו - לא מציקים
-        if (Settings.canDrawOverlays(this)) return
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        if (nm.canUseFullScreenIntent()) return
-        lockAsked = true
-        AppSheet.show(this, "התראה על מסך נעילה",
-            "כדי שההתראה תידלק מיד כשהמסך כבוי – צריך לאשר \"התראות במסך מלא\".", "אישור", {
-                startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
-                    .setData(Uri.parse("package:$packageName")))
-            }, cancel = "לא עכשיו")
-    }
-
-    /**
-     * "הצגה מעל אפליקציות אחרות". canDrawOverlays לפעמים מחזיר "לא" גם כשמופעל (במיוחד מיד אחרי
-     * שחוזרים מההגדרות) - לכן בודקים גם ישירות בהרשאות המערכת (AppOps)
-     */
-    private fun overlayAllowed(): Boolean {
-        if (Settings.canDrawOverlays(this)) return true
-        return try {
-            val ops = getSystemService(APP_OPS_SERVICE) as android.app.AppOpsManager
-            @Suppress("DEPRECATION")
-            ops.checkOpNoThrow(android.app.AppOpsManager.OPSTR_SYSTEM_ALERT_WINDOW,
-                android.os.Process.myUid(), packageName) == android.app.AppOpsManager.MODE_ALLOWED
-        } catch (_: Exception) { false }
-    }
-
-    /** הרשאת התראה במסך מלא (אנדרואיד 14 ומעלה) */
-    private fun fullScreenIntentAllowed(): Boolean =
-        Build.VERSION.SDK_INT < 34 || (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).canUseFullScreenIntent()
-
-    /** מסך מלא תקין רק כששתי ההרשאות מופעלות */
-    private fun fullScreenOk() = overlayAllowed() && fullScreenIntentAllowed()
-
-    private fun openFullScreenSettings() {
-        // קודם מה שחסר: הצגה מעל אפליקציות, ואז התראה במסך מלא.
-        // אם הכל מופעל - חוזרים למסך "הצגה מעל אפליקציות" (ולא להגדרות ההתראות)
-        if (!overlayAllowed() || fullScreenIntentAllowed()) {
-            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
-                .setData(Uri.parse("package:$packageName")))
-            return
-        }
-        startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
-            .setData(Uri.parse("package:$packageName")))
-    }
+    internal var lockAsked = false
 }
 
 /** פריסה שעוטפת שורות - לתגיות האזורים */
