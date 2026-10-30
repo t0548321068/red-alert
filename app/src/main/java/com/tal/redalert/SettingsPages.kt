@@ -622,7 +622,7 @@ internal fun MainActivity.showDisplay() {
     themeAtOpen = Prefs.themeMode(this)
     rebuild()
     // יציאה מהעמוד: אם ערכת הצבעים השתנתה - טוענים מחדש וחוזרים להגדרות
-    track(d) { if (Prefs.themeMode(this) != themeAtOpen) { reopenDisplay = true; recreate() } }
+    track(d) { if (Prefs.themeMode(this) != themeAtOpen) { MainActivity.reopenDisplay = true; recreate() } }
     body.setPadding(0, 0, 0, dp(30))
     d.setContentView(page)
     d.window?.setLayout(-1, -1)
