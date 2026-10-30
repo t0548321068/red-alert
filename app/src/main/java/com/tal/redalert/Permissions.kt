@@ -41,8 +41,8 @@ internal fun MainActivity.phoneRows(): List<Row> = listOf(
 )
 
 internal fun MainActivity.permissionItems(): List<Perm> {
-    val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
-    val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+    val pm = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+    val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
     return listOf(
         Perm("📱", "מסך מלא בהתראה", when {
                 !overlayAllowed() -> "חסר: הצגה מעל אפליקציות אחרות"
@@ -77,7 +77,7 @@ internal fun MainActivity.askPermissions() {
     if (Build.VERSION.SDK_INT >= 33) {
         requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
     }
-    val pm = getSystemService(POWER_SERVICE) as PowerManager
+    val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
     if (!pm.isIgnoringBatteryOptimizations(packageName)) openBatterySettings()
 }
 
@@ -87,7 +87,7 @@ internal fun MainActivity.askPermissions() {
  * - פרטי האפליקציה, שם "סוללה" ← "ללא הגבלה". כך לחיצה תמיד פותחת משהו
  */
 internal fun MainActivity.openBatterySettings() {
-    val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+    val pm = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
     if (!pm.isIgnoringBatteryOptimizations(packageName)) {
         try {
             startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
@@ -114,7 +114,7 @@ internal fun MainActivity.askLockScreen() {
     if (lockAsked || Build.VERSION.SDK_INT < 34 || !Prefs.enabled(this)) return
     // עם "הצגה מעל אפליקציות" המסך נדלק ומוצג גם בלי ההרשאה הזו - לא מציקים
     if (Settings.canDrawOverlays(this)) return
-    val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     if (nm.canUseFullScreenIntent()) return
     lockAsked = true
     AppSheet.show(this, "התראה על מסך נעילה",
@@ -131,7 +131,7 @@ internal fun MainActivity.askLockScreen() {
 internal fun MainActivity.overlayAllowed(): Boolean {
     if (Settings.canDrawOverlays(this)) return true
     return try {
-        val ops = getSystemService(APP_OPS_SERVICE) as android.app.AppOpsManager
+        val ops = getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
         @Suppress("DEPRECATION")
         ops.checkOpNoThrow(android.app.AppOpsManager.OPSTR_SYSTEM_ALERT_WINDOW,
             android.os.Process.myUid(), packageName) == android.app.AppOpsManager.MODE_ALLOWED
@@ -140,7 +140,7 @@ internal fun MainActivity.overlayAllowed(): Boolean {
 
 /** הרשאת התראה במסך מלא (אנדרואיד 14 ומעלה) */
 internal fun MainActivity.fullScreenIntentAllowed(): Boolean =
-    Build.VERSION.SDK_INT < 34 || (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).canUseFullScreenIntent()
+    Build.VERSION.SDK_INT < 34 || (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).canUseFullScreenIntent()
 
 /** מסך מלא תקין רק כששתי ההרשאות מופעלות */
 internal fun MainActivity.fullScreenOk() = overlayAllowed() && fullScreenIntentAllowed()
@@ -159,7 +159,7 @@ internal fun MainActivity.openFullScreenSettings() {
 
 /** הקראה: הפעלה/כיבוי ודוגמה */
 internal fun MainActivity.dndAccess() =
-    (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).isNotificationPolicyAccessGranted
+    (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).isNotificationPolicyAccessGranted
 
 /** התרעות לפי מיקום: צריך מיקום מדויק. מיקום ברקע נקרא דרך השירות */
 internal fun MainActivity.toggleNearMe() {

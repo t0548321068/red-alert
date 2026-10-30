@@ -139,7 +139,7 @@ internal fun MainActivity.showAreaPicker(whole: Boolean) {
 
     // כותרת: [עיגול "הכל"] "N נבחרו"
     val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(14), dp(20), dp(10)) }
-    val allDot = CheckDot(false)
+    val allDot = CheckDot(this, false)
     top.addView(LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
         addView(allDot, LinearLayout.LayoutParams(dp(22), dp(22)))
@@ -174,7 +174,7 @@ internal fun MainActivity.showAreaPicker(whole: Boolean) {
             val v = (cv as? LinearLayout) ?: LinearLayout(this@showAreaPicker).apply {
                 gravity = Gravity.CENTER_VERTICAL; setPadding(dp(20), 0, dp(20), 0)
                 minimumHeight = dp(66)
-                addView(CheckDot(false), LinearLayout.LayoutParams(dp(22), dp(22)))
+                addView(CheckDot(this@showAreaPicker, false), LinearLayout.LayoutParams(dp(22), dp(22)))
                 // שם היישוב ומתחתיו האזור; בסוף השורה "זמן התגוננות" ומתחתיו הזמן במילים
                 addView(LinearLayout(this@showAreaPicker).apply {
                     orientation = LinearLayout.VERTICAL

@@ -71,7 +71,7 @@ internal fun MainActivity.setInd(v: TextView, icon: Int, label: String, color: I
 
 /** סוג החיבור: וויפי / נתונים / אחר, והאם יש אינטרנט בפועל */
 internal fun MainActivity.network(): Pair<String, Boolean>? {
-    val cm = getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+    val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
     val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return null) ?: return null
     val type = when {
         caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
@@ -82,7 +82,7 @@ internal fun MainActivity.network(): Pair<String, Boolean>? {
 }
 
 internal fun MainActivity.locationOn(): Boolean {
-    val lm = getSystemService(LOCATION_SERVICE) as android.location.LocationManager
+    val lm = getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
     return hasLocationPerm() && lm.isLocationEnabled
 }
 
