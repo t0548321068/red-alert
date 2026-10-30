@@ -214,8 +214,6 @@ class AlertService : Service() {
     }
 
     @Volatile private var running = false
-    /** השירות עלה זה עתה (עוד לא טופלה הפקודה הראשונה) */
-    private var fresh = true
     private var lastId = ""
     private var tzofar: TzofarSource? = null
     private var telegram: List<TelegramSource> = emptyList()
@@ -373,12 +371,6 @@ class AlertService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // מנגינה רק כשההאזנה חזרה לבד (הדלקת הטלפון / עדכון) - לא בלחיצה ידנית
-        // השירות רק עכשיו עלה, ולא בלחיצה ידנית - התראה "מאזין" עם המנגינה
-        if (fresh) {
-            fresh = false
-            // בלי מנגינה ובלי התראה כשההאזנה חוזרת לבד (אחרי עדכון / הדלקת הטלפון)
-        }
         if (intent?.action == ACTION_WATCHDOG) { onWatchdog(); return START_STICKY }
         if (intent?.action == ACTION_PUSH_ALERT) {
             val t = intent.getStringExtra("title"); val a = intent.getStringArrayExtra("areas")
@@ -929,22 +921,6 @@ class AlertService : Service() {
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n.build())
     }
 
-    /** התראה עם ספירה לאחור גדולה (גם בחלון הקופץ וגם בשורת ההתראות) */
-    private fun countdownView(nb: Notification.Builder, title: String, body: String, label: String, leftMs: Long, color: Int) {
-        fun rv() = android.widget.RemoteViews(packageName, R.layout.notif_countdown).apply {
-            setTextViewText(R.id.nc_title, title)
-            setTextViewText(R.id.nc_body, body)
-            setTextViewText(R.id.nc_label, label)
-            setChronometer(R.id.nc_timer, android.os.SystemClock.elapsedRealtime() + leftMs, null, true)
-            setChronometerCountDown(R.id.nc_timer, true)
-            setTextColor(R.id.nc_timer, color)
-        }
-        nb.setStyle(Notification.DecoratedCustomViewStyle())
-            .setCustomContentView(rv())
-            .setCustomHeadsUpContentView(rv())
-            .setCustomBigContentView(rv())
-    }
-
     /** עברו 10 הדקות - רק מעדכנים תצוגה. "ניתן לצאת" רק בהודעת סיום אירוע */
     private val stayDone = Runnable {
         Prefs.setStayUntil(this, 0)
@@ -1029,37 +1005,6 @@ class AlertService : Service() {
         } catch (_: Exception) { }
     }
 
-    /** התראה "צופר חירום פעיל – מאזין" עם מנגינת האפליקציה (נעלמת לבד אחרי 15 שניות) */
-    private fun announceListening() {
-        val n = Notification.Builder(this, CH_WATCH)
-            .setSmallIcon(R.drawable.ic_stat_siren)
-            .setColor(0xFF2E7D32.toInt())
-            .setContentTitle("צופר חירום פעיל")
-            .setContentText("מאזין להתראות פיקוד העורף")
-            .setContentIntent(openApp())
-            .setAutoCancel(true)
-            .setTimeoutAfter(15_000)
-            .build()
-        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_LISTEN, n)
-    }
-
-    /** מנגינת האפליקציה (צליל 56) - נשמעת כשההאזנה חוזרת לבד (אחרי עדכון, אחרי הדלקת הטלפון) */
-    private fun playAppChime() {
-        try {
-            android.media.MediaPlayer().apply {
-                setAudioAttributes(AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build())
-                setDataSource(this@AlertService,
-                    android.net.Uri.parse("android.resource://$packageName/${R.raw.app_notify}"))
-                setOnCompletionListener { it.release() }
-                prepare()
-                start()
-            }
-        } catch (_: Exception) { }
-    }
-
     /** צליל בערוץ "שעון מעורר" - נשמע גם במצב שקט */
     /** עוצמת ערוץ השעון המעורר למקסימום לזמן מוגבל, ואז מחזירים את העוצמה הקודמת */
     private var savedAlarmVol = -1
@@ -1137,12 +1082,6 @@ class AlertService : Service() {
                 setBypassDnd(true)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             })
-        // לפי שם ולא לפי מספר המשאב - המספר משתנה בין גרסאות, והערוץ שומר את הקישור לתמיד
-        val appSound = android.net.Uri.parse("android.resource://$packageName/raw/app_notify")
-        val notifAttrs = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build()
         nm.createNotificationChannel(
             NotificationChannel(CH_UPDATE, "עדכוני גרסה", NotificationManager.IMPORTANCE_HIGH).apply {
                 // בינתיים: צליל ההתראות הרגיל של הטלפון (לא המנגינה של האפליקציה)
