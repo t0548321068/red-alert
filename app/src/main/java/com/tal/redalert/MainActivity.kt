@@ -82,7 +82,7 @@ class MainActivity : Activity() {
     internal lateinit var locInd: TextView
     internal lateinit var srvInd: TextView
     internal lateinit var verInd: TextView
-    internal lateinit var statusRow: View   // שורת החיוויים - אפשר להסתיר בהגדרות התצוגה   // גרסה: אייקון כתום מהבהב כשיש עדכון
+    internal lateinit var statusRow: View   // שורת החיוויים - אפשר להסתיר בהגדרות התצוגה
     internal lateinit var sndInd: TextView   // צלילים: רגיל / חזק / שקט / מושתק / כבוי
     internal var weatherAt = 0L
     internal var weatherAccuracy = -1
@@ -626,7 +626,7 @@ class MainActivity : Activity() {
         setContentView(scroll)
         askPermissions()
         showWhatsNewIfUpdated()
-        // אחרי החלפת ערכת צבעים (האפליקציה נטענת מחדש) - חוזרים לעמוד התצוגה
+        // אחרי החלפת ערכת צבעים (האפליקציה נטענת מחדש) - חוזרים להגדרות
         if (reopenDisplay) { reopenDisplay = false; ui.post { showSettings() } }
         // טעינת נתוני האזורים ברקע, כדי שהמסך לא ייתקע בפעם הראשונה
         AreaData.preload(this)   // נתוני היישובים ברקע - המסך לא נתקע בפתיחה
