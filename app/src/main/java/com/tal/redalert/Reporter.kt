@@ -65,5 +65,17 @@ object Reporter {
         } catch (_: Exception) { }
     }
 
+    /** דיווח על בעיה ממסך "יצירת קשר" - להריץ מחוץ ל-UI thread. true = הגיע לשרת */
+    fun sendReport(c: Context, text: String, info: String): Boolean = try {
+        val j = JSONObject().put("d", Prefs.deviceCode(c)).put("v", version(c)).put("m", Build.MODEL ?: "")
+            .put("text", text).put("info", info)
+        val conn = URL("$SERVER/report").openConnection() as HttpURLConnection
+        conn.connectTimeout = 8000; conn.readTimeout = 8000
+        conn.requestMethod = "POST"; conn.doOutput = true
+        conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+        conn.outputStream.use { it.write(j.toString().toByteArray()) }
+        try { conn.responseCode in 200..299 } finally { conn.disconnect() }
+    } catch (_: Exception) { false }
+
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
 }
