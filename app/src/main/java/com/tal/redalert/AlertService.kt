@@ -210,6 +210,7 @@ class AlertService : Service() {
     fun onWatchdog() {
         syncLocalSources()   // השרת הפסיק לשלוח סימן חיים - צופר חוזר לפעול בטלפון
         try { Shabbat.refresh(this) } catch (_: Exception) { }   // זמני שבת וחג מהשרת (לכל היותר פעם ב-12 שעות)
+        Prefs.refreshBeta(this)   // מכשירי הבטא - הרשימה בשרת
         if (!serverOk(this)) awake(6_000)   // מספיק לוודא שהחיבור לצופר חי ולבדיקה אחת של פיקוד העורף
         tzofar?.ensureConnected()
         // הטלפון כבר ער בשביל השומר - מנצלים את זה לבדיקת עדכון (לכל היותר פעם בחצי שעה, בקשה קטנה אחת)

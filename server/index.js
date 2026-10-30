@@ -85,6 +85,7 @@ require('http').createServer((req, res) => {
   if (u.pathname === '/archive') return serveArchive(req, res, +(u.searchParams.get('since') || 0));
   if (u.pathname === '/weather') return serveWeather(res, +u.searchParams.get('lat'), +u.searchParams.get('lon'));
   if (u.pathname === '/shabbat') return serveShabbat(res, +u.searchParams.get('lat'), +u.searchParams.get('lon'));
+  if (u.pathname === '/beta') return serveBeta(res, String(u.searchParams.get('code') || '').trim().toUpperCase());
   if (u.pathname !== '/status') { res.writeHead(404); return res.end(); }
   // סימן חיים לכל הטלפונים - לכל היותר פעם בדקה (שלא יוכלו להציף את המכשירים מבחוץ)
   if (Date.now() - lastManualHb > 60 * 1000) { lastManualHb = Date.now(); heartbeat(); }
@@ -379,6 +380,15 @@ function wmo(id) {
   if (id === 802) return 2;
   return 3;
 }
+// ---- מכשירי בטא: הרשימה בקובץ beta_devices.txt - מוסיפים מכשיר בלי לעדכן את האפליקציה.
+// עונים רק כן/לא למכשיר ששאל (הרשימה עצמה לא נחשפת) ----
+function serveBeta(res, code) {
+  let list = [];
+  try { list = fs.readFileSync(path.join(__dirname, 'beta_devices.txt'), 'utf8').split('\n').map(l => l.trim().toUpperCase()).filter(l => l && !l.startsWith('#')); } catch (_) {}
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ allowed: /^[0-9A-F]{8}$/.test(code) && list.includes(code) }));
+}
+
 const owm = { start: 0, n: 0 };
 async function serveWeather(res, lat, lon) {
   const fail = c => { res.writeHead(c); res.end(); };

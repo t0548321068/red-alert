@@ -649,6 +649,7 @@ class MainActivity : Activity() {
         if (::statusRow.isInitialized) { applyStatusRow(); applyTestFab() }
         refreshAccuracy()   // "לפי זמן": מוצגים בכל פתיחה
         try { Shabbat.refresh(this) } catch (_: Exception) { }   // זמני שבת וחג מהשרת
+        Prefs.refreshBeta(this)   // מכשירי הבטא - הרשימה בשרת
         // קיצור דרך מאייקון האפליקציה (לחיצה ארוכה)
         intent?.getStringExtra("shortcut")?.let { sc ->
             intent.removeExtra("shortcut")
