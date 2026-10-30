@@ -54,6 +54,16 @@
         <div id="devices"></div>
       </div>
 
+      <div class="card">
+        <div class="row"><b>שליחת הודעה</b></div>
+        <form class="msg" id="msgForm">
+          <select id="msgTo"><option value="all">כל הטלפונים</option></select>
+          <textarea id="msgText" maxlength="500" rows="3" placeholder="למשל: יש גרסה חדשה – תעדכנו"></textarea>
+          <div class="msg-bar"><span id="msgSt"></span><button type="submit">שלח</button></div>
+        </form>
+        <div class="list" id="msgs"></div>
+      </div>
+
       <div class="card" id="crashCard" style="display:none">
         <div class="row"><b>קריסות אחרונות</b><span class="end" id="crashTx"></span></div>
         <div class="list" id="crashes"></div>
