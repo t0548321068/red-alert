@@ -1,5 +1,7 @@
 // צופר חירום - האתר. אותם נתונים כמו באפליקציה: התרעות חיות מהשרת, מפה, התרעות אחרונות ומצב המקורות.
 'use strict';
+// נפתח כאפליקציה מותקנת (PWA) - עוברים למסך שזהה לאפליקציה בטלפון
+if (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches) location.replace('/app');
 const $ = id => document.getElementById(id);
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } },
