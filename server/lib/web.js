@@ -9,7 +9,8 @@
 // /api/devices המכשירים והקריסות
 // /api/message שליחת הודעה לטלפונים (לכולם או למכשיר אחד)
 // /api/server  יומן, גרסה, עדכון עצמי;  /api/restart הפעלה מחדש
-// התקנה כאפליקציה (PWA): manifest.webmanifest + sw.js
+// /app/        ה-PWA - נפרד לגמרי מהאתר: מסך זהה לאפליקציה (web/m), manifest ו-sw משלו, רק הוא ניתן להתקנה.
+//              האתר (/) לא ניתן להתקנה ולא מוביל ל-PWA
 // /assets/...  קבצי המפה והיישובים מתוך האפליקציה (אותם קבצים בדיוק)
 const fs = require('fs');
 const path = require('path');
@@ -113,16 +114,24 @@ function sendFile(res, file, cache) {
 function handle(req, res, u, state) {
   const p = u.pathname;
   if (p === '/api/login' && req.method === 'POST') { login(req, res); return true; }
-  if (/^\/(login\.html|web\.css|icon\.png|icon-512\.png|favicon\.ico|manifest\.webmanifest|sw\.js)$/.test(p)) {
-    sendFile(res, path.join(WEB_DIR, p === '/favicon.ico' ? 'icon.png' : p.slice(1)), p !== '/sw.js'); return true;
+  if (/^\/(login\.html|web\.css|icon\.png|icon-512\.png|favicon\.ico)$/.test(p)) {
+    sendFile(res, path.join(WEB_DIR, p === '/favicon.ico' ? 'icon.png' : p.slice(1)), true); return true;
   }
-  const isWeb = p === '/' || p.startsWith('/api/') || p.startsWith('/assets/') || p.startsWith('/w/');
+  // ה-PWA: קבצי ההתקנה פתוחים (הדפדפן טוען אותם גם לפני כניסה)
+  if (/^\/app\/(manifest\.webmanifest|sw\.js|icon\.png|icon-512\.png)$/.test(p)) {
+    sendFile(res, path.join(WEB_DIR, 'm', p.slice(5)), !p.endsWith('.js')); return true;
+  }
+  if (p === '/app') { res.writeHead(301, { Location: '/app/' }); res.end(); return true; }
+  const isWeb = p === '/' || p.startsWith('/app/') || p.startsWith('/api/') || p.startsWith('/assets/') || p.startsWith('/w/');
   if (!isWeb) return false;
   if (!loggedIn(req)) {
-    if (p === '/') { sendFile(res, path.join(WEB_DIR, 'login.html'), false); return true; }
+    if (p === '/' || p === '/app/') { sendFile(res, path.join(WEB_DIR, 'login.html'), false); return true; }
     res.writeHead(401); res.end(); return true;
   }
   if (p === '/') { sendFile(res, path.join(WEB_DIR, 'index.html'), false); return true; }
+  // ה-PWA: אותו מסך כמו באפליקציה (web/m)
+  if (p === '/app/') { sendFile(res, path.join(WEB_DIR, 'm', 'index.html'), false); return true; }
+  if (p.startsWith('/app/')) { const f = p.slice(5); if (/^(ic\/)?[\w.-]+$/.test(f)) sendFile(res, path.join(WEB_DIR, 'm', f), false); else { res.writeHead(404); res.end(); } return true; }
   if (p === '/api/live') { live(req, res); return true; }
   if (p === '/api/state') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(state())); return true; }
   if (p === '/api/server') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(admin.info(state().started))); return true; }
@@ -130,7 +139,7 @@ function handle(req, res, u, state) {
   if (p === '/api/message' && req.method === 'POST') { devices.sendMessage(req, res); return true; }
   if (p === '/api/devices') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(devices.list())); return true; }
   if (p === '/api/logout') {
-    res.writeHead(302, { Location: '/', 'Set-Cookie': 'tz=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict' }); res.end(); return true;
+    res.writeHead(302, { Location: u.searchParams.get('to') === 'app' ? '/app/' : '/', 'Set-Cookie': 'tz=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict' }); res.end(); return true;
   }
   if (p.startsWith('/w/')) { const f = p.slice(3); if (/^[\w.-]+$/.test(f)) sendFile(res, path.join(WEB_DIR, f), false); else { res.writeHead(404); res.end(); } return true; }
   if (p.startsWith('/assets/')) {
