@@ -26,8 +26,6 @@ const devices = require('./lib/devices');
 // תקלה לא צפויה - רושמים ביומן וממשיכים (שהבדיקה וההתרעות לא ייעצרו)
 process.on('uncaughtException', e => log('uncaught', e && e.stack || e));
 process.on('unhandledRejection', e => log('unhandled', e && e.stack || e));
-// עצירה (systemctl restart / עדכון עצמי) - שומרים מיד מה שעוד מחכה לשמירה
-for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { push.saveNow(); devices.saveNow(); process.exit(0); });
 
 // ---- סימן חיים ----
 const heartbeat = () => push.heartbeat(health.upList(), files.dataIndex.v);
