@@ -43,16 +43,11 @@ function addRows(rows) {
   if (added) cache = null;
   return added;
 }
-// שמירה אחת בכל פעם: שתי כתיבות במקביל לאותו קובץ זמני (כמה MB) משחיתות אותו. בקשה בזמן שמירה - נשמרת פעם אחת אחריה
-let saving = false, pending = false;
 function save() {
-  if (saving) { pending = true; return; }
-  saving = true;
   const cut = Date.now() - YEAR;
   for (const [k, e] of arch) if (e.ts < cut) { arch.delete(k); cache = null; }
   const data = JSON.stringify([...arch].map(([k, e]) => ({ k, t: e.t, ts: e.ts, b: [...e.b] })));
-  const done = () => { saving = false; if (pending) { pending = false; save(); } };
-  fs.writeFile(ARCH_FILE + '.tmp', data, err => { if (err) return done(); fs.rename(ARCH_FILE + '.tmp', ARCH_FILE, done); });
+  fs.writeFile(ARCH_FILE + '.tmp', data, err => { if (!err) fs.rename(ARCH_FILE + '.tmp', ARCH_FILE, () => {}); });
 }
 async function fetchRows(q) { const t = await get(ARCH_BASE + q, OREF_H); return t.startsWith('[') ? JSON.parse(t) : []; }
 async function backfill() {
