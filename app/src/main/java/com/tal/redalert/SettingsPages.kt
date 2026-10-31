@@ -905,7 +905,7 @@ internal fun MainActivity.whatsNewText(sinceVersion: String?): String? {
 
 internal fun MainActivity.showWhatsNew(sinceVersion: String?) {
     val text = whatsNewText(sinceVersion) ?: return
-    AppSheet.show(this, "🆕 מה חדש", text, "הבנתי")
+    AppSheet.show(this, "🆕 מה חדש", text, "הבנתי")?.let { track(it) }
 }
 
 /**

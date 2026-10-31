@@ -123,7 +123,14 @@ internal fun MainActivity.showUpdateCheck() {
                 gravity = Gravity.CENTER; includeFontPadding = false
                 background = GradientDrawable().apply {
                     setColor(Color.parseColor(if (dark) "#3A3A3C" else "#E5E5EA")); cornerRadius = dp(23).toFloat() }
-            }.also { later = it; frame.addView(it, FrameLayout.LayoutParams(0, dp(46))) }
+            }.also { v -> later = v; frame.addView(v, FrameLayout.LayoutParams(0, dp(46)))
+                // הגובה מעל שורת הניווט מתעדכן רק בכפתור הראשי - "מאוחר יותר" עוקב אחריו
+                frame.viewTreeObserver.addOnGlobalLayoutListener {
+                    val want = (btn.layoutParams as FrameLayout.LayoutParams).bottomMargin
+                    val vl = v.layoutParams as FrameLayout.LayoutParams
+                    if (vl.bottomMargin != want) { vl.bottomMargin = want; v.layoutParams = vl }
+                }
+            }
             l.setOnClickListener { onLater() }
             l.visibility = View.VISIBLE
             val each = (w * 0.42f).toInt(); val side = (w * 0.06f).toInt()
@@ -183,7 +190,10 @@ internal fun MainActivity.showUpdateCheck() {
                         ouiAdd(content, cd)
                         notesCard("מה חדש בגרסה", det?.notes ?: emptyList())
                         if (beta) ouiNote(content, "גרסת בטא – לפני שחרור לכולם, יכולות להיות בה תקלות")
-                        pill("התקן עכשיו") { done -> done(); Updater.install(this, u) }
+                        // לחיצה כפולה לא מתחילה שתי הורדות (בלי אישור התקנה - אפשר ללחוץ שוב אחרי האישור)
+                        var installing = false
+                        pill("התקן עכשיו") { done -> done()
+                            if (!installing) { installing = packageManager.canRequestPackageInstalls(); Updater.install(this, u) } }
                         twoButtons(true) { Updater.skip(this, u); pages.lastOrNull()?.dismiss() }
                     }
                     failed -> {

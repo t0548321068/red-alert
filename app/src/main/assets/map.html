@@ -102,7 +102,11 @@
       m.off('moveend zoomend resize viewreset', this._draw, this);
       m.off('move zoom', this._soon, this);
       m.off('zoomanim', this._hide, this);
+      if (this._raf) { cancelAnimationFrame(this._raf); this._raf = 0; }
       L.DomUtil.remove(this._c);
+      // כל משטח יושב בשכבה (pane) משלו מ-dropPins - מוחקים אותה, שלא יצטברו שכבות עם כל התרעה
+      var p = m.getPane(this._paneName);
+      if (p) { L.DomUtil.remove(p); delete m._panes[this._paneName]; }
     },
     _hide: function () { this._c.style.visibility = 'hidden'; },
     _soon: function () {

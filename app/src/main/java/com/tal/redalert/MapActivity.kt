@@ -55,7 +55,7 @@ class MapActivity : Activity() {
         setContentView(frame)
         web.addJavascriptInterface(object {
             @android.webkit.JavascriptInterface
-            fun locate() = runOnUiThread { locate(web) }
+            fun locate() = runOnUiThread { if (webView != null && !isDestroyed) locate(web) }
         }, "App")
 
         // הנתונים מחושבים כבר עכשיו, במקביל לטעינת המפה (לא רק אחרי שהיא נטענה)
@@ -71,7 +71,8 @@ class MapActivity : Activity() {
                             .forEach { raw -> AreaData.match(this@MapActivity, raw).forEach { names.put(it) } }
                     }
                 }
-            } finally { ready.countDown() }
+            } catch (_: Exception) { data = "" }   // תקלה בחישוב - בלי לקרוס, המפה נשארת ריקה
+            finally { ready.countDown() }
         }.start()
 
         web.webViewClient = object : WebViewClient() {
@@ -103,10 +104,11 @@ class MapActivity : Activity() {
             android.content.pm.PackageManager.PERMISSION_GRANTED) return
         // קודם המיקום האחרון (מיידי), ואז מיקום עדכני
         Weather.lastLocation(this)?.let { show(view, it) }
-        Weather.freshLocation(this) { loc -> if (loc != null && !isFinishing) show(view, loc) }
+        Weather.freshLocation(this) { loc -> if (loc != null) show(view, loc) }
     }
 
     private fun show(view: WebView, l: android.location.Location) {
+        if (isFinishing || isDestroyed || webView == null) return   // המפה נסגרה - ה-WebView כבר הושמד
         view.evaluateJavascript("setMe(${l.latitude}, ${l.longitude}, ${l.accuracy});", null)
     }
 

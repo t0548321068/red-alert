@@ -23,7 +23,7 @@ object AppSheet {
     fun show(a: Activity, title: String, message: String, ok: String, onOk: (() -> Unit)? = null,
              cancel: String? = null, onCancel: (() -> Unit)? = null, cancelable: Boolean = true,
              content: ((LinearLayout, Int) -> Unit)? = null): Dialog? {
-        if (a.isFinishing) return null
+        if (a.isFinishing || a.isDestroyed) return null
         val light = !Prefs.darkTheme(a)
         val dp = { v: Int -> TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), a.resources.displayMetrics).toInt() }
         val white = if (light) Color.parseColor("#1C1C1E") else Color.WHITE

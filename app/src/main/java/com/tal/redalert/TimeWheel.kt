@@ -35,8 +35,9 @@ class TimeWheel(context: Context, private val count: Int, start: Int) : View(con
         typeface = selPaint.typeface; textAlign = Paint.Align.CENTER
     }
 
-    /** הערך שנבחר עכשיו */
-    val value: Int get() = Math.floorMod((offset / rowH).roundToInt(), count)
+    /** הערך שנבחר עכשיו - באמצע גלילה: איפה שהגלגל ייעצר */
+    val value: Int get() = at(if (scroller.isFinished) offset else scroller.finalY.toFloat())
+    private fun at(pos: Float) = Math.floorMod((pos / rowH).roundToInt(), count)
 
     override fun onMeasure(w: Int, h: Int) =
         setMeasuredDimension(MeasureSpec.getSize(w), (rowH * 3).toInt())
@@ -92,7 +93,7 @@ class TimeWheel(context: Context, private val count: Int, start: Int) : View(con
 
     /** "טיק" רטט קטן בכל מעבר מספר, כמו בסמסונג */
     private fun tick() {
-        val v = value
+        val v = at(offset)   // המספר שבאמצע עכשיו
         if (v != lastTick) { lastTick = v; performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK) }
     }
 }

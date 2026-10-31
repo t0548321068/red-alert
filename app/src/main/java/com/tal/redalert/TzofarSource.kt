@@ -64,19 +64,22 @@ class TzofarSource(
     fun ensureConnected() {
         if (!running) return
         if (!open || System.currentTimeMillis() - lastMsg > 3 * 60 * 1000L) {
-            try { ws?.cancel() } catch (_: Exception) { }
             open = false
-            connect()
+            connect()   // סוגר את הישן בעצמו
         }
     }
 
     fun stop() {
         running = false
         ws?.close(1000, null)
+        ws = null
     }
 
-    private fun connect() {
+    @Synchronized private fun connect() {
         if (!running) return
+        // לא משאירים חיבור קודם פתוח (שני חיבורים = התרעות כפולות). קודם מנתקים את ההפניה - כך הסגירה שלו לא תפעיל ניסיון חוזר
+        val old = ws; ws = null
+        try { old?.cancel() } catch (_: Exception) { }
         val req = Request.Builder()
             .url(WS_URL)
             .header("Origin", ORIGIN)
@@ -88,6 +91,7 @@ class TzofarSource(
                 open = true; lastMsg = System.currentTimeMillis(); SourceHealth.setOpen("tzofar", true)
             }
             override fun onMessage(webSocket: WebSocket, text: String) {
+                if (webSocket !== ws || !running) return   // חיבור ישן (יתום) או אחרי עצירה - מתעלמים
                 lastMsg = System.currentTimeMillis()
                 SourceHealth.ok("tzofar")
                 try { parse(JSONObject(text)) } catch (_: Exception) { }

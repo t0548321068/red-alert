@@ -44,9 +44,13 @@ const ilFmt = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Jerusalem', hou
 function ilTime(s) {
   const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(s); if (!m) return 0;
   const asUtc = Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
-  const p = Object.fromEntries(ilFmt.formatToParts(new Date(asUtc)).map(x => [x.type, x.value]));
-  const off = Date.UTC(+p.year, p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - asUtc;
-  return asUtc - off;
+  // ההפרש נבדק פעמיים: בפעם השנייה ברגע האמיתי (ליד מעבר שעון הפעם הראשונה טועה בשעה)
+  const off1 = ilOffset(asUtc);
+  return asUtc - ilOffset(asUtc - off1);
+}
+function ilOffset(t) {
+  const p = Object.fromEntries(ilFmt.formatToParts(new Date(t)).map(x => [x.type, x.value]));
+  return Date.UTC(+p.year, p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - t;
 }
 
 // בקשה שעוד לא חזרה - לא שולחים עוד אחת לאותו מקור

@@ -21,14 +21,21 @@ try {
   state.orefId = s.orefId || '';
 } catch (_) {}
 let saveTimer = null;
+const stateJson = () => JSON.stringify({ sent: [...sentAt], orefId: state.orefId });
 function saveState() {
   if (saveTimer) return;
   saveTimer = setTimeout(() => {
     saveTimer = null;
-    fs.writeFile(STATE_FILE + '.tmp', JSON.stringify({ sent: [...sentAt], orefId: state.orefId }), e => {
+    fs.writeFile(STATE_FILE + '.tmp', stateJson(), e => {
       if (!e) fs.rename(STATE_FILE + '.tmp', STATE_FILE, () => {});
     });
   }, 1000);
+}
+// כתיבה מיידית לפני יציאה - שאחרי הפעלה מחדש לא תישלח שוב התרעה שכבר נשלחה
+function saveNow() {
+  if (!saveTimer) return;
+  clearTimeout(saveTimer); saveTimer = null;
+  try { fs.writeFileSync(STATE_FILE + '.exit.tmp', stateJson()); fs.renameSync(STATE_FILE + '.exit.tmp', STATE_FILE); } catch (e) { log('state save failed', e.message); }
 }
 
 async function sendAll(msgs) {
@@ -113,4 +120,4 @@ function message(text, to) {
   return admin.messaging().send({ topic, data: { type: 'msg', text }, android: { priority: 'high', ttl: 24 * 3600 * 1000 } });
 }
 
-module.exports = { send, heartbeat, updatePush, adminPush, message, state, saveState };
+module.exports = { send, heartbeat, updatePush, adminPush, message, state, saveState, saveNow };
