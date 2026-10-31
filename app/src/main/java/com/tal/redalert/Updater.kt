@@ -276,6 +276,8 @@ object Updater {
                 (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0)
             val pi = PendingIntent.getBroadcast(app, id,
                 Intent(app, InstallResultReceiver::class.java), flags)
+            // אחרי ההתקנה האפליקציה נפתחת מחדש (באנדרואיד 13 ומטה המערכת סוגרת אותה ולא פותחת) - ראו BootReceiver
+            app.getSharedPreferences("upd", Context.MODE_PRIVATE).edit().putLong("reopenAt", System.currentTimeMillis()).commit()
             session.commit(pi.intentSender)
         }
     }
