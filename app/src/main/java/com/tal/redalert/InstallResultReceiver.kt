@@ -15,8 +15,11 @@ class InstallResultReceiver : BroadcastReceiver() {
                 val confirm = i.getParcelableExtra<Intent>(Intent.EXTRA_INTENT) ?: return
                 c.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }
-            PackageInstaller.STATUS_SUCCESS -> Unit   // האפליקציה מתחלפת ונפתחת מחדש
-            else -> Toast.makeText(c, "ההתקנה נכשלה", Toast.LENGTH_LONG).show()
+            PackageInstaller.STATUS_SUCCESS -> Unit   // האפליקציה מתחלפת; BootReceiver פותח אותה מחדש
+            else -> {
+                c.getSharedPreferences("upd", Context.MODE_PRIVATE).edit().remove("reopenAt").apply()   // נכשל - לא פותחים מחדש
+                Toast.makeText(c, "ההתקנה נכשלה", Toast.LENGTH_LONG).show()
+            }
         }
     }
 }
