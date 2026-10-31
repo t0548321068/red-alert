@@ -69,7 +69,7 @@ class PushService : FirebaseMessagingService() {
                 .newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "redalert:push").apply { acquire(30_000) }
             Thread {
                 // השירות נסגר באמצע / תקלה - לפחות התראה רגילה, שההתרעה לא תלך לאיבוד
-                try { svc.handle(title, areas, at, "push:$src") } catch (_: Exception) { AlertService.fallbackNotify(this, title, areas) }
+                try { svc.handle(title, areas, at, "push:$src", d["eid"] ?: "") } catch (_: Exception) { AlertService.fallbackNotify(this, title, areas) }
                 finally { try { if (wl.isHeld) wl.release() } catch (_: Exception) { } }
             }.start()
         } else {
@@ -77,7 +77,7 @@ class PushService : FirebaseMessagingService() {
             if (!Prefs.enabled(this)) return
             val i = Intent(this, AlertService::class.java).setAction(AlertService.ACTION_PUSH_ALERT)
                 .putExtra("title", title).putExtra("areas", areas.toTypedArray())
-                .putExtra("at", at).putExtra("src", "push:$src")
+                .putExtra("at", at).putExtra("src", "push:$src").putExtra("eid", d["eid"] ?: "")
             // אנדרואיד לא הרשה להפעיל את השירות - לפחות התראה רגילה, שההתרעה לא תלך לאיבוד
             try { startForegroundService(i) } catch (_: Exception) { AlertService.fallbackNotify(this, title, areas) }
         }

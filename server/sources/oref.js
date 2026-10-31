@@ -48,7 +48,7 @@ async function pollLive() {
       const j = JSON.parse(txt);
       if (!j.id || j.id === state.orefId) return;
       state.orefId = j.id; saveState();   // נשמר - אחרי הפעלה מחדש לא שולחים שוב את אותה התרעה
-      if (Array.isArray(j.data) && j.data.length) send(j.title || 'התראה', j.data, 'oref');
+      if (Array.isArray(j.data) && j.data.length) send(j.title || 'התראה', j.data, 'oref', Date.now(), String(j.id));   // המזהה - מטח חדש לא נבלע ככפילות
     } catch (_) { /* תשובה לא תקינה - בסבב הבא */ }
   });
 }

@@ -264,6 +264,9 @@ object Prefs {
     /** אוזניות מחוברות: הצופר וההקראה יוצאים גם מהרמקול של הטלפון (ברירת מחדל: דלוק) */
     fun speakerWithHeadset(c: Context) = sp(c).getBoolean("speakerWithHeadset", true)
     fun setSpeakerWithHeadset(c: Context, v: Boolean) = sp(c).edit().putBoolean("speakerWithHeadset", v).commit()
+    /** עדכון אוטומטי ברקע: גרסה חדשה מותקנת לבד (ברירת מחדל: דלוק) */
+    fun autoUpdate(c: Context) = sp(c).getBoolean("autoUpdate", true)
+    fun setAutoUpdate(c: Context, v: Boolean) = sp(c).edit().putBoolean("autoUpdate", v).commit()
 
     // ---- הקראה בקול ----
     fun speakAlerts(c: Context) = sp(c).getBoolean("speak", true)

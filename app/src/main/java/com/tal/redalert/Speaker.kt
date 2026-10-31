@@ -40,7 +40,7 @@ class Speaker(private val c: Context) {
     init {
         tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(id: String?) {}
-            override fun onDone(id: String?) { finish() }
+            override fun onDone(id: String?) { if (id == "file") playFile() else finish() }
             @Deprecated("Deprecated in Java")
             override fun onError(id: String?) { finish() }
         })
@@ -73,12 +73,19 @@ class Speaker(private val c: Context) {
     fun speak(text: String, done: () -> Unit) {
         if (!ready || hebrewOk != true) { done(); return }
         onDone = done
+        // אוזניות מחוברות: קול הטלפון לא יודע לבחור רמקול - מקליטים לקובץ ומשמיעים אותו מהרמקול של הטלפון
+        if (preferSpeaker) try {
+            fileWanted = true
+            if (tts.synthesizeToFile(text, Bundle(), ttsFile(), "file") == TextToSpeech.SUCCESS) return
+            fileWanted = false
+        } catch (_: Exception) { }
         try { tts.setAudioAttributes(AudioAttributes.Builder().setUsage(usage)
             .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build()) } catch (_: Exception) { }
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, Bundle(), "alert")
     }
 
     fun stop() {
+        fileWanted = false
         try { tts.stop() } catch (_: Exception) { }
         stopClips()
         finish()
@@ -160,6 +167,30 @@ class Speaker(private val c: Context) {
                 45 -> "time_45s"; 60 -> "time_1min"; else -> "time_1_5min" } + ".mp3"
         }
         return out.filter { has(it) }.takeIf { it.isNotEmpty() && it.first() == first } ?: emptyList()
+    }
+
+    private fun ttsFile() = java.io.File(c.cacheDir, "tts_alert.wav")
+    /** הקלטה לקובץ בדרך - stop() מבטל, כך שהקובץ לא יושמע אחרי השתקה */
+    @Volatile private var fileWanted = false
+
+    /** ההקראה שהוקלטה לקובץ - מהרמקול של הטלפון (בסיום - finish כמו בהקראה רגילה) */
+    private fun playFile() {
+        if (!fileWanted) return
+        fileWanted = false
+        try {
+            stopClips()
+            val mp = android.media.MediaPlayer().apply {
+                setAudioAttributes(AudioAttributes.Builder().setUsage(usage)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                setDataSource(ttsFile().path)
+                AlertService.builtinSpeaker(c)?.let { setPreferredDevice(it) }
+                setOnCompletionListener { it.release(); if (player === it) player = null; finish() }
+                setOnErrorListener { m, _, _ -> m.release(); if (player === m) player = null; finish(); true }
+                prepare()
+            }
+            player = mp
+            mp.start()
+        } catch (_: Exception) { finish() }
     }
 
     fun shutdown() { stopClips(); try { tts.shutdown() } catch (_: Exception) { } }
