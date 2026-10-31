@@ -55,14 +55,24 @@ function sendResult(ok) {
 }
 
 // הודעת Firebase מוגבלת ל-4KB - התרעה עם הרבה אזורים (כל הארץ) נשלחת בכמה חלקים
-async function send(title, areas, src, at = Date.now()) {
+// מזהה האירוע של פיקוד העורף שנשלח לכל יישוב: מזהה חדש לאותו יישוב בתוך 2 הדקות = מטח חדש (לא כפילות)
+const lastEid = new Map();
+async function send(title, areas, src, at = Date.now(), eid = '') {
   const now = Date.now();
-  for (const [k, t] of sentAt) if (now - t > DEDUP_MS) sentAt.delete(k);
-  areas = [...new Set(areas.map(a => String(a).trim()).filter(Boolean))].filter(a => !sentAt.has(title + '|' + a));
+  for (const [k, t] of sentAt) if (now - t > DEDUP_MS) { sentAt.delete(k); lastEid.delete(k); }
+  areas = [...new Set(areas.map(a => String(a).trim()).filter(Boolean))].filter(a => {
+    const k = title + '|' + a;
+    if (!sentAt.has(k)) return true;
+    if (!eid) return false;
+    // כבר נשלח ממקור אחר (בלי מזהה) - זה אותו אירוע; זוכרים את המזהה שלו למטח הבא
+    if (!lastEid.has(k)) { lastEid.set(k, eid); return false; }
+    return lastEid.get(k) !== eid;
+  });
   if (!areas.length) return;
   const keys = areas.map(a => title + '|' + a);
   web.broadcast({ title, areas, src, at, sent: now });   // לאתר - בזמן אמת
   for (const k of keys) sentAt.set(k, now);   // בזיכרון מיד; בקובץ רק אחרי שליחה מוצלחת
+  if (eid) for (const k of keys) lastEid.set(k, eid);
   const chunks = [];
   let cur = [];
   for (const a of areas) {
@@ -72,7 +82,7 @@ async function send(title, areas, src, at = Date.now()) {
   if (cur.length) chunks.push(cur);
   const msgs = chunks.map(part => ({
     topic: TOPIC,
-    data: { type: 'alert', title, areas: part.join('|'), src, at: String(at) },
+    data: { type: 'alert', title, areas: part.join('|'), src, at: String(at), eid: String(eid || '') },
     android: { priority: 'high', ttl: 60 * 1000 },
   }));
   const first = await sendAll(msgs);
