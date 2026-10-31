@@ -1,6 +1,6 @@
 // פיקוד העורף: הקובץ החי (כל שנייה, בחיבור קבוע) + היסטוריה וארכיון (גיבוי להתרעות שהקובץ החי פספס)
 const https = require('https');
-const { get, ilTime, once, fail } = require('../lib/util');
+const { get, ilTime, once, fail, log } = require('../lib/util');
 const { send, state, saveState } = require('../lib/push');
 const { ok } = require('../lib/health');
 
@@ -17,19 +17,27 @@ function fetchLive() {
       const bufs = [];
       res.on('data', d => bufs.push(d));
       res.on('end', () => {
-        let txt = Buffer.concat(bufs).toString('utf8').replace(/^﻿/, '').trim();
-        if (!txt && bufs.length) txt = Buffer.concat(bufs).toString('utf16le').replace(/^﻿/, '').trim();
-        if (res.statusCode !== 200) return resolve('');
+        const buf = Buffer.concat(bufs);
+        // UTF-16 (עם BOM של FF FE) או UTF-8; בלי תווי אפס ו-BOM
+        let txt = (buf[0] === 0xFF && buf[1] === 0xFE ? buf.toString('utf16le') : buf.toString('utf8')).replace(/^\uFEFF/, '').replace(/\u0000/g, '').trim();
+        if (res.statusCode !== 200) { bad('HTTP ' + res.statusCode, txt); return resolve(''); }
         // תקין רק אם ריק או JSON - דף שגיאה/חסימה עם 200 לא נחשב "עונה"
         if (!txt) ok('oref');
-        else { try { JSON.parse(txt); ok('oref'); } catch (_) {} }
+        else { try { JSON.parse(txt); ok('oref'); } catch (_) { bad('not JSON', txt); } }
         resolve(txt);
       });
     });
-    req.on('timeout', () => req.destroy());
-    req.on('error', () => resolve(''));
+    req.on('timeout', () => { bad('timeout', ''); req.destroy(); });
+    req.on('error', e => { bad('error ' + e.code, e.message); resolve(''); });
     req.on('close', () => resolve(''));
   });
+}
+// תשובה לא תקינה - ביומן (לכל היותר פעם בדקה), כדי לדעת למה "לא עונה"
+let badAt = 0;
+function bad(why, txt) {
+  if (Date.now() - badAt < 60 * 1000) return;
+  badAt = Date.now();
+  log('oref live bad:', why, JSON.stringify(String(txt).slice(0, 120)));
 }
 async function pollLive() {
   // כשהאתר איטי - לא שולחים בקשה חדשה כל שנייה עד שהקודמת חוזרת (שלא יצטבר תור)
