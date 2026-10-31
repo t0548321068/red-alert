@@ -15,7 +15,22 @@ try { data = Object.assign(data, JSON.parse(fs.readFileSync(FILE, 'utf8'))); } c
 let saveT = null;
 function save() {
   clearTimeout(saveT);
-  saveT = setTimeout(() => fs.writeFile(FILE + '.tmp', JSON.stringify(data), e => { if (!e) fs.rename(FILE + '.tmp', FILE, () => {}); }), 2000);
+  saveT = setTimeout(() => { saveT = null; fs.writeFile(FILE + '.tmp', JSON.stringify(data), e => { if (!e) fs.rename(FILE + '.tmp', FILE, () => {}); }); }, 2000);
+}
+// כתיבה מיידית לפני יציאה - שינוי שעוד מחכה לשמירה לא ילך לאיבוד
+function saveNow() {
+  if (!saveT) return;
+  clearTimeout(saveT); saveT = null;
+  try { fs.writeFileSync(FILE + '.exit.tmp', JSON.stringify(data)); fs.renameSync(FILE + '.exit.tmp', FILE); } catch (e) { log('devices save failed', e.message); }
+}
+
+// הודעות תקלה מקריסות ודיווחים: עד 10 ב-10 דקות בסך הכול (שקודים מומצאים לא יציפו את הטלפונים). מעבר לזה - רק נשמר
+let pushTimes = [];
+function limitedPush(t) {
+  const now = Date.now();
+  pushTimes = pushTimes.filter(x => now - x < 10 * 60 * 1000);
+  if (pushTimes.length >= 10) return;
+  pushTimes.push(now); adminPush(t);
 }
 
 const clean = (v, n) => String(v || '').replace(/[\u0000-\u001f]/g, ' ').slice(0, n);
@@ -25,7 +40,15 @@ const okCode = c => /^[0-9A-F]{8}$/.test(c);
 function ping(res, q) {
   const code = String(q('d') || '').toUpperCase();
   if (!okCode(code)) { res.writeHead(400); return res.end(); }
-  if (!data.devices[code] && Object.keys(data.devices).length >= 50) { res.writeHead(429); return res.end(); }
+  if (!data.devices[code]) {
+    // מכשיר שלא דיווח 30 יום - יוצא מהרשימה; אם עדיין מלאה - הוותיק ביותר יוצא
+    const now = Date.now(), list = data.devices;
+    for (const [d, x] of Object.entries(list)) if (now - (x.at || 0) > 30 * 24 * 3600 * 1000) delete list[d];
+    if (Object.keys(list).length >= 50) {
+      const oldest = Object.keys(list).reduce((a, b) => (list[a].at || 0) <= (list[b].at || 0) ? a : b);
+      delete list[oldest];
+    }
+  }
   data.devices[code] = { v: clean(q('v'), 16), m: clean(q('m'), 40), on: q('on') === '1', at: Date.now() };
   save();
   res.writeHead(204); res.end();
@@ -48,7 +71,7 @@ function crash(req, res) {
     save();
     const first = (c.err.split('\n')[0] || '').slice(0, 120);
     log('crash', code, c.v, first);
-    adminPush(`💥 קריסה ב-${c.m || code} (גרסה ${c.v}): ${first}`);
+    limitedPush(`💥 קריסה ב-${c.m || code} (גרסה ${c.v}): ${first}`);
     res.writeHead(204); res.end();
   });
 }
@@ -71,10 +94,17 @@ function report(req, res) {
     data.reports.length = Math.min(data.reports.length, 50);
     save();
     log('report', code, text.slice(0, 80));
-    adminPush(`📩 דיווח מ-${r.m || code}: ${text.replace(/\s+/g, ' ').slice(0, 120)}`);
+    limitedPush(`📩 דיווח מ-${r.m || code}: ${text.replace(/\s+/g, ' ').slice(0, 120)}`);
     res.writeHead(204); res.end();
   });
 }
+
+// ניקוי מכשירים ישנים מהמגבלות (אחרת קודים מומצאים ממלאים את הזיכרון)
+setInterval(() => {
+  const now = Date.now();
+  for (const [c, t] of crashAt) if (now - t > 60 * 1000) crashAt.delete(c);
+  for (const [c, ts] of reportAt) if (!ts.some(t => now - t < 10 * 60 * 1000)) reportAt.delete(c);
+}, 60 * 1000);
 
 // ---- הודעה מהאתר לטלפונים ----
 function sendMessage(req, res) {
@@ -105,4 +135,4 @@ function list() {
   };
 }
 
-module.exports = { ping, crash, report, list, sendMessage };
+module.exports = { ping, crash, report, list, sendMessage, saveNow };

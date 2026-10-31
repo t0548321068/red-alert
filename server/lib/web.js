@@ -9,8 +9,7 @@
 // /api/devices המכשירים והקריסות
 // /api/message שליחת הודעה לטלפונים (לכולם או למכשיר אחד)
 // /api/server  יומן, גרסה, עדכון עצמי;  /api/restart הפעלה מחדש
-// /app/        ה-PWA - נפרד לגמרי מהאתר: מסך זהה לאפליקציה (web/m), manifest ו-sw משלו, רק הוא ניתן להתקנה.
-//              האתר (/) לא ניתן להתקנה ולא מוביל ל-PWA
+// התקנה כאפליקציה (PWA): manifest.webmanifest + sw.js
 // /assets/...  קבצי המפה והיישובים מתוך האפליקציה (אותם קבצים בדיוק)
 const fs = require('fs');
 const path = require('path');
@@ -48,13 +47,19 @@ function tooManyTries(ip) {
   if (!t || now - t.start > 60000) tries.set(ip, { start: now, n: 1 }); else t.n++;
   return ++allTries.n > 20 || tries.get(ip).n > 5;
 }
+setInterval(() => { const now = Date.now(); for (const [ip, t] of tries) if (now - t.start > 60000) tries.delete(ip); }, 60000);
+// הכתובת האמיתית: X-Forwarded-For רק כשהבקשה הגיעה מ-Caddy על אותו שרת (אחרת כל אחד יכול לזייף)
+function clientIp(req) {
+  const local = /^(::ffff:)?127\.0\.0\.1$|^::1$/.test(req.socket.remoteAddress || '');
+  return local ? String(req.headers['x-forwarded-for'] || '').slice(0, 200).split(',')[0].trim() || 'local' : req.socket.remoteAddress || '';
+}
 function login(req, res) {
   let body = '';
   req.on('data', d => { body += d; if (body.length > 2000) req.destroy(); });
   req.on('end', () => {
     const a = auth();
     if (!a) { res.writeHead(503); return res.end('{"error":"no code set"}'); }
-    if (tooManyTries(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '')) { res.writeHead(429); return res.end('{"error":"wait"}'); }
+    if (tooManyTries(clientIp(req))) { res.writeHead(429); return res.end('{"error":"wait"}'); }
     let code = '';
     try { code = String(JSON.parse(body).code || ''); } catch (_) {}
     const hash = crypto.scryptSync(code, Buffer.from(a.salt, 'hex'), 32);
@@ -68,16 +73,20 @@ function login(req, res) {
 // ---- התרעות בזמן אמת ----
 const clients = new Set();
 const recent = [];   // ההתרעות של חצי השעה האחרונה - נשלחות מיד למי שמתחבר
-function broadcast(alert) {
+function pruneRecent() {
   const now = Date.now();
-  recent.push(alert);
   while (recent.length && now - recent[0].sent > 30 * 60 * 1000) recent.shift();
+}
+function broadcast(alert) {
+  recent.push(alert);
+  pruneRecent();
   const msg = 'event: alert\ndata: ' + JSON.stringify(alert) + '\n\n';
   for (const r of clients) { try { r.write(msg); } catch (_) {} }
 }
 function live(req, res) {
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
   res.write('retry: 3000\n\n');
+  pruneRecent();   // בלי התרעות חדשות הרשימה לא מתנקה ב-broadcast
   for (const a of recent) res.write('event: alert\ndata: ' + JSON.stringify(a) + '\n\n');
   res.write('event: ready\ndata: 1\n\n');
   clients.add(res);
@@ -104,24 +113,16 @@ function sendFile(res, file, cache) {
 function handle(req, res, u, state) {
   const p = u.pathname;
   if (p === '/api/login' && req.method === 'POST') { login(req, res); return true; }
-  if (/^\/(login\.html|web\.css|icon\.png|icon-512\.png|favicon\.ico)$/.test(p)) {
-    sendFile(res, path.join(WEB_DIR, p === '/favicon.ico' ? 'icon.png' : p.slice(1)), true); return true;
+  if (/^\/(login\.html|web\.css|icon\.png|icon-512\.png|favicon\.ico|manifest\.webmanifest|sw\.js)$/.test(p)) {
+    sendFile(res, path.join(WEB_DIR, p === '/favicon.ico' ? 'icon.png' : p.slice(1)), p !== '/sw.js'); return true;
   }
-  // ה-PWA: קבצי ההתקנה פתוחים (הדפדפן טוען אותם גם לפני כניסה)
-  if (/^\/app\/(manifest\.webmanifest|sw\.js|icon\.png|icon-512\.png)$/.test(p)) {
-    sendFile(res, path.join(WEB_DIR, 'm', p.slice(5)), !p.endsWith('.js')); return true;
-  }
-  if (p === '/app') { res.writeHead(301, { Location: '/app/' }); res.end(); return true; }
-  const isWeb = p === '/' || p.startsWith('/app/') || p.startsWith('/api/') || p.startsWith('/assets/') || p.startsWith('/w/');
+  const isWeb = p === '/' || p.startsWith('/api/') || p.startsWith('/assets/') || p.startsWith('/w/');
   if (!isWeb) return false;
   if (!loggedIn(req)) {
-    if (p === '/' || p === '/app/') { sendFile(res, path.join(WEB_DIR, 'login.html'), false); return true; }
+    if (p === '/') { sendFile(res, path.join(WEB_DIR, 'login.html'), false); return true; }
     res.writeHead(401); res.end(); return true;
   }
   if (p === '/') { sendFile(res, path.join(WEB_DIR, 'index.html'), false); return true; }
-  // ה-PWA: אותו מסך כמו באפליקציה (web/m)
-  if (p === '/app/') { sendFile(res, path.join(WEB_DIR, 'm', 'index.html'), false); return true; }
-  if (p.startsWith('/app/')) { const f = p.slice(5); if (/^(ic\/)?[\w.-]+$/.test(f)) sendFile(res, path.join(WEB_DIR, 'm', f), false); else { res.writeHead(404); res.end(); } return true; }
   if (p === '/api/live') { live(req, res); return true; }
   if (p === '/api/state') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(state())); return true; }
   if (p === '/api/server') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(admin.info(state().started))); return true; }
@@ -129,7 +130,7 @@ function handle(req, res, u, state) {
   if (p === '/api/message' && req.method === 'POST') { devices.sendMessage(req, res); return true; }
   if (p === '/api/devices') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(devices.list())); return true; }
   if (p === '/api/logout') {
-    res.writeHead(302, { Location: u.searchParams.get('to') === 'app' ? '/app/' : '/', 'Set-Cookie': 'tz=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict' }); res.end(); return true;
+    res.writeHead(302, { Location: '/', 'Set-Cookie': 'tz=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict' }); res.end(); return true;
   }
   if (p.startsWith('/w/')) { const f = p.slice(3); if (/^[\w.-]+$/.test(f)) sendFile(res, path.join(WEB_DIR, f), false); else { res.writeHead(404); res.end(); } return true; }
   if (p.startsWith('/assets/')) {

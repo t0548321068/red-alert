@@ -25,7 +25,7 @@ document.getElementById('f').onsubmit = async e => {
   try {
     const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: document.getElementById('code').value }) });
-    if (r.ok) return location.replace(location.pathname);
+    if (r.ok) return location.replace('/');
     err.textContent = r.status === 429 ? 'יותר מדי ניסיונות – נסה שוב בעוד דקה' : r.status === 503 ? 'עוד לא הוגדר קוד גישה בשרת' : 'קוד שגוי';
   } catch (_) { err.textContent = 'אין חיבור לשרת'; }
 };
