@@ -112,6 +112,7 @@ internal fun MainActivity.openNotificationSettings() {
 /** אנדרואיד 14+: בלי ההרשאה הזו ההתראה לא נדלקת על מסך נעילה */
 internal fun MainActivity.askLockScreen() {
     if (MainActivity.lockAsked || Build.VERSION.SDK_INT < 34 || !Prefs.enabled(this)) return
+    if (disclaimerPending()) return   // התקנה חדשה: קודם ההבהרה
     // עם "הצגה מעל אפליקציות" המסך נדלק ומוצג גם בלי ההרשאה הזו - לא מציקים
     if (Settings.canDrawOverlays(this)) return
     val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

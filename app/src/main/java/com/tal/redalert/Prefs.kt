@@ -81,6 +81,9 @@ object Prefs {
     /** הגרסה האחרונה שהמשתמש ראה עליה "מה חדש" */
     fun seenVersion(c: Context) = sp(c).getString("seenVer", "") ?: ""
     fun setSeenVersion(c: Context, v: String) = sp(c).edit().putString("seenVer", v).commit()
+    /** זמן ההתקנה שההבהרה כבר אושרה בו (התקנה חדשה = זמן אחר = מוצגת שוב) */
+    fun disclaimerFor(c: Context) = sp(c).getLong("disclaimerFor", 0L)
+    fun setDisclaimerFor(c: Context, at: Long) = sp(c).edit().putLong("disclaimerFor", at).apply()
 
     // ---- פיד ארצי: כל ההתראות בארץ, בלי קשר לאזורים שלי ----
     private const val MAX_FEED = 600   // מספיק לשבוע במפה
