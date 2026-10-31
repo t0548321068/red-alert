@@ -31,7 +31,7 @@ class ClockActivity : Activity() {
         override fun run() {
             // מתזמנים קודם - תקלה בהמשך לא תעצור את השעון. כל חצי שנייה (להבהוב הנקודתיים)
             ui.removeCallbacks(this)
-            val now = System.currentTimeMillis()
+            val now = TimeSync.now(this@ClockActivity)   // לפי שעון השרת - זהה בכל הטלפונים
             ui.postDelayed(this, if (now % 1000 < 500) 500 - now % 1000 else 1000 - now % 1000)
             time.text = TimeFormat.clock(this@ClockActivity, now)
         }
