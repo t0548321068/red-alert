@@ -88,13 +88,18 @@ internal fun MainActivity.ouiPage(title: String, refreshOnFocus: Boolean = true,
             addView(spinner, FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER))
             setOnClickListener {
                 if (busy) return@setOnClickListener
-                busy = true; label.visibility = View.INVISIBLE; spinner.visibility = View.VISIBLE
+                busy = true
+                // פעולה מיידית (למשל פתיחת חלון) - בלי אנימציית טעינה בכפתור
+                var sync = true; var doneNow = false
                 val started = System.currentTimeMillis()
-                button.second {
+                button.second done@{
+                    if (sync) { doneNow = true; busy = false; return@done }
                     // לפחות חצי שנייה של טעינה - שלא יהבהב
                     postDelayed({ busy = false; spinner.visibility = View.GONE; label.visibility = View.VISIBLE },
                         (500 - (System.currentTimeMillis() - started)).coerceAtLeast(0))
                 }
+                sync = false
+                if (!doneNow) { label.visibility = View.INVISIBLE; spinner.visibility = View.VISIBLE }
             }
         }
         val above = dp(10)
