@@ -40,7 +40,8 @@ function restart(res) {
   restarting = true;
   log('restart requested from web');
   // systemd מעלה את השרת מחדש לבד (אותו מנגנון כמו בנפילה)
-  setTimeout(() => process.exit(1), 800);
+  // שומרים מיד מה שעוד מחכה לשמירה; נטענים כאן מאוחר (push → web → admin - טעינה מעגלית)
+  setTimeout(() => { require('./push').saveNow(); require('./devices').saveNow(); process.exit(1); }, 800);
 }
 
 module.exports = { info, restart };

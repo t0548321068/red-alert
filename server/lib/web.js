@@ -48,13 +48,19 @@ function tooManyTries(ip) {
   if (!t || now - t.start > 60000) tries.set(ip, { start: now, n: 1 }); else t.n++;
   return ++allTries.n > 20 || tries.get(ip).n > 5;
 }
+setInterval(() => { const now = Date.now(); for (const [ip, t] of tries) if (now - t.start > 60000) tries.delete(ip); }, 60000);
+// הכתובת האמיתית: X-Forwarded-For רק כשהבקשה הגיעה מ-Caddy על אותו שרת (אחרת כל אחד יכול לזייף)
+function clientIp(req) {
+  const local = /^(::ffff:)?127\.0\.0\.1$|^::1$/.test(req.socket.remoteAddress || '');
+  return local ? String(req.headers['x-forwarded-for'] || '').slice(0, 200).split(',')[0].trim() || 'local' : req.socket.remoteAddress || '';
+}
 function login(req, res) {
   let body = '';
   req.on('data', d => { body += d; if (body.length > 2000) req.destroy(); });
   req.on('end', () => {
     const a = auth();
     if (!a) { res.writeHead(503); return res.end('{"error":"no code set"}'); }
-    if (tooManyTries(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '')) { res.writeHead(429); return res.end('{"error":"wait"}'); }
+    if (tooManyTries(clientIp(req))) { res.writeHead(429); return res.end('{"error":"wait"}'); }
     let code = '';
     try { code = String(JSON.parse(body).code || ''); } catch (_) {}
     const hash = crypto.scryptSync(code, Buffer.from(a.salt, 'hex'), 32);
@@ -68,16 +74,20 @@ function login(req, res) {
 // ---- התרעות בזמן אמת ----
 const clients = new Set();
 const recent = [];   // ההתרעות של חצי השעה האחרונה - נשלחות מיד למי שמתחבר
-function broadcast(alert) {
+function pruneRecent() {
   const now = Date.now();
-  recent.push(alert);
   while (recent.length && now - recent[0].sent > 30 * 60 * 1000) recent.shift();
+}
+function broadcast(alert) {
+  recent.push(alert);
+  pruneRecent();
   const msg = 'event: alert\ndata: ' + JSON.stringify(alert) + '\n\n';
   for (const r of clients) { try { r.write(msg); } catch (_) {} }
 }
 function live(req, res) {
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
   res.write('retry: 3000\n\n');
+  pruneRecent();   // בלי התרעות חדשות הרשימה לא מתנקה ב-broadcast
   for (const a of recent) res.write('event: alert\ndata: ' + JSON.stringify(a) + '\n\n');
   res.write('event: ready\ndata: 1\n\n');
   clients.add(res);
