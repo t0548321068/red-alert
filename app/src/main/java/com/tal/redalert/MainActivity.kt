@@ -626,6 +626,17 @@ class MainActivity : Activity() {
             }
         }
         setContentView(scroll)
+        // פתיחה מחדש (המסך נסגר ברקע): לא מציירים את המסך הריק - הטלפון ממשיך להציג את התמונה האחרונה
+        // עד שנתוני היישובים נטענו והמסך מולא, ואז מוצג ישר המסך המלא (לכל היותר 1.5 שניות)
+        var ready = false
+        scroll.viewTreeObserver.addOnPreDrawListener(object : android.view.ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                if (ready) { scroll.viewTreeObserver.removeOnPreDrawListener(this); return true }
+                if (AreaData.loaded()) { ready = true; slowTick.run() }
+                return false
+            }
+        })
+        ui.postDelayed({ if (!ready) { ready = true; slowTick.run(); scroll.invalidate() } }, 1500)
         if (savedInstanceState == null) askPermissions()   // לא בכל סיבוב / החלפת ערכת צבעים
         showWhatsNewIfUpdated()
         // אחרי החלפת ערכת צבעים (האפליקציה נטענת מחדש) - חוזרים להגדרות
