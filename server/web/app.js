@@ -150,8 +150,9 @@ function notify(alert, areas) {
   if (swReg) { swReg.showNotification(showTitle(alert.title), opt).catch(() => {}); return; }
   try { const n = new Notification(showTitle(alert.title), opt); n.onclick = () => { window.focus(); n.close(); }; } catch (_) {}
 }
-// התראות במחשב - ישירות מהדפדפן (האתר לא מותקן כאפליקציה; ה-PWA נפרד, ב-/app/)
-const swReg = null;
+// התקנה כאפליקציה (PWA)
+let swReg = null;
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then(r => { swReg = r; }).catch(() => {});
 
 // ---- התרעות חיות ----
 const seen = new Set();   // התרעות שכבר הוצגו - שחיבור מחדש לא יפעיל אותן שוב
@@ -168,7 +169,8 @@ function onAlert(a, replay) {
   }
   drawAlerts(); renderState();
   addRecent({ t: a.title, b: a.areas.join(', '), ts: a.at });
-  if (replay) return;
+  // התרעה ישנה (הגיעה בחיבור מחדש אחרי ניתוק ארוך) - רק על המפה, בלי צופר
+  if (replay || Date.now() - a.at > (lvl === 'alert' ? 2 * 60e3 : KEEP[lvl])) return;
   const my = mine.length ? a.areas.filter(n => mine.includes(n)) : a.areas;
   if (!my.length) return;
   notify(a, my);
@@ -233,7 +235,11 @@ $('seg').onclick = e => {
 };
 function loadArchive() {
   fetch('/archive?since=' + (Date.now() - 7 * 24 * 3600e3)).then(r => r.json()).then(list => {
-    for (const e of list) if (!recent.some(x => x.t === e.t && Math.abs(x.ts - e.ts) < 60e3)) recent.push(e);
+    // כפילות רק אם אותה כותרת, אותה דקה ויישוב משותף - התרעה באזור אחר באותה דקה היא אירוע נפרד
+    for (const e of list) {
+      const eb = new Set(e.b.split(', '));
+      if (!recent.some(x => x.t === e.t && Math.abs(x.ts - e.ts) < 60e3 && x.b.split(', ').some(n => eb.has(n)))) recent.push(e);
+    }
     recent.sort((a, b) => b.ts - a.ts); renderList();
   }).catch(() => {});
 }

@@ -19,7 +19,10 @@ function fetchLive() {
       res.on('end', () => {
         let txt = Buffer.concat(bufs).toString('utf8').replace(/^﻿/, '').trim();
         if (!txt && bufs.length) txt = Buffer.concat(bufs).toString('utf16le').replace(/^﻿/, '').trim();
-        ok('oref');
+        if (res.statusCode !== 200) return resolve('');
+        // תקין רק אם ריק או JSON - דף שגיאה/חסימה עם 200 לא נחשב "עונה"
+        if (!txt) ok('oref');
+        else { try { JSON.parse(txt); ok('oref'); } catch (_) {} }
         resolve(txt);
       });
     });
