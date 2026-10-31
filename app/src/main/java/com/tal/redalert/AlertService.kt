@@ -257,6 +257,9 @@ class AlertService : Service() {
     /** התראות מאותו סוג בתוך דקה וחצי = אותו אירוע -> שורה אחת ברשימה */
     private val MERGE_MS = 90 * 1000L
     private val ALERT_DUP_MS = 2 * 60 * 1000L
+    /** מזהה האירוע של פיקוד העורף לכל יישוב, ושל ההתרעה האחרונה שצלצלה - להבחין בין כפילות למטח חדש */
+    private val seenEid = HashMap<String, String>()
+    private var lastFiredEid = ""
     /** דור הצליל - ראו fire() */
     @Volatile private var soundGen = 0
 
@@ -403,7 +406,7 @@ class AlertService : Service() {
         if (intent?.action == ACTION_PUSH_ALERT) {
             val t = intent.getStringExtra("title"); val a = intent.getStringArrayExtra("areas")
             val at = intent.getLongExtra("at", System.currentTimeMillis()); val src = intent.getStringExtra("src") ?: "push"
-            if (t != null && a != null) Thread { try { handle(t, a.toList(), at, src) } catch (_: Exception) { } }.start()
+            if (t != null && a != null) Thread { try { handle(t, a.toList(), at, src, intent.getStringExtra("eid") ?: "") } catch (_: Exception) { } }.start()
             return START_STICKY
         }
         if (intent?.action == ACTION_PUSH) {
@@ -460,7 +463,7 @@ class AlertService : Service() {
         ringtone?.stop(); stopSpeaker()
         main.removeCallbacks(stayDone)
         main.removeCallbacks(stayNotif)
-        main.removeCallbacks(seqAlert); main.removeCallbacks(seqEnd)
+        main.removeCallbacks(seqAlert); main.removeCallbacks(seqEnd); main.removeCallbacks(updateLater)
         wakeLock?.let { if (it.isHeld) it.release() }
         bg.shutdown()   // מה שכבר בתור נכתב עד הסוף
         super.onDestroy()
@@ -521,7 +524,7 @@ class AlertService : Service() {
 
         val title = json.optString("title", "התראה")
         val arr = json.optJSONArray("data") ?: return
-        handle(title, (0 until arr.length()).map { arr.getString(it) }, source = "oref")
+        handle(title, (0 until arr.length()).map { arr.getString(it) }, source = "oref", eid = id)
     }
 
     /**
@@ -607,9 +610,19 @@ class AlertService : Service() {
         }.start()
     }
 
+    /** עדכון שנדחה בגלל אירוע - ניסיון חוזר */
+    private val updateLater = Runnable { Thread({ try { notifyIfNewVersion() } catch (_: Exception) { } }, "update-later").start() }
     // מנעול נפרד: בדיקת הגרסה (רשת, עד עשרות שניות) לא תעכב את handle() של התרעות
     private val updLock = Any()
     private fun notifyIfNewVersion(): Boolean {
+        // עדכון אוטומטי ברקע - אבל לא באמצע אירוע (ההתקנה סוגרת את האפליקציה לכמה שניות): מחכים שיסתיים
+        if (Prefs.autoUpdate(this)) {
+            if (inEvent() || Prefs.stayUntil(this) > System.currentTimeMillis()) {
+                main.removeCallbacks(updateLater); main.postDelayed(updateLater, 10 * 60 * 1000L)
+                return true
+            }
+            if (Updater.autoInstall(this)) return true
+        }
         val v = Updater.pendingVersion(this) ?: return false
         synchronized(updLock) {
             if (Prefs.notifiedVersion(this) == v) return true
@@ -676,7 +689,7 @@ class AlertService : Service() {
     /** נקודת כניסה משותפת לכל המקורות: סינון ערים + מניעת כפילות */
     @Synchronized
     fun handle(rawTitle: String, rawAreas: List<String>, eventTime: Long = System.currentTimeMillis(),
-               source: String = "") {
+               source: String = "", eid: String = "") {
         // תזמון הגנה: מחוץ לימים ולשעות שנבחרו - לא מקבלים התרעות
         if (Prefs.scheduleOffNow(this)) return
         lastEventAt = System.currentTimeMillis()   // אירוע בארץ - בבדיקה עצמית בודקים בקצב מהיר
@@ -704,18 +717,25 @@ class AlertService : Service() {
         val dup = if (level == LEVEL_ALERT) ALERT_DUP_MS else DEDUP_MS
         val fresh = mine(this, areas)
             .filter { a ->
-                val prev = seen[key(a, level)]
-                prev == null || eventTime - prev > dup
+                val k = key(a, level)
+                val prev = seen[k]
+                if (prev == null || eventTime - prev > dup) return@filter true
+                // אותו יישוב בתוך החלון: מטח חדש רק אם זה אירוע אחר של פיקוד העורף (מזהה שונה).
+                // כבר התריע ממקור בלי מזהה (צופר / טלגרם) - זה אותו אירוע; זוכרים את המזהה שלו למטח הבא
+                if (eid.isEmpty()) return@filter false
+                val pe = seenEid[k] ?: run { seenEid[k] = eid; return@filter false }
+                pe != eid
             }
         if (fresh.isEmpty()) return
         awake(60_000)   // התרעה באזור שלי - הטלפון נשאר ער לזמן הטיפול בה
-        fresh.forEach { seen[key(it, level)] = eventTime }
+        fresh.forEach { seen[key(it, level)] = eventTime; if (eid.isNotEmpty()) seenEid[key(it, level)] = eid }
 
         // המקור הכי מהיר כבר התריע על האירוע הזה (לפני פחות מדקה וחצי) -
         // היישובים הנוספים מצטרפים לאותה שורה, בלי צליל ומסך נוספים.
         // ההתרעה האחרונה נשמרת בזיכרון - בלי לקרוא את כל ההיסטוריה לפני הצלצול
         val last = lastFired ?: Prefs.history(this).firstOrNull()?.let { it.level to it.ts }
-        if (last != null && last.first == level &&
+        val newBarrage = eid.isNotEmpty() && lastFiredEid.isNotEmpty() && eid != lastFiredEid   // מטח חדש - לא מצרפים לקודם
+        if (last != null && last.first == level && !newBarrage &&
             (now - last.second < MERGE_MS || (level == LEVEL_END && now - last.second < DEDUP_MS))) {
             later { try { Prefs.mergeFirstHistory(this, fresh); AlertWidget.updateAll(this) } catch (_: Exception) { } }
             return
@@ -734,6 +754,7 @@ class AlertService : Service() {
             }
         }
         lastFired = level to now
+        if (eid.isNotEmpty()) lastFiredEid = eid
         fire(title, fresh, source = source)
     }
 

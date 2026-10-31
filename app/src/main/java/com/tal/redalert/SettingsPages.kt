@@ -660,6 +660,14 @@ internal fun MainActivity.showUpdates() = ouiPage("עדכונים",
     ouiAdd(body, ver)
     ouiNote(body, "מהעדכון השני ההתקנה אוטומטית, בלי ללחוץ התקן")
 
+    // עדכון אוטומטי ברקע: כשהשרת מודיע על גרסה חדשה - יורדת ומותקנת לבד (לא באמצע אירוע)
+    val au = ouiCard()
+    val auto = Prefs.autoUpdate(this)
+    ouiRow(au, "עדכון אוטומטי", sub = if (auto) "גרסה חדשה מותקנת לבד ברקע" else "כבוי – רק התראה על גרסה חדשה", on = auto) {
+        Prefs.setAutoUpdate(this, !auto); rebuild() }
+    ouiAdd(body, au)
+    ouiNote(body, "לא מתעדכן באמצע אירוע – מחכה שיסתיים")
+
     // גרסאות בטא - רק למי שפתח אותן (7 לחיצות על הגרסה)
     if (Prefs.betaUnlocked(this) || Prefs.betaUpdates(this)) {
         val on = Prefs.betaUpdates(this)

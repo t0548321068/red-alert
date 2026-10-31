@@ -210,32 +210,54 @@ object Updater {
             return
         }
 
-        val dm = a.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        toast(a, "מוריד גרסה $version…")
+        startDownload(a.applicationContext, version, url, reopen = true)
+    }
+
+    /**
+     * עדכון אוטומטי ברקע (כשהשרת מודיע על גרסה חדשה): מוריד ומתקין בלי לפתוח את האפליקציה.
+     * מהעדכון השני ההתקנה שקטה; בפעם הראשונה אנדרואיד מבקש אישור (התראה). true = התחיל
+     */
+    fun autoInstall(c: Context): Boolean {
+        if (!Prefs.autoUpdate(c) || !c.packageManager.canRequestPackageInstalls()) return false
+        val u = try { best(c).also { remember(c, it) } } catch (_: Exception) { null } ?: return false
+        if (Prefs.skippedVersion(c) == u.key) return false
+        // אותה גרסה - לכל היותר פעם ב-6 שעות (שלא נוריד שוב ושוב אם ההתקנה נכשלת)
+        val sp = c.getSharedPreferences("upd", Context.MODE_PRIVATE)
+        if (sp.getString("autoKey", "") == u.key && System.currentTimeMillis() - sp.getLong("autoAt", 0) < 6 * 3600_000L) return true
+        sp.edit().putString("autoKey", u.key).putLong("autoAt", System.currentTimeMillis()).apply()
+        startDownload(c.applicationContext, u.label.replace(" ", "-"), u.url, reopen = false)
+        return true
+    }
+
+    /** הורדה דרך DownloadManager ואז התקנה. reopen = לפתוח את האפליקציה מחדש אחרי ההתקנה (כשהתחיל מתוכה) */
+    private fun startDownload(app: Context, version: String, url: String, reopen: Boolean) {
+        val dm = app.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val req = DownloadManager.Request(Uri.parse(url))
             .setTitle("צופר חירום $version")
             .setMimeType(MIME)
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            // ברקע - בלי התראת "ההורדה הושלמה" שנשארת בשורת ההתראות
+            .setNotificationVisibility(if (reopen) DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED else DownloadManager.Request.VISIBILITY_VISIBLE)
             .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "red-alert-$version.apk")
         val id = dm.enqueue(req)
-        toast(a, "מוריד גרסה $version…")
-
-        val app = a.applicationContext
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(c: Context, i: Intent) {
                 if (i.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1) != id) return
                 app.unregisterReceiver(this)
                 val uri = dm.getUriForDownloadedFile(id)
                 if (uri == null) {
-                    toast(app, "ההורדה נכשלה")
+                    if (reopen) toast(app, "ההורדה נכשלה")
                     return
                 }
                 // התקנה דרך PackageInstaller: מאנדרואיד 12 עדכון עצמי בלי ללחוץ "התקן"
                 // (אחרי שהאפליקציה התקינה את עצמה פעם אחת). אם נכשל - מסך ההתקנה הרגיל
                 Thread {
-                    try { installSession(app, uri) } catch (_: Exception) {
-                        app.startActivity(Intent(Intent.ACTION_VIEW)
-                            .setDataAndType(uri, MIME)
-                            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK))
+                    try { installSession(app, uri, reopen) } catch (_: Exception) {
+                        try {
+                            app.startActivity(Intent(Intent.ACTION_VIEW)
+                                .setDataAndType(uri, MIME)
+                                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK))
+                        } catch (_: Exception) { }   // ברקע אנדרואיד יכול לחסום - העדכון יוצע שוב בבדיקה הבאה
                     }
                 }.start()
             }
@@ -249,7 +271,7 @@ object Updater {
     }
 
     /** כותב את ה-APK לסשן התקנה ומאשר. התוצאה מגיעה ל-InstallResultReceiver */
-    private fun installSession(app: Context, uri: Uri) {
+    private fun installSession(app: Context, uri: Uri, reopen: Boolean) {
         val installer = app.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
             setAppPackageName(app.packageName)
@@ -277,7 +299,7 @@ object Updater {
             val pi = PendingIntent.getBroadcast(app, id,
                 Intent(app, InstallResultReceiver::class.java), flags)
             // אחרי ההתקנה האפליקציה נפתחת מחדש (באנדרואיד 13 ומטה המערכת סוגרת אותה ולא פותחת) - ראו BootReceiver
-            app.getSharedPreferences("upd", Context.MODE_PRIVATE).edit().putLong("reopenAt", System.currentTimeMillis()).commit()
+            if (reopen) app.getSharedPreferences("upd", Context.MODE_PRIVATE).edit().putLong("reopenAt", System.currentTimeMillis()).commit()
             session.commit(pi.intentSender)
         }
     }
