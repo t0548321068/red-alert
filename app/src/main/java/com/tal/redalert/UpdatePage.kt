@@ -140,7 +140,7 @@ internal fun MainActivity.showUpdateCheck() {
     check = { finished ->
         // ---- בודק ----
         content.removeAllViews()
-        head("#162038", "#E3EBFF", R.drawable.ic_upd_checking, C.TEXT, blue, "בודק אם יש גרסה חדשה…", C.TEXT, "מתחבר לשרת העדכונים")
+        head("#162038", "#E3EBFF", R.drawable.ic_upd_checking, blue, blue, "בודק אם יש גרסה חדשה…", C.TEXT, "מתחבר לשרת העדכונים")
         pill("בדוק אם יש עדכונים") { done -> check(done) }
         twoButtons(false)
         checking = true
@@ -171,7 +171,7 @@ internal fun MainActivity.showUpdateCheck() {
                         // ---- יש גרסה חדשה ----
                         val beta = u.key.startsWith("beta")
                         val when_ = det?.date?.takeIf { it > 0 }?.let { "פורסמה " + dateFmt.format(java.util.Date(it)) } ?: ""
-                        head("#162038", "#E3EBFF", R.drawable.ic_upd_new, C.TEXT, blue,
+                        head("#162038", "#E3EBFF", R.drawable.ic_upd_new, blue, blue,
                             (if (beta) "גרסת בטא זמינה – " else "גרסה חדשה זמינה – ") + u.ver, C.TEXT, when_)
                         val cd = ouiCard()
                         ouiRow(cd, "הגרסה שלך", end = Updater.versionLabel(this), endColor = C.MUTED)
@@ -195,7 +195,7 @@ internal fun MainActivity.showUpdateCheck() {
                     }
                     else -> {
                         // ---- מעודכן ----
-                        head("#162038", "#E3EBFF", R.drawable.ic_upd_ok, C.TEXT, blue, "הגרסה שלך מעודכנת", C.TEXT, "")
+                        head("#162038", "#E3EBFF", R.drawable.ic_upd_ok, blue, blue, "הגרסה שלך מעודכנת", C.TEXT, "")
                         val cd = ouiCard()
                         ouiRow(cd, "גרסה מותקנת", end = Updater.versionLabel(this), endColor = C.MUTED)
                         ouiDivider(cd)
