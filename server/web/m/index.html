@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>צופר חירום</title>
+<link rel="icon" href="/icon.png">
+<link rel="manifest" href="/app/manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<link rel="stylesheet" href="/assets/leaflet/leaflet.css">
+<link rel="stylesheet" href="/assets/maplibre/maplibre-gl.css">
+<link rel="stylesheet" href="/app/app.css">
+<script src="/assets/leaflet/leaflet.js"></script>
+<script src="/assets/maplibre/maplibre-gl.js"></script>
+<script src="/assets/maplibre/leaflet-maplibre-gl.js"></script>
+<script src="/assets/mapstyle.js"></script>
+<script src="/assets/areas.js"></script>
+</head>
+<body>
+<!-- המסך הראשי - כמו באפליקציה -->
+<main id="home">
+  <div class="header">
+    <div class="title">צופר חירום</div>
+    <span class="grow"></span>
+    <button class="hicon" id="goClock"><i class="ic" style="--i:url(/app/ic/ic_nav_clock.svg)"></i></button>
+    <button class="hicon" id="goRecent"><i class="ic" style="--i:url(/app/ic/ic_nav_alerts.svg)"></i></button>
+    <button class="hicon" id="goSettings"><i class="ic" style="--i:url(/app/ic/ic_gear.svg)"></i></button>
+  </div>
+
+  <div class="status" id="status">
+    <button class="ind" id="iProt"><i class="ic"></i><span></span></button><b></b>
+    <button class="ind" id="iSnd"><i class="ic"></i><span></span></button><b></b>
+    <button class="ind" id="iNet"><i class="ic"></i><span></span></button><b></b>
+    <button class="ind" id="iLoc"><i class="ic"></i><span></span></button><b></b>
+    <button class="ind" id="iSrv"><i class="ic"></i><span></span></button><b></b>
+    <button class="ind" id="iVer"><i class="ic"></i><span></span></button>
+  </div>
+
+  <div class="alertwrap" id="alertWrap" hidden>
+    <div class="alertcard" id="alertCard"></div>
+    <button class="x" id="alertX"><i class="ic" style="--i:url(/app/ic/ic_close.svg)"></i></button>
+  </div>
+
+  <div class="clockcard" id="clockCard">
+    <div class="greet" id="greet"></div>
+    <div class="halo" id="haloOuter">
+      <span class="ring" id="ring"></span>
+      <div class="haloin" id="haloInner"><span class="glow" id="glow"></span><span class="shield" id="shield"></span></div>
+    </div>
+    <div class="clabel" id="cLabel"></div>
+    <div class="carea" id="cArea"></div>
+    <div class="ctime" id="cTime"></div>
+    <div class="cday" id="cDay"></div>
+    <div class="cwx" id="cWx"></div>
+  </div>
+
+  <div class="slot" id="areasSlot"></div>
+
+  <div class="feedcard" id="feedCard">
+    <div class="fhead">התרעות אחרונות</div>
+    <div class="fline"></div>
+    <div class="fscroll"><div class="ftext" id="feed"></div></div>
+  </div>
+</main>
+
+<!-- עמודים -->
+<section class="page" id="pRecent" hidden>
+  <div class="phead"><button class="back" data-back><i class="ic" style="--i:url(/app/ic/ic_close.svg)"></i></button>
+    <div class="ptitle">התרעות אחרונות</div><span class="seg" id="seg"></span>
+    <button class="hicon" id="goMap"><i class="ic" style="--i:url(/app/ic/ic_map.svg)"></i></button></div>
+  <div id="recentList"></div>
+</section>
+
+<section class="page" id="pMap" hidden>
+  <div class="phead"><button class="back" data-back><i class="ic" style="--i:url(/app/ic/ic_close.svg)"></i></button>
+    <div class="ptitle" id="mapTitle">מפה</div></div>
+  <div id="map"></div>
+</section>
+
+<section class="page" id="pSettings" hidden>
+  <div class="phead"><button class="back" data-back><i class="ic" style="--i:url(/app/ic/ic_close.svg)"></i></button>
+    <div class="ptitle">הגדרות</div></div>
+  <div id="settings"></div>
+</section>
+
+<section class="night" id="pClock" hidden><div class="nbox" id="nBox"><div class="ntime" id="nTime"></div></div></section>
+
+<!-- חלון תחתון (כמו באפליקציה) -->
+<div class="sheetbg" id="sheetBg" hidden><div class="sheet" id="sheet"></div></div>
+
+<audio id="siren" src="/assets/siren.ogg" preload="auto"></audio>
+<script src="/app/app.js"></script>
+</body>
+</html>

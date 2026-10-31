@@ -150,9 +150,8 @@ function notify(alert, areas) {
   if (swReg) { swReg.showNotification(showTitle(alert.title), opt).catch(() => {}); return; }
   try { const n = new Notification(showTitle(alert.title), opt); n.onclick = () => { window.focus(); n.close(); }; } catch (_) {}
 }
-// התקנה כאפליקציה (PWA)
-let swReg = null;
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').then(r => { swReg = r; }).catch(() => {});
+// התראות במחשב - ישירות מהדפדפן (האתר לא מותקן כאפליקציה; ה-PWA נפרד, ב-/app/)
+const swReg = null;
 
 // ---- התרעות חיות ----
 const seen = new Set();   // התרעות שכבר הוצגו - שחיבור מחדש לא יפעיל אותן שוב
