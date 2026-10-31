@@ -739,22 +739,14 @@ internal fun MainActivity.showAbout() = ouiPage("אודות") { body, _ ->
     ouiText(note, DISCLAIMER)
     ouiAdd(body, note)
 
-    val terms = ouiCard()
-    ouiRow(terms, "תנאי שימוש") { showTerms() }
-    ouiAdd(body, terms)
-
-    val src = ouiCard()
-    src.addView(text("מקורות (${SourceHealth.total()})", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-    SourceHealth.NAMES.values.forEachIndexed { i, n -> if (i > 0) ouiDivider(src); ouiRow(src, n) }
-    ouiAdd(body, src)
-    ouiNote(body, "ההתראה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד")
-
-    val lic = ouiCard()
-    lic.addView(text("רישיונות", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-    listOf("מפה" to "Leaflet · BSD-2", "גבולות אזורים וזמני הגעה" to "oref_alert · MIT",
-        "רשת" to "OkHttp · Apache 2.0", "מזג אוויר ושמות מקומות" to "Open-Meteo · OpenStreetMap")
-        .forEachIndexed { i, (a, b) -> if (i > 0) ouiDivider(lic); ouiRow(lic, a, sub = b, subColor = C.MUTED) }
-    ouiAdd(body, lic)
+    // תנאי שימוש, מקורות ורישיונות - כל אחד בעמוד משלו
+    val more = ouiCard()
+    ouiRow(more, "תנאי שימוש") { showTerms() }
+    ouiDivider(more)
+    ouiRow(more, "מקורות", "${SourceHealth.total()} מקורות") { showSourcesList() }
+    ouiDivider(more)
+    ouiRow(more, "רישיונות", "ספריות קוד ונתונים") { showLicenses() }
+    ouiAdd(body, more)
 
     body.addView(text("נבנתה על ידי טל ששון · © ${java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)} כל הזכויות שמורות",
         12f, C.MUTED).apply { gravity = Gravity.CENTER; setPadding(dp(20), dp(10), dp(20), 0) }, LinearLayout.LayoutParams(-1, -2))
@@ -1032,4 +1024,21 @@ internal fun MainActivity.showTerms() = ouiPage("תנאי שימוש") { body, _
         ouiText(c, b)
         ouiAdd(body, c)
     }
+}
+
+/** מקורות ההתרעות - נפתח מעמוד האודות */
+internal fun MainActivity.showSourcesList() = ouiPage("מקורות") { body, _ ->
+    val src = ouiCard()
+    SourceHealth.NAMES.values.forEachIndexed { i, n -> if (i > 0) ouiDivider(src); ouiRow(src, n) }
+    ouiAdd(body, src)
+    ouiNote(body, "ההתראה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד")
+}
+
+/** רישיונות - נפתח מעמוד האודות */
+internal fun MainActivity.showLicenses() = ouiPage("רישיונות") { body, _ ->
+    val lic = ouiCard()
+    listOf("מפה" to "Leaflet · BSD-2", "גבולות אזורים וזמני הגעה" to "oref_alert · MIT",
+        "רשת" to "OkHttp · Apache 2.0", "מזג אוויר ושמות מקומות" to "Open-Meteo · OpenStreetMap")
+        .forEachIndexed { i, (a, b) -> if (i > 0) ouiDivider(lic); ouiRow(lic, a, sub = b, subColor = C.MUTED) }
+    ouiAdd(body, lic)
 }
