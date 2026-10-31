@@ -17,6 +17,18 @@ execFile('git', ['-C', REPO, 'log', '-1', '--format=%h%x09%s%x09%ct'], (e, out) 
   commit = { hash, msg, at: +at * 1000 };
 });
 
+// סקריפט העדכון העצמי רץ מעותק בבית (~/selfupdate.sh) - מעדכנים את העותק כשהגרסה בגיט שונה (רק אם התחביר תקין)
+try {
+  const src = path.join(REPO, 'server', 'deploy', 'selfupdate.sh'), dst = path.join(os.homedir(), 'selfupdate.sh');
+  if (fs.existsSync(dst) && fs.readFileSync(src, 'utf8') !== fs.readFileSync(dst, 'utf8')) {
+    execFile('bash', ['-n', src], e => {
+      if (e) return log('selfupdate.sh not installed: syntax error');
+      try { fs.writeFileSync(dst + '.tmp', fs.readFileSync(src), { mode: 0o755 }); fs.renameSync(dst + '.tmp', dst); log('selfupdate.sh updated'); }
+      catch (err) { log('selfupdate.sh install failed', err.message); }
+    });
+  }
+} catch (_) {}
+
 function tail(file, n) {
   try { return fs.readFileSync(file, 'utf8').trim().split('\n').slice(-n); } catch (_) { return []; }
 }
