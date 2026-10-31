@@ -64,11 +64,11 @@ internal fun MainActivity.showUpdateCheck() {
     // ---- ראש העמוד: עיגול, כותרת ושורת משנה ----
     val circleBg = GradientDrawable().apply { shape = GradientDrawable.OVAL }
     val ring = UpdateRing(this)
-    val icon = text("⬇", 40f, C.TEXT).apply { gravity = Gravity.CENTER }
+    val icon = android.widget.ImageView(this)
     val circle = FrameLayout(this).apply {
         background = circleBg
         addView(ring, FrameLayout.LayoutParams(-1, -1))
-        addView(icon, FrameLayout.LayoutParams(-1, -1))
+        addView(icon, FrameLayout.LayoutParams(dp(50), dp(50), Gravity.CENTER))
     }
     val headline = text("", 20f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER }
     val sub = text("", 14f, C.MUTED).apply { gravity = Gravity.CENTER }
@@ -83,9 +83,11 @@ internal fun MainActivity.showUpdateCheck() {
     val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
     body.addView(content)
 
-    fun head(bg: String, bgLight: String, sym: String, symColor: Int, ringColor: Int, title: String, titleColor: Int, subText: String) {
+    /** sym = אייקון המצב; symColor = צבע לאייקון (null - האייקון בצבעים שלו) */
+    fun head(bg: String, bgLight: String, sym: Int, symColor: Int?, ringColor: Int, title: String, titleColor: Int, subText: String) {
         circleBg.setColor(Color.parseColor(if (dark) bg else bgLight))
-        icon.text = sym; icon.setTextColor(symColor)
+        icon.setImageResource(sym)
+        icon.imageTintList = symColor?.let { android.content.res.ColorStateList.valueOf(it) }
         ring.color = ringColor
         headline.text = title; headline.setTextColor(titleColor)
         sub.text = subText
@@ -138,7 +140,7 @@ internal fun MainActivity.showUpdateCheck() {
     check = { finished ->
         // ---- בודק ----
         content.removeAllViews()
-        head("#162038", "#E3EBFF", "⬇", C.TEXT, blue, "בודק אם יש גרסה חדשה…", C.TEXT, "מתחבר לשרת העדכונים")
+        head("#162038", "#E3EBFF", R.drawable.ic_upd_checking, C.TEXT, blue, "בודק אם יש גרסה חדשה…", C.TEXT, "מתחבר לשרת העדכונים")
         pill("בדוק אם יש עדכונים") { done -> check(done) }
         twoButtons(false)
         checking = true
@@ -169,7 +171,7 @@ internal fun MainActivity.showUpdateCheck() {
                         // ---- יש גרסה חדשה ----
                         val beta = u.key.startsWith("beta")
                         val when_ = det?.date?.takeIf { it > 0 }?.let { "פורסמה " + dateFmt.format(java.util.Date(it)) } ?: ""
-                        head("#3A2A0A", "#FFF1DC", "🆕", C.TEXT, orange,
+                        head("#3A2A0A", "#FFF1DC", R.drawable.ic_upd_new, orange, orange,
                             (if (beta) "גרסת בטא זמינה – " else "גרסה חדשה זמינה – ") + u.ver, orange, when_)
                         val cd = ouiCard()
                         ouiRow(cd, "הגרסה שלך", end = Updater.versionLabel(this), endColor = C.MUTED)
@@ -186,14 +188,16 @@ internal fun MainActivity.showUpdateCheck() {
                     }
                     failed -> {
                         // ---- אין חיבור ----
-                        head("#2C2C2E", "#E5E5EA", "!", C.MUTED, C.MUTED, "לא ניתן לבדוק כרגע", C.TEXT, "בדוק את החיבור לאינטרנט ונסה שוב")
+                        // אייקון לפי סוג הרשת: נתונים ניידים - קליטה מנותקת, אחרת - וויפיי מנותק
+                        val noNet = if (network()?.first == "cell") R.drawable.ic_upd_nosignal else R.drawable.ic_upd_nowifi
+                        head("#2C2C2E", "#E5E5EA", noNet, C.MUTED, C.MUTED, "לא ניתן לבדוק כרגע", C.TEXT, "בדוק את החיבור לאינטרנט ונסה שוב")
                         val cd = ouiCard()
                         ouiRow(cd, "גרסה מותקנת", end = Updater.versionLabel(this), endColor = C.MUTED)
                         ouiAdd(content, cd)
                     }
                     else -> {
                         // ---- מעודכן ----
-                        head("#12301A", "#E3F4E5", "✓", green, green, "הגרסה שלך מעודכנת", green, "")
+                        head("#12301A", "#E3F4E5", R.drawable.ic_upd_ok, null, green, "הגרסה שלך מעודכנת", green, "")
                         val cd = ouiCard()
                         ouiRow(cd, "גרסה מותקנת", end = Updater.versionLabel(this), endColor = C.MUTED)
                         ouiDivider(cd)
