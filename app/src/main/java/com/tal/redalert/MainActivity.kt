@@ -626,15 +626,13 @@ class MainActivity : Activity() {
             }
         }
         setContentView(scroll)
-        askPermissions()
+        if (savedInstanceState == null) askPermissions()   // לא בכל סיבוב / החלפת ערכת צבעים
         showWhatsNewIfUpdated()
         // אחרי החלפת ערכת צבעים (האפליקציה נטענת מחדש) - חוזרים להגדרות
         if (reopenDisplay) { reopenDisplay = false; ui.post { showSettings() } }
         // טעינת נתוני האזורים ברקע, כדי שהמסך לא ייתקע בפעם הראשונה
         AreaData.preload(this)   // נתוני היישובים ברקע - המסך לא נתקע בפתיחה
     }
-
-    internal var updateCheckedAt = 0L
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -667,6 +665,7 @@ class MainActivity : Activity() {
         super.onResume()
         restoreScroll?.let { r -> restoreScroll = null; ui.post(r); ui.postDelayed(r, 250) }
         pulseAnims.forEach { it.resume() }
+        verBlink?.resume(); srvBlink?.resume()
         // רשת ביטחון: אם ההאזנה אמורה לפעול - לוודא שהשירות באמת רץ (בטוח לקרוא גם אם כבר רץ)
         if (Prefs.enabled(this)) AlertService.start(this)
         ui.post(tick)
@@ -682,6 +681,7 @@ class MainActivity : Activity() {
     override fun onPause() {
         ui.removeCallbacks(tick); ui.removeCallbacks(slowTick)
         pulseAnims.forEach { it.pause() }   // האנימציה לא רצה כשהאפליקציה ברקע
+        verBlink?.pause(); srvBlink?.pause()
         super.onPause()
     }
 
@@ -692,6 +692,8 @@ class MainActivity : Activity() {
         pages.clear()
         ui.removeCallbacksAndMessages(null)
         pulseAnims.forEach { it.cancel() }
+        verBlink?.cancel(); verBlink = null   // הבהובי שורת החיוויים - שלא יחזיקו את המסך הישן
+        srvBlink?.cancel(); srvBlink = null
         recentList = null; recentSegView = null
         super.onDestroy()
     }
@@ -902,7 +904,13 @@ class MainActivity : Activity() {
     /** כל העמודים הפתוחים (הגדרות, תת-עמודים, התרעות) - כדי שהתפריט התחתון יסגור את כולם במעבר */
     internal val pages = mutableListOf<android.app.Dialog>()
 
-    companion object { internal var reopenDisplay = false }
+    companion object {
+        internal var reopenDisplay = false
+        /** סטטי - סיבוב המסך לא מפעיל בדיקת עדכונים חדשה */
+        internal var updateCheckedAt = 0L
+        /** סטטי - בקשת "מסך נעילה" לא חוזרת אחרי סיבוב */
+        internal var lockAsked = false
+    }
 
     /** ערכת הצבעים נשמרת מיד, ומוחלת (טעינה מחדש) רק ביציאה מעמוד התצוגה - בלי קפיצות בזמן הבחירה */
     internal var themeAtOpen = -1
@@ -952,7 +960,6 @@ class MainActivity : Activity() {
         }
         return super.dispatchTouchEvent(ev)
     }
-    internal var lockAsked = false
 }
 
 /** פריסה שעוטפת שורות - לתגיות האזורים */

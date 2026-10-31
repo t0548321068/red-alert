@@ -65,10 +65,15 @@ class AlertService : Service() {
                 val staleIn = serverHbAt(c) + Config.serverStaleMs - System.currentTimeMillis() + 5_000
                 minOf(Config.watchdogServerMs, staleIn.coerceAtLeast(60_000))
             } else Config.watchdogMs
+            // מדויקת כשמותר - רק אזעקה מדויקת מאפשרת להחזיר שירות שנסגר (אנדרואיד 12+)
+            val at = android.os.SystemClock.elapsedRealtime() + delay
             try {
-                am.setAndAllowWhileIdle(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                    android.os.SystemClock.elapsedRealtime() + delay, pi)
-            } catch (_: Exception) { }
+                if (Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms())
+                    am.setExactAndAllowWhileIdle(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP, at, pi)
+                else am.setAndAllowWhileIdle(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP, at, pi)
+            } catch (_: Exception) {
+                try { am.setAndAllowWhileIdle(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP, at, pi) } catch (_: Exception) { }
+            }
         }
 
         /** האם היה אירוע ב-10 הדקות האחרונות (אז בודקים את כל המקורות בתדירות גבוהה) */
@@ -251,6 +256,9 @@ class AlertService : Service() {
     private val DEDUP_MS = Prefs.DUP_MS
     /** התראות מאותו סוג בתוך דקה וחצי = אותו אירוע -> שורה אחת ברשימה */
     private val MERGE_MS = 90 * 1000L
+    private val ALERT_DUP_MS = 2 * 60 * 1000L
+    /** דור הצליל - ראו fire() */
+    @Volatile private var soundGen = 0
 
     /** מפתח ליישוב - אותו יישוב בכל המקורות ("תל אביב - מרכז העיר" = "תל אביב" = "תל-אביב") */
     private fun key(area: String, level: Int) = Prefs.areaKey(area) + "|" + level
@@ -403,6 +411,7 @@ class AlertService : Service() {
             return START_STICKY
         }
         if (intent?.action == ACTION_SILENCE) {
+            soundGen++   // לפני עצירת ההקראה - סוף ההקראה לא יפעיל את הצופר
             speaker?.stop()
             main.post { ringtone?.stop(); stopSpeaker(); main.removeCallbacks(releaseFocus); releaseFocus.run() }
             Vibes.stop(this)
@@ -442,6 +451,7 @@ class AlertService : Service() {
     override fun onDestroy() {
         if (instance === this) instance = null
         running = false
+        soundGen++
         speaker?.shutdown()
         tzofar?.stop()
         telegram.forEach { it.stop() }
@@ -597,11 +607,14 @@ class AlertService : Service() {
         }.start()
     }
 
-    @Synchronized
+    // מנעול נפרד: בדיקת הגרסה (רשת, עד עשרות שניות) לא תעכב את handle() של התרעות
+    private val updLock = Any()
     private fun notifyIfNewVersion(): Boolean {
         val v = Updater.pendingVersion(this) ?: return false
-        if (Prefs.notifiedVersion(this) == v) return true
-        Prefs.setNotifiedVersion(this, v)
+        synchronized(updLock) {
+            if (Prefs.notifiedVersion(this) == v) return true
+            Prefs.setNotifiedVersion(this, v)
+        }
         val n = Notification.Builder(this, CH_UPDATE)
             .setSmallIcon(R.drawable.ic_stat_siren)
             .setLargeIcon(android.graphics.drawable.Icon.createWithResource(this, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
@@ -687,10 +700,12 @@ class AlertService : Service() {
             later { try { Prefs.addFeed(this, e, MERGE_MS) } catch (_: Exception) { } }
         }
 
+        // ירי: אותו יישוב שוב אחרי יותר מ-2 דקות = מטח חדש (כמו בשרת). בשאר הסוגים - 5 דקות
+        val dup = if (level == LEVEL_ALERT) ALERT_DUP_MS else DEDUP_MS
         val fresh = mine(this, areas)
             .filter { a ->
                 val prev = seen[key(a, level)]
-                prev == null || eventTime - prev > DEDUP_MS
+                prev == null || eventTime - prev > dup
             }
         if (fresh.isEmpty()) return
         awake(60_000)   // התרעה באזור שלי - הטלפון נשאר ער לזמן הטיפול בה
@@ -704,6 +719,19 @@ class AlertService : Service() {
             (now - last.second < MERGE_MS || (level == LEVEL_END && now - last.second < DEDUP_MS))) {
             later { try { Prefs.mergeFirstHistory(this, fresh); AlertWidget.updateAll(this) } catch (_: Exception) { } }
             return
+        }
+        // ירי פעיל (עד סוף השהייה במרחב המוגן): מקדימה, או סיום שלא כולל את אזורי הירי -
+        // נרשמים בהיסטוריה בלי להחליף את מסך הירי ואת ספירת השהייה
+        if (level != LEVEL_ALERT && Prefs.stayUntil(this) > now) {
+            val act = Prefs.activeAlert(this)?.takeIf { it.optInt("level") == LEVEL_ALERT }
+            val fired = act?.optString("mapAreas")?.split(", ")?.map { it.trim() }?.toSet() ?: emptySet()
+            val endsMine = level == LEVEL_END && fresh.any { it in fired }
+            if (act != null && !endsMine) {
+                val e = Prefs.Entry(java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date()),
+                    title, fresh.joinToString(", "), level, now, if (source.isEmpty()) "" else SourceHealth.name(source))
+                later { try { Prefs.addHistory(this, e); AlertWidget.updateAll(this) } catch (_: Exception) { } }
+                return
+            }
         }
         lastFired = level to now
         fire(title, fresh, source = source)
@@ -879,24 +907,29 @@ class AlertService : Service() {
         // עקיפת מצב שקט: הטלפון על שקט/רטט - הטלפון לא ישמיע, אז האפליקציה משמיעה בעצמה.
         // כמו בצופר: מעבירים את הטלפון לרגיל לזמן ההתרעה ומשמיעים (צליל והקראה) בעוצמת ההתראות, ואז מחזירים.
         // אם אי אפשר (אין הרשאת נא לא להפריע / עוצמת ההתראות על 0) - בעוצמת השעון המעורר, כמו קודם
+        // דור הצליל של ההתרעה הזו: "השתק", סגירת השירות או התרעה חדשה מעלים אותו - וצליל שעוד לא התחיל לא יתחיל
+        val gen = ++soundGen
         val speakNow = !quiet && !muted && (Prefs.speakAlerts(this) || shabbat) &&
             !(test && !Prefs.testSpeak(this))   // בבדיקה - אפשר לבטל את ההקראה
-        val ringerNow = (getSystemService(AUDIO_SERVICE) as android.media.AudioManager).ringerMode
+        val am0 = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+        val inCall = am0.mode == android.media.AudioManager.MODE_IN_CALL || am0.mode == android.media.AudioManager.MODE_IN_COMMUNICATION
+        val ringerNow = am0.ringerMode
         val bypass = PHONE_DEFAULTS && (shabbat || Prefs.bypassSilent(this)) && !quiet && !muted &&
             ringerNow != android.media.AudioManager.RINGER_MODE_NORMAL
-        val viaNotif = bypass && !Prefs.loudSound(this) && (snd || speakNow) &&
+        val viaNotif = !inCall && bypass && !Prefs.loudSound(this) && (snd || speakNow) &&
             ringerToNormal(if (level == LEVEL_ALERT) 30_000L else 15_000L)
         speaker?.usage = if (viaNotif) AudioAttributes.USAGE_NOTIFICATION else AudioAttributes.USAGE_ALARM
 
         // בשיחה (רגילה או וואטסאפ): הטלפון משתיק את צליל ההתראה - משמיעים צפצופים והקראה באוזן של השיחה.
         // אוזניות מחוברות: הצופר וההקראה יוצאים גם מהרמקול של הטלפון (אם האוזניות לא באוזן - עדיין שומעים)
-        val am0 = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
-        val inCall = am0.mode == android.media.AudioManager.MODE_IN_CALL || am0.mode == android.media.AudioManager.MODE_IN_COMMUNICATION
-        val headset = !inCall && Prefs.speakerWithHeadset(this) && headsetOn(am0)
+        // אוזניות: רק כשהטלפון היה משמיע בכל מקרה (רגיל / עקיפת שקט / צליל חזק) - לא מעקפים מצב שקט בגלל אוזניות
+        val headset = !inCall && (ringerNow == android.media.AudioManager.RINGER_MODE_NORMAL || bypass || Prefs.loudSound(this)) &&
+            Prefs.speakerWithHeadset(this) && headsetOn(am0)
         speaker?.preferSpeaker = headset
         if (inCall) speaker?.usage = AudioAttributes.USAGE_VOICE_COMMUNICATION
 
         val playSound = playSound@{
+            if (gen != soundGen) return@playSound
             if (inCall) { if (snd && !quiet) callBeeps(level); return@playSound }
             if (headset && snd && !quiet) {
                 if (!muted && Prefs.loudSound(this)) boostAlarmVolume(if (level == LEVEL_ALERT) 15000L else 4000L)
@@ -931,7 +964,7 @@ class AlertService : Service() {
         if (speakNow && inCall) {
             // בשיחה: קודם הצפצופים, ואז ההקראה באוזן
             if (snd && !quiet) callBeeps(level)
-            main.postDelayed({ speaker?.speakAlert(title, areas, shelterSec) { } }, if (snd && !quiet) 2600L else 0L)
+            main.postDelayed({ if (gen == soundGen) speaker?.speakAlert(title, areas, shelterSec) { } }, if (snd && !quiet) 2600L else 0L)
         } else if (speakNow) {
             val started = java.util.concurrent.atomic.AtomicBoolean(false)
             val once = { if (started.compareAndSet(false, true)) main.post { playSound() } }
@@ -1109,7 +1142,8 @@ class AlertService : Service() {
                     .build()
                 play()
             }
-            main.postDelayed({ ringtone?.stop() }, durationMs)
+            val r = ringtone
+            main.postDelayed({ if (ringtone === r) r?.stop() }, durationMs)
         }
     }
 
@@ -1154,7 +1188,8 @@ class AlertService : Service() {
                     prepare(); start()
                 }
             } catch (_: Exception) { stopSpeaker(); playAlarm(level, RingtoneManager.TYPE_ALARM, durationMs, usage) }
-            main.postDelayed({ stopSpeaker() }, durationMs)
+            val p = spk
+            main.postDelayed({ if (spk === p) stopSpeaker() }, durationMs)
         }
     }
     private fun stopSpeaker() {

@@ -20,7 +20,14 @@ const seen = new Set();
 function connect() {
   const ws = new WebSocket('wss://ws.tzevaadom.co.il/socket?platform=ANDROID',
     { headers: { Origin: 'https://www.tzevaadom.co.il', 'User-Agent': 'Mozilla/5.0 RedAlertPush' } });
-  const alive = setInterval(() => { try { ws.ping(); } catch (_) {} }, 30000);
+  // חיבור "חצי פתוח" (בלי pong מאז הבדיקה הקודמת) - סוגרים, ו-close מתחבר מחדש
+  let isAlive = true;
+  ws.on('pong', () => { isAlive = true; });
+  const alive = setInterval(() => {
+    if (!isAlive) { log('tzofar no pong'); try { ws.terminate(); } catch (_) {} return; }
+    isAlive = false;
+    try { ws.ping(); } catch (_) {}
+  }, 30000);
   ws.on('open', () => { setTzofar(true); log('tzofar connected'); });
   ws.on('message', buf => {
     try {

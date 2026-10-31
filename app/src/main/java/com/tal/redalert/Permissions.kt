@@ -111,17 +111,17 @@ internal fun MainActivity.openNotificationSettings() {
 
 /** אנדרואיד 14+: בלי ההרשאה הזו ההתראה לא נדלקת על מסך נעילה */
 internal fun MainActivity.askLockScreen() {
-    if (lockAsked || Build.VERSION.SDK_INT < 34 || !Prefs.enabled(this)) return
+    if (MainActivity.lockAsked || Build.VERSION.SDK_INT < 34 || !Prefs.enabled(this)) return
     // עם "הצגה מעל אפליקציות" המסך נדלק ומוצג גם בלי ההרשאה הזו - לא מציקים
     if (Settings.canDrawOverlays(this)) return
     val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     if (nm.canUseFullScreenIntent()) return
-    lockAsked = true
+    MainActivity.lockAsked = true
     AppSheet.show(this, "התראה על מסך נעילה",
         "כדי שההתראה תידלק מיד כשהמסך כבוי – צריך לאשר \"התראות במסך מלא\".", "אישור", {
             startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
                 .setData(Uri.parse("package:$packageName")))
-        }, cancel = "לא עכשיו")
+        }, cancel = "לא עכשיו")?.let { track(it) }
 }
 
 /**
@@ -175,9 +175,11 @@ internal fun MainActivity.toggleNearMe() {
         // זיהוי ראשון מיד, בלי לחכות לשירות
         Weather.freshLocation(this) { loc ->
             if (loc != null) Thread {
-                val list = AreaData.nearby(this, loc.latitude, loc.longitude)
-                Prefs.setNearbyAreas(this, list)
-                runOnUiThread { refresh() }
+                try {
+                    val list = AreaData.nearby(this, loc.latitude, loc.longitude)
+                    Prefs.setNearbyAreas(this, list)
+                    runOnUiThread { if (!isFinishing && !isDestroyed) refresh() }
+                } catch (_: Exception) { }
             }.start()
         }
         // השירות צריך לעלות מחדש כדי לקבל גישה למיקום ברקע

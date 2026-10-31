@@ -10,15 +10,17 @@ PREV=$(git rev-parse HEAD); NEW=$(git rev-parse FETCH_HEAD)
 [ "$(cat /home/ubuntu/bad_commit 2>/dev/null)" = "$NEW" ] && exit 0
 PKG_OLD=$(git rev-parse HEAD:server/package.json 2>/dev/null)
 git checkout -q -B live "$NEW"
-deps() { [ "$PKG_OLD" != "$(git rev-parse HEAD:server/package.json)" ] && (cd server && npm install --omit=dev --no-audit --no-fund -q); }
+npmi() { (cd server && npm install --omit=dev --no-audit --no-fund -q); }
+# בחזרה לגרסה הקודמת - מתקינים שוב רק אם ההתקנה קדימה רצה (אחרי checkout ההשוואה ל-HEAD כבר לא מראה הבדל)
+DEPS_RAN=0
 back() {
   echo "$NEW" > /home/ubuntu/bad_commit
-  git checkout -q -B live "$PREV"; deps; sudo systemctl restart tzofar
+  git checkout -q -B live "$PREV"; [ "$DEPS_RAN" = 1 ] && npmi; sudo systemctl restart tzofar
   echo "$(date -Is) FAILED ($1) $(git log --oneline -1 "$NEW" 2>/dev/null | head -c 80) - rolled back to $(git log --oneline -1)" >> $LOG
   exit 1
 }
 node --check server/index.js || back "syntax"
-deps
+if [ "$PKG_OLD" != "$(git rev-parse HEAD:server/package.json)" ]; then DEPS_RAN=1; npmi || back "npm"; fi
 sudo systemctl restart tzofar
 sleep 15
 systemctl is-active -q tzofar || back "not running"

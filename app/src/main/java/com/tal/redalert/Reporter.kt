@@ -14,7 +14,8 @@ import java.net.URLEncoder
  * בלי שום מידע אישי - רק המזהה המקוצר של המכשיר (אותו קוד של הבטא)
  */
 object Reporter {
-    private const val SERVER = "http://151.145.91.93:8080"
+    /** קודם https (הדיווח כולל אזורים); אם נכשל (למשל DNS לא עונה) - ישירות לכתובת ה-IP */
+    private val SERVERS = listOf("https://tzofar-app.duckdns.org", "http://151.145.91.93:8080")
     private fun sp(c: Context) = c.getSharedPreferences("reporter", Context.MODE_PRIVATE)
 
     private fun version(c: Context) = try { c.packageManager.getPackageInfo(c.packageName, 0).versionName ?: "" } catch (_: Exception) { "" }
@@ -42,10 +43,7 @@ object Reporter {
         Thread {
             try {
                 val on = Prefs.enabled(c) && !Prefs.scheduleOffNow(c)
-                val u = "$SERVER/ping?d=${Prefs.deviceCode(c)}&v=${enc(version(c))}&m=${enc(Build.MODEL ?: "")}&on=${if (on) 1 else 0}"
-                (URL(u).openConnection() as HttpURLConnection).apply { connectTimeout = 5000; readTimeout = 5000 }.let {
-                    try { it.responseCode } finally { it.disconnect() }
-                }
+                call("/ping?d=${Prefs.deviceCode(c)}&v=${enc(version(c))}&m=${enc(Build.MODEL ?: "")}&on=${if (on) 1 else 0}")
             } catch (_: Exception) { }
             sendCrash(c)
         }.start()
@@ -55,12 +53,7 @@ object Reporter {
         val s = sp(c).getString("crash", null) ?: return
         try {
             val j = JSONObject(s).put("d", Prefs.deviceCode(c)).put("m", Build.MODEL ?: "")
-            val conn = URL("$SERVER/crash").openConnection() as HttpURLConnection
-            conn.connectTimeout = 5000; conn.readTimeout = 5000
-            conn.requestMethod = "POST"; conn.doOutput = true
-            conn.setRequestProperty("Content-Type", "application/json")
-            conn.outputStream.use { it.write(j.toString().toByteArray()) }
-            val code = try { conn.responseCode } finally { conn.disconnect() }
+            val code = call("/crash", j.toString())
             if (code in 200..299 || code == 400) sp(c).edit().remove("crash").apply()   // 400 = פגום, אין טעם לנסות שוב
         } catch (_: Exception) { }
     }
@@ -69,13 +62,25 @@ object Reporter {
     fun sendReport(c: Context, text: String, info: String): Boolean = try {
         val j = JSONObject().put("d", Prefs.deviceCode(c)).put("v", version(c)).put("m", Build.MODEL ?: "")
             .put("text", text).put("info", info)
-        val conn = URL("$SERVER/report").openConnection() as HttpURLConnection
-        conn.connectTimeout = 8000; conn.readTimeout = 8000
-        conn.requestMethod = "POST"; conn.doOutput = true
-        conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-        conn.outputStream.use { it.write(j.toString().toByteArray()) }
-        try { conn.responseCode in 200..299 } finally { conn.disconnect() }
+        call("/report", j.toString(), 8000, "application/json; charset=utf-8") in 200..299
     } catch (_: Exception) { false }
+
+    /** בקשה לשרת (POST כשיש body) - מנסה כל כתובת לפי הסדר. מחזיר קוד תשובה, או -1 אם אף אחת לא ענתה */
+    private fun call(path: String, body: String? = null, timeout: Int = 5000, type: String = "application/json"): Int {
+        for (s in SERVERS) {
+            try {
+                val conn = URL(s + path).openConnection() as HttpURLConnection
+                conn.connectTimeout = timeout; conn.readTimeout = timeout
+                if (body != null) {
+                    conn.requestMethod = "POST"; conn.doOutput = true
+                    conn.setRequestProperty("Content-Type", type)
+                    conn.outputStream.use { it.write(body.toByteArray()) }
+                }
+                return try { conn.responseCode } finally { conn.disconnect() }
+            } catch (_: Exception) { }
+        }
+        return -1
+    }
 
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
 }

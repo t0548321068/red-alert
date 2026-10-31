@@ -74,7 +74,7 @@ object Updater {
             if (!failed) remember(a, u)
             a.runOnUiThread {
                 done?.invoke()   // סיום הבדיקה - למשל עצירת אייקון הטעינה בכפתור
-                if (a.isFinishing) return@runOnUiThread
+                if (a.isFinishing || a.isDestroyed) return@runOnUiThread   // נסגר/נבנה מחדש (סיבוב) בזמן הבדיקה
                 when {
                     u != null ->
                         if (!silent || Prefs.skippedVersion(a) != u.key) offer(a, u)
@@ -198,6 +198,7 @@ object Updater {
                 "\n\n\"מאוחר יותר\" – אפשר לעדכן בכל זמן דרך ⚙ ← בדיקת עדכונים",
             "התקן עכשיו", { download(a, u.label.replace(" ", "-"), u.url) },
             cancel = "מאוחר יותר", onCancel = { Prefs.setSkippedVersion(a, u.key) }, cancelable = false)
+            ?.let { if (a is MainActivity) a.track(it) }   // נסגר יחד עם המסך (סיבוב)
     }
 
     private fun download(a: Activity, version: String, url: String) {
