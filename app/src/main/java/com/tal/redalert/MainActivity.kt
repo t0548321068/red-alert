@@ -637,7 +637,8 @@ class MainActivity : Activity() {
             }
         })
         ui.postDelayed({ if (!ready) { ready = true; slowTick.run(); scroll.invalidate() } }, 1500)
-        if (savedInstanceState == null) askPermissions()   // לא בכל סיבוב / החלפת ערכת צבעים
+        // התקנה חדשה: קודם ההבהרה, ואחרי "הבנתי" ההרשאות. לא בכל סיבוב / החלפת ערכת צבעים
+        if (savedInstanceState == null && !showDisclaimerIfNew { askPermissions() }) askPermissions()
         showWhatsNewIfUpdated()
         // אחרי החלפת ערכת צבעים (האפליקציה נטענת מחדש) - חוזרים להגדרות
         if (reopenDisplay) { reopenDisplay = false; ui.post { showSettings() } }
