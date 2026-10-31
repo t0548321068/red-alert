@@ -188,9 +188,7 @@ internal fun MainActivity.showUpdateCheck() {
                     }
                     failed -> {
                         // ---- אין חיבור ----
-                        // אייקון לפי סוג הרשת: נתונים ניידים - קליטה מנותקת, אחרת - וויפיי מנותק
-                        val noNet = if (network()?.first == "cell") R.drawable.ic_upd_nosignal else R.drawable.ic_upd_nowifi
-                        head("#2C2C2E", "#E5E5EA", noNet, C.MUTED, C.MUTED, "לא ניתן לבדוק כרגע", C.TEXT, "בדוק את החיבור לאינטרנט ונסה שוב")
+                        head("#2C2C2E", "#E5E5EA", R.drawable.ic_upd_offline, C.MUTED, C.MUTED, "לא ניתן לבדוק כרגע", C.TEXT, "בדוק את החיבור לאינטרנט ונסה שוב")
                         val cd = ouiCard()
                         ouiRow(cd, "גרסה מותקנת", end = Updater.versionLabel(this), endColor = C.MUTED)
                         ouiAdd(content, cd)
