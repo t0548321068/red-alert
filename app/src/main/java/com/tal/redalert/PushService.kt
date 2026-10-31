@@ -46,6 +46,7 @@ class PushService : FirebaseMessagingService() {
         if (d["type"] == "hb") {   // סימן חיים מהשרת + אילו מקורות תקינים אצלו
             AlertService.onServerHeartbeat(this, (d["up"] ?: "").split(',').filter { it.isNotEmpty() })
             Reporter.onHeartbeat(this)   // דיווח לאתר: גרסה, דגם, מוגן
+            Thread { try { TimeSync.sync(this) } catch (_: Exception) { } }.start()   // שעון אחיד (לכל היותר פעם בשעה)
             // קבצי הנתונים בשרת השתנו (הגדרות / יישובים / הקלטות) - מורידים מיד
             d["dv"]?.takeIf { it.isNotEmpty() && it != DataFiles.version(this) }?.let { DataFiles.sync(this, force = true) }
             return

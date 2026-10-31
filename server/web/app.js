@@ -252,7 +252,9 @@ function upFor(ms) {
   return d ? `${d} ימים` : h ? `${h} שעות` : `${m} דקות`;
 }
 function loadState() {
+  const t0 = Date.now();
   fetch('/api/state').then(r => { if (r.status === 401) location.reload(); return r.json(); }).then(s => {
+    srvOffset = s.now + (Date.now() - t0) / 2 - Date.now();   // שעון אחיד עם השרת (כמו באפליקציה)
     const up = new Set(s.up);
     const n = SOURCES.filter(([k]) => up.has(k)).length;
     $('srvTx').innerHTML = `<span style="color:${n === SOURCES.length ? 'var(--green)' : n ? 'var(--orange)' : 'var(--red)'}">${n}/${SOURCES.length} מקורות</span> · פועל ${upFor(s.now - s.started)}`;
@@ -372,8 +374,9 @@ $('rstBtn').onclick = () => {
 };
 
 // ---- שעון ----
+let srvOffset = 0;
 function tick() {
-  const d = new Date();
+  const d = new Date(Date.now() + srvOffset);
   $('clock').textContent = hm(d) + ':' + pad(d.getSeconds());
   expire();
   if (myActive()) { renderState(); tickBanner(); }
@@ -393,4 +396,5 @@ loadState(); setInterval(loadState, 30e3);
 loadDevices(); setInterval(loadDevices, 60e3);
 loadServer(); setInterval(() => { loadServer(); }, 15e3);
 connect();
-tick(); setInterval(tick, 1000);
+// מתוזמן לתחילת כל שנייה (לפי שעון השרת) - השניות מתחלפות יחד עם הטלפונים
+(function loop() { tick(); setTimeout(loop, 1000 - (Date.now() + srvOffset) % 1000 + 5); })();

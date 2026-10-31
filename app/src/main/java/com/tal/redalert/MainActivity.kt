@@ -203,7 +203,7 @@ class MainActivity : Activity() {
     internal val tick = object : Runnable {
         override fun run() {
             ui.removeCallbacks(this)
-            val ms = System.currentTimeMillis() % 1000
+            val ms = TimeSync.now(this@MainActivity) % 1000   // לפי שעון השרת - זהה בכל הטלפונים
             ui.postDelayed(this, if (ms < 500) 500 - ms else 1000 - ms)
             try { updateClock() } catch (_: Exception) { }
             // שאר המסך - פעם בשנייה (בתחילת השנייה), ובנפרד מהשעון
@@ -335,7 +335,7 @@ class MainActivity : Activity() {
     }
 
     internal fun updateClock() {
-        val now = System.currentTimeMillis()
+        val now = TimeSync.now(this)
         clockTime.text = TimeFormat.clock(this, now)
         clockDay.text = TimeFormat.dayLine(this, now)
         val g = Prefs.showGreeting(this)
@@ -669,6 +669,7 @@ class MainActivity : Activity() {
         // רשת ביטחון: אם ההאזנה אמורה לפעול - לוודא שהשירות באמת רץ (בטוח לקרוא גם אם כבר רץ)
         if (Prefs.enabled(this)) AlertService.start(this)
         ui.post(tick)
+        Thread { try { TimeSync.sync(this) } catch (_: Exception) { } }.start()   // שעון אחיד עם השרת (לכל היותר פעם בשעה)
         askLockScreen()
         refreshNearby()
         // בכל חזרה לאפליקציה (כולל לחיצה על התראת "גרסה חדשה"), לכל היותר פעם ב-10 דקות
