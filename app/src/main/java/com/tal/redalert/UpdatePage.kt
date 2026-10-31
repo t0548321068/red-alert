@@ -58,7 +58,7 @@ internal fun MainActivity.showUpdateCheck() {
             // הכפתור נבנה אחרי שהבדיקה הראשונה כבר התחילה - מסתירים אותו מיד אם עדיין בודקים
             ui.post { if (checking) (l.parent as? View)?.visibility = View.GONE }
         }) { body, _ ->
-    val blue = Color.parseColor("#4C7DFF"); val orange = Color.parseColor("#FF9F0A"); val green = Color.parseColor("#30D158")
+    val blue = Color.parseColor("#4C7DFF")
     val dark = !C.LIGHT
 
     // ---- ראש העמוד: עיגול, כותרת ושורת משנה ----
@@ -83,11 +83,11 @@ internal fun MainActivity.showUpdateCheck() {
     val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
     body.addView(content)
 
-    /** sym = אייקון המצב; symColor = צבע לאייקון (null - האייקון בצבעים שלו) */
-    fun head(bg: String, bgLight: String, sym: Int, symColor: Int?, ringColor: Int, title: String, titleColor: Int, subText: String) {
+    /** sym = אייקון המצב, בצבע symColor */
+    fun head(bg: String, bgLight: String, sym: Int, symColor: Int, ringColor: Int, title: String, titleColor: Int, subText: String) {
         circleBg.setColor(Color.parseColor(if (dark) bg else bgLight))
         icon.setImageResource(sym)
-        icon.imageTintList = symColor?.let { android.content.res.ColorStateList.valueOf(it) }
+        icon.imageTintList = android.content.res.ColorStateList.valueOf(symColor)
         ring.color = ringColor
         headline.text = title; headline.setTextColor(titleColor)
         sub.text = subText
@@ -171,8 +171,8 @@ internal fun MainActivity.showUpdateCheck() {
                         // ---- יש גרסה חדשה ----
                         val beta = u.key.startsWith("beta")
                         val when_ = det?.date?.takeIf { it > 0 }?.let { "פורסמה " + dateFmt.format(java.util.Date(it)) } ?: ""
-                        head("#3A2A0A", "#FFF1DC", R.drawable.ic_upd_new, orange, orange,
-                            (if (beta) "גרסת בטא זמינה – " else "גרסה חדשה זמינה – ") + u.ver, orange, when_)
+                        head("#162038", "#E3EBFF", R.drawable.ic_upd_new, C.TEXT, blue,
+                            (if (beta) "גרסת בטא זמינה – " else "גרסה חדשה זמינה – ") + u.ver, C.TEXT, when_)
                         val cd = ouiCard()
                         ouiRow(cd, "הגרסה שלך", end = Updater.versionLabel(this), endColor = C.MUTED)
                         ouiDivider(cd)
@@ -195,7 +195,7 @@ internal fun MainActivity.showUpdateCheck() {
                     }
                     else -> {
                         // ---- מעודכן ----
-                        head("#12301A", "#E3F4E5", R.drawable.ic_upd_ok, null, green, "הגרסה שלך מעודכנת", green, "")
+                        head("#162038", "#E3EBFF", R.drawable.ic_upd_ok, C.TEXT, blue, "הגרסה שלך מעודכנת", C.TEXT, "")
                         val cd = ouiCard()
                         ouiRow(cd, "גרסה מותקנת", end = Updater.versionLabel(this), endColor = C.MUTED)
                         ouiDivider(cd)
