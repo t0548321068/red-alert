@@ -54,10 +54,10 @@ internal fun MainActivity.showSettings() {
         "התרעות" to { listOf(
             Row("🔔", "הגדרות התרעות", { "סוג תצוגה · מיקום · אזורים נוספים · צלילים ורטט · הקראה · בדיקה" }) { showAlertSettings() }) },
         "הרשאות" to { phoneRows() },
-        // עדכונים, אודות ויצירת קשר - כל אחד בכרטיס נפרד
+        // עדכונים ואודות - כל אחד בכרטיס נפרד
         "עדכונים" to { listOf(Row("⬆️", "בדיקת עדכונים", { "v" + Updater.versionLabel(this) }) { showUpdates() }) },
-        "אודות" to { listOf(Row("ℹ️", "אודות", { "" }) { showAbout() }) },
-        "יצירת קשר" to { listOf(Row("✉️", "יצירת קשר", { "דיווח על בעיה למפתח" }) { showContact() }) }
+        "אודות" to { listOf(Row("ℹ️", "אודות", { "" }) { showAbout() }) }
+        // יצירת קשר מושהית - כדי להחזיר: "יצירת קשר" to { listOf(Row("✉️", "יצירת קשר", { "דיווח על בעיה למפתח" }) { showContact() }) }
     )
     fun rebuild() {
         body.removeAllViews()
