@@ -22,7 +22,7 @@ function showTitle(t) {
 }
 const COLOR = { alert: '#D50000', pre: '#F08C00', end: '#2E7D32' };
 const ICON = { alert: '🚀', pre: '⚠️', end: '✓' };
-const KEEP = { alert: 10 * 60e3, pre: 20 * 60e3, end: 3 * 60e3 };   // כמה זמן אזור נשאר צבוע על המפה
+const KEEP = { alert: 60 * 60e3, pre: 2 * 60e3, end: 60e3 };   // כמה זמן כל צבע מוצג: כתום 2 דק', ירוק דקה, אדום עד הסיום (רשת ביטחון: שעה)
 
 let MIGUN = {};    // יישוב -> שניות להגיע למרחב מוגן
 let mine = store.get('mine', []);
