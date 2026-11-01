@@ -31,6 +31,15 @@ object MiniOverlay {
 
     fun isShowing() = view != null
 
+    /** סגירה אוטומטית לפי הצבע: מקדימה אחרי 2 דקות, סיום אחרי דקה (ירי - עד הסיום) */
+    private var autoHide: Runnable? = null
+    private fun scheduleHide(app: Context, at: Long) {
+        autoHide?.let { ui.removeCallbacks(it) }
+        val r = Runnable { hide(app) }
+        autoHide = r
+        ui.postDelayed(r, (at - System.currentTimeMillis()).coerceAtLeast(1000L))
+    }
+
     private const val RED = "#D50000"
     private const val GREEN = "#2E7D32"    // האירוע הסתיים - ניתן לצאת
 
@@ -53,6 +62,7 @@ object MiniOverlay {
             AlertService.LEVEL_END -> "#2E7D32"
             else -> "#D50000"
         }
+        AlertUi.keepMs(level)?.let { scheduleHide(app, firedAt + it) }
 
         // סגנון One UI: גלולה - כותרת + אזור · זמן התגוננות + טיימר · ✕ בעיגול
         fun circle(icon: Int, size: Int) = android.widget.FrameLayout(app).apply {
@@ -172,10 +182,12 @@ object MiniOverlay {
         timerV?.textSize = 12f; timerV?.text = "ניתן לצאת\nמהמרחב המוגן"
         (timerV?.parent as? View)?.visibility = View.VISIBLE
         if (area.isNotEmpty()) { areaV?.text = area; areaV?.visibility = View.VISIBLE }
+        view?.context?.let { scheduleHide(it.applicationContext, System.currentTimeMillis() + (AlertUi.keepMs(AlertService.LEVEL_END) ?: 60_000L)) }
     }
 
     fun hide(c: Context) {
         tick?.let { ui.removeCallbacks(it) }; tick = null
+        autoHide?.let { ui.removeCallbacks(it) }; autoHide = null
         bg = null; labelV = null; areaV = null; timerV = null; timerLabelV = null; iconV = null
         val v = view ?: return
         view = null

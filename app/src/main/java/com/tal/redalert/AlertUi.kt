@@ -67,13 +67,17 @@ object AlertUi {
         return if (left > 0) "נשארים במרחב המוגן" to mmss(left) else "" to "ממתינים להודעת סיום אירוע"
     }
 
-    /** הכרטיס מעל השעון נעלם: סיום אחרי 10 דק', מקדימה אחרי 30, ירי אחרי שעה (אם לא הגיעה הודעת סיום) */
-    fun expired(level: Int, firedAt: Long, now: Long = System.currentTimeMillis()): Boolean {
-        val keep = when (level) {
-            AlertService.LEVEL_END -> 10 * 60_000L
-            AlertService.LEVEL_PRE -> 30 * 60_000L
-            else -> 60 * 60_000L
-        }
-        return now - firedAt > keep
+    /**
+     * כמה זמן כל צבע מוצג: כתום (מקדימה) 2 דקות, ירוק (סיום) דקה.
+     * אדום (ירי) - עד הודעת הסיום; null = בלי זמן קבוע
+     */
+    fun keepMs(level: Int): Long? = when (level) {
+        AlertService.LEVEL_PRE -> 2 * 60_000L
+        AlertService.LEVEL_END -> 60_000L
+        else -> null
     }
+
+    /** הכרטיס מעל השעון נעלם לפי keepMs. ירי - עד הסיום (רשת ביטחון: שעה, אם הודעת הסיום לא הגיעה בכלל) */
+    fun expired(level: Int, firedAt: Long, now: Long = System.currentTimeMillis()): Boolean =
+        now - firedAt > (keepMs(level) ?: 60 * 60_000L)
 }
