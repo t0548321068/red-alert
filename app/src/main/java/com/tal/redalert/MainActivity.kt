@@ -695,6 +695,7 @@ class MainActivity : Activity() {
         ui.removeCallbacks(tick); ui.removeCallbacks(slowTick)
         pulseAnims.forEach { it.pause() }   // האנימציה לא רצה כשהאפליקציה ברקע
         verBlink?.pause(); srvBlink?.pause()
+        ui.removeCallbacks(srvAlt); srvColors = null   // ההחלפה מתחדשת בחזרה לאפליקציה
         super.onPause()
     }
 
@@ -957,6 +958,19 @@ class MainActivity : Activity() {
     internal var verBlink: android.animation.ValueAnimator? = null
     /** "מתחבר…" מהבהב עד שמתחבר */
     internal var srvBlink: android.animation.ObjectAnimator? = null
+    /** חיווי החיבור: הכיתוב והצבעים הנוכחיים (צבע שני = מתחלפים כל חצי שנייה) */
+    internal var srvLabel = ""
+    internal var srvColors: Pair<Int, Int?>? = null
+    internal var srvAltOn = false
+    internal val srvAlt: Runnable = object : Runnable {
+        override fun run() {
+            val (c1, c2) = srvColors ?: return
+            if (c2 == null) return
+            srvAltOn = !srvAltOn
+            setInd(srvInd, R.drawable.ic_antenna, srvLabel, if (srvAltOn) c2 else c1)
+            ui.postDelayed(this, 500)
+        }
+    }
     /** תוצאת "בדוק את השרתים" האחרונה: מתי, ואילו מקורות תקינים בשרת (null = השרת לא ענה) */
     internal var srvCheckAt = 0L
     internal var srvCheckUp: List<String>? = null

@@ -175,21 +175,37 @@ internal fun MainActivity.updateIndicators() {
     if (locationOn()) setInd(locInd, R.drawable.ic_location, acc, if (hasPrecise()) C.GREEN else C.ORANGE)
     else setInd(locInd, R.drawable.ic_location, "כבוי", C.MUTED)
 
-    if (!Prefs.enabled(this)) {
-        setInd(srvInd, R.drawable.ic_antenna, "לא מחובר", C.MUTED); blinkServer(false)
-    } else {
-        // השרת שלנו מחובר - ירוק קבוע; מתחבר (עוד לא הגיע סימן חיים) - ירוק מהבהב;
-        // השרת לא זמין והטלפון בודק בעצמו (גיבוי) - כתום "מחובר"; אין שום מקור - אדום
-        val (label, color, blink) = when {
-            AlertService.serverOk(this) -> Triple("מחובר", C.GREEN, false)
-            serverConnecting() -> Triple("מתחבר…", C.GREEN, true)
-            SourceHealth.upCount() > 0 -> Triple("מחובר", C.ORANGE, false)
-            SourceHealth.anyConnecting() -> Triple("מתחבר…", C.ORANGE, true)
-            else -> Triple("לא מחובר", C.RED, false)
+    // חיווי החיבור - הצבע לפי כמה מקורות עובדים ומי בודק אותם (השרת / הטלפון בגיבוי):
+    // השרת: כולם - ירוק | חלק - ירוק↔כתום | אף אחד - ירוק↔אדום
+    // הטלפון: מתחבר - כתום מהבהב | כולם - כתום | חלק - כתום↔אדום | אף אחד - אדום
+    // (החלפה = חצי שנייה כל צבע). כבוי - אפור
+    val up = SourceHealth.upCount(); val all = SourceHealth.total()
+    data class S(val label: String, val c1: Int, val c2: Int? = null, val blink: Boolean = false)
+    val s = when {
+        !Prefs.enabled(this) -> S("לא מחובר", C.MUTED)
+        AlertService.serverOk(this) -> when {
+            up >= all -> S("מחובר", C.GREEN)
+            up == 0 -> S("מחובר", C.GREEN, C.RED)
+            else -> S("מחובר", C.GREEN, C.ORANGE)
         }
-        setInd(srvInd, R.drawable.ic_antenna, label, color)
-        blinkServer(blink)
+        SourceHealth.anyConnecting() && up < all -> S("מתחבר…", C.ORANGE, blink = true)
+        up >= all -> S("מחובר", C.ORANGE)
+        up == 0 -> S("לא מחובר", C.RED)
+        else -> S("מחובר", C.ORANGE, C.RED)
     }
+    srvLabel = s.label
+    setSrvColors(s.c1, s.c2)
+    blinkServer(s.blink)
+}
+
+/** צבע חיווי החיבור; עם צבע שני - מתחלפים כל חצי שנייה */
+internal fun MainActivity.setSrvColors(c1: Int, c2: Int?) {
+    if (srvColors == c1 to c2) { if (c2 == null) setInd(srvInd, R.drawable.ic_antenna, srvLabel, c1); return }
+    srvColors = c1 to c2
+    ui.removeCallbacks(srvAlt)
+    srvAltOn = false
+    setInd(srvInd, R.drawable.ic_antenna, srvLabel, c1)
+    if (c2 != null) ui.postDelayed(srvAlt, 500)
 }
 
 /** השרת שלנו מתחבר: עוד לא הגיע סימן חיים, וסימן החיים הראשון מגיע תוך 10 דקות מהפעלת ההאזנה */
