@@ -188,7 +188,7 @@ function connect() {
   // בכניסה לאתר השרת שולח קודם את חצי השעה האחרונה ואז "ready" - אלה מוצגות בשקט (בלי צופר ובלי מסך אדום).
   // בחיבור מחדש - מה שלא ראינו (הגיע בזמן הניתוק) מופעל כרגיל, ומה שכבר ראינו מדולג
   let quiet = firstConn;
-  es.onopen = () => { $('live').className = 'live on'; $('liveTx').textContent = 'מחובר'; };
+  es.onopen = () => { $('live').className = 'live on' + liveSrc; $('liveTx').textContent = 'מחובר'; };
   es.addEventListener('ready', () => { quiet = false; firstConn = false; });
   es.addEventListener('alert', e => { try { onAlert(JSON.parse(e.data), quiet); } catch (_) {} });
   es.onerror = () => {
@@ -251,12 +251,14 @@ function upFor(ms) {
   const m = Math.floor(ms / 60e3), h = Math.floor(m / 60), d = Math.floor(h / 24);
   return d ? `${d} ימים` : h ? `${h} שעות` : `${m} דקות`;
 }
+let liveSrc = '';   // חלק מהמקורות / אף אחד - לצבע החיווי
 function loadState() {
   const t0 = Date.now();
   fetch('/api/state').then(r => { if (r.status === 401) location.reload(); return r.json(); }).then(s => {
     srvOffset = s.now + (Date.now() - t0) / 2 - Date.now();   // שעון אחיד עם השרת (כמו באפליקציה)
     const up = new Set(s.up);
     const n = SOURCES.filter(([k]) => up.has(k)).length;
+    liveSrc = n === SOURCES.length ? '' : n ? ' part' : ' none'; if ($('live').classList.contains('on')) $('live').className = 'live on' + liveSrc;
     $('srvTx').innerHTML = `<span style="color:${n === SOURCES.length ? 'var(--green)' : n ? 'var(--orange)' : 'var(--red)'}">${n}/${SOURCES.length} מקורות</span> · פועל ${upFor(s.now - s.started)}`;
     $('sources').innerHTML = SOURCES.map(([k, name]) => `<div class="row"><span class="src-dot" style="background:${up.has(k) ? 'var(--green)' : 'var(--red)'}"></span>${name}<span class="end">${up.has(k) ? 'עובד' : 'לא עונה'}</span></div>`).join('')
       + `<div class="row" style="color:var(--muted);font-size:13px">גרסה אחרונה: ${esc(s.version || '–')} · נתונים: ${esc(s.data || '–')}</div>`;
