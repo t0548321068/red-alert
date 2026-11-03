@@ -11,7 +11,7 @@ const agent = new https.Agent({ keepAlive: true, maxSockets: 2 });
 function fetchLive() {
   return new Promise(resolve => {
     const req = https.get({
-      host: 'www.oref.org.il', path: '/WarningMessages/alert/alerts.json?t=' + Date.now(), agent, timeout: 4000,
+      host: 'www.oref.org.il', path: '/warningMessages/alert/Alerts.json?t=' + Date.now(), agent, timeout: 4000,
       headers: { ...OREF_H, Referer: 'https://www.oref.org.il/', 'User-Agent': 'Mozilla/5.0 RedAlertPush' },
     }, res => {
       const bufs = [];
