@@ -23,7 +23,7 @@ import java.net.URL
 class AlertService : Service() {
 
     companion object {
-        private const val URL_ALERTS = "https://www.oref.org.il/WarningMessages/alert/alerts.json"
+        private const val URL_ALERTS = "https://www.oref.org.il/warningMessages/alert/Alerts.json"   // הכתובת החדשה (נובמבר 2026) - הישנה מחזירה 404
         private const val URL_HISTORY = "https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json"
         private const val URL_ARCHIVE = "https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=1"
         private const val POLL_MS = 2000L
