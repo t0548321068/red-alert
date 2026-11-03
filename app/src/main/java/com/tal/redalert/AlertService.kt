@@ -131,10 +131,16 @@ class AlertService : Service() {
          */
         /** מתי הגיע סימן החיים האחרון מהשרת (0 = עוד לא) */
         fun serverHbAt(c: Context): Long = c.getSharedPreferences("server", Context.MODE_PRIVATE).getLong("hb", 0L)
+        /** השרת עלה לאחרונה והמקורות שלו עוד מתחברים (לפי סימן החיים האחרון, לכל היותר 11 דקות) */
+        fun serverSourcesConnecting(c: Context): Boolean {
+            val sp = c.getSharedPreferences("server", Context.MODE_PRIVATE)
+            return sp.getBoolean("cn", false) && System.currentTimeMillis() - sp.getLong("hb", 0L) < 11 * 60 * 1000L
+        }
         fun serverOk(c: Context): Boolean = System.currentTimeMillis() - serverHbAt(c) < Config.serverStaleMs
-        fun onServerHeartbeat(c: Context, up: List<String>) {
+        fun onServerHeartbeat(c: Context, up: List<String>, connecting: Boolean = false) {
             val now = System.currentTimeMillis()
-            c.getSharedPreferences("server", Context.MODE_PRIVATE).edit().putLong("hb", now).putString("up", up.joinToString(",")).apply()
+            c.getSharedPreferences("server", Context.MODE_PRIVATE).edit().putLong("hb", now).putString("up", up.joinToString(","))
+                .putBoolean("cn", connecting).apply()
             SourceHealth.viaServer(up, now)
             instance?.syncLocalSources()
         }

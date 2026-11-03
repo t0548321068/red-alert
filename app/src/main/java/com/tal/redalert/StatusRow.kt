@@ -176,7 +176,7 @@ internal fun MainActivity.updateIndicators() {
     else setInd(locInd, R.drawable.ic_location, "כבוי", C.MUTED)
 
     // חיווי החיבור - הצבע לפי כמה מקורות עובדים ומי בודק אותם (השרת / הטלפון בגיבוי):
-    // השרת: כולם - ירוק | חלק - ירוק↔כתום | אף אחד - ירוק↔אדום
+    // השרת: כולם - ירוק | מתחברים (השרת עלה עכשיו) - ירוק מהבהב | חלק - ירוק↔כתום | אף אחד - ירוק↔אדום
     // הטלפון: מתחבר - כתום מהבהב | כולם - כתום | חלק - כתום↔אדום | אף אחד - אדום
     // (החלפה = חצי שנייה כל צבע). כבוי - אפור
     val up = SourceHealth.upCount(); val all = SourceHealth.total()
@@ -185,6 +185,7 @@ internal fun MainActivity.updateIndicators() {
         !Prefs.enabled(this) -> S("לא מחובר", C.MUTED)
         AlertService.serverOk(this) -> when {
             up >= all -> S("מחובר", C.GREEN)
+            AlertService.serverSourcesConnecting(this) -> S("מתחבר…", C.GREEN, blink = true)
             up == 0 -> S("מחובר", C.GREEN, C.RED)
             else -> S("מחובר", C.GREEN, C.ORANGE)
         }
