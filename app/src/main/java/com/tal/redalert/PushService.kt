@@ -44,7 +44,7 @@ class PushService : FirebaseMessagingService() {
     override fun onMessageReceived(msg: RemoteMessage) {
         val d = msg.data
         if (d["type"] == "hb") {   // סימן חיים מהשרת + אילו מקורות תקינים אצלו
-            AlertService.onServerHeartbeat(this, (d["up"] ?: "").split(',').filter { it.isNotEmpty() })
+            AlertService.onServerHeartbeat(this, (d["up"] ?: "").split(',').filter { it.isNotEmpty() }, d["cn"] == "1")
             Reporter.onHeartbeat(this)   // דיווח לאתר: גרסה, דגם, מוגן
             Thread { try { TimeSync.sync(this) } catch (_: Exception) { } }.start()   // שעון אחיד (לכל היותר פעם בשעה)
             // קבצי הנתונים בשרת השתנו (הגדרות / יישובים / הקלטות) - מורידים מיד

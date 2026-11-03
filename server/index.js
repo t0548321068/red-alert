@@ -30,9 +30,11 @@ process.on('unhandledRejection', e => log('unhandled', e && e.stack || e));
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { push.saveNow(); devices.saveNow(); process.exit(0); });
 
 // ---- סימן חיים ----
-const heartbeat = () => push.heartbeat(health.upList(), files.dataIndex.v);
+// בחמש הדקות הראשונות אחרי עלייה - המקורות עוד מתחברים
+const heartbeat = () => push.heartbeat(health.upList(), files.dataIndex.v, Date.now() - health.STARTED < 5 * 60 * 1000);
 setInterval(heartbeat, 10 * 60 * 1000);
 setTimeout(heartbeat, 20 * 1000);
+setTimeout(heartbeat, 5 * 60 * 1000 + 10 * 1000);   // סיום ההתחברות - מיד, בלי לחכות לסימן החיים הבא
 
 // ---- הגנה: עד 60 בקשות בדקה מכל כתובת; מזג אוויר וזמני שבת רק למיקומים בישראל ----
 const ipHits = new Map();
