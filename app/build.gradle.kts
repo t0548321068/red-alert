@@ -12,8 +12,8 @@ android {
         applicationId = "com.tal.redalert"
         minSdk = 26
         targetSdk = 35
-        versionCode = 313
-        versionName = "3.28b"
+        versionCode = 314
+        versionName = "3.29"
         // מספר בנייה (עולה בכל בנייה) + האם זו גרסת בטא (כל ענף שאינו main)
         val runNum = System.getenv("GITHUB_RUN_NUMBER") ?: "0"
         val branch = System.getenv("GITHUB_REF_NAME") ?: "main"
