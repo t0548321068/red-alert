@@ -36,6 +36,8 @@ object SourceHealth {
     @Volatile private var serverUp: Set<String> = emptySet()
     @Volatile private var serverAt = 0L
     fun viaServer(up: List<String>, at: Long) { serverUp = up.toSet(); serverAt = at }
+    /** השרת מדווח שהמקור עובד אצלו (לפי סימן החיים האחרון) */
+    fun serverHas(key: String) = key in serverUp
     /** מתי ההאזנה התחילה (0 = עוד לא) */
     fun startedAt() = startedAt
     fun setOpen(key: String, v: Boolean) { open[key] = v; if (v) ok(key) }

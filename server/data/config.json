@@ -93,6 +93,10 @@
    ]
   }
  ],
+ "phoneOref": {
+  "_": "true = כשהשרת חסום אצל פיקוד העורף, הטלפון בודק את הקובץ החי בעצמו (צורך סוללה). false = לא",
+  "whenServerBlocked": false
+ },
  "timings": {
   "watchdogMin": 5,
   "watchdogServerMin": 15,

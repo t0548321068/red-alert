@@ -48,4 +48,6 @@ object Config {
     val watchdogMs get() = minutes("watchdogMin", 5)
     val watchdogServerMs get() = minutes("watchdogServerMin", 15)
     val serverStaleMs get() = minutes("serverStaleMin", 35)
+    /** כשהשרת חסום אצל פיקוד העורף - הטלפון בודק את הקובץ החי בעצמו (מופעל/מכובה מהשרת, בלי עדכון גרסה) */
+    val phoneOrefWhenServerBlocked get() = cfg().optJSONObject("phoneOref")?.optBoolean("whenServerBlocked", false) ?: false
 }
