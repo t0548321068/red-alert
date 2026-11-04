@@ -22,7 +22,6 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.Switch
 import android.widget.TextView
 
 /** מסך אחד: הקלדת המפתח בפעם הראשונה, ואחר כך מצב הממסר (מתעדכן כל שנייה) */
@@ -140,21 +139,17 @@ class MainActivity : Activity() {
             addView(text(sub, 12f, MUTED).apply { gravity = Gravity.CENTER })
         })
         divider(top)
+        // מתג כמו בצופר חירום: נגיעה בשורה מדליקה / מכבה
+        val enabled = Relay.enabled(this)
         top.addView(LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(10), dp(18), dp(10))
+            gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(16), dp(18), dp(16))
             addView(text("ממסר", 15f), LinearLayout.LayoutParams(0, -2, 1f))
-            addView(Switch(this@MainActivity).apply {
-                // כחול כשפעיל (כמו בצופר חירום) - בלי צבע ברירת המחדל של הטלפון
-                val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
-                thumbTintList = android.content.res.ColorStateList(states, intArrayOf(Color.WHITE, Color.parseColor("#E0E0E0")))
-                trackTintList = android.content.res.ColorStateList(states, intArrayOf(BLUE, Color.parseColor("#5A5A5E")))
-                trackTintMode = android.graphics.PorterDuff.Mode.SRC_IN
-                isChecked = Relay.enabled(this@MainActivity)
-                setOnCheckedChangeListener { _, v ->
-                    Relay.setEnabled(this@MainActivity, v)
-                    if (v) RelayService.start(this@MainActivity) else RelayService.stop(this@MainActivity)
-                }
-            })
+            addView(OuiSwitch(this@MainActivity, enabled, false))
+            setOnClickListener {
+                Relay.setEnabled(this@MainActivity, !enabled)
+                if (!enabled) RelayService.start(this@MainActivity) else RelayService.stop(this@MainActivity)
+                build()
+            }
         })
         add(top)
 
