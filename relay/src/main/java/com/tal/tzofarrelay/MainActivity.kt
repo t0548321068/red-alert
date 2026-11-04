@@ -144,6 +144,11 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(10), dp(18), dp(10))
             addView(text("ממסר", 15f), LinearLayout.LayoutParams(0, -2, 1f))
             addView(Switch(this@MainActivity).apply {
+                // כחול כשפעיל (כמו בצופר חירום) - בלי צבע ברירת המחדל של הטלפון
+                val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
+                thumbTintList = android.content.res.ColorStateList(states, intArrayOf(Color.WHITE, Color.parseColor("#E0E0E0")))
+                trackTintList = android.content.res.ColorStateList(states, intArrayOf(BLUE, Color.parseColor("#5A5A5E")))
+                trackTintMode = android.graphics.PorterDuff.Mode.SRC_IN
                 isChecked = Relay.enabled(this@MainActivity)
                 setOnCheckedChangeListener { _, v ->
                     Relay.setEnabled(this@MainActivity, v)
