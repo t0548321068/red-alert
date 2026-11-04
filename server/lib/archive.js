@@ -66,7 +66,7 @@ function save() {
   const done = () => { saving = false; if (pending) { pending = false; save(); } };
   fs.writeFile(ARCH_FILE + '.tmp', data, err => { if (err) return done(); fs.rename(ARCH_FILE + '.tmp', ARCH_FILE, done); });
 }
-async function fetchRows(period) { return convert(await get(ARCH_BASE + period, OREF_H)) || []; }
+async function fetchRows(period) { return convert(await get(ARCH_BASE + period, OREF_H, { localAddress: require('./egress').current() })) || []; }
 async function backfill() {
   // הארכיון החדש מחזיר עד חודש אחורה - מה שנשמר מלפני כן נשאר בקובץ
   try { addRows(await fetchRows('lastMonth')); } catch (_) {}
