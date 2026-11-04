@@ -72,6 +72,8 @@ async function backfill() {
   try { addRows(await fetchRows('lastMonth')); } catch (_) {}
   save(); log('archive backfill', arch.size + ' events');
 }
+/** שורות שהגיעו ממקור אחר (הממסר בבית) */
+function ingest(rows) { try { if (addRows(rows)) save(); } catch (_) {} }
 async function poll() { try { if (addRows(await fetchRows('lastDay'))) save(); } catch (_) {} }
 
 function serve(req, res, since) {
@@ -91,4 +93,4 @@ function start() {
   setInterval(poll, 60 * 1000);
 }
 
-module.exports = { start, serve, convert, ARCH_BASE };
+module.exports = { start, serve, convert, ARCH_BASE, ingest };

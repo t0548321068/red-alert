@@ -137,6 +137,7 @@ function handle(req, res, u, state) {
   if (p === '/api/server') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(admin.info(state().started))); return true; }
   if (p === '/api/restart' && req.method === 'POST') { admin.restart(res); return true; }
   if (p === '/api/message' && req.method === 'POST') { devices.sendMessage(req, res); return true; }
+  if (p === '/api/relay') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(require('./relay').status())); return true; }
   if (p === '/api/devices') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(devices.list())); return true; }
   if (p === '/api/logout') {
     res.writeHead(302, { Location: u.searchParams.get('to') === 'app' ? '/app/' : '/', 'Set-Cookie': 'tz=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict' }); res.end(); return true;

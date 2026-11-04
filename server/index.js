@@ -16,6 +16,7 @@ const { log } = require('./lib/util');
 const push = require('./lib/push');
 const health = require('./lib/health');
 const archive = require('./lib/archive');
+const relay = require('./lib/relay');
 const weather = require('./lib/weather');
 const shabbat = require('./lib/shabbat');
 const files = require('./lib/files');
@@ -54,6 +55,8 @@ function route(req, res) {
   // דרך האתר (Caddy על אותו שרת) - הכתובת האמיתית בכותרת X-Forwarded-For
   const local = /^(::ffff:)?127\.0\.0\.1$|^::1$/.test(req.socket.remoteAddress || '');
   const ip = local ? String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'local' : req.socket.remoteAddress || '';
+  // הממסר בבית (צופר ממסר) - מפתח משלו, בלי מגבלת הקצב
+  if (u.pathname.startsWith('/relay/')) return relay.handle(req, res, u);
   if (tooMany(ip)) { res.writeHead(429); return res.end(); }
   // האתר (רק לך, עם קוד כניסה)
   if (web.handle(req, res, u, () => ({ up: health.upList(), started: health.STARTED, now: Date.now(), version: versions.latest, data: files.dataIndex.v }))) return;
