@@ -46,14 +46,18 @@ async function pollLive() {
   // כשהאתר איטי - לא שולחים בקשה חדשה כל שנייה עד שהקודמת חוזרת (שלא יצטבר תור)
   await once('oref', async () => {
     const txt = await fetchLive();
-    if (!txt) return;
-    try {
-      const j = JSON.parse(txt);
-      if (!j.id || j.id === state.orefId) return;
-      state.orefId = j.id; saveState();   // נשמר - אחרי הפעלה מחדש לא שולחים שוב את אותה התרעה
-      if (Array.isArray(j.data) && j.data.length) send(j.title || 'התראה', j.data, 'oref', Date.now(), String(j.id));   // המזהה - מטח חדש לא נבלע ככפילות
-    } catch (_) { /* תשובה לא תקינה - בסבב הבא */ }
+    if (txt) liveText(txt);
   });
+}
+/** תוכן הקובץ החי (מהשרת או מהממסר בבית) - התרעה חדשה נשלחת. מחזיר true אם נשלחה */
+function liveText(txt) {
+  try {
+    const j = JSON.parse(txt);
+    if (!j.id || j.id === state.orefId) return false;
+    state.orefId = j.id; saveState();   // נשמר - אחרי הפעלה מחדש לא שולחים שוב את אותה התרעה
+    if (Array.isArray(j.data) && j.data.length) { send(j.title || 'התראה', j.data, 'oref', Date.now(), String(j.id)); return true; }   // המזהה - מטח חדש לא נבלע ככפילות
+  } catch (_) { /* תשובה לא תקינה - בסבב הבא */ }
+  return false;
 }
 
 // ---- היסטוריה וארכיון ----
@@ -70,22 +74,29 @@ function pollHistory() {
     try {
       const ip = egress.current();
       const t = await get(url, OREF_H, { localAddress: ip }).catch(e => { if (e.status === 403) egress.blocked(ip); throw e; });
-      // הארכיון - רק תשובה בפורמט שלו נחשבת "עונה" (לא דף אתר אחרי הפניה)
-      const rows = key === 'archive' ? archive.convert(t) : (t.startsWith('[') ? JSON.parse(t) : (t ? null : []));
-      if (!rows) return;
-      ok(key);
-      const by = new Map();
-      for (const o of rows) {
-        const at = ilTime(String(o.alertDate || ''));
-        if (!at || Date.now() - at > 90 * 1000) continue;
-        const title = o.title || o.category_desc || 'התראה';
-        const k = title + '|' + at;
-        if (!by.has(k)) by.set(k, { title, at, areas: [] });
-        by.get(k).areas.push(o.data);
-      }
-      for (const e of by.values()) send(e.title, e.areas, key, e.at);
+      historyText(key, t);
     } catch (e) { fail(key, e); }
   }); }
+}
+/** תשובת היסטוריה / ארכיון (מהשרת או מהממסר) - התרעות מ-90 השניות האחרונות נשלחות. null = תשובה לא תקינה */
+function historyText(key, t) {
+  // הארכיון - רק תשובה בפורמט שלו נחשבת "עונה" (לא דף אתר אחרי הפניה)
+  const rows = key === 'archive' ? archive.convert(t) : (t.startsWith('[') ? JSON.parse(t) : (t ? null : []));
+  if (!rows) return null;
+  ok(key);
+  if (key === 'archive') archive.ingest(rows);   // גם לרשימת ההתרעות האחרונות
+  let n = 0;
+  const by = new Map();
+  for (const o of rows) {
+    const at = ilTime(String(o.alertDate || ''));
+    if (!at || Date.now() - at > 90 * 1000) continue;
+    const title = o.title || o.category_desc || 'התראה';
+    const k = title + '|' + at;
+    if (!by.has(k)) by.set(k, { title, at, areas: [] });
+    by.get(k).areas.push(o.data);
+  }
+  for (const e of by.values()) { send(e.title, e.areas, key, e.at); n++; }
+  return n;
 }
 
 // בדיקת חסימה: פעם ב-5 דקות דף הבית של פיקוד העורף - ביומן רק כשהתשובה משתנה (חסום / פתוח)
@@ -105,4 +116,4 @@ function start() {
   probeHome(); setInterval(probeHome, 5 * 60 * 1000);
 }
 
-module.exports = { start, OREF_H };
+module.exports = { start, OREF_H, liveText, historyText };

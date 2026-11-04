@@ -23,7 +23,7 @@ jobs:
       - name: Build
         run: |
           set -o pipefail
-          gradle assembleRelease --console=plain 2>&1 | tee build.log || {
+          gradle :app:assembleRelease --console=plain 2>&1 | tee build.log || {
             grep -E '^e: |error:|Lint found|What went wrong' -A2 build.log | head -30 | sed 's/^/::error::/'
             exit 1
           }
