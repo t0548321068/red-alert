@@ -3,9 +3,9 @@
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
-const { get, ilTime, log } = require('./util');
+const { get, ilTime, log, OREF_HEADERS } = require('./util');
 
-const OREF_H = { Referer: 'https://www.oref.org.il/', 'X-Requested-With': 'XMLHttpRequest' };
+const OREF_H = OREF_HEADERS;
 const ARCH_FILE = path.join(__dirname, '..', 'archive.json');
 // הארכיון החדש של פיקוד העורף (נובמבר 2026; alerts-history הישן מפנה לדף האתר). period: lastDay / lastWeek / lastMonth
 const ARCH_BASE = 'https://www.oref.org.il/api/v1/AlertHistory/heb?period=';
