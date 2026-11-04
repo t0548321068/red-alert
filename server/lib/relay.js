@@ -55,4 +55,4 @@ function handle(req, res, u) {
 /** לאתר: המפתח ומצב הממסר */
 function status() { return { key, seen, forwarded, since: firstSeen, now: Date.now() }; }
 
-module.exports = { handle, status };
+module.exports = { handle, status, key: () => key };

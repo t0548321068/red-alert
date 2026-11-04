@@ -7,34 +7,29 @@ const egress = require('../lib/egress');
 
 const OREF_H = OREF_HEADERS;
 
-// ---- הקובץ החי ----
-const agent = new https.Agent({ keepAlive: true, maxSockets: 2 });
-function fetchLive() {
-  return new Promise(resolve => {
+// ---- הדרך לפיקוד העורף: ישירות מהשרת, וכשהשרת חסום (403) - דרך Cloudflare ----
+// פיקוד העורף חוסם את Oracle מנובמבר 2026. ה-Worker ב-Cloudflare (server/deploy/cloudflare/worker.js) מביא את אותם קבצים.
+// אחרי חסימה עובדים דרך Cloudflare חצי שעה, ואז מנסים שוב ישירות
+const CF = 'https://oref-proxy.t0548321068.workers.dev/';
+let directDownUntil = 0, via = '';
+function viaLog(v, why) { if (v !== via) { via = v; log('oref: עובדים', v === 'cf' ? 'דרך Cloudflare' : 'ישירות מהשרת', why || ''); } }
+async function orefGet(kind, url) {
+  if (Date.now() >= directDownUntil) {
     const ip = egress.current();
-    const req = https.get({
-      host: 'www.oref.org.il', path: '/warningMessages/alert/Alerts.json?t=' + Date.now(), agent, timeout: 4000,
-      headers: OREF_H, localAddress: ip,
-    }, res => {
-      const bufs = [];
-      res.on('data', d => bufs.push(d));
-      res.on('end', () => {
-        const buf = Buffer.concat(bufs);
-        // UTF-16 (עם BOM של FF FE) או UTF-8; בלי תווי אפס ו-BOM
-        let txt = (buf[0] === 0xFF && buf[1] === 0xFE ? buf.toString('utf16le') : buf.toString('utf8')).replace(/^\uFEFF/, '').replace(/\u0000/g, '').trim();
-        if (res.statusCode === 403) egress.blocked(ip);
-        if (res.statusCode !== 200) { bad('HTTP ' + res.statusCode, (/<title[^>]*>([^<]*)<\/title>/i.exec(txt) || [])[1] || txt); return resolve(''); }
-        // תקין רק אם ריק או JSON - דף שגיאה/חסימה עם 200 לא נחשב "עונה"
-        if (!txt) { ok('oref'); egress.works(ip); }
-        else { try { JSON.parse(txt); ok('oref'); egress.works(ip); } catch (_) { bad('not JSON', txt); } }
-        resolve(txt);
-      });
-    });
-    req.on('timeout', () => { bad('timeout', ''); req.destroy(); });
-    req.on('error', e => { bad('error ' + e.code, e.message); resolve(''); });
-    req.on('close', () => resolve(''));
-  });
+    try { const t = await get(url, OREF_H, { localAddress: ip }); viaLog('direct'); egress.works(ip); return t; }
+    catch (e) {
+      if (e.status !== 403) throw e;
+      egress.blocked(ip);
+      directDownUntil = Date.now() + 30 * 60 * 1000;
+    }
+  }
+  const key = require('../lib/relay').key();
+  const t = await get(CF + kind, { 'x-key': key });
+  viaLog('cf', '(השרת חסום)');
+  return t;
 }
+
+// ---- הקובץ החי ----
 // תשובה לא תקינה - ביומן (לכל היותר פעם בדקה), כדי לדעת למה "לא עונה"
 let badAt = 0;
 function bad(why, txt) {
@@ -45,8 +40,14 @@ function bad(why, txt) {
 async function pollLive() {
   // כשהאתר איטי - לא שולחים בקשה חדשה כל שנייה עד שהקודמת חוזרת (שלא יצטבר תור)
   await once('oref', async () => {
-    const txt = await fetchLive();
-    if (txt) liveText(txt);
+    let txt;
+    try { txt = await orefGet('live', 'https://www.oref.org.il/warningMessages/alert/Alerts.json?t=' + Date.now()); }
+    catch (e) { bad(e.message, ''); return; }
+    txt = txt.replace(/\u0000/g, '').trim();
+    // תקין רק אם ריק או JSON - דף שגיאה/חסימה לא נחשב "עונה"
+    if (!txt) { ok('oref'); return; }
+    try { JSON.parse(txt); ok('oref'); } catch (_) { bad('not JSON', txt); return; }
+    liveText(txt);
   });
 }
 /** תוכן הקובץ החי (מהשרת או מהממסר בבית) - התרעה חדשה נשלחת. מחזיר true אם נשלחה */
@@ -72,9 +73,7 @@ const lastPoll = {};
 function pollHistory() {
   for (const [key, url, every] of HISTORY) if (Date.now() - (lastPoll[key] || 0) >= every) { lastPoll[key] = Date.now(); once(key, async () => {
     try {
-      const ip = egress.current();
-      const t = await get(url, OREF_H, { localAddress: ip }).catch(e => { if (e.status === 403) egress.blocked(ip); throw e; });
-      historyText(key, t);
+      historyText(key, await orefGet(key, url));
     } catch (e) { fail(key, e); }
   }); }
 }
