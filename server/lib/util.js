@@ -12,9 +12,10 @@ const log = (...a) => {
 
 // חיבורים נפרדים מהבדיקה החיה של פיקוד העורף - כדי לא לעכב אותה
 const slowAgent = new https.Agent({ keepAlive: true, maxSockets: 6 });
-function get(url, headers = {}) {
+// opts: אפשרויות נוספות לבקשה (למשל localAddress - מאיזו כתובת של השרת לצאת)
+function get(url, headers = {}, opts = {}) {
   return new Promise((resolve, reject) => {
-    const req = https.get(url, { agent: slowAgent, timeout: 8000, headers: { 'User-Agent': 'Mozilla/5.0 RedAlertPush', ...headers } }, res => {
+    const req = https.get(url, { agent: slowAgent, timeout: 8000, ...opts, headers: { 'User-Agent': 'Mozilla/5.0 RedAlertPush', ...headers } }, res => {
       const bufs = [];
       res.on('data', d => bufs.push(d));
       res.on('end', () => {
