@@ -103,22 +103,26 @@ class MainActivity : Activity() {
         if (Relay.key(this).isEmpty()) { state = null; circleViews = null; if (keyField == null) setup(); return }
         keyField = null
         root.removeAllViews()
-        header("מעביר את התרעות פיקוד העורף לשרת מהאינטרנט הביתי")
+        header("גיבוי שלישי: שולח לטלפונים רק כששני השרתים לא עונים")
         val now = System.currentTimeMillis()
         val on = Relay.enabled(this) && RelayService.isRunning
-        val srvOk = now - Relay.serverOk < 90_000
         val charging = charging(); val wifi = onWifi()
+        val hasKey = Relay.fcmKey(this).isNotEmpty()
+        val primary = now - Relay.primaryOk < 90_000
+        val secondary = now - Relay.secondaryOk < 90_000
         // אותה שיטה כמו חיווי החיבור בצופר חירום: צבע קבוע / שני צבעים שמתחלפים כל חצי שנייה / הבהוב
         val upN = Relay.sources.count { now - it.lastOk < it.everyMs * 3 + 10_000 }
-        val connecting = on && now - Relay.startedAt < 30_000 && (Relay.serverOk == 0L || upN == 0)
         val st = when {
-            !on -> St(MUTED, null, false, "הממסר כבוי", "ההתרעות לא מועברות לשרת")
-            connecting -> St(GREEN, null, true, "מתחבר…", "מתחבר לפיקוד העורף ולשרת")
-            !srvOk -> St(RED, null, false, "אין חיבור לשרת", Relay.serverError.ifEmpty { "ההתרעות לא מועברות" })
-            upN == 0 -> St(GREEN, RED, false, "פיקוד העורף לא עונה", Relay.sources[0].error.ifEmpty { "אף מקור לא עונה" })
-            upN < Relay.sources.size -> St(GREEN, ORANGE, false, "פועל חלקית", "$upN/${Relay.sources.size} מקורות עונים")
-            !charging || !wifi -> St(ORANGE, null, false, "פועל – יש סיכון", if (!charging) "הטלפון לא מחובר לחשמל" else "הטלפון לא מחובר ל‑Wi‑Fi")
-            else -> St(GREEN, null, false, "הממסר פעיל", "פועל " + uptime(now - Relay.startedAt))
+            !on -> St(MUTED, null, false, "הממסר כבוי", "לא ישמש כגיבוי")
+            Relay.lastCheckAt == 0L -> St(GREEN, null, true, "מתחבר…", "בודק את השרתים")
+            !Relay.active && primary && (!charging || !wifi || !hasKey) ->
+                St(ORANGE, null, false, "בהמתנה – יש סיכון", if (!hasKey) "עוד אין מפתח Firebase" else if (!charging) "הטלפון לא מחובר לחשמל" else "הטלפון לא מחובר ל‑Wi‑Fi")
+            !Relay.active && primary -> St(GREEN, null, false, "בהמתנה", "השרת הראשי עובד · פועל " + uptime(now - Relay.startedAt))
+            !Relay.active && secondary && Relay.secondaryActive -> St(GREEN, ORANGE, false, "בהמתנה – השרת המשני פעיל", "השרת הראשי לא עונה")
+            !Relay.active -> St(ORANGE, null, true, "השרתים לא עונים", "נכנס לפעולה בעוד רגע")
+            upN == 0 -> St(RED, null, false, "פעיל – אין מקורות", Relay.sources[0].error.ifEmpty { "אף מקור לא עונה" })
+            upN < Relay.sources.size -> St(ORANGE, RED, false, "פעיל חלקית", "$upN/${Relay.sources.size} מקורות עונים")
+            else -> St(ORANGE, null, true, "פעיל – שולח לטלפונים", "השרתים לא עונים · " + uptime(now - Relay.activeSince))
         }
         state = st
         val color = st.c1; val title = st.title; val sub = st.sub
@@ -153,7 +157,7 @@ class MainActivity : Activity() {
         })
         add(top)
 
-        // בדיקה עכשיו: כל מקורות פיקוד העורף והשרת, ומתי בוצעה הבדיקה האחרונה
+        // בדיקה עכשיו: שני השרתים, המקורות ו-Firebase, ומתי בוצעה הבדיקה האחרונה
         val chk = card()
         val (chkAt, chkRes) = Relay.lastCheck(this)
         val fmt = java.text.SimpleDateFormat(if (now - chkAt < 20 * 3600_000L) "HH:mm:ss" else "dd/MM HH:mm", java.util.Locale.US)
@@ -170,18 +174,29 @@ class MainActivity : Activity() {
         })
         add(chk)
 
-        val src = card()
-        Relay.sources.forEach { s ->
-            val ok = now - s.lastOk < s.everyMs * 3 + 10_000
-            row(src, s.name, if (on) "בדיקה אחרונה ${ago(s.lastOk)}" else "", if (!on) "—" else if (ok) "מחובר" else s.error.ifEmpty { "מתחבר…" },
-                if (!on) MUTED else if (ok) GREEN else RED)
+        // שרשרת הגיבוי
+        val chain = card()
+        row(chain, "שרת ראשי", if (on) "בדיקה אחרונה ${ago(Relay.lastCheckAt)}" else "", if (!on) "—" else if (primary) "מחובר" else "לא עונה",
+            if (!on) MUTED else if (primary) GREEN else RED)
+        row(chain, "שרת משני", "", if (!on) "—" else if (!secondary) "לא עונה" else if (Relay.secondaryActive) "פעיל" else "בהמתנה",
+            if (!on) MUTED else if (!secondary) RED else if (Relay.secondaryActive) ORANGE else GREEN)
+        row(chain, "ממסר (הטלפון הזה)", "", if (!on) "כבוי" else if (Relay.active) "פעיל" else "בהמתנה", if (!on) MUTED else if (Relay.active) ORANGE else GREEN)
+        row(chain, "מפתח Firebase", "לשליחה לטלפונים", if (hasKey) "קיים ✓" else "חסר", if (hasKey) GREEN else ORANGE)
+        add(chain)
+
+        // המקורות - רק כשהממסר פעיל
+        if (on && Relay.active) {
+            val src = card()
+            Relay.sources.forEach { s ->
+                val ok = now - s.lastOk < s.everyMs * 3 + 10_000
+                row(src, s.name, "בדיקה אחרונה ${ago(s.lastOk)}", if (ok) "מחובר" else s.error.ifEmpty { "מתחבר…" }, if (ok) GREEN else RED)
+            }
+            if (Relay.fcmError.isNotEmpty()) row(src, "Firebase", "", Relay.fcmError, RED)
+            add(src)
         }
-        row(src, "שרת התרעות", if (on) "תשובה אחרונה ${ago(Relay.serverOk)}" else "", if (!on) "—" else if (srvOk) "מחובר" else Relay.serverError.ifEmpty { "מתחבר…" },
-            if (!on) MUTED else if (srvOk) GREEN else RED)
-        add(src)
 
         val info = card()
-        row(info, "התרעות שהועברו היום", "", Relay.forwardedToday(this).toString(), Color.WHITE)
+        row(info, "התרעות שנשלחו היום", "", Relay.forwardedToday(this).toString(), Color.WHITE)
         row(info, "חשמל", "", if (charging) "בטעינה ✓" else "סוללה ${battery()}% – חבר לחשמל", if (charging) GREEN else ORANGE)
         row(info, "רשת", "", if (wifi) "Wi‑Fi ✓" else "לא Wi‑Fi", if (wifi) GREEN else ORANGE)
         val pm = getSystemService(POWER_SERVICE) as PowerManager
@@ -201,7 +216,7 @@ class MainActivity : Activity() {
     /** הפעלה ראשונה: הקלדת המפתח מהאתר ובדיקה מול השרת */
     private fun setup() {
         root.removeAllViews()
-        header("מעביר את התרעות פיקוד העורף לשרת מהאינטרנט הביתי")
+        header("גיבוי שלישי: שולח לטלפונים רק כששני השרתים לא עונים")
         val c = card()
         c.addView(text("מפתח ממסר", 15f).apply { setPadding(dp(18), dp(14), dp(18), 0) })
         c.addView(text("מופיע באתר, בכרטיס \"ממסר בבית\"", 12f, MUTED).apply { setPadding(dp(18), dp(2), dp(18), 0) })
@@ -225,7 +240,7 @@ class MainActivity : Activity() {
             if (k.isEmpty()) return@setOnClickListener
             btn.text = "בודק…"; msg.text = ""
             Thread {
-                val code = try { Relay.post(k, "ping", "").first } catch (_: Exception) { -1 }
+                val code = Relay.pingPrimary(k)
                 runOnUiThread {
                     btn.text = "חבר"
                     when (code) {

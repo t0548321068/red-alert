@@ -400,9 +400,11 @@ loadState(); setInterval(loadState, 30e3);
 const RELAY_APK = 'https://github.com/t0548321068/red-alert/releases/download/relay/tzofar-relay.apk';
 function loadRelay() {
   fetch('/api/relay').then(r => r.json()).then(s => {
-    const ago = s.seen.live ? s.now - s.seen.live : Infinity;
-    const on = ago < 30e3;
-    $('relayTx').innerHTML = `<span style="color:${on ? 'var(--green)' : s.seen.live ? 'var(--red)' : 'var(--muted)'}">${on ? 'מחובר' : s.seen.live ? 'לא מחובר' : 'עוד לא התחבר'}</span>`;
+    // הממסר בהמתנה שולח סימן פעם בדקה (ping); כשהוא מעביר מידע - כל כמה שניות
+    const lastSeen = Math.max(s.seen.live, s.seen.ping);
+    const ago = lastSeen ? s.now - lastSeen : Infinity;
+    const on = ago < 150e3;
+    $('relayTx').innerHTML = `<span style="color:${on ? 'var(--green)' : lastSeen ? 'var(--red)' : 'var(--muted)'}">${on ? 'מחובר (בהמתנה)' : lastSeen ? 'לא מחובר' : 'עוד לא התחבר'}</span>`;
     const row = (a, b) => `<div class="row">${a}<span class="end">${b}</span></div>`;
     const last = k => s.seen[k] ? upFor(s.now - s.seen[k]).replace(/^0 דקות$/, 'עכשיו') : '—';
     $('relayBox').innerHTML =

@@ -11,7 +11,11 @@ import android.net.wifi.WifiManager
 import android.os.IBinder
 import android.os.PowerManager
 
-/** השירות שרץ כל הזמן: בודק את פיקוד העורף ומעביר לשרת */
+/**
+ * השירות שרץ כל הזמן (המתג דלוק):
+ * בהמתנה - פעם בדקה בודק את שני השרתים. שניהם לא עונים 3 בדיקות ברצף - נכנס לפעולה:
+ * בודק את המקורות ושולח לטלפונים. אחד השרתים חזר - חוזר להמתנה.
+ */
 class RelayService : Service() {
     @Volatile private var running = false
     private var wake: PowerManager.WakeLock? = null
@@ -29,7 +33,7 @@ class RelayService : Service() {
     override fun onBind(i: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(1, note("מתחבר…"))
+        startForeground(1, note("בהמתנה"))
         if (!running) {
             running = true; isRunning = true
             Relay.startedAt = System.currentTimeMillis()
@@ -44,58 +48,56 @@ class RelayService : Service() {
 
     override fun onDestroy() {
         running = false; isRunning = false
+        if (Relay.active) { Relay.active = false; Thread { Relay.admin(this, "⚠️ הממסר בבית כובה בזמן שהשרתים לא עונים") }.start() }
         try { wake?.release() } catch (_: Exception) { }
         try { wifi?.release() } catch (_: Exception) { }
         super.onDestroy()
     }
 
     private fun loop() {
-        var lastPing = 0L
+        var lastCheck = 0L
+        var downChecks = 0
+        var hbAt = 0L
         var lastNote = ""
         while (running) {
             val now = System.currentTimeMillis()
-            val key = Relay.key(this)
-            for (s in Relay.sources) {
-                if (!running || now - s.lastTry < s.everyMs) continue
-                s.lastTry = now
-                try {
-                    val (code, txt) = Relay.fetchOref(s.url)
-                    if (code != 200) { s.error = if (code == 403) "חסום (403)" else "שגיאה $code"; continue }
-                    s.lastOk = System.currentTimeMillis(); s.error = ""
-                    send(key, s.key, txt)
-                } catch (e: Exception) { s.error = "אין חיבור" }
+            // פעם בדקה: שני השרתים
+            if (now - lastCheck >= 60_000) {
+                lastCheck = now
+                Relay.checkServers(this)
+                val t = System.currentTimeMillis()
+                val primary = t - Relay.primaryOk < 30_000
+                // השרת המשני מכסה רק כשהוא באמת בפעולה (הראשי לא עונה) או כשהראשי עובד
+                val secondary = t - Relay.secondaryOk < 30_000 && (primary || Relay.secondaryActive)
+                if (primary || secondary) {
+                    downChecks = 0
+                    if (Relay.active) {
+                        Relay.active = false
+                        Relay.admin(this, if (primary) "✅ השרת הראשי חזר – הממסר חזר להמתנה" else "✅ השרת המשני פעיל – הממסר חזר להמתנה")
+                    }
+                } else if (++downChecks >= 3 && !Relay.active) {
+                    Relay.active = true; Relay.activeSince = t; hbAt = 0
+                    Relay.sources.forEach { it.lastTry = 0 }
+                    Relay.admin(this, "⚠️ שני השרתים לא עונים – הממסר בבית נכנס לפעולה")
+                }
             }
-            // השרת יודע שהממסר חי גם כשפיקוד העורף לא עונה
-            if (now - lastPing > 60_000) { lastPing = now; send(key, "ping", "") }
-            val n = noteText()
+            if (Relay.active) {
+                for (s in Relay.sources) {
+                    if (!running || System.currentTimeMillis() - s.lastTry < s.everyMs) continue
+                    s.lastTry = System.currentTimeMillis()
+                    try {
+                        val (code, txt) = Relay.fetchSrc(s)
+                        if (code != 200) { s.error = if (code == 403) "חסום (403)" else "שגיאה $code"; continue }
+                        s.lastOk = System.currentTimeMillis(); s.error = ""
+                        Relay.handle(this, s, txt)
+                    } catch (e: Exception) { s.error = "אין חיבור" }
+                }
+                // סימן חיים לטלפונים כל 10 דקות - שלא יעברו לבדוק בעצמם
+                if (System.currentTimeMillis() - hbAt > 10 * 60_000) { hbAt = System.currentTimeMillis(); Relay.heartbeat(this) }
+            }
+            val n = if (Relay.active) "פעיל – שולח לטלפונים (השרתים לא עונים)" else "בהמתנה – השרתים עובדים"
             if (n != lastNote) { lastNote = n; (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(1, note(n)) }
             Thread.sleep(500)
-        }
-    }
-
-    private fun send(key: String, kind: String, body: String) {
-        try {
-            val (code, resp) = Relay.post(key, kind, body)
-            when (code) {
-                200 -> {
-                    Relay.serverOk = System.currentTimeMillis(); Relay.serverError = ""
-                    val sent = Regex("\"sent\":(\\d+)").find(resp)?.groupValues?.get(1)?.toIntOrNull() ?: 0
-                    Relay.addForwarded(this, sent)
-                }
-                401 -> Relay.serverError = "מפתח שגוי"
-                else -> Relay.serverError = "שגיאה $code"
-            }
-        } catch (_: Exception) { Relay.serverError = "אין חיבור" }
-    }
-
-    private fun noteText(): String {
-        val live = Relay.sources[0]
-        val orefOk = System.currentTimeMillis() - live.lastOk < 15_000
-        val srvOk = System.currentTimeMillis() - Relay.serverOk < 90_000
-        return when {
-            orefOk && srvOk -> "פעיל · פיקוד העורף מחובר"
-            !srvOk -> "אין חיבור לשרת" + if (Relay.serverError.isNotEmpty()) " (${Relay.serverError})" else ""
-            else -> "פיקוד העורף לא עונה" + if (live.error.isNotEmpty()) " (${live.error})" else ""
         }
     }
 

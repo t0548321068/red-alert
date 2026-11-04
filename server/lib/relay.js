@@ -19,7 +19,7 @@ if (!key) {
 const norm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const keyOk = k => { const a = Buffer.from(norm(k)), b = Buffer.from(norm(key)); return a.length === b.length && crypto.timingSafeEqual(a, b); };
 
-const seen = { live: 0, history: 0, archive: 0, ping: 0 };
+const seen = { live: 0, history: 0, archive: 0, ping: 0, fcm: 0 };
 let forwarded = 0, firstSeen = 0, lastLogged = false;
 
 function body(req, max, done) {
@@ -35,9 +35,15 @@ function handle(req, res, u) {
   if (!keyOk(req.headers['x-relay-key'])) { res.writeHead(401); return res.end(); }
   body(req, 3 * 1024 * 1024, t => {
     const now = Date.now();
-    if (!lastLogged || now - Math.max(seen.live, seen.ping) > 10 * 60 * 1000) { log('relay: הממסר בבית מחובר'); firstSeen = now; }
-    lastLogged = true;
+    if (kind !== 'fcm' && (!lastLogged || now - Math.max(seen.live, seen.ping) > 10 * 60 * 1000)) { log('relay: הממסר בבית מחובר'); firstSeen = now; lastLogged = true; }
     seen[kind] = now;
+    // השרת המשני (Cloudflare) והממסר שומרים אצלם את מפתח Firebase - כדי לשלוח לטלפונים כשהשרת הזה לא עונה
+    if (kind === 'fcm') {
+      let sa = '';
+      try { sa = fs.readFileSync(path.join(__dirname, '..', 'service-account.json'), 'utf8'); } catch (_) {}
+      res.writeHead(sa ? 200 : 404, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      return res.end(sa);
+    }
     let sent = 0;
     const oref = require('../sources/oref');
     try {
