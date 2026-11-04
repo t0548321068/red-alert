@@ -3,6 +3,7 @@ const https = require('https');
 const { get, ilTime, once, fail, log, OREF_HEADERS } = require('../lib/util');
 const { send, state, saveState } = require('../lib/push');
 const { ok } = require('../lib/health');
+const egress = require('../lib/egress');
 
 const OREF_H = OREF_HEADERS;
 
@@ -10,9 +11,10 @@ const OREF_H = OREF_HEADERS;
 const agent = new https.Agent({ keepAlive: true, maxSockets: 2 });
 function fetchLive() {
   return new Promise(resolve => {
+    const ip = egress.current();
     const req = https.get({
       host: 'www.oref.org.il', path: '/warningMessages/alert/Alerts.json?t=' + Date.now(), agent, timeout: 4000,
-      headers: OREF_H,
+      headers: OREF_H, localAddress: ip,
     }, res => {
       const bufs = [];
       res.on('data', d => bufs.push(d));
@@ -20,10 +22,11 @@ function fetchLive() {
         const buf = Buffer.concat(bufs);
         // UTF-16 (עם BOM של FF FE) או UTF-8; בלי תווי אפס ו-BOM
         let txt = (buf[0] === 0xFF && buf[1] === 0xFE ? buf.toString('utf16le') : buf.toString('utf8')).replace(/^\uFEFF/, '').replace(/\u0000/g, '').trim();
+        if (res.statusCode === 403) egress.blocked(ip);
         if (res.statusCode !== 200) { bad('HTTP ' + res.statusCode, (/<title[^>]*>([^<]*)<\/title>/i.exec(txt) || [])[1] || txt); return resolve(''); }
         // תקין רק אם ריק או JSON - דף שגיאה/חסימה עם 200 לא נחשב "עונה"
-        if (!txt) ok('oref');
-        else { try { JSON.parse(txt); ok('oref'); } catch (_) { bad('not JSON', txt); } }
+        if (!txt) { ok('oref'); egress.works(ip); }
+        else { try { JSON.parse(txt); ok('oref'); egress.works(ip); } catch (_) { bad('not JSON', txt); } }
         resolve(txt);
       });
     });
@@ -65,7 +68,8 @@ const lastPoll = {};
 function pollHistory() {
   for (const [key, url, every] of HISTORY) if (Date.now() - (lastPoll[key] || 0) >= every) { lastPoll[key] = Date.now(); once(key, async () => {
     try {
-      const t = await get(url, OREF_H);
+      const ip = egress.current();
+      const t = await get(url, OREF_H, { localAddress: ip }).catch(e => { if (e.status === 403) egress.blocked(ip); throw e; });
       // הארכיון - רק תשובה בפורמט שלו נחשבת "עונה" (לא דף אתר אחרי הפניה)
       const rows = key === 'archive' ? archive.convert(t) : (t.startsWith('[') ? JSON.parse(t) : (t ? null : []));
       if (!rows) return;
@@ -87,7 +91,7 @@ function pollHistory() {
 // בדיקת חסימה: פעם ב-5 דקות דף הבית של פיקוד העורף - ביומן רק כשהתשובה משתנה (חסום / פתוח)
 let homeSt = '';
 function probeHome() {
-  https.get({ host: 'www.oref.org.il', path: '/', timeout: 8000, headers: OREF_H }, res => {
+  https.get({ host: 'www.oref.org.il', path: '/', timeout: 8000, headers: OREF_H, localAddress: egress.current() }, res => {
     res.resume();
     const st = String(res.statusCode);
     if (st !== homeSt) { log('oref home', st === '200' ? 'פתוח (200)' : 'HTTP ' + st); homeSt = st; }
@@ -95,6 +99,7 @@ function probeHome() {
 }
 
 function start() {
+  egress.setup();
   setInterval(pollLive, LIVE_MS);
   setInterval(pollHistory, 1000);
   probeHome(); setInterval(probeHome, 5 * 60 * 1000);
