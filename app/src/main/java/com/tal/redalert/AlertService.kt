@@ -478,7 +478,8 @@ class AlertService : Service() {
     private fun loop() {
         while (running) {
             try {
-                if (!serverOk(this)) check()   // השרת בודק כל שנייה - הטלפון רק כגיבוי
+                // השרת בודק כל שנייה - הטלפון רק כגיבוי. אם השרת חסום אצל פיקוד העורף והאפשרות מופעלת בשרת - גם הטלפון בודק אותו
+                if (!serverOk(this) || (Config.phoneOrefWhenServerBlocked && !SourceHealth.serverHas("oref"))) check()
             } catch (_: Exception) {
                 // רשת נפלה / תשובה לא תקינה - מנסים שוב בסבב הבא
             }
