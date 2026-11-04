@@ -25,7 +25,7 @@ class AlertService : Service() {
     companion object {
         private const val URL_ALERTS = "https://www.oref.org.il/warningMessages/alert/Alerts.json"   // הכתובת החדשה (נובמבר 2026) - הישנה מחזירה 404
         private const val URL_HISTORY = "https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json"
-        private const val URL_ARCHIVE = "https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=1"
+        private const val URL_ARCHIVE = OrefArchive.BASE + "lastDay"   // הארכיון החדש (נובמבר 2026)
         private const val POLL_MS = 2000L
         private const val HISTORY_POLL_MS = 30000L   // גיבוי בלבד
         private const val HISTORY_WINDOW_MS = 90000L
@@ -661,7 +661,10 @@ class AlertService : Service() {
             for (url in listOf(URL_HISTORY, URL_ARCHIVE)) {
                 if (serverOk(this)) break   // השרת בודק את ההיסטוריה והארכיון
                 try {
-                    val text = fetchOref(url)
+                    val raw = fetchOref(url)
+                    // הארכיון - רק תשובה בפורמט שלו נחשבת "עונה" (לא דף אתר)
+                    if (url == URL_ARCHIVE && !raw.startsWith("{")) continue
+                    val text = OrefArchive.convert(raw)
                     SourceHealth.ok(if (url == URL_HISTORY) "history" else "archive")
                     if (!text.startsWith("[")) continue
                     val arr = org.json.JSONArray(text)

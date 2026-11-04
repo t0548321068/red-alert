@@ -6,8 +6,9 @@ import java.net.URL
 
 /** כל ההתראות שהיו בארץ - מהארכיון של פיקוד העורף (החודש האחרון) */
 object OrefArchive {
-    private const val BASE = "https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he"
-    private const val URL_MONTH = "$BASE&mode=3"
+    /** הארכיון החדש של פיקוד העורף (נובמבר 2026; הכתובת הישנה alerts-history מפנה לדף האתר). period: lastDay / lastWeek / lastMonth */
+    const val BASE = "https://www.oref.org.il/api/v1/AlertHistory/heb?period="
+    private const val URL_MONTH = "${BASE}lastMonth"
     private const val DAY = 24 * 3600 * 1000L
     /** השרת שלנו שומר את כל ההיסטוריה (שנה אחורה) - אותה רשימה לכל הטלפונים. אם לא עונה - הארכיון של פיקוד העורף */
     private const val SERVER = "http://151.145.91.93:8080/archive"
@@ -35,8 +36,7 @@ object OrefArchive {
     }
 
     /**
-     * משלים מהארכיון שנה אחורה (טווחי תאריכים של שבוע), ושומר בטלפון.
-     * אם חלק מהבקשות נכשלו (רשת חלשה) - מנסים שוב בפעם הבאה, לכל היותר פעם ב-6 שעות, עד שהכול הושלם.
+     * משלים שנה אחורה מהשרת שלנו, ושומר בטלפון. אם השרת לא עונה - מנסים שוב בפעם הבאה.
      * מחזיר true אם נוספו התרעות (כדי לרענן את הרשימה)
      */
     fun backfill(c: android.content.Context): Boolean {
@@ -49,29 +49,8 @@ object OrefArchive {
             sp.edit().putBoolean("backfill3Done", true).apply()
             return m.size > before
         }
-        val now = System.currentTimeMillis()
-        if (now - sp.getLong("backfill3Last", 0L) < 6 * 3600 * 1000L) return false
-        sp.edit().putLong("backfill3Last", now).apply()
-        val fmt = java.text.SimpleDateFormat("dd.MM.yyyy", java.util.Locale.US).apply {
-            timeZone = java.util.TimeZone.getTimeZone("Asia/Jerusalem") }
-        val got = ArrayList<Prefs.Entry>()
-        var ok = 0; var failed = 0
-        var to = now - 28 * DAY   // החודש האחרון כבר מגיע מהבקשה הרגילה
-        while (to > now - 366 * DAY) {
-            val from = to - 6 * DAY   // שבוע בכל בקשה - פחות סיכוי להגיע לתקרת השורות של הארכיון
-            try {
-                got += fetchRaw("$BASE&fromDate=${fmt.format(java.util.Date(from))}&toDate=${fmt.format(java.util.Date(to))}&mode=0")
-                ok++
-            } catch (_: Exception) { failed++ }
-            to = from - DAY
-        }
-        if (ok == 0) return false   // אין חיבור - ננסה בפעם הבאה
-        val merged = LinkedHashMap<String, Prefs.Entry>()
-        (got + load(c)).forEach { e -> if (e.ts >= now - 366 * DAY) merged.putIfAbsent(e.title + "|" + e.ts / 60_000, e) }
-        val before = load(c).size
-        save(c, merged.values.sortedByDescending { it.ts })
-        if (failed == 0) sp.edit().putBoolean("backfill3Done", true).apply()
-        return merged.size > before
+        // בלי השרת - אין השלמה של שנה (הארכיון של פיקוד העורף מחזיר רק את החודש האחרון, והוא מגיע בבקשה הרגילה)
+        return false
     }
 
     /**
@@ -125,12 +104,13 @@ object OrefArchive {
             // לפעמים עם BOM
             String(b, Charsets.UTF_8).trimStart('﻿').trim()
         } finally { conn.disconnect() }
-        if (!text.startsWith("[")) return emptyList()
+        val rows = convert(text)
+        if (!rows.startsWith("[")) return emptyList()
         val tz = java.util.TimeZone.getTimeZone("Asia/Jerusalem")
         val fmtSec = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply { timeZone = tz }
         val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.US).apply { timeZone = tz }
         val fmtDT = java.text.SimpleDateFormat("dd.MM.yyyy HH:mm:ss", java.util.Locale.US).apply { timeZone = tz }
-        val arr = JSONArray(text)
+        val arr = JSONArray(rows)
         // אותה התראה (סוג + דקה) = שורה אחת עם כל האזורים
         val groups = LinkedHashMap<String, Triple<String, LongArray, MutableList<String>>>()
         for (i in 0 until arr.length()) {
@@ -154,5 +134,30 @@ object OrefArchive {
                 areas.joinToString(", "), level, ts[0])
         }.sortedByDescending { it.ts }
         return list
+    }
+
+    /**
+     * הארכיון החדש ({"alarmsGroupedByDate":[{"key":"dd.MM.yyyy","value":[{data,date,time,dateTime,category_Desc}]}]})
+     * -> מערך בפורמט הישן (data, category_desc, alertDate עם שניות, date, time). תשובה שכבר מערך - כמו שהיא
+     */
+    fun convert(text: String): String {
+        if (!text.startsWith("{")) return text
+        return try {
+            val days = org.json.JSONObject(text).optJSONArray("alarmsGroupedByDate") ?: return "[]"
+            val out = JSONArray()
+            for (i in 0 until days.length()) {
+                val rows = days.getJSONObject(i).optJSONArray("value") ?: continue
+                for (j in 0 until rows.length()) {
+                    val o = rows.getJSONObject(j)
+                    val d = o.optString("date"); val tm = o.optString("time")
+                    val m = Regex("""^(\d{2})\.(\d{2})\.(\d{4})$""").find(d)
+                    val alertDate = if (m != null && tm.length >= 8) "${m.groupValues[3]}-${m.groupValues[2]}-${m.groupValues[1]}T${tm.take(8)}"
+                        else o.optString("dateTime")
+                    out.put(org.json.JSONObject().put("data", o.optString("data")).put("category_desc", o.optString("category_Desc"))
+                        .put("alertDate", alertDate).put("date", d).put("time", tm))
+                }
+            }
+            out.toString()
+        } catch (_: Exception) { "[]" }
     }
 }
