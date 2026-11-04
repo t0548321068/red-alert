@@ -1,5 +1,6 @@
 # השרת המשני ב-Cloudflare: oref-proxy (מעבר לפיקוד העורף בשביל השרת הראשי) + גיבוי מלא כשהשרת הראשי לא עונה.
 # נפרס מ-GitHub (cloudflare.yml). הסוד KEY (מפתח הממסר) נשמר ב-Cloudflare ולא כאן.
+# (גרסה ראשונה של הגיבוי - נובמבר 2026)
 name = "oref-proxy"
 main = "worker.js"
 account_id = "c41a9bf68cba29e0ada409f91d801bb8"
