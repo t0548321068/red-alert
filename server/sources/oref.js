@@ -54,17 +54,21 @@ async function pollLive() {
 }
 
 // ---- היסטוריה וארכיון ----
+const archive = require('../lib/archive');
 const HISTORY = [
   ['history', 'https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json'],
-  ['archive', 'https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=1'],
+  ['archive', archive.ARCH_BASE + 'lastDay'],   // הארכיון החדש (נובמבר 2026)
 ];
 function pollHistory() {
   for (const [key, url] of HISTORY) once(key, async () => {
     try {
-      const t = await get(url, OREF_H); ok(key);
-      if (!t.startsWith('[')) return;
+      const t = await get(url, OREF_H);
+      // הארכיון - רק תשובה בפורמט שלו נחשבת "עונה" (לא דף אתר אחרי הפניה)
+      const rows = key === 'archive' ? archive.convert(t) : (t.startsWith('[') ? JSON.parse(t) : (t ? null : []));
+      if (!rows) return;
+      ok(key);
       const by = new Map();
-      for (const o of JSON.parse(t)) {
+      for (const o of rows) {
         const at = ilTime(String(o.alertDate || ''));
         if (!at || Date.now() - at > 90 * 1000) continue;
         const title = o.title || o.category_desc || 'התראה';

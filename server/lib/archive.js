@@ -7,7 +7,19 @@ const { get, ilTime, log } = require('./util');
 
 const OREF_H = { Referer: 'https://www.oref.org.il/', 'X-Requested-With': 'XMLHttpRequest' };
 const ARCH_FILE = path.join(__dirname, '..', 'archive.json');
-const ARCH_BASE = 'https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he';
+// הארכיון החדש של פיקוד העורף (נובמבר 2026; alerts-history הישן מפנה לדף האתר). period: lastDay / lastWeek / lastMonth
+const ARCH_BASE = 'https://www.oref.org.il/api/v1/AlertHistory/heb?period=';
+// התשובה החדשה (מקובצת לפי תאריך) -> שורות בפורמט הישן: data, category_desc, alertDate עם שניות, date, time
+function convert(t) {
+  if (!t.startsWith('{')) return null;
+  const rows = [];
+  for (const day of JSON.parse(t).alarmsGroupedByDate || []) for (const o of day.value || []) {
+    const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(String(o.date || '')), tm = String(o.time || '');
+    rows.push({ data: o.data, category_desc: o.category_Desc, date: o.date, time: o.time,
+      alertDate: m && tm.length >= 8 ? `${m[3]}-${m[2]}-${m[1]}T${tm.slice(0, 8)}` : o.dateTime });
+  }
+  return rows;
+}
 const YEAR = 366 * 24 * 3600 * 1000;
 const arch = new Map();   // "כותרת|דקה" -> { t, ts, b: Set }
 try { for (const e of JSON.parse(fs.readFileSync(ARCH_FILE, 'utf8'))) arch.set(e.k, { t: e.t, ts: e.ts, b: new Set(e.b) }); } catch (_) {}
@@ -54,19 +66,13 @@ function save() {
   const done = () => { saving = false; if (pending) { pending = false; save(); } };
   fs.writeFile(ARCH_FILE + '.tmp', data, err => { if (err) return done(); fs.rename(ARCH_FILE + '.tmp', ARCH_FILE, done); });
 }
-async function fetchRows(q) { const t = await get(ARCH_BASE + q, OREF_H); return t.startsWith('[') ? JSON.parse(t) : []; }
+async function fetchRows(period) { return convert(await get(ARCH_BASE + period, OREF_H)) || []; }
 async function backfill() {
-  // פעם אחת (ואחר כך כשחסר): החודש האחרון, ושנה אחורה בטווחים של שבוע
-  const fmt = d => { const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', day: '2-digit', month: '2-digit', year: 'numeric' }).formatToParts(d); const g = x => p.find(y => y.type === x).value; return `${g('day')}.${g('month')}.${g('year')}`; };
-  try { addRows(await fetchRows('&mode=3')); } catch (_) {}
-  const now = Date.now(), DAY = 24 * 3600 * 1000;
-  for (let to = now - 28 * DAY; to > now - YEAR; to -= 7 * DAY) {
-    try { addRows(await fetchRows(`&fromDate=${fmt(new Date(to - 6 * DAY))}&toDate=${fmt(new Date(to))}&mode=0`)); } catch (_) {}
-    await new Promise(r => setTimeout(r, 1500));
-  }
+  // הארכיון החדש מחזיר עד חודש אחורה - מה שנשמר מלפני כן נשאר בקובץ
+  try { addRows(await fetchRows('lastMonth')); } catch (_) {}
   save(); log('archive backfill', arch.size + ' events');
 }
-async function poll() { try { if (addRows(await fetchRows('&mode=1'))) save(); } catch (_) {} }
+async function poll() { try { if (addRows(await fetchRows('lastDay'))) save(); } catch (_) {} }
 
 function serve(req, res, since) {
   const c = sorted();
@@ -85,4 +91,4 @@ function start() {
   setInterval(poll, 60 * 1000);
 }
 
-module.exports = { start, serve };
+module.exports = { start, serve, convert, ARCH_BASE };
