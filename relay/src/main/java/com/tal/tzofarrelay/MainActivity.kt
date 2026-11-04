@@ -32,6 +32,23 @@ class MainActivity : Activity() {
     private val RED = Color.parseColor("#FF453A"); private val MUTED = Color.parseColor("#8E8E93")
     private val CARD = Color.parseColor("#1C1C1E"); private val BLUE = Color.parseColor("#3E7BFA")
     private lateinit var root: LinearLayout
+    /** מצב העיגול: צבע, צבע שני (מתחלפים כל חצי שנייה), הבהוב */
+    private class St(val c1: Int, val c2: Int?, val blink: Boolean, val title: String, val sub: String)
+    private var state: St? = null
+    private var circleViews: Triple<View, GradientDrawable, ImageView>? = null
+    private var titleView: TextView? = null
+    /** העיגול מתעדכן כל 50ms (החלפת צבע / הבהוב), בלי לבנות את המסך מחדש */
+    private val anim = object : Runnable { override fun run() { paint(); ui.postDelayed(this, 50) } }
+    private fun paint() {
+        val st = state ?: return
+        val (circle, bg, icon) = circleViews ?: return
+        val now = System.currentTimeMillis()
+        val c = if (st.c2 != null && (now / 500) % 2 == 1L) st.c2 else st.c1
+        icon.setColorFilter(c); titleView?.setTextColor(c)
+        bg.setColor(Color.argb(60, Color.red(c), Color.green(c), Color.blue(c)))
+        // הבהוב: 1 → 0.25 → 1 בשנייה (כמו באפליקציה)
+        circle.alpha = if (st.blink) { val ph = (now % 1000) / 500f; 0.25f + 0.75f * (if (ph < 1f) 1f - ph else ph - 1f) } else 1f
+    }
     private val tick = object : Runnable { override fun run() { build(); ui.postDelayed(this, 1000) } }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
@@ -72,8 +89,8 @@ class MainActivity : Activity() {
     }
     private val Build_SDK get() = android.os.Build.VERSION.SDK_INT
 
-    override fun onResume() { super.onResume(); RelayService.start(this); ui.post(tick) }
-    override fun onPause() { ui.removeCallbacks(tick); super.onPause() }
+    override fun onResume() { super.onResume(); RelayService.start(this); ui.post(tick); ui.post(anim) }
+    override fun onPause() { ui.removeCallbacks(tick); ui.removeCallbacks(anim); super.onPause() }
 
     private fun header(sub: String) {
         root.addView(text("ממסר צופר", 26f, bold = true).apply { setPadding(dp(22), dp(14), dp(22), dp(2)) })
@@ -83,32 +100,42 @@ class MainActivity : Activity() {
     private var keyField: EditText? = null
     private var setupMsg = ""
     private fun build() {
-        if (Relay.key(this).isEmpty()) { if (keyField == null) setup(); return }
+        if (Relay.key(this).isEmpty()) { state = null; circleViews = null; if (keyField == null) setup(); return }
         keyField = null
         root.removeAllViews()
         header("מעביר את התרעות פיקוד העורף לשרת מהאינטרנט הביתי")
         val now = System.currentTimeMillis()
         val on = Relay.enabled(this) && RelayService.isRunning
-        val liveOk = now - Relay.sources[0].lastOk < 15_000
         val srvOk = now - Relay.serverOk < 90_000
         val charging = charging(); val wifi = onWifi()
-        val (color, title, sub) = when {
-            !on -> Triple(MUTED, "הממסר כבוי", "ההתרעות לא מועברות לשרת")
-            !srvOk -> Triple(RED, "אין חיבור לשרת", Relay.serverError.ifEmpty { "מתחבר…" })
-            !liveOk -> Triple(RED, "פיקוד העורף לא עונה", Relay.sources[0].error.ifEmpty { "מתחבר…" })
-            !charging -> Triple(ORANGE, "פועל עם בעיה", "הטלפון לא מחובר לחשמל")
-            Relay.sources.any { now - it.lastOk > it.everyMs * 3 + 10_000 } -> Triple(ORANGE, "פועל עם בעיה", "אחד המקורות לא עונה")
-            else -> Triple(GREEN, "הממסר פעיל", "פועל " + uptime(now - Relay.startedAt))
+        // אותה שיטה כמו חיווי החיבור בצופר חירום: צבע קבוע / שני צבעים שמתחלפים כל חצי שנייה / הבהוב
+        val upN = Relay.sources.count { now - it.lastOk < it.everyMs * 3 + 10_000 }
+        val connecting = on && now - Relay.startedAt < 30_000 && (Relay.serverOk == 0L || upN == 0)
+        val st = when {
+            !on -> St(MUTED, null, false, "הממסר כבוי", "ההתרעות לא מועברות לשרת")
+            connecting -> St(GREEN, null, true, "מתחבר…", "מתחבר לפיקוד העורף ולשרת")
+            !srvOk -> St(RED, null, false, "אין חיבור לשרת", Relay.serverError.ifEmpty { "ההתרעות לא מועברות" })
+            upN == 0 -> St(GREEN, RED, false, "פיקוד העורף לא עונה", Relay.sources[0].error.ifEmpty { "אף מקור לא עונה" })
+            upN < Relay.sources.size -> St(GREEN, ORANGE, false, "פועל חלקית", "$upN/${Relay.sources.size} מקורות עונים")
+            !charging || !wifi -> St(ORANGE, null, false, "פועל – יש סיכון", if (!charging) "הטלפון לא מחובר לחשמל" else "הטלפון לא מחובר ל‑Wi‑Fi")
+            else -> St(GREEN, null, false, "הממסר פעיל", "פועל " + uptime(now - Relay.startedAt))
         }
+        state = st
+        val color = st.c1; val title = st.title; val sub = st.sub
         val top = card()
         top.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(0, dp(22), 0, dp(18))
-            addView(android.widget.FrameLayout(this@MainActivity).apply {
-                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.argb(60, Color.red(color), Color.green(color), Color.blue(color))) }
-                addView(ImageView(this@MainActivity).apply { setImageResource(R.drawable.ic_antenna); setColorFilter(color) },
-                    android.widget.FrameLayout.LayoutParams(dp(46), dp(46), Gravity.CENTER))
-            }, LinearLayout.LayoutParams(dp(86), dp(86)))
-            addView(text(title, 20f, color, true).apply { gravity = Gravity.CENTER; setPadding(0, dp(10), 0, 0) })
+            val bg = GradientDrawable().apply { shape = GradientDrawable.OVAL }
+            val icon = ImageView(this@MainActivity).apply { setImageResource(R.drawable.ic_antenna) }
+            val circle = android.widget.FrameLayout(this@MainActivity).apply {
+                background = bg
+                addView(icon, android.widget.FrameLayout.LayoutParams(dp(46), dp(46), Gravity.CENTER))
+            }
+            addView(circle, LinearLayout.LayoutParams(dp(86), dp(86)))
+            val tv = text(title, 20f, color, true).apply { gravity = Gravity.CENTER; setPadding(0, dp(10), 0, 0) }
+            addView(tv)
+            circleViews = Triple(circle, bg, icon); titleView = tv
+            paint()
             addView(text(sub, 12f, MUTED).apply { gravity = Gravity.CENTER })
         })
         divider(top)
@@ -135,18 +162,18 @@ class MainActivity : Activity() {
             if (!on) MUTED else if (srvOk) GREEN else RED)
         add(src)
 
-        val st = card()
-        row(st, "התרעות שהועברו היום", "", Relay.forwardedToday(this).toString(), Color.WHITE)
-        row(st, "חשמל", "", if (charging) "בטעינה ✓" else "סוללה ${battery()}% – חבר לחשמל", if (charging) GREEN else ORANGE)
-        row(st, "רשת", "", if (wifi) "Wi‑Fi ✓" else "לא Wi‑Fi", if (wifi) GREEN else ORANGE)
+        val info = card()
+        row(info, "התרעות שהועברו היום", "", Relay.forwardedToday(this).toString(), Color.WHITE)
+        row(info, "חשמל", "", if (charging) "בטעינה ✓" else "סוללה ${battery()}% – חבר לחשמל", if (charging) GREEN else ORANGE)
+        row(info, "רשת", "", if (wifi) "Wi‑Fi ✓" else "לא Wi‑Fi", if (wifi) GREEN else ORANGE)
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         if (!pm.isIgnoringBatteryOptimizations(packageName)) {
-            row(st, "חיסכון בסוללה", "לחץ כדי לאשר שהממסר לא ייעצר", "לאשר", BLUE)
-            (st.getChildAt(st.childCount - 1)).setOnClickListener {
+            row(info, "חיסכון בסוללה", "לחץ כדי לאשר שהממסר לא ייעצר", "לאשר", BLUE)
+            (info.getChildAt(info.childCount - 1)).setOnClickListener {
                 try { startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName"))) } catch (_: Exception) { }
             }
         }
-        add(st)
+        add(info)
         root.addView(text("החלפת מפתח", 13f, BLUE).apply {
             gravity = Gravity.CENTER; setPadding(0, dp(10), 0, 0)
             setOnClickListener { RelayService.stop(this@MainActivity); Relay.setKey(this@MainActivity, ""); Relay.setEnabled(this@MainActivity, false); build() }
