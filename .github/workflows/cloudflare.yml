@@ -1,0 +1,25 @@
+name: Deploy Cloudflare worker
+
+# השרת המשני (oref-proxy ב-Cloudflare): נפרס מענף cloudflare כשמשהו בתיקייה cloudflare משתנה.
+# צריך את הסוד CLOUDFLARE_API_TOKEN בהגדרות המאגר (נוצר ב-Cloudflare, מוזן ידנית - לא בקוד)
+on:
+  push:
+    branches: [cloudflare]
+    paths: ['cloudflare/**', '.github/workflows/cloudflare.yml']
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check syntax
+        run: node --input-type=module --check < cloudflare/worker.js
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: cloudflare
+          command: deploy
