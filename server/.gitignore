@@ -6,3 +6,4 @@ state.json
 *.tmp
 web_auth.json
 devices.json
+relay.key

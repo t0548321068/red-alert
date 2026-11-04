@@ -395,6 +395,24 @@ renderMine();
 if (mine.length) fitTo(mine);
 loadArchive(); setInterval(loadArchive, 5 * 60e3);
 loadState(); setInterval(loadState, 30e3);
+
+// ---- ממסר בבית: טלפון עם "צופר ממסר" שבודק את פיקוד העורף מהאינטרנט הביתי ----
+const RELAY_APK = 'https://github.com/t0548321068/red-alert/releases/download/relay/tzofar-relay.apk';
+function loadRelay() {
+  fetch('/api/relay').then(r => r.json()).then(s => {
+    const ago = s.seen.live ? s.now - s.seen.live : Infinity;
+    const on = ago < 30e3;
+    $('relayTx').innerHTML = `<span style="color:${on ? 'var(--green)' : s.seen.live ? 'var(--red)' : 'var(--muted)'}">${on ? 'מחובר' : s.seen.live ? 'לא מחובר' : 'עוד לא התחבר'}</span>`;
+    const row = (a, b) => `<div class="row">${a}<span class="end">${b}</span></div>`;
+    const last = k => s.seen[k] ? upFor(s.now - s.seen[k]).replace(/^0 דקות$/, 'עכשיו') : '—';
+    $('relayBox').innerHTML =
+      row('מפתח ממסר', `<b style="letter-spacing:1px;direction:ltr;unicode-bidi:embed">${esc(s.key)}</b>`)
+      + row('קובץ חי / היסטוריה / ארכיון', `${last('live')} · ${last('history')} · ${last('archive')}`)
+      + row('התרעות שהועברו', s.forwarded)
+      + `<div class="row" style="color:var(--muted);font-size:13px">מתקינים את <a href="${RELAY_APK}" style="color:var(--blue)">צופר ממסר</a> בטלפון שבבית ומקלידים בו את המפתח</div>`;
+  }).catch(() => {});
+}
+loadRelay(); setInterval(loadRelay, 10e3);
 loadDevices(); setInterval(loadDevices, 60e3);
 loadServer(); setInterval(() => { loadServer(); }, 15e3);
 connect();
