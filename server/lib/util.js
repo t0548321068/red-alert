@@ -21,13 +21,25 @@ function get(url, headers = {}) {
         const b = Buffer.concat(bufs);
         let t = b.toString('utf8').replace(/^﻿/, '').trim();
         if (t.includes('\u0000')) t = b.toString('utf16le').replace(/^﻿/, '').trim();
-        res.statusCode === 200 ? resolve(t) : reject(Object.assign(new Error('HTTP ' + res.statusCode), { status: res.statusCode }));
+        // שגיאה: גם כותרת הדף שהתקבל (למשל דף החסימה) - ביומן, כדי לדעת מי חוסם
+        const title = (/<title[^>]*>([^<]*)<\/title>/i.exec(t) || [])[1];
+        res.statusCode === 200 ? resolve(t) : reject(Object.assign(new Error('HTTP ' + res.statusCode + (title ? ' "' + title.trim().slice(0, 80) + '"' : '')), { status: res.statusCode }));
       });
     });
     req.on('timeout', () => req.destroy(new Error('timeout')));
     req.on('error', reject);
   });
 }
+// פיקוד העורף: מזדהים כמו דפדפן כרום רגיל (מנובמבר 2026 האתר חוסם בקשות שלא נראות כמו דפדפן)
+const OREF_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+  Accept: 'application/json, text/plain, */*',
+  'Accept-Language': 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7',
+  Referer: 'https://www.oref.org.il/',
+  'X-Requested-With': 'XMLHttpRequest',
+  'Sec-Fetch-Site': 'same-origin', 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Dest': 'empty',
+  'sec-ch-ua': '"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"', 'sec-ch-ua-mobile': '?0', 'sec-ch-ua-platform': '"Windows"',
+};
 // בקשה שמחזירה רק את כתובת ההפניה (Location)
 function head(url) {
   return new Promise(resolve => {
@@ -64,4 +76,4 @@ async function once(key, fn) {
 const errAt = {};
 function fail(k, e) { if (Date.now() - (errAt[k] || 0) > 60000) { errAt[k] = Date.now(); log('source error', k, e.message); } }
 
-module.exports = { log, logLines, get, head, ilTime, once, fail, slowAgent };
+module.exports = { log, logLines, get, head, ilTime, once, fail, slowAgent, OREF_HEADERS };
