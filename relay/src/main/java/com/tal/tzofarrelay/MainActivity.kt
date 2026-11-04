@@ -83,7 +83,7 @@ class MainActivity : Activity() {
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_RTL
         @Suppress("DEPRECATION") window.statusBarColor = Color.BLACK
         root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(8), 0, dp(24)) }
-        setContentView(ScrollView(this).apply { setBackgroundColor(Color.BLACK); addView(root) })
+        setContentView(ScrollView(this).apply { setBackgroundColor(Color.BLACK); isVerticalScrollBarEnabled = false; addView(root) })   // בלי פס גלילה
         if (Build_SDK >= 33) requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"), 1)
     }
     private val Build_SDK get() = android.os.Build.VERSION.SDK_INT
