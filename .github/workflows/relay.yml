@@ -1,6 +1,6 @@
 name: Build relay APK
 
-# צופר ממסר: אפליקציה נפרדת לטלפון שנשאר בבית. נבנית כשמשהו בתיקייה relay משתנה,
+# ממסר צופר: אפליקציה נפרדת לטלפון שנשאר בבית. נבנית כשמשהו בתיקייה relay משתנה,
 # ומתפרסמת (גרסה "relay" - תמיד הקובץ האחרון באותו קישור) רק מענף relay
 on:
   push:
@@ -52,8 +52,8 @@ jobs:
           R=${{ github.repository }}
           if gh release view relay --repo $R >/dev/null 2>&1; then
             gh release upload relay tzofar-relay.apk --clobber --repo $R
-            gh release edit relay --repo $R --title "צופר ממסר · ${{ github.run_number }}" --prerelease --draft=false
+            gh release edit relay --repo $R --title "ממסר צופר · ${{ github.run_number }}" --prerelease --draft=false
           else
             gh release create relay tzofar-relay.apk --repo $R --prerelease --latest=false --target ${{ github.sha }} \
-              --title "צופר ממסר · ${{ github.run_number }}" --notes "האפליקציה לטלפון שבבית – מעבירה את התרעות פיקוד העורף לשרת"
+              --title "ממסר צופר · ${{ github.run_number }}" --notes "האפליקציה לטלפון שבבית – מעבירה את התרעות פיקוד העורף לשרת"
           fi

@@ -76,7 +76,7 @@ class MainActivity : Activity() {
     override fun onPause() { ui.removeCallbacks(tick); super.onPause() }
 
     private fun header(sub: String) {
-        root.addView(text("צופר ממסר", 26f, bold = true).apply { setPadding(dp(22), dp(14), dp(22), dp(2)) })
+        root.addView(text("ממסר צופר", 26f, bold = true).apply { setPadding(dp(22), dp(14), dp(22), dp(2)) })
         root.addView(text(sub, 13f, MUTED).apply { setPadding(dp(22), 0, dp(22), dp(14)) })
     }
 

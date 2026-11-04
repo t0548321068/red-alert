@@ -13,4 +13,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "RedAlert"
 include(":app")
-include(":relay")   // צופר ממסר - אפליקציה נפרדת לטלפון שבבית
+include(":relay")   // ממסר צופר - אפליקציה נפרדת לטלפון שבבית

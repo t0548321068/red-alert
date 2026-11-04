@@ -106,7 +106,7 @@ class RelayService : Service() {
         val pi = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         return Notification.Builder(this, "relay")
             .setSmallIcon(R.drawable.ic_antenna)
-            .setContentTitle("צופר ממסר")
+            .setContentTitle("ממסר צופר")
             .setContentText(text)
             .setOngoing(true)
             .setContentIntent(pi)
