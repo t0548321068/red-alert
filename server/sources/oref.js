@@ -55,12 +55,15 @@ async function pollLive() {
 
 // ---- היסטוריה וארכיון ----
 const archive = require('../lib/archive');
+// קצב הבדיקות (נובמבר 2026): 3 בקשות בשנייה גרמו כנראה לחסימת השרת - עכשיו כמו האתר הרשמי ופחות
+const LIVE_MS = 3000;
 const HISTORY = [
-  ['history', 'https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json'],
-  ['archive', archive.ARCH_BASE + 'lastDay'],   // הארכיון החדש (נובמבר 2026)
+  ['history', 'https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json', 10 * 1000],
+  ['archive', archive.ARCH_BASE + 'lastDay', 60 * 1000],   // הארכיון החדש (נובמבר 2026)
 ];
+const lastPoll = {};
 function pollHistory() {
-  for (const [key, url] of HISTORY) once(key, async () => {
+  for (const [key, url, every] of HISTORY) if (Date.now() - (lastPoll[key] || 0) >= every) { lastPoll[key] = Date.now(); once(key, async () => {
     try {
       const t = await get(url, OREF_H);
       // הארכיון - רק תשובה בפורמט שלו נחשבת "עונה" (לא דף אתר אחרי הפניה)
@@ -78,12 +81,23 @@ function pollHistory() {
       }
       for (const e of by.values()) send(e.title, e.areas, key, e.at);
     } catch (e) { fail(key, e); }
-  });
+  }); }
+}
+
+// בדיקת חסימה: פעם ב-5 דקות דף הבית של פיקוד העורף - ביומן רק כשהתשובה משתנה (חסום / פתוח)
+let homeSt = '';
+function probeHome() {
+  https.get({ host: 'www.oref.org.il', path: '/', timeout: 8000, headers: OREF_H }, res => {
+    res.resume();
+    const st = String(res.statusCode);
+    if (st !== homeSt) { log('oref home', st === '200' ? 'פתוח (200)' : 'HTTP ' + st); homeSt = st; }
+  }).on('timeout', function () { this.destroy(); }).on('error', e => log('oref home error', e.code));
 }
 
 function start() {
-  setInterval(pollLive, 1000);
+  setInterval(pollLive, LIVE_MS);
   setInterval(pollHistory, 1000);
+  probeHome(); setInterval(probeHome, 5 * 60 * 1000);
 }
 
 module.exports = { start, OREF_H };
