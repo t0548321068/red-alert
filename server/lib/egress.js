@@ -54,4 +54,13 @@ function blocked(ip) {
 let okIp = '';
 function works(ip) { if (ip !== okIp) { okIp = ip; log('egress: פיקוד העורף עונה דרך', (IPS.find(x => x[0] === ip) || [])[1] || ip); } }
 
+// בדיקה: מאיזו כתובת ציבורית יוצאת כל כתובת (ביומן), כדי לוודא שהמעבר באמת מחליף כתובת
+function verify() {
+  const https = require('https');
+  for (const [ip, pub] of IPS) if (ready.has(ip)) https.get({ host: 'api.ipify.org', path: '/', localAddress: ip, timeout: 8000 }, res => {
+    let b = ''; res.on('data', d => { b += d; }); res.on('end', () => log('egress: יציאה מ', ip, '=', b.trim(), b.trim() === pub ? '✓' : '(צפוי ' + pub + ')'));
+  }).on('error', e => log('egress: בדיקה נכשלה', ip, e.code));
+}
+setTimeout(verify, 20 * 1000);
+
 module.exports = { setup, current, blocked, works };
