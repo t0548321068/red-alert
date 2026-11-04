@@ -1,10 +1,10 @@
 // פיקוד העורף: הקובץ החי (כל שנייה, בחיבור קבוע) + היסטוריה וארכיון (גיבוי להתרעות שהקובץ החי פספס)
 const https = require('https');
-const { get, ilTime, once, fail, log } = require('../lib/util');
+const { get, ilTime, once, fail, log, OREF_HEADERS } = require('../lib/util');
 const { send, state, saveState } = require('../lib/push');
 const { ok } = require('../lib/health');
 
-const OREF_H = { Referer: 'https://www.oref.org.il/', 'X-Requested-With': 'XMLHttpRequest' };
+const OREF_H = OREF_HEADERS;
 
 // ---- הקובץ החי ----
 const agent = new https.Agent({ keepAlive: true, maxSockets: 2 });
@@ -12,7 +12,7 @@ function fetchLive() {
   return new Promise(resolve => {
     const req = https.get({
       host: 'www.oref.org.il', path: '/warningMessages/alert/Alerts.json?t=' + Date.now(), agent, timeout: 4000,
-      headers: { ...OREF_H, Referer: 'https://www.oref.org.il/', 'User-Agent': 'Mozilla/5.0 RedAlertPush' },
+      headers: OREF_H,
     }, res => {
       const bufs = [];
       res.on('data', d => bufs.push(d));
@@ -20,7 +20,7 @@ function fetchLive() {
         const buf = Buffer.concat(bufs);
         // UTF-16 (עם BOM של FF FE) או UTF-8; בלי תווי אפס ו-BOM
         let txt = (buf[0] === 0xFF && buf[1] === 0xFE ? buf.toString('utf16le') : buf.toString('utf8')).replace(/^\uFEFF/, '').replace(/\u0000/g, '').trim();
-        if (res.statusCode !== 200) { bad('HTTP ' + res.statusCode, txt); return resolve(''); }
+        if (res.statusCode !== 200) { bad('HTTP ' + res.statusCode, (/<title[^>]*>([^<]*)<\/title>/i.exec(txt) || [])[1] || txt); return resolve(''); }
         // תקין רק אם ריק או JSON - דף שגיאה/חסימה עם 200 לא נחשב "עונה"
         if (!txt) ok('oref');
         else { try { JSON.parse(txt); ok('oref'); } catch (_) { bad('not JSON', txt); } }
