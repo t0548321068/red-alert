@@ -33,6 +33,34 @@ object Relay {
     fun enabled(c: Context) = sp(c).getBoolean("on", false)
     fun setEnabled(c: Context, on: Boolean) = sp(c).edit().putBoolean("on", on).apply()
 
+    /** כפתור "בדוק עכשיו": מתי ומה יצא (נשמר) */
+    fun lastCheck(c: Context): Pair<Long, String> = sp(c).getLong("chkAt", 0L) to (sp(c).getString("chkRes", "") ?: "")
+    fun setLastCheck(c: Context, res: String) = sp(c).edit().putLong("chkAt", System.currentTimeMillis()).putString("chkRes", res).apply()
+
+    /**
+     * בדיקה מלאה עכשיו: כל מקור של פיקוד העורף ואז השרת. מחזירה (תקין?, תיאור). רץ ברקע
+     */
+    fun checkNow(c: Context): Pair<Boolean, String> {
+        val bad = ArrayList<String>()
+        for (s in sources) {
+            try {
+                val (code, _) = fetchOref(s.url)
+                if (code == 200) s.lastOk = System.currentTimeMillis() else bad += s.name.substringAfter("– ") + (if (code == 403) " חסום" else " $code")
+            } catch (_: Exception) { bad += s.name.substringAfter("– ") + " לא עונה" }
+        }
+        try {
+            when (post(key(c), "ping", "").first) {
+                200 -> serverOk = System.currentTimeMillis()
+                401 -> bad += "מפתח שגוי"
+                else -> bad += "השרת לא עונה"
+            }
+        } catch (_: Exception) { bad += "אין חיבור לשרת" }
+        val ok = bad.isEmpty()
+        val res = if (ok) "הכול תקין" else bad.joinToString(" · ")
+        setLastCheck(c, res)
+        return ok to res
+    }
+
     /** התרעות שהועברו היום (מתאפס בחצות) */
     fun forwardedToday(c: Context): Int {
         val today = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(java.util.Date())
