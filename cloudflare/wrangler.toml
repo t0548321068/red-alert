@@ -18,3 +18,7 @@ class_name = "Backup"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Backup"]
+
+# יומן (Logs) בלוח הבקרה של Cloudflare - לבדיקת תקלות
+[observability]
+enabled = true
