@@ -396,7 +396,7 @@ if (mine.length) fitTo(mine);
 loadArchive(); setInterval(loadArchive, 5 * 60e3);
 loadState(); setInterval(loadState, 30e3);
 
-// ---- ממסר בבית: טלפון עם "צופר ממסר" שבודק את פיקוד העורף מהאינטרנט הביתי ----
+// ---- ממסר בבית: טלפון עם "ממסר צופר" שבודק את פיקוד העורף מהאינטרנט הביתי ----
 const RELAY_APK = 'https://github.com/t0548321068/red-alert/releases/download/relay/tzofar-relay.apk';
 function loadRelay() {
   fetch('/api/relay').then(r => r.json()).then(s => {
@@ -409,7 +409,7 @@ function loadRelay() {
       row('מפתח ממסר', `<b style="letter-spacing:1px;direction:ltr;unicode-bidi:embed">${esc(s.key)}</b>`)
       + row('קובץ חי / היסטוריה / ארכיון', `${last('live')} · ${last('history')} · ${last('archive')}`)
       + row('התרעות שהועברו', s.forwarded)
-      + `<div class="row" style="color:var(--muted);font-size:13px">מתקינים את <a href="${RELAY_APK}" style="color:var(--blue)">צופר ממסר</a> בטלפון שבבית ומקלידים בו את המפתח</div>`;
+      + `<div class="row" style="color:var(--muted);font-size:13px">מתקינים את <a href="${RELAY_APK}" style="color:var(--blue)">ממסר צופר</a> בטלפון שבבית ומקלידים בו את המפתח</div>`;
   }).catch(() => {});
 }
 loadRelay(); setInterval(loadRelay, 10e3);
