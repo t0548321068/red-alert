@@ -97,6 +97,7 @@ class MainActivity : Activity() {
         root.addView(text(sub, 13f, MUTED).apply { setPadding(dp(22), 0, dp(22), dp(14)) })
     }
 
+    @Volatile private var checking = false
     private var keyField: EditText? = null
     private var setupMsg = ""
     private fun build() {
@@ -151,6 +152,23 @@ class MainActivity : Activity() {
             })
         })
         add(top)
+
+        // בדיקה עכשיו: כל מקורות פיקוד העורף והשרת, ומתי בוצעה הבדיקה האחרונה
+        val chk = card()
+        val (chkAt, chkRes) = Relay.lastCheck(this)
+        val fmt = java.text.SimpleDateFormat(if (now - chkAt < 20 * 3600_000L) "HH:mm:ss" else "dd/MM HH:mm", java.util.Locale.US)
+        row(chk, "בדיקה אחרונה", if (chkAt > 0) chkRes else "", if (chkAt > 0) fmt.format(java.util.Date(chkAt)) else "עוד לא בוצעה",
+            if (chkAt == 0L) MUTED else if (chkRes == "הכול תקין") GREEN else RED)
+        divider(chk)
+        chk.addView(text(if (checking) "בודק…" else "בדוק עכשיו", 15f, if (checking) MUTED else BLUE, true).apply {
+            gravity = Gravity.CENTER; setPadding(0, dp(13), 0, dp(13))
+            setOnClickListener {
+                if (checking) return@setOnClickListener
+                checking = true; build()
+                Thread { Relay.checkNow(this@MainActivity); runOnUiThread { checking = false; build() } }.start()
+            }
+        })
+        add(chk)
 
         val src = card()
         Relay.sources.forEach { s ->
