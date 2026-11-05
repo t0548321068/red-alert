@@ -54,12 +54,19 @@ object Updater {
     /** הגרסה הכי מתאימה להתקנה: יציבה חדשה, או (אם ביקשו) בטא חדשה */
     private fun best(c: Context): Update? {
         val cur = currentVersion(c)
-        (cheapStable() ?: fetch(API))?.let { (ver, url, _) ->
-            if (isNewer(ver, cur)) return Update(ver, ver, url, ver, 0)
-        }
-        if (Prefs.betaUpdates(c)) (cheapBeta() ?: fetch(BETA_API))?.let { (ver, url, build) ->
-            if (build > buildNumber(c) && !isNewer(cur, ver)) return Update(if (ver.endsWith("b")) "$ver (בטא)" else "$ver בטא $build", "beta-$build", url, ver, build)
-        }
+        // בדיקה שנכשלה (רשת / הגבלת GitHub) - זורקים, ולא מציגים "מעודכן"; הבטא נבדקת גם אם הרגילה נכשלה
+        var failed: Exception? = null
+        try {
+            (cheapStable() ?: fetch(API))?.let { (ver, url, _) ->
+                if (isNewer(ver, cur)) return Update(ver, ver, url, ver, 0)
+            }
+        } catch (e: Exception) { failed = e }
+        if (Prefs.betaUpdates(c)) try {
+            (cheapBeta() ?: fetch(BETA_API))?.let { (ver, url, build) ->
+                if (build > buildNumber(c) && !isNewer(cur, ver)) return Update(if (ver.endsWith("b")) "$ver (בטא)" else "$ver בטא $build", "beta-$build", url, ver, build)
+            }
+        } catch (e: Exception) { if (failed == null) failed = e }
+        failed?.let { throw it }
         return null
     }
 
@@ -160,7 +167,7 @@ object Updater {
         conn.readTimeout = 8000
         conn.setRequestProperty("Accept", "application/vnd.github+json")
         val json = try {
-            if (conn.responseCode != 200) return null
+            if (conn.responseCode != 200) throw java.io.IOException("HTTP ${conn.responseCode}")
             JSONObject(conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) })
         } finally {
             conn.disconnect()

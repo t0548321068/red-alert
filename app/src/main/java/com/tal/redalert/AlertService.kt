@@ -278,6 +278,33 @@ class AlertService : Service() {
     /** מזהה האירוע של פיקוד העורף לכל יישוב, ושל ההתרעה האחרונה שצלצלה - להבחין בין כפילות למטח חדש */
     private val seenEid = HashMap<String, String>()
     private var lastFiredEid = ""
+    /** האזורים של ההתרעה האחרונה שצלצלה (כולל מה שהצטרף אליה) */
+    @Volatile private var lastFiredAreas: MutableSet<String> = mutableSetOf()
+
+    /**
+     * אותו אירוע מכמה מקורות מגיע בחלקים - מצרפים לשורה הקודמת רק אזורים באותו מחוז.
+     * מחוז אחר (למשל שדרות ואז תל אביב) = התרעה נפרדת עם צליל ומסך. מחוז לא ידוע - כמו קודם (מצרפים)
+     */
+    private fun sameRegion(fresh: List<String>): Boolean {
+        val prev = lastFiredAreas.ifEmpty {
+            Prefs.activeAlert(this)?.optString("mapAreas")?.split(", ")?.map { it.trim() }?.filter { it.isNotEmpty() }?.toSet() ?: emptySet()
+        }
+        if (prev.isEmpty()) return true
+        val dm = AreaData.districtMap(this)
+        val pd = prev.mapNotNull { dm[it] }.toSet()
+        val fd = fresh.mapNotNull { dm[it] }
+        if (pd.isEmpty() || fd.size < fresh.size) return true
+        return fd.any { it in pd }
+    }
+
+    /** אזורים שהצטרפו להתרעה הפעילה (בלי צליל) נכנסים גם לרשימה שלה */
+    private fun addActiveAreas(level: Int, add: List<String>) {
+        val a = Prefs.activeAlert(this)?.takeIf { it.optInt("level") == level } ?: return
+        val cur = a.optString("mapAreas").split(", ").map { it.trim() }.filter { it.isNotEmpty() }
+        val all = (cur + add).distinct()
+        if (all.size == cur.size) return
+        Prefs.setActiveAlert(this, org.json.JSONObject(a.toString()).put("mapAreas", all.joinToString(", ")))
+    }
     /** דור הצליל - ראו fire() */
     @Volatile private var soundGen = 0
 
@@ -710,7 +737,7 @@ class AlertService : Service() {
 
     /** נקודת כניסה משותפת לכל המקורות: סינון ערים + מניעת כפילות */
     @Synchronized
-    fun handle(rawTitle: String, rawAreas: List<String>, eventTime: Long = System.currentTimeMillis(),
+    fun handle(rawTitle: String, rawAreas: List<String>, eventTime: Long = TimeSync.now(this),   // שעון השרת - כמו בהתרעות מהשרת
                source: String = "", eid: String = "") {
         // תזמון הגנה: מחוץ לימים ולשעות שנבחרו - לא מקבלים התרעות
         if (Prefs.scheduleOffNow(this)) return
@@ -757,8 +784,10 @@ class AlertService : Service() {
         // ההתרעה האחרונה נשמרת בזיכרון - בלי לקרוא את כל ההיסטוריה לפני הצלצול
         val last = lastFired ?: Prefs.history(this).firstOrNull()?.let { it.level to it.ts }
         val newBarrage = eid.isNotEmpty() && lastFiredEid.isNotEmpty() && eid != lastFiredEid   // מטח חדש - לא מצרפים לקודם
-        if (last != null && last.first == level && !newBarrage &&
+        if (last != null && last.first == level && !newBarrage && (level == LEVEL_END || sameRegion(fresh)) &&
             (now - last.second < MERGE_MS || (level == LEVEL_END && now - last.second < DEDUP_MS))) {
+            lastFiredAreas += fresh
+            addActiveAreas(level, fresh)   // "האירוע הסתיים" לאזור שהצטרף יסגור את מסך הירי
             later { try { Prefs.mergeFirstHistory(this, fresh); AlertWidget.updateAll(this) } catch (_: Exception) { } }
             return
         }
@@ -776,6 +805,7 @@ class AlertService : Service() {
             }
         }
         lastFired = level to now
+        lastFiredAreas = fresh.toMutableSet()
         if (eid.isNotEmpty()) lastFiredEid = eid
         fire(title, fresh, source = source)
     }
@@ -1052,6 +1082,8 @@ class AlertService : Service() {
      * דורש הרשאת "גישה לנא לא להפריע" (⚙ ← נא לא להפריע).
      */
     private var dndSaved = -1
+    /** ההתרעה רצה ברקע וההחזרה בתהליך הראשי - נעילה אחת, כדי שהערך השמור לא ילך לאיבוד באמצע */
+    private val audioLock = Any()
     /** מה שצריך להחזיר (נא לא להפריע / מצב צלצול / עוצמת שעון) - נשמר גם בקובץ, למקרה שהשירות נסגר באמצע */
     private fun restoreSp() = getSharedPreferences("restore", MODE_PRIVATE)
     /** השירות עלה מחדש אחרי שנסגר באמצע התרעה - מחזירים את ההגדרות למה שהיו */
@@ -1063,7 +1095,7 @@ class AlertService : Service() {
         if (sp.contains("ringer")) { ringerSaved = sp.getInt("ringer", -1); restoreRinger.run() }
         if (sp.contains("alarmVol")) { savedAlarmVol = sp.getInt("alarmVol", -1); restoreAlarmVol.run() }
     }
-    private fun overrideDnd(force: Boolean = false) {
+    private fun overrideDnd(force: Boolean = false): Unit = synchronized(audioLock) {
         if (!force && !Prefs.dndOverride(this)) return
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         if (!nm.isNotificationPolicyAccessGranted) return
@@ -1074,14 +1106,14 @@ class AlertService : Service() {
         main.removeCallbacks(dndRestore)
         main.postDelayed(dndRestore, 60_000)
     }
-    private val dndRestore = Runnable {
+    private val dndRestore = Runnable { synchronized(audioLock) {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         // מחזירים רק אם המשתמש לא שינה בינתיים בעצמו
         if (dndSaved != -1 && nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_ALL)
             try { nm.setInterruptionFilter(dndSaved) } catch (_: Exception) { }
         dndSaved = -1
         restoreSp().edit().remove("dnd").apply()
-    }
+    } }
 
     /** מדליק את המסך כשהוא כבוי - שההתראה תופיע מיד גם על מסך הנעילה */
     @Suppress("DEPRECATION")
@@ -1130,7 +1162,7 @@ class AlertService : Service() {
     /** צליל בערוץ "שעון מעורר" - נשמע גם במצב שקט */
     /** עוצמת ערוץ השעון המעורר למקסימום לזמן מוגבל, ואז מחזירים את העוצמה הקודמת */
     private var savedAlarmVol = -1
-    private fun boostAlarmVolume(ms: Long) {
+    private fun boostAlarmVolume(ms: Long): Unit = synchronized(audioLock) {
         try {
             val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
             val s = android.media.AudioManager.STREAM_ALARM
@@ -1140,21 +1172,21 @@ class AlertService : Service() {
             main.postDelayed(restoreAlarmVol, ms + 500)
         } catch (_: Exception) { }
     }
-    private val restoreAlarmVol = Runnable {
+    private val restoreAlarmVol = Runnable { synchronized(audioLock) {
         try {
             if (savedAlarmVol >= 0) (getSystemService(AUDIO_SERVICE) as android.media.AudioManager)
                 .setStreamVolume(android.media.AudioManager.STREAM_ALARM, savedAlarmVol, 0)
         } catch (_: Exception) { }
         savedAlarmVol = -1
         restoreSp().edit().remove("alarmVol").apply()
-    }
+    } }
 
     /**
      * הטלפון על שקט/רטט: מעבירים לרגיל לזמן ההתרעה (כדי להשמיע בעוצמת ההתראות), ומחזירים אחרי ms.
      * מחזיר false אם אי אפשר - אז משמיעים בערוץ השעון המעורר
      */
     private var ringerSaved = -1
-    private fun ringerToNormal(ms: Long): Boolean {
+    private fun ringerToNormal(ms: Long): Boolean = synchronized(audioLock) {
         val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
         return try {
             if (ringerSaved == -1) { ringerSaved = am.ringerMode; restoreSp().edit().putLong("at", System.currentTimeMillis()).putInt("ringer", ringerSaved).apply() }
@@ -1166,14 +1198,14 @@ class AlertService : Service() {
             true
         } catch (_: Exception) { restoreRinger.run(); false }
     }
-    private val restoreRinger = Runnable {
+    private val restoreRinger = Runnable { synchronized(audioLock) {
         val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
         // מחזירים רק אם המשתמש לא שינה בינתיים בעצמו
         if (ringerSaved != -1 && am.ringerMode == android.media.AudioManager.RINGER_MODE_NORMAL)
             try { am.ringerMode = ringerSaved } catch (_: Exception) { }
         ringerSaved = -1
         restoreSp().edit().remove("ringer").apply()
-    }
+    } }
 
     private fun playAlarm(level: Int, type: Int, durationMs: Long, usage: Int = AudioAttributes.USAGE_ALARM) {
         val uri = Sounds.uri(this, Sounds.effective(this, level), level) ?: return
@@ -1193,11 +1225,11 @@ class AlertService : Service() {
 
     /** עצירת השמעה של אפליקציות אחרות לזמן ההתרעה (Audio Focus) */
     private var focusReq: android.media.AudioFocusRequest? = null
-    private val releaseFocus = Runnable {
+    private val releaseFocus = Runnable { synchronized(audioLock) {
         focusReq?.let { try { (getSystemService(AUDIO_SERVICE) as android.media.AudioManager).abandonAudioFocusRequest(it) } catch (_: Exception) { } }
         focusReq = null
-    }
-    private fun holdFocus(ms: Long) {
+    } }
+    private fun holdFocus(ms: Long): Unit = synchronized(audioLock) {
         main.removeCallbacks(releaseFocus); releaseFocus.run()
         try {
             val r = android.media.AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
