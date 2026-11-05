@@ -328,7 +328,7 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
     ouiDivider(sum)
     // 3. מקור הבדיקה: השרת הראשי / המשני / הממסר בבית, או הטלפון עצמו
     val (by, secSt, relSt) = AlertService.chain(this)
-    val byName = when (by) { "secondary" -> "שרת משני"; "relay" -> "ממסר"; else -> "שרת ראשי" }
+    val byName = when (by) { "secondary" -> "שרת משני (Cloudflare)"; "relay" -> "ממסר"; else -> "שרת ראשי (Oracle)" }
     ouiRow(sum, "מקור הבדיקה", end = if (!on) "—" else if (srvOk) byName else if (srvConnecting) "טלפון (זמנית)" else "טלפון",
         endColor = if (!on) C.MUTED else if (srvOk && by == "primary") C.GREEN else C.ORANGE)
     ouiDivider(sum)
@@ -344,8 +344,8 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
         val p = if (srvOk && by == "primary") "פעיל" to C.GREEN else "לא עונה" to C.RED
         val s2 = if (srvOk && by == "secondary") "פעיל" to C.ORANGE else if (by == "relay") "לא עונה" to C.RED else st(secSt)
         val r3 = if (srvOk && by == "relay") "פעיל" to C.ORANGE else st(relSt)
-        ouiRow(ch, "1. שרת ראשי", end = p.first, endColor = p.second); ouiDivider(ch)
-        ouiRow(ch, "2. שרת משני", sub = "נכנס כשהראשי לא עונה", subColor = C.MUTED, end = s2.first, endColor = s2.second); ouiDivider(ch)
+        ouiRow(ch, "1. שרת ראשי (Oracle)", end = p.first, endColor = p.second); ouiDivider(ch)
+        ouiRow(ch, "2. שרת משני (Cloudflare)", sub = "נכנס כשהראשי לא עונה", subColor = C.MUTED, end = s2.first, endColor = s2.second); ouiDivider(ch)
         ouiRow(ch, "3. ממסר בבית", sub = "נכנס כששני השרתים לא עונים", subColor = C.MUTED, end = r3.first, endColor = r3.second); ouiDivider(ch)
         ouiRow(ch, "4. הטלפון הזה", sub = if (srvOk) "לא בודק בעצמו – חוסך סוללה" else "בודק את המקורות בעצמו",
             subColor = C.MUTED, end = if (srvOk) "בהמתנה" else "פעיל", endColor = if (srvOk) C.GREEN else C.ORANGE)
@@ -368,11 +368,11 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
         val from = when {
             !on || !SourceHealth.isUp(k) -> ""
             !srvOk -> "טלפון"
-            by == "secondary" -> "שרת משני"
+            by == "secondary" -> "שרת משני (Cloudflare)"
             by == "relay" -> "ממסר"
-            via[k] == "cf" -> "שרת משני"
+            via[k] == "cf" -> "שרת משני (Cloudflare)"
             via[k] == "relay" -> "ממסר"
-            else -> "שרת ראשי"
+            else -> "שרת ראשי (Oracle)"
         }
         ouiRow(list, name, sub = from, subColor = C.MUTED, end = label, endColor = color)
     }
