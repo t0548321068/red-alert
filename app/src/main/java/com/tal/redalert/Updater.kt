@@ -79,7 +79,7 @@ object Updater {
                     u != null ->
                         if (!silent || Prefs.skippedVersion(a) != u.key) offer(a, u)
                     failed -> if (!silent) toast(a, "לא ניתן לבדוק עדכונים כרגע")
-                    !silent -> toast(a, "יש לך את הגרסה האחרונה (${versionLabel(a)})")
+                    !silent -> toast(a, "הגרסה האחרונה כבר מותקנת (${versionLabel(a)})")
                 }
             }
         }.start()
@@ -194,8 +194,8 @@ object Updater {
         val beta = u.key.startsWith("beta")
         AppSheet.show(a, (if (beta) "🧪 גרסת בטא זמינה – " else "🆕 גרסה חדשה זמינה – ") + u.label,
             "הגרסה שלך: ${versionLabel(a)}\nלהתקין עכשיו?" +
-                (if (beta) "\n\nגרסת בטא – לפני שחרור לכולם, יכולות להיות בה תקלות." else "") +
-                "\n\n\"מאוחר יותר\" – אפשר לעדכן בכל זמן דרך ⚙ ← בדיקת עדכונים",
+                (if (beta) "\n\nגרסת בטא – לפני שחרור לכולם, ייתכנו בה תקלות." else "") +
+                "\n\n\"מאוחר יותר\" – אפשר לעדכן בכל עת דרך ⚙ ← בדיקת עדכונים",
             "התקן עכשיו", { download(a, u.label.replace(" ", "-"), u.url) },
             cancel = "מאוחר יותר", onCancel = { Prefs.setSkippedVersion(a, u.key) }, cancelable = false)
             ?.let { if (a is MainActivity) a.track(it) }   // נסגר יחד עם המסך (סיבוב)
