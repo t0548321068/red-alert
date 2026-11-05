@@ -100,5 +100,6 @@ object DataFiles {
         Config.reset()
         AreaData.reset()
         Speaker.resetIndex()
+        Shabbat.reload()
     }
 }
