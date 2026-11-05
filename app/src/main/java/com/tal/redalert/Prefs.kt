@@ -55,6 +55,9 @@ object Prefs {
     /** ברכה לפי השעה (בוקר טוב / ערב טוב...) */
     fun showGreeting(c: Context) = sp(c).getBoolean("greeting", true)
     fun setShowGreeting(c: Context, v: Boolean) = sp(c).edit().putBoolean("greeting", v).commit()
+    /** שם שמופיע אחרי הברכה ("ערב טוב טל"); ריק = בלי שם */
+    fun greetingName(c: Context) = sp(c).getString("greetName", "") ?: ""
+    fun setGreetingName(c: Context, v: String) = sp(c).edit().putString("greetName", v.trim().take(20)).commit()
     fun showWeather(c: Context) = sp(c).getBoolean("weather", true)
     /** דיוק המיקום האחרון שמוצג בחיווי (מטרים), מתי, ואיפה - נשמר בין פתיחות כדי שהחיווי לא יקפוץ */
     fun lastAcc(c: Context): Triple<Int, Long, Pair<Double, Double>> = Triple(sp(c).getInt("accM", -1), sp(c).getLong("accAt", 0L),
