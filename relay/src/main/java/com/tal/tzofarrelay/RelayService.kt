@@ -78,7 +78,8 @@ class RelayService : Service() {
                 } else if (++downChecks >= 3 && !Relay.active) {
                     Relay.active = true; Relay.activeSince = t; hbAt = 0
                     Relay.sources.forEach { it.lastTry = 0 }
-                    Relay.admin(this, "⚠️ שני השרתים לא עונים – הממסר בבית נכנס לפעולה")
+                    Relay.admin(this, "⚠️ שני השרתים לא עונים – הממסר בבית נכנס לפעולה" + if (Relay.drill) " (בדיקה)" else "")
+                    if (Relay.drill) Relay.testAlert(this)
                 }
             }
             if (Relay.active) {

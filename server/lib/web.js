@@ -136,7 +136,7 @@ function handle(req, res, u, state) {
   if (p === '/api/state') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(state())); return true; }
   if (p === '/api/server') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(admin.info(state().started))); return true; }
   if (p === '/api/restart' && req.method === 'POST') { admin.restart(res); return true; }
-  if (p === '/api/drill' && req.method === 'POST') { require('./chain').drill(res); return true; }
+  if (p === '/api/drill' && req.method === 'POST') { require('./chain').drill(res, u.searchParams.get('kind')); return true; }
   if (p === '/api/message' && req.method === 'POST') { devices.sendMessage(req, res); return true; }
   if (p === '/api/relay') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(require('./relay').status())); return true; }
   if (p === '/api/devices') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(devices.list())); return true; }

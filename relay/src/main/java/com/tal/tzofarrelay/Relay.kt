@@ -88,7 +88,15 @@ object Relay {
     }
 
     /** השרת הראשי: בדיקה עם המפתח (גם מוודא שהמפתח נכון). קוד התשובה (-1 = אין חיבור) */
-    fun pingPrimary(key: String): Int = try { http("$PRIMARY/relay/ping", "POST", "", mapOf("X-Relay-Key" to key)).first } catch (_: Exception) { -1 }
+    fun pingPrimary(key: String): Int = try {
+        val (code, body) = http("$PRIMARY/relay/ping", "POST", "", mapOf("X-Relay-Key" to key))
+        drill = code == 503 && body.contains("drill")
+        code
+    } catch (_: Exception) { drill = false; -1 }
+    /** בדיקת גיבוי מהאתר: השרת הראשי עונה "לא זמין" בכוונה - כשהממסר נכנס לפעולה הוא שולח גם התרעת בדיקה */
+    @Volatile var drill = false
+    fun testAlert(c: Context) = fcm(c, JSONObject().put("topic", "admin")
+        .put("data", JSONObject().put("type", "test").put("by", "relay")).put("android", android("120s")))
 
     /** בדיקת שני השרתים, ומפתח Firebase מהשרת הראשי פעם ביום. נקרא פעם בדקה */
     fun checkServers(c: Context) {

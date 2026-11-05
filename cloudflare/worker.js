@@ -142,7 +142,9 @@ export class Backup {
       // /alive - בלי לגרום לשרת הראשי לשלוח סימן חיים לטלפונים (כמו /status)
       const r = await fetch(PRIMARY + '/alive', { signal: AbortSignal.timeout(8000) });
       up = r.ok;
-    } catch (_) {}
+      // בדיקת גיבוי מהאתר: השרת הראשי עונה "לא זמין" בכוונה - נכנסים לפעולה ושולחים גם התרעת בדיקה
+      m.drill = !up && (await r.text()).includes('drill');
+    } catch (_) { m.drill = false; }
     if (up) {
       m.primaryOk = Date.now();
       const wasActive = m.active, wasFail = m.fails > 0;
@@ -165,7 +167,9 @@ export class Backup {
       m.active = true; m.since = Date.now(); m.n = 0; m.hbAt = 0;
       await this.save();
       await this.state.storage.setAlarm(Date.now() + 1000);
-      await this.admin('⚠️ השרת הראשי לא עונה – השרת המשני (Cloudflare) נכנס לפעולה');
+      await this.admin('⚠️ השרת הראשי לא עונה – השרת המשני (Cloudflare) נכנס לפעולה' + (m.drill ? ' (בדיקה)' : ''));
+      // התרעת בדיקה - רק לטלפוני הבטא (נושא admin), שיראו שהתרעה מגיעה מהשרת המשני
+      if (m.drill) await this.fcm({ topic: 'admin', data: { type: 'test', by: 'secondary' }, android: { priority: 'HIGH', ttl: '120s' } });
     } else if (!m.active) await this.save();
   }
 
