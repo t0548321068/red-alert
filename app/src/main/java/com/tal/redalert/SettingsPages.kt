@@ -189,15 +189,13 @@ internal fun MainActivity.showAlertSettings() = ouiPage("הגדרות התרעו
     val extra = ouiCard()
     ouiRow(extra, "אזורים נוספים") { showExtraAreas() }
     ouiAdd(body, extra)
-    // צלילים ורטט (הועבר מההגדרות הראשיות) - כרטיס נפרד מעל הקראה
+    // צלילים ורטט והקראה - כרטיס אחד
     val snd = ouiCard()
     ouiRow(snd, "צלילים ורטט", sub = "שעות שקט · נא לא להפריע · מצב שקט · שבת") { showSoundSettings() }
-    ouiAdd(body, snd)
-    // הקראה - כרטיס נפרד
-    val sp = ouiCard()
-    ouiRow(sp, "הקראה", sub = onOff(Prefs.speakAlerts(this)), on = Prefs.speakAlerts(this),
+    ouiDivider(snd)
+    ouiRow(snd, "הקראה", sub = onOff(Prefs.speakAlerts(this)), on = Prefs.speakAlerts(this),
         onToggle = { Prefs.setSpeakAlerts(this, !Prefs.speakAlerts(this)); rebuild() }) { showSpeech() }
-    ouiAdd(body, sp)
+    ouiAdd(body, snd)
     // בדיקת התראה (עברה מהכפתור שבמסך הראשי)
     val t = ouiCard()
     ouiRow(t, "בדיקת התראה", sub = "מקדימה · ירי · סיום") { chooseTest() }
