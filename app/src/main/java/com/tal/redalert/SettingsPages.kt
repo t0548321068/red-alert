@@ -371,7 +371,7 @@ internal fun MainActivity.chooseShabbat() = ouiPage("מצב שבת") { body, reb
             end = fmtTime.format(java.util.Date(w.second)), endBig = true)
     }
     ouiAdd(body, times)
-    ouiNote(body, "לפי המיקום ושיטת אתר ישיבה: כניסה לפי מנהג המקום (ירושלים 40 דק׳, חיפה 30, תל אביב 21...), יציאה בצאת הכוכבים")
+    ouiNote(body, "לפי המיקום וזמני עתים לבינה: כניסה לפי מנהג המקום (ירושלים 40 דק׳, חיפה 30, תל אביב 21...), יציאה בצאת הכוכבים")
 
     // מה מצב שבת עושה
     val info = ouiCard()
