@@ -223,7 +223,7 @@ internal fun MainActivity.showAreaPicker(whole: Boolean) {
         // תמיד "N נבחרו" (גם כשנבחר הכל); "כל הארץ" מופיע ברשימת הנבחרים
         val n = kind.count { key(it) in sel }
         val full = n == kind.size && n > 0
-        count.text = when { n == 0 -> if (whole) "בחירת אזור שלם" else "בחירת יישוב"; else -> "$n נבחרו" }
+        count.text = when { n == 0 -> if (whole) "בחירת אזור שלם" else "בחירת יישוב"; n == 1 -> "1 נבחר"; else -> "$n נבחרו" }
         allDot.on = full; allDot.invalidate()
         adapter.notifyDataSetChanged()
     }

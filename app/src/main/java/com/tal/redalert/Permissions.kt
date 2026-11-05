@@ -54,7 +54,7 @@ internal fun MainActivity.permissionItems(): List<Perm> {
         Perm("🔔", "התראות בטלפון", "התראות האפליקציה מופעלות",
             nm.areNotificationsEnabled()) { openNotificationSettings() },
         Perm("🔕", "נא לא להפריע", "מאפשר לעקוף נא לא להפריע בזמן התרעה",
-            dndAccess()) { startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) }
+            dndAccess()) { try { startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) } catch (_: Exception) { } }
     )
 }
 
@@ -105,8 +105,8 @@ internal fun MainActivity.openAppDetails() {
 }
 
 internal fun MainActivity.openNotificationSettings() {
-    startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-        .putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+    try { startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+        .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)) } catch (_: Exception) { }
 }
 
 /** אנדרואיד 14+: בלי ההרשאה הזו ההתראה לא נדלקת על מסך נעילה */
@@ -150,12 +150,12 @@ internal fun MainActivity.openFullScreenSettings() {
     // קודם מה שחסר: הצגה מעל אפליקציות, ואז התראה במסך מלא.
     // אם הכל מופעל - חוזרים למסך "הצגה מעל אפליקציות" (ולא להגדרות ההתראות)
     if (!overlayAllowed() || fullScreenIntentAllowed()) {
-        startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
-            .setData(Uri.parse("package:$packageName")))
+        try { startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+            .setData(Uri.parse("package:$packageName"))) } catch (_: Exception) { }
         return
     }
-    startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
-        .setData(Uri.parse("package:$packageName")))
+    try { startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
+        .setData(Uri.parse("package:$packageName"))) } catch (_: Exception) { }
 }
 
 /** הקראה: הפעלה/כיבוי ודוגמה */

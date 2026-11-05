@@ -57,8 +57,8 @@ class PushService : FirebaseMessagingService() {
         if (d["type"] == "admin") { if (Prefs.betaAllowed(this)) showAdmin(d["text"] ?: return); return }
         // בדיקת גיבוי (רק טלפוני הבטא): התרעת בדיקה מהשרת המשני / מהממסר - מסך ההתרעה הרגיל, עם מי שלח
         if (d["type"] == "test") {
-            if (Prefs.betaAllowed(this)) AlertService.start(this, testTitle = "ירי רקטות וטילים",
-                testBody = "בדיקת גיבוי · " + if (d["by"] == "relay") "ממסר" else "שרת משני (Cloudflare)")
+            if (Prefs.betaAllowed(this) && Prefs.enabled(this)) try { AlertService.start(this, testTitle = "ירי רקטות וטילים",
+                testBody = "בדיקת גיבוי · " + if (d["by"] == "relay") "ממסר" else "שרת משני (Cloudflare)") } catch (_: Exception) { }
             return
         }
         if (d["type"] != "alert") return

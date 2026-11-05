@@ -142,6 +142,7 @@ object Prefs {
     fun collapse(list: List<Entry>): List<Entry> {
         val out = ArrayList<Entry>()
         val keys = ArrayList<MutableSet<String>>()
+        val tops = ArrayList<Long>()   // הזמן של החדשה בכל שורה - החלון נמדד ממנה (לא "זוחל" אחורה)
         for (e in list) {           // מהחדשה לישנה
             val ek = e.body.split(",").map { areaKey(it.trim()) }.filter { it.isNotEmpty() }.toSet()
             // סיום אירוע: כל הסיומים הרצופים (בלי התראה ביניהם, עד חצי שעה) = שורה אחת
@@ -150,10 +151,10 @@ object Prefs {
                 last.ts - e.ts in 0 until END_MERGE_MS) out.lastIndex
             else out.indices.firstOrNull { j ->
                 val k = out[j]
-                k.level == e.level && e.ts > 0 && k.ts - e.ts in 0 until DUP_MS &&
-                    (k.ts - e.ts < 90_000L || k.level == 2 || keys[j].any { it in ek })   // סיום אירוע - תמיד אחד
+                k.level == e.level && e.ts > 0 && tops[j] - e.ts in 0 until DUP_MS &&
+                    (tops[j] - e.ts < 90_000L || k.level == 2 || keys[j].any { it in ek })   // סיום אירוע - תמיד אחד
             }
-            if (i == null) { out.add(e.copy(body = mergeBody(e.body, emptyList()))); keys.add(ek.toMutableSet()); continue }
+            if (i == null) { out.add(e.copy(body = mergeBody(e.body, emptyList()))); keys.add(ek.toMutableSet()); tops.add(e.ts); continue }
             out[i] = e.copy(body = mergeBody(e.body, out[i].body.split(", ")))
             keys[i].addAll(ek)
         }
@@ -262,6 +263,9 @@ object Prefs {
     /** השתקה זמנית: עד מתי ההתרעות מגיעות בלי צליל, רטט והקראה (Long.MAX_VALUE = עד שמבטלים) */
     fun muteUntil(c: Context) = sp(c).getLong("muteUntil", 0L)
     fun setMuteUntil(c: Context, v: Long) = sp(c).edit().putLong("muteUntil", v).commit()
+    /** משך ההשתקה שנבחר (לסימון בעמוד) */
+    fun muteMin(c: Context) = sp(c).getLong("muteMin", 0L)
+    fun setMuteMin(c: Context, v: Long) = sp(c).edit().putLong("muteMin", v).apply()
     fun mutedNow(c: Context) = System.currentTimeMillis() < muteUntil(c)
     /** צליל חזק: כל ההתרעות בעוצמה מלאה, גם כשהווליום של הטלפון נמוך (למשל בעבודה במוסך) */
     fun loudSound(c: Context) = sp(c).getBoolean("loudSound", false)

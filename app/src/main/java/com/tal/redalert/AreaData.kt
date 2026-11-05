@@ -53,7 +53,7 @@ object AreaData {
         else if (pick.startsWith(DISTRICT_PREFIX)) districtMap(c)[area] == pick.removePrefix(DISTRICT_PREFIX)
         // "כל הארץ" ו"ברחבי הארץ" - אותו דבר (פיקוד העורף משתמש בשניהם)
         else if (pick == ALL_COUNTRY) area == ALL_COUNTRY || area == "ברחבי הארץ"
-        else area.contains(pick)
+        else area == pick || area.startsWith("$pick -")   // "יבנה" לא תופס את "גן יבנה"
 
     fun areas(c: Context): JSONObject = areasCache ?: synchronized(this) {
         // אותו קובץ משמש גם את המפה (var ALL_AREAS={...};) - מורידים את העטיפה

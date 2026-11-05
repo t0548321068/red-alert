@@ -722,7 +722,7 @@ class AlertService : Service() {
         // בלי כפילויות בתוך ההודעה עצמה
         // "ברחבי הארץ" מאוחד ל"כל הארץ" - בכל מקום שמוצג (פיד, התרעות אחרונות, מסך ההתרעה)
         val areas = rawAreas.map { it.trim() }.filter { it.isNotBlank() }.map { AreaData.unify(it) }
-            .distinctBy { key(it, level) }
+            .distinct()   // לפי השם המלא - "ירושלים - מרכז" ו"ירושלים - צפון" נשארים שניהם
 
         // פיד ארצי: כל ההתראות, לפני הסינון לפי אזורים (בלי צליל)
         val feedNew = areas.filter { a ->
@@ -750,7 +750,7 @@ class AlertService : Service() {
             }
         if (fresh.isEmpty()) return
         awake(60_000)   // התרעה באזור שלי - הטלפון נשאר ער לזמן הטיפול בה
-        fresh.forEach { seen[key(it, level)] = eventTime; if (eid.isNotEmpty()) seenEid[key(it, level)] = eid }
+        fresh.forEach { val k = key(it, level); seen[k] = eventTime; if (eid.isNotEmpty()) seenEid[k] = eid else seenEid.remove(k) }   // מזהה ישן לא נשאר למטח הבא
 
         // המקור הכי מהיר כבר התריע על האירוע הזה (לפני פחות מדקה וחצי) -
         // היישובים הנוספים מצטרפים לאותה שורה, בלי צליל ומסך נוספים.

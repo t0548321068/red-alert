@@ -115,7 +115,7 @@ internal fun MainActivity.updateFeed() {
         feedCard.visibility = if (first == null && !always) View.GONE else View.VISIBLE
         feedText = first?.text ?: ""
         feedLine.text = if (first != null) feedSpan(first)
-            else FeedText.windowLabel(win).let { "אין התרעות ב" + (if (it[0].isDigit()) "-" else "") + it }
+            else FeedText.windowLabel(win).let { "אין התרעות " + when { it[0].isDigit() -> "ב-$it"; it[0] == 'ה' -> "ב" + it.drop(1); else -> "ב$it" } }
         feedLine.setTextColor(C.TEXT)
         return
     }
@@ -379,7 +379,10 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
     }
     // מתעדכן בלייב כל שנייה כל עוד העמוד פתוח
     (body.tag as? Runnable)?.let { ui.removeCallbacks(it) }
-    val live = Runnable { if (body.isAttachedToWindow) rebuild() }
+    val live = object : Runnable { override fun run() {
+        if (!body.isAttachedToWindow) return
+        if (hasWindowFocus()) rebuild() else ui.postDelayed(this, 1000)   // ברקע - לא בונים את העמוד מחדש
+    } }
     body.tag = live
     ui.postDelayed(live, 1000)
 }

@@ -73,7 +73,7 @@ open class AlertActivity : Activity() {
         firedAt = intent.getLongExtra("firedAt", System.currentTimeMillis())
         // מצב שבת: המסך נסגר לבד אחרי דקה
         val autoClose = intent.getLongExtra("autoCloseMs", 0L)
-        if (autoClose > 0) ui.postDelayed({ finish() }, (firedAt + autoClose - System.currentTimeMillis()).coerceAtLeast(1000L))
+        if (autoClose > 0) ui.postDelayed(autoCloseRun, (firedAt + autoClose - System.currentTimeMillis()).coerceAtLeast(1000L))
 
         val bg = Color.parseColor(AlertUi.color(level))
         val title = intent.getStringExtra("title") ?: "צבע אדום"
@@ -306,13 +306,15 @@ open class AlertActivity : Activity() {
         android.widget.Toast.makeText(this, "לסגירה: ✕ סגור", android.widget.Toast.LENGTH_SHORT).show()
     }
 
-    /** התראה חדשה כשהמסך כבר פתוח - מציגים אותה */
+    private val autoCloseRun = Runnable { finish() }
+
+    /** התרעה חדשה כשהמסך כבר פתוח - מציגים אותה */
     override fun onNewIntent(i: Intent) {
         super.onNewIntent(i)
         // התרעה אדומה נוספת כשמסך של התרעה אדומה כבר פתוח: לא פותחים מחדש -
         // האזורים החדשים מתווספים (תגיות + מפה, והסיכות שלהם נופלות), והטיימר לפי ההתרעה החדשה
         val chips = chipsFlow
-        if (level == AlertService.LEVEL_ALERT && i.getIntExtra("level", -1) == AlertService.LEVEL_ALERT && chips != null) {
+        if (level == AlertService.LEVEL_ALERT && i.getIntExtra("level", -1) == AlertService.LEVEL_ALERT && chips != null && chips.parent != null) {
             val fresh = (i.getStringExtra("body") ?: "").split(",").map { AreaData.unify(it.trim()) }
                 .filter { it.isNotEmpty() && it !in shownAreas }.distinct()
             fresh.forEach { a -> shownAreas += a; chips.addView(chip(a)) }
@@ -328,6 +330,8 @@ open class AlertActivity : Activity() {
             shelterSec = i.getIntExtra("shelter", -1)
             firedAt = i.getLongExtra("firedAt", System.currentTimeMillis())
             ui.removeCallbacks(tick); ui.post(tick)
+            // מצב שבת: דקה מההתרעה החדשה
+            i.getLongExtra("autoCloseMs", 0L).takeIf { it > 0 }?.let { ui.removeCallbacks(autoCloseRun); ui.postDelayed(autoCloseRun, it) }
             return
         }
         setIntent(i)

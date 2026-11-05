@@ -218,6 +218,7 @@ object Updater {
      * עדכון אוטומטי ברקע (כשהשרת מודיע על גרסה חדשה): מוריד ומתקין בלי לפתוח את האפליקציה.
      * מהעדכון השני ההתקנה שקטה; בפעם הראשונה אנדרואיד מבקש אישור (התראה). true = התחיל
      */
+    @Synchronized
     fun autoInstall(c: Context): Boolean {
         if (!Prefs.autoUpdate(c) || !c.packageManager.canRequestPackageInstalls()) return false
         val u = try { best(c).also { remember(c, it) } } catch (_: Exception) { null } ?: return false
@@ -226,7 +227,7 @@ object Updater {
         val sp = c.getSharedPreferences("upd", Context.MODE_PRIVATE)
         if (sp.getString("autoKey", "") == u.key && System.currentTimeMillis() - sp.getLong("autoAt", 0) < 6 * 3600_000L) return true
         sp.edit().putString("autoKey", u.key).putLong("autoAt", System.currentTimeMillis()).apply()
-        startDownload(c.applicationContext, u.label.replace(" ", "-"), u.url, reopen = false)
+        try { startDownload(c.applicationContext, u.label.replace(" ", "-"), u.url, reopen = false) } catch (_: Exception) { return false }
         return true
     }
 
@@ -238,7 +239,9 @@ object Updater {
             .setMimeType(MIME)
             // ברקע - בלי התראת "ההורדה הושלמה" שנשארת בשורת ההתראות
             .setNotificationVisibility(if (reopen) DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED else DownloadManager.Request.VISIBILITY_VISIBLE)
-            .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "red-alert-$version.apk")
+            // תיקייה של האפליקציה: בלי הרשאת אחסון (אנדרואיד 9 ומטה), והקובץ הישן נמחק - לא מצטברים קבצים
+            .setDestinationInExternalFilesDir(app, Environment.DIRECTORY_DOWNLOADS, "red-alert-$version.apk")
+        try { app.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.listFiles()?.forEach { if (it.name.endsWith(".apk")) it.delete() } } catch (_: Exception) { }
         val id = dm.enqueue(req)
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(c: Context, i: Intent) {
@@ -252,7 +255,7 @@ object Updater {
                 // התקנה דרך PackageInstaller: מאנדרואיד 12 עדכון עצמי בלי ללחוץ "התקן"
                 // (אחרי שהאפליקציה התקינה את עצמה פעם אחת). אם נכשל - מסך ההתקנה הרגיל
                 Thread {
-                    try { installSession(app, uri, reopen) } catch (_: Exception) {
+                    try { installSession(app, uri, reopen); try { dm.remove(id) } catch (_: Exception) { } } catch (_: Exception) {
                         try {
                             app.startActivity(Intent(Intent.ACTION_VIEW)
                                 .setDataAndType(uri, MIME)

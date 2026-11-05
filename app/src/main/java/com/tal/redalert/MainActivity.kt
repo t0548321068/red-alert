@@ -123,7 +123,7 @@ class MainActivity : Activity() {
             gpsDone = true
             if (loc == null) {
                 if (shown == null) {
-                    weatherAt = 0L
+                    weatherRetrySoon()
                     if (!weatherShown) {   // מזג אוויר קודם נשאר על המסך
                         weatherLine.text = "📍 לא נמצא מיקום – לחץ כדי לנסות שוב"
                         weatherLine.setTextColor(C.MUTED)
@@ -168,10 +168,13 @@ class MainActivity : Activity() {
         Weather.freshLocation(this) { loc -> if (loc != null) keepAccuracy(loc) }
     }
 
+    /** נכשל - ניסיון חוזר בעוד דקה (לא בכל שנייה) */
+    private fun weatherRetrySoon() { weatherAt = System.currentTimeMillis() - Prefs.weatherMinutes(this) * 60_000L + 60_000L }
+
     internal fun loadWeather(loc: android.location.Location) = Thread {
         val w = try { Weather.fetch(this, loc) } catch (_: Exception) { null }
         runOnUiThread {
-            if (w == null) { weatherAt = 0L; return@runOnUiThread }
+            if (w == null) { weatherRetrySoon(); return@runOnUiThread }
             val (icon, _) = Weather.describe(w.code, w.isDay)
             val hint = if (hasPrecise()) "" else " (לחץ למיקום מדויק)"
             weatherLine.text = listOf("$icon ${w.temp}°", w.place)
