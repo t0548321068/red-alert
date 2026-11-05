@@ -285,6 +285,7 @@ internal fun MainActivity.agoText(t: Long): String {
         sec < 120 -> "לפני דקה"
         sec < 3600 -> "לפני ${sec / 60} דקות"
         sec < 7200 -> "לפני שעה"
+        sec < 10800 -> "לפני שעתיים"
         else -> "לפני ${sec / 3600} שעות"
     }
 }

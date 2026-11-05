@@ -189,7 +189,7 @@ internal fun MainActivity.showUpdateCheck() {
                         }
                         ouiAdd(content, cd)
                         notesCard("מה חדש בגרסה", det?.notes ?: emptyList())
-                        if (beta) ouiNote(content, "גרסת בטא – לפני שחרור לכולם, יכולות להיות בה תקלות")
+                        if (beta) ouiNote(content, "גרסת בטא – לפני שחרור לכולם, ייתכנו בה תקלות")
                         // לחיצה כפולה לא מתחילה שתי הורדות (בלי אישור התקנה - אפשר ללחוץ שוב אחרי האישור)
                         var installing = false
                         pill("התקן עכשיו") { done -> done()

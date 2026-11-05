@@ -293,7 +293,7 @@ internal fun MainActivity.showSoundSettings() = ouiPage("צלילים ורטט")
         openNotificationSettings() }
     ouiDivider(c)
     val loud = Prefs.loudSound(this)
-    ouiRow(c, "צליל חזק", sub = if (loud) "תמיד בעוצמה מלאה – גם בווליום נמוך, בשעות שקט ובמצב שקט" else "כבוי", on = loud) {
+    ouiRow(c, "צליל חזק", sub = if (loud) "תמיד בעוצמה מלאה – גם כשהעוצמה נמוכה, בשעות שקט ובמצב שקט" else "כבוי", on = loud) {
         Prefs.setLoudSound(this, !loud); rebuild() }
     ouiDivider(c)
     val hs = Prefs.speakerWithHeadset(this)
@@ -337,7 +337,7 @@ internal fun MainActivity.chooseShabbat() = ouiPage("מצב שבת") { body, reb
                 radio = Prefs.shabbatMode(this) == mode) { Prefs.setShabbatMode(this, mode); rebuild() }
         }
     ouiAdd(body, modes)
-    ouiNote(body, "באוטומטי מצב השבת נדלק בכניסה ונכבה ביציאה, בלי לגעת")
+    ouiNote(body, "במצב אוטומטי, מצב שבת נדלק בכניסת השבת ונכבה ביציאתה – בלי לגעת")
 
     // זמנים
     val fmtDay = java.text.SimpleDateFormat("EEEE, d בMMMM", java.util.Locale("iw"))
@@ -780,7 +780,7 @@ internal fun MainActivity.showQuietHours() = ouiPage("שעות שקט") { body, 
     val sw = ouiCard()
     ouiRow(sw, "שעות שקט", on = on) { Prefs.setQuietOn(this, !on); rebuild() }
     ouiAdd(body, sw)
-    ouiNote(body, "בשעות האלה התרעה מקדימה וסיום אירוע מגיעים בשקט. ירי תמיד נשמע")
+    ouiNote(body, "בשעות האלה התרעות מקדימות והודעות סיום אירוע מגיעות בשקט. התרעות ירי נשמעות תמיד")
     val t = ouiCard()
     ouiRow(t, "התחלה", end = hhmm(Prefs.quietFrom(this)), endBig = true) {
         pickTime("שעת התחלה", Prefs.quietFrom(this)) { Prefs.setQuiet(this, it, Prefs.quietTo(this)); rebuild() } }

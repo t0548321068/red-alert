@@ -125,7 +125,7 @@ class MainActivity : Activity() {
                 if (shown == null) {
                     weatherAt = 0L
                     if (!weatherShown) {   // מזג אוויר קודם נשאר על המסך
-                        weatherLine.text = "📍 לא נמצא מיקום – לחץ לנסות שוב"
+                        weatherLine.text = "📍 לא נמצא מיקום – לחץ כדי לנסות שוב"
                         weatherLine.setTextColor(C.MUTED)
                     }
                 }
