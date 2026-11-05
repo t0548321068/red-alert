@@ -321,18 +321,13 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
     ouiRow(sum, "שרת התרעות", sub = if (hb > 0) "סימן חיים ${agoText(hb)}" else "עוד לא התקבל סימן חיים",
         subColor = C.MUTED, end = srvLabel, endColor = srvColor)
     ouiDivider(sum)
-    // 2. מקורות מחוברים - המספר בצבע: כולם ירוק, חלק כתום, אף אחד אדום
-    val upN = SourceHealth.upCount(); val all = SourceHealth.total()
-    ouiRow(sum, "מקורות מחוברים", end = if (on) "$upN/$all" else "—",
-        endColor = if (!on) C.MUTED else if (upN == all) C.GREEN else if (upN > 0) C.ORANGE else C.RED)
-    ouiDivider(sum)
-    // 3. מקור הבדיקה: השרת הראשי / המשני / הממסר בבית, או הטלפון עצמו
+    // 2. מקור הבדיקה: השרת הראשי / המשני / הממסר בבית, או הטלפון עצמו
     val (by, secSt, relSt) = AlertService.chain(this)
     val byName = when (by) { "secondary" -> "שרת משני (Cloudflare)"; "relay" -> "ממסר"; else -> "שרת ראשי (Oracle)" }
     ouiRow(sum, "מקור הבדיקה", end = if (!on) "—" else if (srvOk) byName else if (srvConnecting) "טלפון (זמנית)" else "טלפון",
         endColor = if (!on) C.MUTED else if (srvOk && by == "primary") C.GREEN else C.ORANGE)
     ouiDivider(sum)
-    // 4. בדיקה אחרונה
+    // 3. בדיקה אחרונה
     val last = maxOf(SourceHealth.lastAny(), hb, srvCheckAt)
     ouiRow(sum, "בדיקה אחרונה", end = if (on) agoText(last) else "—", endColor = C.MUTED)
     ouiAdd(body, sum)
@@ -341,8 +336,12 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
         else "כשהשרת לא זמין, הטלפון בודק את המקורות בעצמו") + "\nההתראה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד")
     val list = ouiCard()
     val via = AlertService.viaMap(this)
-    SourceHealth.NAMES.entries.forEachIndexed { i, (k, name) ->
-        if (i > 0) ouiDivider(list)
+    // בראש הרשימה: כמה מקורות מחוברים - המספר בצבע: כולם ירוק, חלק כתום, אף אחד אדום
+    val upN = SourceHealth.upCount(); val all = SourceHealth.total()
+    ouiRow(list, "מקורות מחוברים", end = if (on) "$upN/$all" else "—",
+        endColor = if (!on) C.MUTED else if (upN == all) C.GREEN else if (upN > 0) C.ORANGE else C.RED)
+    SourceHealth.NAMES.entries.forEachIndexed { _, (k, name) ->
+        ouiDivider(list)
         val (label, color) = when {
             !on -> "כבוי" to C.MUTED
             SourceHealth.isUp(k) -> "מחובר" to C.GREEN
