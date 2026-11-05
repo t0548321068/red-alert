@@ -58,7 +58,9 @@ function route(req, res) {
   const ip = local ? String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'local' : req.socket.remoteAddress || '';
   // הממסר בבית (צופר ממסר) - מפתח משלו, בלי מגבלת הקצב
   // בדיקת גיבוי: השרת "לא עונה" לשרת המשני ולממסר
-  if (chain.drilling() && (u.pathname === '/alive' || u.pathname === '/relay/ping')) { res.writeHead(503); return res.end(); }
+  if ((u.pathname === '/alive' && chain.blocks('alive')) || (u.pathname === '/relay/ping' && chain.blocks('ping'))) {
+    res.writeHead(503, { 'Content-Type': 'application/json' }); return res.end('{"drill":true}');
+  }
   // השרת המשני והממסר בודקים כאן כל דקה שהשרת חי (בלי לשלוח סימן חיים לטלפונים כמו /status)
   if (u.pathname === '/alive') { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end('{"ok":true}'); }
   if (u.pathname.startsWith('/relay/')) return relay.handle(req, res, u);

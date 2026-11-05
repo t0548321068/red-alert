@@ -413,12 +413,18 @@ function renderChain(c) {
     + row(4, 'הטלפונים', ['בודקים בעצמם רק אם הכול נופל', 'var(--muted)']);
   const drilling = c.drillUntil > Date.now();
   $('chainTx').innerHTML = `<span style="color:${c.secondary === 'down' ? 'var(--orange)' : 'var(--green)'}">${c.secondary === 'down' ? 'המשני לא עונה' : 'תקין'}</span>`;
-  $('drillBtn').disabled = drilling;
-  $('drillSt').textContent = drilling ? 'בבדיקה עד ' + new Date(c.drillUntil).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) + ' – המשני אמור להיכנס לפעולה תוך 2–3 דקות' : '';
+  $('drillBtn').disabled = $('drillRelayBtn').disabled = drilling;
+  const who = c.drillKind === 'relay' ? 'הממסר' : 'השרת המשני';
+  $('drillSt').textContent = drilling ? 'בבדיקה עד ' + new Date(c.drillUntil).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) + ' – ' + who + ' אמור להיכנס לפעולה ולשלוח התרעת בדיקה' : '';
 }
+// בדיקות גיבוי: מי שנכנס לפעולה שולח גם התרעת בדיקה לטלפוני הבטא
 $('drillBtn').onclick = () => {
-  if (!confirm('בדיקת גיבוי: ל-4 דקות השרת הראשי יעמיד פנים שהוא לא עונה, והשרת המשני ייכנס לפעולה. להמשיך?')) return;
-  fetch('/api/drill', { method: 'POST' }).then(() => loadState());
+  if (!confirm('בדיקת שרת משני: ל-4 דקות השרת הראשי יעמיד פנים שהוא לא עונה. השרת המשני ייכנס לפעולה וישלח התרעת בדיקה. להמשיך?')) return;
+  fetch('/api/drill?kind=secondary', { method: 'POST' }).then(() => loadState());
+};
+$('drillRelayBtn').onclick = () => {
+  if (!confirm('בדיקת ממסר: ל-6 דקות הממסר יחשוב ששני השרתים לא עונים, ייכנס לפעולה וישלח התרעת בדיקה. להמשיך?')) return;
+  fetch('/api/drill?kind=relay', { method: 'POST' }).then(() => loadState());
 };
 
 // ---- ממסר בבית: טלפון עם "ממסר צופר" שבודק את פיקוד העורף מהאינטרנט הביתי ----
