@@ -336,21 +336,6 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
     val last = maxOf(SourceHealth.lastAny(), hb, srvCheckAt)
     ouiRow(sum, "בדיקה אחרונה", end = if (on) agoText(last) else "—", endColor = C.MUTED)
     ouiAdd(body, sum)
-    // שרשרת הגיבוי: ראשי ← משני ← ממסר ← הטלפון
-    if (on) {
-        val ch = ouiCard()
-        ch.addView(text("שרשרת הגיבוי", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-        fun st(s: String) = when (s) { "active" -> "פעיל" to C.ORANGE; "standby" -> "בהמתנה" to C.GREEN; "down" -> "לא עונה" to C.RED; "off" -> "לא מחובר" to C.MUTED; else -> "—" to C.MUTED }
-        val p = if (srvOk && by == "primary") "פעיל" to C.GREEN else "לא עונה" to C.RED
-        val s2 = if (srvOk && by == "secondary") "פעיל" to C.ORANGE else if (by == "relay") "לא עונה" to C.RED else st(secSt)
-        val r3 = if (srvOk && by == "relay") "פעיל" to C.ORANGE else st(relSt)
-        ouiRow(ch, "1. שרת ראשי (Oracle)", end = p.first, endColor = p.second); ouiDivider(ch)
-        ouiRow(ch, "2. שרת משני (Cloudflare)", sub = "נכנס כשהראשי לא עונה", subColor = C.MUTED, end = s2.first, endColor = s2.second); ouiDivider(ch)
-        ouiRow(ch, "3. ממסר בבית", sub = "נכנס כששני השרתים לא עונים", subColor = C.MUTED, end = r3.first, endColor = r3.second); ouiDivider(ch)
-        ouiRow(ch, "4. הטלפון הזה", sub = if (srvOk) "לא בודק בעצמו – חוסך סוללה" else "בודק את המקורות בעצמו",
-            subColor = C.MUTED, end = if (srvOk) "בהמתנה" else "פעיל", endColor = if (srvOk) C.GREEN else C.ORANGE)
-        ouiAdd(body, ch)
-    }
     if (!on) ouiNote(body, "ההאזנה כבויה")
     else ouiNote(body, (if (srvOk) "השרת בודק את כל המקורות כל שנייה ושולח לטלפון רק כשיש התרעה – חוסך סוללה"
         else "כשהשרת לא זמין, הטלפון בודק את המקורות בעצמו") + "\nההתראה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד")
@@ -377,6 +362,21 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
         ouiRow(list, name, sub = from, subColor = C.MUTED, end = label, endColor = color)
     }
     ouiAdd(body, list)
+    // שרשרת הגיבוי: ראשי ← משני ← ממסר ← הטלפון
+    if (on) {
+        val ch = ouiCard()
+        ch.addView(text("שרשרת הגיבוי", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+        fun st(s: String) = when (s) { "active" -> "פעיל" to C.ORANGE; "standby" -> "בהמתנה" to C.GREEN; "down" -> "לא עונה" to C.RED; "off" -> "לא מחובר" to C.MUTED; else -> "—" to C.MUTED }
+        val p = if (srvOk && by == "primary") "פעיל" to C.GREEN else "לא עונה" to C.RED
+        val s2 = if (srvOk && by == "secondary") "פעיל" to C.ORANGE else if (by == "relay") "לא עונה" to C.RED else st(secSt)
+        val r3 = if (srvOk && by == "relay") "פעיל" to C.ORANGE else st(relSt)
+        ouiRow(ch, "1. שרת ראשי (Oracle)", end = p.first, endColor = p.second); ouiDivider(ch)
+        ouiRow(ch, "2. שרת משני (Cloudflare)", sub = "נכנס כשהראשי לא עונה", subColor = C.MUTED, end = s2.first, endColor = s2.second); ouiDivider(ch)
+        ouiRow(ch, "3. ממסר בבית", sub = "נכנס כששני השרתים לא עונים", subColor = C.MUTED, end = r3.first, endColor = r3.second); ouiDivider(ch)
+        ouiRow(ch, "4. הטלפון הזה", sub = if (srvOk) "לא בודק בעצמו – חוסך סוללה" else "בודק את המקורות בעצמו",
+            subColor = C.MUTED, end = if (srvOk) "בהמתנה" else "פעיל", endColor = if (srvOk) C.GREEN else C.ORANGE)
+        ouiAdd(body, ch)
+    }
     // מתעדכן בלייב כל שנייה כל עוד העמוד פתוח
     (body.tag as? Runnable)?.let { ui.removeCallbacks(it) }
     val live = Runnable { if (body.isAttachedToWindow) rebuild() }
