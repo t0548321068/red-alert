@@ -262,10 +262,11 @@ internal fun MainActivity.chooseMute(done: () -> Unit) = ouiPage("השתקה ז�
     val u = Prefs.muteUntil(this); val active = u > System.currentTimeMillis()
     opts.forEachIndexed { i, (label, min) ->
         if (i > 0) ouiDivider(c)
-        val sel = if (min == 0L) !active else if (min == -1L) u == Long.MAX_VALUE else false
+        val sel = if (min == 0L) !active else if (min == -1L) u == Long.MAX_VALUE else active && u != Long.MAX_VALUE && Prefs.muteMin(this) == min
         ouiRow(c, label, radio = sel) {
             Prefs.setMuteUntil(this, when (min) { 0L -> 0L; -1L -> Long.MAX_VALUE
                 else -> System.currentTimeMillis() + min * 60_000 })
+            Prefs.setMuteMin(this, min)
             refresh(); rebuild()
         }
     }
