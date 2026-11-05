@@ -355,6 +355,7 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
     else ouiNote(body, (if (srvOk) "השרת בודק את כל המקורות כל שנייה ושולח לטלפון רק כשיש התרעה – חוסך סוללה"
         else "כשהשרת לא זמין, הטלפון בודק את המקורות בעצמו") + "\nההתראה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד")
     val list = ouiCard()
+    val via = AlertService.viaMap(this)
     SourceHealth.NAMES.entries.forEachIndexed { i, (k, name) ->
         if (i > 0) ouiDivider(list)
         val (label, color) = when {
@@ -363,7 +364,17 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
             SourceHealth.connecting(k) -> "מתחבר…" to C.ORANGE
             else -> "מנותק" to C.RED
         }
-        ouiRow(list, name, end = label, endColor = color)
+        // מאיפה המקור מחובר: דרך השרת (ישירות / Cloudflare / הממסר), דרך השרת המשני או הממסר, או מהטלפון עצמו
+        val from = when {
+            !on || !SourceHealth.isUp(k) -> ""
+            !srvOk -> "מהטלפון"
+            by == "secondary" -> "דרך השרת המשני"
+            by == "relay" -> "דרך הממסר בבית"
+            via[k] == "cf" -> "דרך השרת · Cloudflare"
+            via[k] == "relay" -> "דרך השרת · הממסר בבית"
+            else -> "דרך השרת"
+        }
+        ouiRow(list, name, sub = from, subColor = C.MUTED, end = label, endColor = color)
     }
     ouiAdd(body, list)
     // מתעדכן בלייב כל שנייה כל עוד העמוד פתוח

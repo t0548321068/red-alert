@@ -137,16 +137,20 @@ class AlertService : Service() {
             val sp = c.getSharedPreferences("server", Context.MODE_PRIVATE)
             return Triple(sp.getString("by", "primary") ?: "primary", sp.getString("sec", "") ?: "", sp.getString("rel", "") ?: "")
         }
+        /** מאיפה כל מקור מחובר אצל השרת: "oref" -> "cf" / "relay" (מה שלא מופיע - ישירות) */
+        fun viaMap(c: Context): Map<String, String> =
+            (c.getSharedPreferences("server", Context.MODE_PRIVATE).getString("vi", "") ?: "").split(',')
+                .mapNotNull { it.split('=').takeIf { p -> p.size == 2 }?.let { p -> p[0] to p[1] } }.toMap()
         fun serverSourcesConnecting(c: Context): Boolean {
             val sp = c.getSharedPreferences("server", Context.MODE_PRIVATE)
             return sp.getBoolean("cn", false) && System.currentTimeMillis() - sp.getLong("hb", 0L) < 11 * 60 * 1000L
         }
         fun serverOk(c: Context): Boolean = System.currentTimeMillis() - serverHbAt(c) < Config.serverStaleMs
-        fun onServerHeartbeat(c: Context, up: List<String>, connecting: Boolean = false, by: String = "primary", sec: String = "", rel: String = "") {
+        fun onServerHeartbeat(c: Context, up: List<String>, connecting: Boolean = false, by: String = "primary", sec: String = "", rel: String = "", vi: String = "") {
             val now = System.currentTimeMillis()
             // שרשרת הגיבוי: מי שלח (ראשי / משני / ממסר) ומצב המשני והממסר - לעמוד המקורות
             c.getSharedPreferences("server", Context.MODE_PRIVATE).edit().putLong("hb", now).putString("up", up.joinToString(","))
-                .putBoolean("cn", connecting).putString("by", by)
+                .putBoolean("cn", connecting).putString("by", by).putString("vi", vi)
                 .apply { if (sec.isNotEmpty()) putString("sec", sec); if (rel.isNotEmpty()) putString("rel", rel) }.apply()
             SourceHealth.viaServer(up, now)
             instance?.syncLocalSources()

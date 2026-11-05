@@ -64,7 +64,7 @@ function route(req, res) {
   if (u.pathname.startsWith('/relay/')) return relay.handle(req, res, u);
   if (tooMany(ip)) { res.writeHead(429); return res.end(); }
   // האתר (רק לך, עם קוד כניסה)
-  if (web.handle(req, res, u, () => ({ up: health.upList(), started: health.STARTED, now: Date.now(), version: versions.latest, data: files.dataIndex.v, chain: chain.state() }))) return;
+  if (web.handle(req, res, u, () => ({ up: health.upList(), started: health.STARTED, now: Date.now(), version: versions.latest, data: files.dataIndex.v, chain: chain.state(), via: health.viaList() }))) return;
   if ((u.pathname === '/weather' || u.pathname === '/shabbat') && !inIsrael(+q('lat'), +q('lon'))) { res.writeHead(400); return res.end(); }
   switch (u.pathname) {
     case '/archive': return archive.serve(req, res, +(q('since') || 0));
