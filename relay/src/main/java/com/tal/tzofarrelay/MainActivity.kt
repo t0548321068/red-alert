@@ -207,6 +207,16 @@ class MainActivity : Activity() {
             }
         }
         add(info)
+        // עדכונים: גרסה נוכחית, ובדיקה + הורדה + התקנה מתוך הממסר
+        val upd = card()
+        row(upd, "גרסה", "", "1.${Update.current(this)}", Color.WHITE)
+        if (Update.status.isNotEmpty()) row(upd, Update.status, "", "", MUTED)
+        divider(upd)
+        upd.addView(text(if (Update.busy) "בודק…" else "בדיקת עדכונים", 15f, if (Update.busy) MUTED else BLUE, true).apply {
+            gravity = Gravity.CENTER; setPadding(0, dp(13), 0, dp(13))
+            setOnClickListener { Update.checkAndInstall(this@MainActivity) { runOnUiThread { build() } } }
+        })
+        add(upd)
         root.addView(text("החלפת מפתח", 13f, BLUE).apply {
             gravity = Gravity.CENTER; setPadding(0, dp(10), 0, 0)
             setOnClickListener { RelayService.stop(this@MainActivity); Relay.setKey(this@MainActivity, ""); Relay.setEnabled(this@MainActivity, false); build() }
