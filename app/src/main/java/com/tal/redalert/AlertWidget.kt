@@ -62,7 +62,7 @@ class AlertWidget : AppWidgetProvider() {
 
             val last = Prefs.history(c).firstOrNull()
             if (last == null) {
-                v.setTextViewText(R.id.widget_last, "אין התראות עדיין")
+                v.setTextViewText(R.id.widget_last, "אין התרעות עדיין")
                 v.setTextColor(R.id.widget_last, Color.parseColor("#8E8E93"))
             } else {
                 val color = when (last.level) {

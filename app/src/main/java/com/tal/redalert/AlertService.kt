@@ -219,7 +219,7 @@ class AlertService : Service() {
                 .setLargeIcon(android.graphics.drawable.Icon.createWithResource(c, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
                 .setColor(0xFFD50000.toInt())
                 .setContentTitle("⚠️ לא מוגן")
-                .setContentText("צופר חירום כבוי – התראות לא יגיעו")
+                .setContentText("צופר חירום כבוי – התרעות לא יגיעו")
                 .setContentIntent(open)
                 .addAction(Notification.Action.Builder(null, "הפעלה", enable).build())
                 .setOngoing(true)
@@ -344,7 +344,7 @@ class AlertService : Service() {
             .setSmallIcon(R.drawable.ic_stat_siren)
             .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
             .setContentTitle("צופר חירום פעיל")
-            .setContentText("מאזין להתראות פיקוד העורף")
+            .setContentText("מאזין להתרעות פיקוד העורף")
             .setOngoing(true)
             .setContentIntent(openApp())
             .build()
@@ -445,7 +445,7 @@ class AlertService : Service() {
             return START_STICKY
         }
         if (intent?.action == ACTION_TEST) {
-            testFire(intent.getStringExtra("title") ?: "ירי רקטות וטילים", intent.getStringExtra("body") ?: "התראת בדיקה")
+            testFire(intent.getStringExtra("title") ?: "ירי רקטות וטילים", intent.getStringExtra("body") ?: "התרעת בדיקה")
         }
         return START_STICKY
     }
@@ -458,7 +458,7 @@ class AlertService : Service() {
     }
 
     /** התראת בדיקה (מחזירה את זמן ההגעה למרחב המוגן בשניות) */
-    private fun testFire(title: String, body: String = "התראת בדיקה"): Int {
+    private fun testFire(title: String, body: String = "התרעת בדיקה"): Int {
         val mine = Prefs.cities(this) + Prefs.nearbyAreas(this)
         // זמן ההתגוננות בבדיקה - לפי המיקום שלי (ולא לפי כל האזורים הנוספים: עם "כל הארץ" הקצר ביותר הוא "מיידי",
         // ואז הבדיקה דילגה ישר ל"נשארים במרחב המוגן" ולא הראתה את אייקון סוג ההתרעה). לפחות 15 שניות
@@ -541,7 +541,7 @@ class AlertService : Service() {
         if (id.isEmpty() || id == lastId) return
         lastId = id
 
-        val title = json.optString("title", "התראה")
+        val title = json.optString("title", "התרעה")
         val arr = json.optJSONArray("data") ?: return
         handle(title, (0 until arr.length()).map { arr.getString(it) }, source = "oref", eid = id)
     }
@@ -567,7 +567,7 @@ class AlertService : Service() {
                         .setLargeIcon(android.graphics.drawable.Icon.createWithResource(this, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
             .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
                         .setContentTitle("⚠️ צופר חירום – לא מוגן")
-                        .setContentText("$reason – התראות לא יגיעו כרגע")
+                        .setContentText("$reason – התרעות לא יגיעו כרגע")
                         .setContentIntent(openApp())
                         .setOngoing(true)
                         .build())
@@ -689,7 +689,7 @@ class AlertService : Service() {
                         val date = o.optString("alertDate").replace('T', ' ').take(19)
                         val t = fmt.parse(date)?.time ?: continue
                         if (now - t > HISTORY_WINDOW_MS) continue
-                        val title = o.optString("title").ifEmpty { o.optString("category_desc", "התראה") }
+                        val title = o.optString("title").ifEmpty { o.optString("category_desc", "התרעה") }
                         byTitle.getOrPut(title to t) { mutableListOf() }.add(o.optString("data"))
                     }
                     val src = if (url == URL_HISTORY) "history" else "archive"

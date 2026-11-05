@@ -203,7 +203,7 @@ internal fun MainActivity.showAlertSettings() = ouiPage("הגדרות התרעו
     ouiAdd(body, snd)
     // בדיקת התראה (עברה מהכפתור שבמסך הראשי)
     val t = ouiCard()
-    ouiRow(t, "בדיקת התראה", sub = "מקדימה · ירי · סיום") { chooseTest() }
+    ouiRow(t, "בדיקת התרעה", sub = "מקדימה · ירי · סיום") { chooseTest() }
     ouiAdd(body, t)
 }
 
@@ -379,12 +379,12 @@ internal fun MainActivity.chooseShabbat() = ouiPage("מצב שבת") { body, reb
         "כל התרעה נפתחת במסך מלא, גם כשהטלפון בשימוש",
         "ההתרעה מוקראת בקול, גם אם ההקראה כבויה בהגדרות",
         "מסך ההתרעה נסגר לבד אחרי דקה – אין צורך לגעת בטלפון",
-        "עוקף הכל: שעות שקט, נא לא להפריע, מצב שקט של הטלפון, וגם צלילים ורטט כבויים"
+        "עוקף הכול: שעות שקט, נא לא להפריע, מצב שקט של הטלפון, וגם צלילים ורטט כבויים"
     ).joinToString("\n") { "• $it" })
     ouiAdd(body, info)
 }
 
-internal fun MainActivity.chooseTest() = ouiPage("בדיקת התראה") { body, rebuild ->
+internal fun MainActivity.chooseTest() = ouiPage("בדיקת התרעה") { body, rebuild ->
     val fab = ouiCard()
     val fm = Prefs.testFabMode(this)
     ouiRow(fab, "כפתור צף במסך הראשי", sub = showModeLabel(fm, Prefs.testFabSeconds(this)), on = fm != Prefs.STATUS_HIDDEN,
@@ -443,7 +443,7 @@ internal fun MainActivity.chooseTest() = ouiPage("בדיקת התראה") { body
                 AlertService.start(this@chooseTest, testTitle = title)
                 if (level != AlertService.LEVEL_ALERT && Prefs.isQuietNow(this@chooseTest)) {
                     android.widget.Toast.makeText(this@chooseTest,
-                        "שעות שקט פעילות – ההתראה נשלחה בשקט, בלי צליל ומסך מלא",
+                        "שעות שקט פעילות – ההתרעה נשלחה בשקט, בלי צליל ומסך מלא",
                         android.widget.Toast.LENGTH_LONG).show()
                 }
                 // סוגרים את עמודי ההגדרות - ההתרעה מוצגת מיד (גם כרטיס / ממוזער שבמסך הראשי)
@@ -453,7 +453,7 @@ internal fun MainActivity.chooseTest() = ouiPage("בדיקת התראה") { body
         }, LinearLayout.LayoutParams(-1, dp(56)))
     }
     ouiAdd(body, c)
-    ouiNote(body, "ההתראה נשלחת מיד, בדיוק כמו התרעה אמיתית")
+    ouiNote(body, "ההתרעה נשלחת מיד, בדיוק כמו התרעה אמיתית")
 }
 
 /** הדמיה קטנה של סוג תצוגת ההתרעה: 0 מסך מלא · 1 פופ-אפ · 2 כרטיס · 3 ממוזער */
@@ -626,7 +626,7 @@ internal fun MainActivity.showDisplay() {
             open = { chooseFeedWindow { rebuild() } }) {
             Prefs.setFeedAlways(this, !Prefs.feedAlways(this)); updateFeed(); rebuild() }
         addCard(feed)
-        note("ההתראות בכל הארץ בתחתית המסך הראשי. כשהמתג מופעל - הפיד מוצג תמיד, גם כשאין התראות")
+        note("ההתרעות בכל הארץ בתחתית המסך הראשי. כשהמתג מופעל - הפיד מוצג תמיד, גם כשאין התרעות")
     }
     themeAtOpen = Prefs.themeMode(this)
     rebuild()
@@ -662,7 +662,7 @@ internal fun MainActivity.showUpdates() = ouiPage("עדכונים",
         java.text.SimpleDateFormat("HH:mm dd/MM/yyyy", java.util.Locale.US).format(java.util.Date(it)) } ?: "עוד לא"
     ouiRow(ver, "בדיקה אחרונה", end = checkedAt, endColor = C.MUTED)
     ouiAdd(body, ver)
-    ouiNote(body, "מהעדכון השני ההתקנה אוטומטית, בלי ללחוץ התקן")
+    ouiNote(body, "מהעדכון השני ההתקנה אוטומטית, בלי ללחוץ על \"התקן\"")
 
     // עדכון אוטומטי ברקע: כשהשרת מודיע על גרסה חדשה - יורדת ומותקנת לבד (לא באמצע אירוע)
     val au = ouiCard()
@@ -699,8 +699,8 @@ internal fun MainActivity.showUpdates() = ouiPage("עדכונים",
 /** נוסח ההבהרה - בעמוד האודות ובחלון שקופץ אחרי התקנה חדשה */
 internal const val DISCLAIMER = "צופר חירום היא אפליקציה פרטית ולא רשמית שפותחה באופן עצמאי, והיא אינה קשורה לפיקוד העורף, לצה\"ל, למשרד הביטחון או לכל גוף ממשלתי אחר. " +
     "המידע על ההתרעות נאסף ממקורות ציבוריים – אתר פיקוד העורף, שירותי התרעה וערוצי טלגרם – ומוצג כפי שהתקבל. " +
-    "מאחר שהאפליקציה תלויה ברשת, בשרתים ובמכשיר עצמו, ייתכנו עיכובים, תקלות, התראות חסרות או התראות שגויות. " +
-    "גם הגדרות הטלפון, כמו חיסכון בסוללה, נא לא להפריע, השתקה או ביטול הרשאות, עלולות למנוע מההתראה להישמע. " +
+    "מאחר שהאפליקציה תלויה ברשת, בשרתים ובמכשיר עצמו, ייתכנו עיכובים, תקלות, התרעות חסרות או התרעות שגויות. " +
+    "גם הגדרות הטלפון, כמו חיסכון בסוללה, נא לא להפריע, השתקה או ביטול הרשאות, עלולות למנוע מההתרעה להישמע. " +
     "האפליקציה נועדה להשלים ולא להחליף את האפליקציה הרשמית של פיקוד העורף, את הצופרים ואת ההנחיות הרשמיות, ולכן מומלץ להשאיר מותקנת גם את האפליקציה הרשמית. " +
     "השימוש באפליקציה באחריות המשתמש בלבד, והמפתח אינו אחראי לכל נזק שייגרם כתוצאה מהסתמכות עליה. " +
     "בכל מקרה של ספק יש לפעול לפי ההנחיות הרשמיות של פיקוד העורף, שגוברות תמיד."
@@ -733,7 +733,7 @@ internal fun MainActivity.showAbout() = ouiPage("אודות") { body, _ ->
             LinearLayout.LayoutParams(dp(88), dp(88)))
         addView(text("צופר חירום", 24f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER; setPadding(0, dp(12), 0, 0) })
         addView(text("גרסה " + Updater.versionLabel(this@showAbout), 14f, C.MUTED).apply { gravity = Gravity.CENTER; setPadding(0, dp(4), 0, 0) })
-        addView(text("התראות פיקוד העורף בזמן אמת, גם כשהאפליקציה סגורה והמסך כבוי", 13f, C.MUTED2).apply {
+        addView(text("התרעות פיקוד העורף בזמן אמת, גם כשהאפליקציה סגורה והמסך כבוי", 13f, C.MUTED2).apply {
             gravity = Gravity.CENTER; setPadding(dp(30), dp(10), dp(30), 0) })
     }, LinearLayout.LayoutParams(-1, -2))
 
@@ -851,7 +851,7 @@ internal fun MainActivity.chooseDayStyle(done: () -> Unit) = ouiPage("תאריך
 /** עמוד פיד ארצי: כמה זמן אחורה להציג - מ-30 דקות ועד 24 שעות */
 internal fun MainActivity.chooseFeedWindow(done: () -> Unit) = ouiPage("פיד ארצי", onClose = done) { body, rebuild ->
     val opts = ouiCard()
-    opts.addView(text("הצגת התראות מ…", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+    opts.addView(text("הצגת התרעות מ…", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
     val cur = Prefs.feedMinutes(this)
     FeedText.WINDOWS.forEachIndexed { i, m ->
         if (i > 0) ouiDivider(opts)
@@ -867,7 +867,7 @@ internal fun MainActivity.chooseFeedWindow(done: () -> Unit) = ouiPage("פיד �
             Prefs.setFeedMinutes(this, m.coerceIn(1, 24 * 60)); updateFeed(); rebuild() }
     }
     ouiAdd(body, opts)
-    ouiNote(body, "ההתראות מתחלפות אחת אחרי השנייה בגלילה כלפי מעלה")
+    ouiNote(body, "ההתרעות מתחלפות אחת אחרי השנייה בגלילה כלפי מעלה")
 }
 
 internal fun MainActivity.chooseWeatherInterval(done: () -> Unit) = ouiPage("מזג אוויר", onClose = done) { body, rebuild ->

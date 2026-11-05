@@ -872,8 +872,8 @@ class MainActivity : Activity() {
         val e = Prefs.history(this).firstOrNull()
         val muted = C.MUTED2
         historyBox.addView(text(
-            if (e == null) "אין התראות עדיין"
-            else (if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title) +
+            if (e == null) "אין התרעות עדיין"
+            else (if (e.level == AlertService.LEVEL_PRE) "התרעה מקדימה" else e.title) +
                 (if (e.ts > 0) " · " + dayLabel(e.ts) + " " + java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date(e.ts)) else ""),
             12f, muted).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
     }
