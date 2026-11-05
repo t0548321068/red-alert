@@ -132,15 +132,22 @@ class AlertService : Service() {
         /** מתי הגיע סימן החיים האחרון מהשרת (0 = עוד לא) */
         fun serverHbAt(c: Context): Long = c.getSharedPreferences("server", Context.MODE_PRIVATE).getLong("hb", 0L)
         /** השרת עלה לאחרונה והמקורות שלו עוד מתחברים (לפי סימן החיים האחרון, לכל היותר 11 דקות) */
+        /** שרשרת הגיבוי מסימן החיים האחרון: (מי שלח, מצב המשני, מצב הממסר) */
+        fun chain(c: Context): Triple<String, String, String> {
+            val sp = c.getSharedPreferences("server", Context.MODE_PRIVATE)
+            return Triple(sp.getString("by", "primary") ?: "primary", sp.getString("sec", "") ?: "", sp.getString("rel", "") ?: "")
+        }
         fun serverSourcesConnecting(c: Context): Boolean {
             val sp = c.getSharedPreferences("server", Context.MODE_PRIVATE)
             return sp.getBoolean("cn", false) && System.currentTimeMillis() - sp.getLong("hb", 0L) < 11 * 60 * 1000L
         }
         fun serverOk(c: Context): Boolean = System.currentTimeMillis() - serverHbAt(c) < Config.serverStaleMs
-        fun onServerHeartbeat(c: Context, up: List<String>, connecting: Boolean = false) {
+        fun onServerHeartbeat(c: Context, up: List<String>, connecting: Boolean = false, by: String = "primary", sec: String = "", rel: String = "") {
             val now = System.currentTimeMillis()
+            // שרשרת הגיבוי: מי שלח (ראשי / משני / ממסר) ומצב המשני והממסר - לעמוד המקורות
             c.getSharedPreferences("server", Context.MODE_PRIVATE).edit().putLong("hb", now).putString("up", up.joinToString(","))
-                .putBoolean("cn", connecting).apply()
+                .putBoolean("cn", connecting).putString("by", by)
+                .apply { if (sec.isNotEmpty()) putString("sec", sec); if (rel.isNotEmpty()) putString("rel", rel) }.apply()
             SourceHealth.viaServer(up, now)
             instance?.syncLocalSources()
         }

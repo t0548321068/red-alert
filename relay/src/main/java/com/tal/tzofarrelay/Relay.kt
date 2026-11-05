@@ -145,7 +145,7 @@ object Relay {
     fun heartbeat(c: Context) {
         val up = sources.filter { System.currentTimeMillis() - it.lastOk < 5 * 60_000 }.joinToString(",") { it.key }
         fcm(c, JSONObject().put("topic", "alerts").put("data", JSONObject().put("type", "hb").put("up", up)
-            .put("at", System.currentTimeMillis().toString()).put("dv", "").put("cn", "0")).put("android", android("300s")))
+            .put("at", System.currentTimeMillis().toString()).put("dv", "").put("cn", "0").put("by", "relay").put("sec", "down").put("rel", "active")).put("android", android("300s")))
     }
 
     // אותו יישוב + סוג ב-2 דקות - פעם אחת (כמו בשרתים)

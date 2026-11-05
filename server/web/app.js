@@ -259,6 +259,7 @@ function loadState() {
     const up = new Set(s.up);
     const n = SOURCES.filter(([k]) => up.has(k)).length;
     liveSrc = n === SOURCES.length ? '' : n ? ' part' : ' none'; if ($('live').classList.contains('on')) $('live').className = 'live on' + liveSrc;
+    renderChain(s.chain);
     $('srvTx').innerHTML = `<span style="color:${n === SOURCES.length ? 'var(--green)' : n ? 'var(--orange)' : 'var(--red)'}">${n}/${SOURCES.length} מקורות</span> · פועל ${upFor(s.now - s.started)}`;
     $('sources').innerHTML = SOURCES.map(([k, name]) => `<div class="row"><span class="src-dot" style="background:${up.has(k) ? 'var(--green)' : 'var(--red)'}"></span>${name}<span class="end">${up.has(k) ? 'עובד' : 'לא עונה'}</span></div>`).join('')
       + `<div class="row" style="color:var(--muted);font-size:13px">גרסה אחרונה: ${esc(s.version || '–')} · נתונים: ${esc(s.data || '–')}</div>`;
@@ -395,6 +396,27 @@ renderMine();
 if (mine.length) fitTo(mine);
 loadArchive(); setInterval(loadArchive, 5 * 60e3);
 loadState(); setInterval(loadState, 30e3);
+
+// ---- שרשרת הגיבוי: ראשי (השרת הזה) ← משני (Cloudflare) ← ממסר בבית ← הטלפונים ----
+function renderChain(c) {
+  if (!c) return;
+  const L = { active: ['פעיל', 'var(--green)'], standby: ['בהמתנה', 'var(--green)'], drill: ['בבדיקת גיבוי', 'var(--orange)'],
+    down: ['לא עונה', 'var(--red)'], off: ['לא מחובר', 'var(--muted)'], unknown: ['…', 'var(--muted)'] };
+  const sec = c.secondary === 'active' ? ['פעיל', 'var(--orange)'] : L[c.secondary] || L.unknown;
+  const row = (n, name, [txt, col], sub) => `<div class="row">${n}. ${name}${sub ? `<span style="color:var(--muted);font-size:12px;margin-right:6px">${sub}</span>` : ''}<span class="end" style="color:${col}">${txt}</span></div>`;
+  $('chainBox').innerHTML = row(1, 'שרת ראשי (Oracle)', L[c.primary] || L.unknown)
+    + row(2, 'שרת משני (Cloudflare)', sec, 'נכנס כשהראשי לא עונה')
+    + row(3, 'ממסר בבית', L[c.relay] || L.unknown, 'נכנס כששני השרתים לא עונים')
+    + row(4, 'הטלפונים', ['בודקים בעצמם רק אם הכול נופל', 'var(--muted)']);
+  const drilling = c.drillUntil > Date.now();
+  $('chainTx').innerHTML = `<span style="color:${c.secondary === 'down' ? 'var(--orange)' : 'var(--green)'}">${c.secondary === 'down' ? 'המשני לא עונה' : 'תקין'}</span>`;
+  $('drillBtn').disabled = drilling;
+  $('drillSt').textContent = drilling ? 'בבדיקה עד ' + new Date(c.drillUntil).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) + ' – המשני אמור להיכנס לפעולה תוך 2–3 דקות' : '';
+}
+$('drillBtn').onclick = () => {
+  if (!confirm('בדיקת גיבוי: ל-4 דקות השרת הראשי יעמיד פנים שהוא לא עונה, והשרת המשני ייכנס לפעולה. להמשיך?')) return;
+  fetch('/api/drill', { method: 'POST' }).then(() => loadState());
+};
 
 // ---- ממסר בבית: טלפון עם "ממסר צופר" שבודק את פיקוד העורף מהאינטרנט הביתי ----
 const RELAY_APK = 'https://github.com/t0548321068/red-alert/releases/download/relay/tzofar-relay.apk';
