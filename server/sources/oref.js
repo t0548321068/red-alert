@@ -45,8 +45,8 @@ async function pollLive() {
     catch (e) { bad(e.message, ''); return; }
     txt = txt.replace(/\u0000/g, '').trim();
     // תקין רק אם ריק או JSON - דף שגיאה/חסימה לא נחשב "עונה"
-    if (!txt) { ok('oref'); return; }
-    try { JSON.parse(txt); ok('oref'); } catch (_) { bad('not JSON', txt); return; }
+    if (!txt) { ok('oref', via); return; }
+    try { JSON.parse(txt); ok('oref', via); } catch (_) { bad('not JSON', txt); return; }
     liveText(txt);
   });
 }
@@ -73,16 +73,17 @@ const lastPoll = {};
 function pollHistory() {
   for (const [key, url, every] of HISTORY) if (Date.now() - (lastPoll[key] || 0) >= every) { lastPoll[key] = Date.now(); once(key, async () => {
     try {
-      historyText(key, await orefGet(key, url));
+      const t = await orefGet(key, url);
+      historyText(key, t, via);
     } catch (e) { fail(key, e); }
   }); }
 }
 /** תשובת היסטוריה / ארכיון (מהשרת או מהממסר) - התרעות מ-90 השניות האחרונות נשלחות. null = תשובה לא תקינה */
-function historyText(key, t) {
+function historyText(key, t, from = 'direct') {
   // הארכיון - רק תשובה בפורמט שלו נחשבת "עונה" (לא דף אתר אחרי הפניה)
   const rows = key === 'archive' ? archive.convert(t) : (t.startsWith('[') ? JSON.parse(t) : (t ? null : []));
   if (!rows) return null;
-  ok(key);
+  ok(key, from);
   if (key === 'archive') archive.ingest(rows);   // גם לרשימת ההתרעות האחרונות
   let n = 0;
   const by = new Map();
