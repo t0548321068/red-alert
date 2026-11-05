@@ -340,7 +340,7 @@ class MainActivity : Activity() {
         clockDay.text = TimeFormat.dayLine(this, now)
         val g = Prefs.showGreeting(this)
         greeting.visibility = if (g) View.VISIBLE else View.GONE
-        if (g) greeting.text = TimeFormat.greeting(now)
+        if (g) greeting.text = TimeFormat.greeting(now) + Prefs.greetingName(this).let { if (it.isEmpty()) "" else " $it" }
     }
 
     /** רווח אחיד בין כרטיס לכרטיס במסך הראשי */

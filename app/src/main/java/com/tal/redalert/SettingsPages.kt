@@ -615,7 +615,8 @@ internal fun MainActivity.showDisplay() {
             open = { chooseWeatherInterval { rebuild() } }) {
             Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); rebuild() }
         divider(more)
-        row(more, "ברכה", on = Prefs.showGreeting(this), sep = false) {
+        // ברכה: מתג נפרד (עם קו מפריד), ולחיצה על השם פותחת הזנת שם ("ערב טוב טל")
+        row(more, "ברכה", Prefs.greetingName(this), on = Prefs.showGreeting(this), open = { showGreetingName { rebuild() } }) {
             Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock(); rebuild() }
         addCard(more)
         note("מזג אוויר וברכה בכרטיס השעון במסך הראשי")
@@ -1044,4 +1045,37 @@ internal fun MainActivity.showLicenses() = ouiPage("רישיונות") { body, _
         "רשת" to "OkHttp · Apache 2.0", "מזג אוויר ושמות מקומות" to "Open-Meteo · OpenStreetMap")
         .forEachIndexed { i, (a, b) -> if (i > 0) ouiDivider(lic); ouiRow(lic, a, sub = b, subColor = C.MUTED) }
     ouiAdd(body, lic)
+}
+
+/** הזנת שם לברכה: "ערב טוב (שם)" */
+internal fun MainActivity.showGreetingName(done: () -> Unit) {
+    val field = android.widget.EditText(this)
+    ouiPage("ברכה", onClose = { Prefs.setGreetingName(this, field.text.toString()); updateClock(); done() }) { body, _ ->
+        val c = ouiCard()
+        c.addView(text("שם", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), 0) })
+        field.apply {
+            setText(Prefs.greetingName(this@showGreetingName)); setSelection(text.length)
+            hint = "לדוגמה: טל"; setHintTextColor(C.MUTED); setTextColor(C.TEXT); textSize = 17f
+            filters = arrayOf(android.text.InputFilter.LengthFilter(20))
+            isSingleLine = true
+            background = GradientDrawable().apply { setColor(if (C.LIGHT) Color.parseColor("#E3E3E8") else Color.parseColor("#2C2C2E")); cornerRadius = dp(14).toFloat() }
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            // תצוגה מקדימה מתעדכנת בזמן ההקלדה
+            addTextChangedListener(object : android.text.TextWatcher {
+                override fun afterTextChanged(s: android.text.Editable?) {
+                    (tag as? TextView)?.text = TimeFormat.greeting(System.currentTimeMillis()) + s.toString().trim().let { if (it.isEmpty()) "" else " $it" }
+                }
+                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, d: Int) {}
+                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, d: Int) {}
+            })
+        }
+        (field.parent as? ViewGroup)?.removeView(field)
+        c.addView(field, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(18), dp(10), dp(18), dp(14)) })
+        ouiAdd(body, c)
+        val prev = text(TimeFormat.greeting(System.currentTimeMillis()) + Prefs.greetingName(this).let { if (it.isEmpty()) "" else " $it" },
+            20f, C.TEXT).apply { gravity = Gravity.CENTER; setPadding(0, dp(10), 0, dp(4)) }
+        field.tag = prev
+        body.addView(prev)
+        ouiNote(body, "כך תופיע הברכה בכרטיס השעון. בלי שם – רק הברכה")
+    }
 }
