@@ -70,6 +70,8 @@ object Shabbat {
     // ---- הזמנים מהשרת: אותו חישוב, במקום אחד (תיקון זמנים בלי לעדכן את האפליקציה). אין תשובה - חישוב בטלפון ----
     private const val SERVER = "http://151.145.91.93:8080/shabbat"
     private fun sp(c: Context) = c.getSharedPreferences("shabbat_srv", Context.MODE_PRIVATE)
+    /** הזמנים השמורים תקפים רק לאותה גרסת אפליקציה ואותם נתונים מהשרת - תיקון זמנים נקלט מיד */
+    private fun tag(c: Context) = Updater.currentVersion(c) + "/" + DataFiles.version(c)
 
     /** רענון ברקע: פעם ב-12 שעות, או כשזזת מעל 5 ק"מ */
     fun refresh(c: Context) {
@@ -77,14 +79,14 @@ object Shabbat {
         val s = sp(c)
         val moved = FloatArray(1).also { android.location.Location.distanceBetween(
             s.getFloat("lat", 0f).toDouble(), s.getFloat("lon", 0f).toDouble(), lat, lon, it) }[0] > 5000f
-        if (!moved && System.currentTimeMillis() - s.getLong("at", 0L) < 12 * 3600_000L) return
+        if (!moved && s.getString("tag", "") == tag(c) && System.currentTimeMillis() - s.getLong("at", 0L) < 12 * 3600_000L) return
         Thread {
             try {
                 val conn = java.net.URL("$SERVER?lat=%.4f&lon=%.4f".format(java.util.Locale.US, lat, lon)).openConnection() as java.net.HttpURLConnection
                 conn.connectTimeout = 5000; conn.readTimeout = 5000
                 val txt = try { conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) } } finally { conn.disconnect() }
                 org.json.JSONObject(txt).getJSONArray("windows")   // תקין
-                s.edit().putString("json", txt).putLong("at", System.currentTimeMillis())
+                s.edit().putString("json", txt).putLong("at", System.currentTimeMillis()).putString("tag", tag(c))
                     .putFloat("lat", lat.toFloat()).putFloat("lon", lon.toFloat()).apply()
             } catch (_: Exception) { }
         }.start()
@@ -95,7 +97,7 @@ object Shabbat {
         val s = sp(c)
         val far = FloatArray(1).also { android.location.Location.distanceBetween(
             s.getFloat("lat", 0f).toDouble(), s.getFloat("lon", 0f).toDouble(), lat, lon, it) }[0] > 5000f
-        if (far || System.currentTimeMillis() - s.getLong("at", 0L) > 7 * 24 * 3600_000L) null
+        if (far || s.getString("tag", "") != tag(c) || System.currentTimeMillis() - s.getLong("at", 0L) > 7 * 24 * 3600_000L) null
         else {
             val a = org.json.JSONObject(s.getString("json", "") ?: "").getJSONArray("windows")
             List(a.length()) { a.getJSONObject(it).let { w -> w.getLong("in") to w.getLong("out") } }
