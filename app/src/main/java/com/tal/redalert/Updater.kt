@@ -147,7 +147,8 @@ object Updater {
         conn.connectTimeout = 8000; conn.readTimeout = 8000
         val html = try { if (conn.responseCode != 200) "" else conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) } }
                    finally { conn.disconnect() }
-        Regex("red-alert-([\\w.]+)-(\\d+)\\.apk").find(html)?.let { m ->
+        // אם נשארו כמה קבצים (מחיקה שנכשלה) - זה עם מספר הבנייה הגבוה
+        Regex("red-alert-([\\w.]+)-(\\d+)\\.apk").findAll(html).maxByOrNull { it.groupValues[2].toInt() }?.let { m ->
             Triple(m.groupValues[1], "$REPO/download/beta/${m.value}", m.groupValues[2].toInt())
         }
     } catch (_: Exception) { null }
@@ -169,11 +170,10 @@ object Updater {
         val version = field("version") ?: json.optString("tag_name").removePrefix("v")
         val build = field("build")?.toIntOrNull() ?: 0
         val assets = json.optJSONArray("assets") ?: return null
-        for (i in 0 until assets.length()) {
-            val url = assets.getJSONObject(i).optString("browser_download_url")
-            if (url.endsWith(".apk")) return Triple(version, url, build)
-        }
-        return null
+        // כמה קבצים (מחיקה שנכשלה) - זה עם מספר הבנייה הגבוה בשם
+        val urls = (0 until assets.length()).map { assets.getJSONObject(it).optString("browser_download_url") }.filter { it.endsWith(".apk") }
+        val url = urls.maxByOrNull { Regex("-(\\d+)\\.apk$").find(it)?.groupValues?.get(1)?.toIntOrNull() ?: 0 } ?: return null
+        return Triple(version, url, build)
     }
 
     fun isNewer(remote: String, local: String): Boolean {

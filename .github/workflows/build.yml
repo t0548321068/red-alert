@@ -95,7 +95,10 @@ jobs:
             # הגרסה הקיימת לא נמחקת: קודם מעלים את הקובץ החדש, ורק אז מוחקים את הישן - הבטא לא נעלמת אף רגע
             gh release upload beta "$F" --clobber --repo $R
             for a in $(gh release view beta --repo $R --json assets -q '.assets[].name'); do
-              [ "$a" != "$F" ] && gh release delete-asset beta "$a" -y --repo $R
+              # מחיקת הקובץ הישן: כמה ניסיונות, ותקלה זמנית של GitHub לא מפילה את הבטא (האפליקציה בוחרת את מספר הבנייה הגבוה)
+              if [ "$a" != "$F" ]; then
+                for t in 1 2 3; do gh release delete-asset beta "$a" -y --repo $R && break; sleep 10; done || echo "::warning::לא נמחק $a"
+              fi
             done
             gh release edit beta --repo $R --title "$TITLE" --notes "$NOTES" --prerelease --draft=false
           else
