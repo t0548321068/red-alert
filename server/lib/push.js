@@ -106,7 +106,7 @@ async function send(title, areas, src, at = Date.now(), eid = '') {
 async function heartbeat(up, dv, cn, chain = {}) {
   try {
     await admin.messaging().send({
-      topic: TOPIC, data: { type: 'hb', up: up.join(','), at: String(Date.now()), dv, cn: cn ? '1' : '0', by: 'primary', sec: String(chain.secondary || ''), rel: String(chain.relay || '') },
+      topic: TOPIC, data: { type: 'hb', up: up.join(','), at: String(Date.now()), dv, cn: cn ? '1' : '0', by: 'primary', sec: String(chain.secondary || ''), rel: String(chain.relay || ''), vi: require('./health').viaList() },
       android: { priority: 'high', ttl: 5 * 60 * 1000 },
     });
   } catch (e) { log('hb failed', e.message); }
