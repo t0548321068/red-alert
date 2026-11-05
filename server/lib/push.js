@@ -102,10 +102,11 @@ async function send(title, areas, src, at = Date.now(), eid = '') {
 // עדיפות גבוהה: בעדיפות רגילה טלפון במצב שינה עמוקה (בלילה) מקבל אותו רק אחרי שעות,
 // ואז חושב שהשרת נפל ועובר לבדוק בעצמו - שורף סוללה ----
 // cn=1: השרת עלה בדקות האחרונות והמקורות שלו עוד מתחברים (הטלפון מציג "מתחבר…" ולא תקלה)
-async function heartbeat(up, dv, cn) {
+// by: מי שולח (primary / secondary / relay), sec / rel: מצב השרת המשני והממסר - לעמוד המקורות באפליקציה
+async function heartbeat(up, dv, cn, chain = {}) {
   try {
     await admin.messaging().send({
-      topic: TOPIC, data: { type: 'hb', up: up.join(','), at: String(Date.now()), dv, cn: cn ? '1' : '0' },
+      topic: TOPIC, data: { type: 'hb', up: up.join(','), at: String(Date.now()), dv, cn: cn ? '1' : '0', by: 'primary', sec: String(chain.secondary || ''), rel: String(chain.relay || '') },
       android: { priority: 'high', ttl: 5 * 60 * 1000 },
     });
   } catch (e) { log('hb failed', e.message); }
