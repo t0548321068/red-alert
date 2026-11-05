@@ -1035,7 +1035,7 @@ internal fun MainActivity.showSourcesList() = ouiPage("מקורות") { body, _ 
     val src = ouiCard()
     SourceHealth.NAMES.values.forEachIndexed { i, n -> if (i > 0) ouiDivider(src); ouiRow(src, n) }
     ouiAdd(body, src)
-    ouiNote(body, "ההתראה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד")
+    ouiNote(body, "ההתרעה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד")
 }
 
 /** רישיונות - נפתח מעמוד האודות */
