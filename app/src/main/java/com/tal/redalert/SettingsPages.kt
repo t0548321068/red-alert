@@ -183,12 +183,17 @@ internal fun MainActivity.showAlertSettings() = ouiPage("הגדרות התרעו
     ouiRow(c, "אזור התרעה", sub = onOff(Prefs.nearMe(this)), on = Prefs.nearMe(this)) { toggleNearMe(); rebuild() }
     ouiDivider(c)
     ouiRow(c, "מרחק מקסימלי", sub = Prefs.radiusLabel(Prefs.nearRadiusKm(this))) { showNearRadius() }
+    ouiDivider(c)
+    // אזורים נוספים - באותו כרטיס, ומתחת מה שנבחר (עד 3 שמות, "ועוד N")
+    val (towns, dists) = extraSelection()
+    val chosen = towns + dists
+    val extraSub = when {
+        chosen.isEmpty() -> "לא נבחרו"
+        chosen.size <= 3 -> chosen.joinToString(", ")
+        else -> chosen.take(3).joinToString(", ") + " ועוד ${chosen.size - 3}"
+    }
+    ouiRow(c, "אזורים נוספים", sub = extraSub) { showExtraAreas() }
     ouiAdd(body, c)
-
-    // אזורים נוספים - שורה אחת שפותחת את חלון האזורים
-    val extra = ouiCard()
-    ouiRow(extra, "אזורים נוספים") { showExtraAreas() }
-    ouiAdd(body, extra)
     // צלילים ורטט והקראה - כרטיס אחד
     val snd = ouiCard()
     ouiRow(snd, "צלילים ורטט", sub = "שעות שקט · נא לא להפריע · מצב שקט · שבת") { showSoundSettings() }
