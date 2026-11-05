@@ -73,13 +73,13 @@ object Shabbat {
     /** הזמנים השמורים תקפים רק לאותה גרסת אפליקציה ואותם נתונים מהשרת - תיקון זמנים נקלט מיד */
     private fun tag(c: Context) = Updater.currentVersion(c) + "/" + DataFiles.version(c)
 
-    /** רענון ברקע: פעם ב-12 שעות, או כשזזת מעל 5 ק"מ */
+    /** רענון ברקע: פעם בשעה (בקשה קטנה אחת), או כשזזת מעל 5 ק"מ */
     fun refresh(c: Context) {
         val (lat, lon) = where(c)
         val s = sp(c)
         val moved = FloatArray(1).also { android.location.Location.distanceBetween(
             s.getFloat("lat", 0f).toDouble(), s.getFloat("lon", 0f).toDouble(), lat, lon, it) }[0] > 5000f
-        if (!moved && s.getString("tag", "") == tag(c) && System.currentTimeMillis() - s.getLong("at", 0L) < 12 * 3600_000L) return
+        if (!moved && s.getString("tag", "") == tag(c) && System.currentTimeMillis() - s.getLong("at", 0L) < 3600_000L) return
         Thread {
             try {
                 val conn = java.net.URL("$SERVER?lat=%.4f&lon=%.4f".format(java.util.Locale.US, lat, lon)).openConnection() as java.net.HttpURLConnection
