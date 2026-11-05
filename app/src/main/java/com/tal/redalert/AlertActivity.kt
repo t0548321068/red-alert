@@ -190,7 +190,7 @@ open class AlertActivity : Activity() {
                 AlertService.silence(this); l.text = "הושתק"; l.alpha = 0.6f
             })
         if (tips.isNotEmpty()) list += btn(R.drawable.ic_info_line, "הנחיות") {
-            AppSheet.show(this, "הנחיות", tips.joinToString("\n") { "• $it" }, "סגור")
+            tipsSheet = AppSheet.show(this, "הנחיות", tips.joinToString("\n") { "• $it" }, "סגור")
         }
         list += btn(R.drawable.ic_close, "סגור") { close() }
         list.forEachIndexed { i, b ->
@@ -348,7 +348,12 @@ open class AlertActivity : Activity() {
         super.onPause()
     }
 
+    /** חלון ההנחיות - נסגר יחד עם המסך (גם בסגירה אוטומטית / התרעה חדשה) */
+    private var tipsSheet: android.app.Dialog? = null
+
     override fun onDestroy() {
+        try { tipsSheet?.dismiss() } catch (_: Exception) { }
+        tipsSheet = null
         ui.removeCallbacksAndMessages(null)   // כולל הסגירה האוטומטית במצב שבת
         miniWeb?.let { (it.parent as? android.view.ViewGroup)?.removeView(it); it.destroy() }
         miniWeb = null

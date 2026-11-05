@@ -339,7 +339,8 @@ object Prefs {
         val k = java.util.Calendar.getInstance()
         val now = k.get(java.util.Calendar.HOUR_OF_DAY) * 60 + k.get(java.util.Calendar.MINUTE)
         val f = quietFrom(c); val t = quietTo(c)
-        return if (f <= t) now in f until t else now >= f || now < t   // גם טווח שחוצה חצות
+        if (f == t) return true   // אותה שעה בהתחלה ובסיום = כל היום (כמו בתזמון ההגנה)
+        return if (f < t) now in f until t else now >= f || now < t   // גם טווח שחוצה חצות
     }
 
     // ---- ספירה לאחור פעילה (לווידג'ט) ----
