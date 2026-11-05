@@ -263,8 +263,8 @@ function loadState() {
     $('srvTx').innerHTML = `<span style="color:${n === SOURCES.length ? 'var(--green)' : n ? 'var(--orange)' : 'var(--red)'}">${n}/${SOURCES.length} מקורות</span> · פועל ${upFor(s.now - s.started)}`;
     // מאיפה כל מקור מחובר: ישירות מהשרת / דרך Cloudflare / דרך הממסר בבית
     const via = Object.fromEntries(String(s.via || '').split(',').filter(Boolean).map(x => x.split('=')));
-    const VIA = { cf: 'דרך Cloudflare', relay: 'דרך הממסר בבית' };
-    $('sources').innerHTML = SOURCES.map(([k, name]) => `<div class="row"><span class="src-dot" style="background:${up.has(k) ? 'var(--green)' : 'var(--red)'}"></span>${name}<span style="color:var(--muted);font-size:12px;margin-right:6px">${up.has(k) ? VIA[via[k]] || 'ישירות' : ''}</span><span class="end">${up.has(k) ? 'עובד' : 'לא עונה'}</span></div>`).join('')
+    const VIA = { cf: 'השרת הראשי · Cloudflare', relay: 'השרת הראשי · הממסר בבית' };
+    $('sources').innerHTML = SOURCES.map(([k, name]) => `<div class="row"><span class="src-dot" style="background:${up.has(k) ? 'var(--green)' : 'var(--red)'}"></span>${name}<span style="color:var(--muted);font-size:12px;margin-right:6px">${up.has(k) ? VIA[via[k]] || 'השרת הראשי' : ''}</span><span class="end">${up.has(k) ? 'עובד' : 'לא עונה'}</span></div>`).join('')
       + `<div class="row" style="color:var(--muted);font-size:13px">גרסה אחרונה: ${esc(s.version || '–')} · נתונים: ${esc(s.data || '–')}</div>`;
   }).catch(() => { $('srvTx').innerHTML = '<span style="color:var(--red)">השרת לא עונה</span>'; });
 }
