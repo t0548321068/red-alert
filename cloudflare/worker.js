@@ -139,7 +139,8 @@ export class Backup {
     const m = this.mem;
     let up = false;
     try {
-      const r = await fetch(PRIMARY + '/status', { signal: AbortSignal.timeout(8000) });
+      // /alive - בלי לגרום לשרת הראשי לשלוח סימן חיים לטלפונים (כמו /status)
+      const r = await fetch(PRIMARY + '/alive', { signal: AbortSignal.timeout(8000) });
       up = r.ok;
     } catch (_) {}
     if (up) {
@@ -262,7 +263,7 @@ export class Backup {
   }
   async heartbeat() {
     const up = Object.keys(this.mem.okAt).filter(k => Date.now() - this.mem.okAt[k] < 5 * 60e3);
-    await this.fcm({ topic: 'alerts', data: { type: 'hb', up: up.join(','), at: String(Date.now()), dv: '', cn: '0' }, android: { priority: 'HIGH', ttl: '300s' } });
+    await this.fcm({ topic: 'alerts', data: { type: 'hb', up: up.join(','), at: String(Date.now()), dv: '', cn: '0', by: 'secondary', sec: 'active', rel: '' }, android: { priority: 'HIGH', ttl: '300s' } });
   }
   async admin(text) {
     await this.fcm({ topic: 'admin', data: { type: 'admin', text }, android: { priority: 'HIGH', ttl: '3600s' } });

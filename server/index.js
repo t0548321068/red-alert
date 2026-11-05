@@ -32,7 +32,8 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { push.saveNow();
 
 // ---- סימן חיים ----
 // בחמש הדקות הראשונות אחרי עלייה - המקורות עוד מתחברים
-const heartbeat = () => push.heartbeat(health.upList(), files.dataIndex.v, Date.now() - health.STARTED < 5 * 60 * 1000);
+const chain = require('./lib/chain');
+const heartbeat = () => push.heartbeat(health.upList(), files.dataIndex.v, Date.now() - health.STARTED < 5 * 60 * 1000, chain.state());
 setInterval(heartbeat, 10 * 60 * 1000);
 setTimeout(heartbeat, 20 * 1000);
 setTimeout(heartbeat, 5 * 60 * 1000 + 10 * 1000);   // סיום ההתחברות - מיד, בלי לחכות לסימן החיים הבא
@@ -56,10 +57,14 @@ function route(req, res) {
   const local = /^(::ffff:)?127\.0\.0\.1$|^::1$/.test(req.socket.remoteAddress || '');
   const ip = local ? String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'local' : req.socket.remoteAddress || '';
   // הממסר בבית (צופר ממסר) - מפתח משלו, בלי מגבלת הקצב
+  // בדיקת גיבוי: השרת "לא עונה" לשרת המשני ולממסר
+  if (chain.drilling() && (u.pathname === '/alive' || u.pathname === '/relay/ping')) { res.writeHead(503); return res.end(); }
+  // השרת המשני והממסר בודקים כאן כל דקה שהשרת חי (בלי לשלוח סימן חיים לטלפונים כמו /status)
+  if (u.pathname === '/alive') { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end('{"ok":true}'); }
   if (u.pathname.startsWith('/relay/')) return relay.handle(req, res, u);
   if (tooMany(ip)) { res.writeHead(429); return res.end(); }
   // האתר (רק לך, עם קוד כניסה)
-  if (web.handle(req, res, u, () => ({ up: health.upList(), started: health.STARTED, now: Date.now(), version: versions.latest, data: files.dataIndex.v }))) return;
+  if (web.handle(req, res, u, () => ({ up: health.upList(), started: health.STARTED, now: Date.now(), version: versions.latest, data: files.dataIndex.v, chain: chain.state() }))) return;
   if ((u.pathname === '/weather' || u.pathname === '/shabbat') && !inIsrael(+q('lat'), +q('lon'))) { res.writeHead(400); return res.end(); }
   switch (u.pathname) {
     case '/archive': return archive.serve(req, res, +(q('since') || 0));
