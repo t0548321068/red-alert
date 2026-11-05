@@ -39,7 +39,7 @@ internal fun MainActivity.mineOf(): List<Prefs.Entry> = Prefs.history(this)
 internal fun MainActivity.buildRecentSeg(seg: LinearLayout) {
     seg.removeAllViews()
     val data = archiveCache
-    listOf(false to "הכל", true to "שלי").forEach { (mine, name) ->
+    listOf(false to "הכול", true to "שלי").forEach { (mine, name) ->
         val sel = recentMine == mine
         val n = when { data == null -> null; mine -> mineOf().size; else -> data.size }
         val label = if (n == null) name else "$name ($n)"
@@ -71,7 +71,7 @@ internal fun MainActivity.showRecent() = onePage("התרעות אחרונות",
     recentList = c
     val cached = archiveCache
     if (cached != null) { fillRecent(c, cached); return@onePage }
-    val loading = text("טוען את כל ההתראות…", 14f, C.MUTED2).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) }
+    val loading = text("טוען את כל ההתרעות…", 14f, C.MUTED2).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) }
     c.addView(loading)
     Thread {
         // הארכיון + מה שנשמר בטלפון מפעמים קודמות (נשמר עד שנה אחורה)
@@ -101,7 +101,7 @@ internal fun MainActivity.fillRecent(c: LinearLayout, all: List<Prefs.Entry>, mi
     val muted = C.MUTED2
     recentItems = items; recentShown = 0; recentDay = null; recentCard = null
     if (items.isEmpty()) {
-        c.addView(text(if (recentMine) "אין התראות באזורים שלך" else "אין התראות עדיין", 14f, muted).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) })
+        c.addView(text(if (recentMine) "אין התרעות באזורים שלך" else "אין התרעות עדיין", 14f, muted).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) })
         return
     }
     appendRecent(c, maxOf(RECENT_CHUNK, minShown))
@@ -158,7 +158,7 @@ internal fun MainActivity.appendRecent(c: LinearLayout, count: Int) {
                 FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))
         }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(12) })
         val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        texts.addView(text(if (e.level == AlertService.LEVEL_PRE) "התראה מקדימה" else e.title, 15f, C.TEXT))
+        texts.addView(text(if (e.level == AlertService.LEVEL_PRE) "התרעה מקדימה" else e.title, 15f, C.TEXT))
         texts.addView(text(e.body.replace("ברחבי הארץ", AreaData.ALL_COUNTRY), 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
         row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
         row.addView(text(if (e.ts > 0) recentTimeFmt.format(java.util.Date(e.ts)) else e.time.take(5), 12f, muted),

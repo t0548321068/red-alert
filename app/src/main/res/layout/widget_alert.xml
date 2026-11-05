@@ -88,7 +88,7 @@
         android:gravity="center"
         android:maxLines="2"
         android:ellipsize="end"
-        android:text="אין התראות עדיין"
+        android:text="אין התרעות עדיין"
         android:textColor="#8E8E93"
         android:textSize="12sp" />
 </LinearLayout>

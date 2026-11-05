@@ -115,7 +115,7 @@ internal fun MainActivity.updateFeed() {
         feedCard.visibility = if (first == null && !always) View.GONE else View.VISIBLE
         feedText = first?.text ?: ""
         feedLine.text = if (first != null) feedSpan(first)
-            else FeedText.windowLabel(win).let { "אין התראות ב" + (if (it[0].isDigit()) "-" else "") + it }
+            else FeedText.windowLabel(win).let { "אין התרעות ב" + (if (it[0].isDigit()) "-" else "") + it }
         feedLine.setTextColor(C.TEXT)
         return
     }
@@ -332,7 +332,7 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
     ouiRow(sum, "בדיקה אחרונה", end = if (on) agoText(last) else "—", endColor = C.MUTED)
     ouiAdd(body, sum)
     if (!on) ouiNote(body, "ההאזנה כבויה")
-    else ouiNote(body, (if (srvOk) "השרת בודק את כל המקורות כל שנייה ושולח לטלפון רק כשיש התרעה – חוסך סוללה"
+    else ouiNote(body, (if (srvOk) "השרת בודק את כל המקורות כל כמה שניות ושולח לטלפון רק כשיש התרעה – חוסך סוללה"
         else "כשהשרת לא זמין, הטלפון בודק את המקורות בעצמו") + "\nההתרעה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד")
     val list = ouiCard()
     val via = AlertService.viaMap(this)

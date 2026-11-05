@@ -206,7 +206,7 @@ class Speaker(private val c: Context) {
                        else names.take(4).joinToString(", ") + ", ועוד ${names.size - 4} אזורים"
             return when {
                 title.contains("הסתיים") -> "האירוע הסתיים. $list."
-                title.contains("בדקות הקרובות") -> "התראה מקדימה. בדקות הקרובות צפויות התרעות. $list."
+                title.contains("בדקות הקרובות") -> "התרעה מקדימה. בדקות הקרובות צפויות התרעות. $list."
                 else -> buildString {
                     append("$title. $list.")
                     if (shelter != null) append(" זמן להגעה למרחב המוגן: ${AreaData.shelterText(shelter)}.")

@@ -115,7 +115,7 @@ object OrefArchive {
         val groups = LinkedHashMap<String, Triple<String, LongArray, MutableList<String>>>()
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
-            val title = o.optString("category_desc").ifEmpty { o.optString("title", "התראה") }
+            val title = o.optString("category_desc").ifEmpty { o.optString("title", "התרעה") }
             val full = o.optString("alertDate").replace('T', ' ')
             val date = full.take(16)
             // alertDate מעוגל לדקה - השניות האמיתיות בשדות date + time; הקיבוץ - לפי דקה, והשעה - השנייה הראשונה

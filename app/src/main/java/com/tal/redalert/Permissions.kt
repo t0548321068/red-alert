@@ -36,7 +36,7 @@ import com.tal.redalert.MainActivity.SameHeight
 internal fun MainActivity.phoneRows(): List<Row> = listOf(
     Row("🛡", "הרשאות", {
         val bad = permissionItems().count { !it.ok }
-        if (bad == 0) "הכל תקין ✓" else "$bad דורש טיפול"
+        if (bad == 0) "הכול תקין ✓" else "$bad דורש טיפול"
     }) { showPermissions() }
 )
 
@@ -44,7 +44,7 @@ internal fun MainActivity.permissionItems(): List<Perm> {
     val pm = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
     val nm = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
     return listOf(
-        Perm("📱", "מסך מלא בהתראה", when {
+        Perm("📱", "מסך מלא בהתרעה", when {
                 !overlayAllowed() -> "חסר: הצגה מעל אפליקציות אחרות"
                 !fullScreenIntentAllowed() -> "חסר: התראות במסך מלא"
                 else -> "התרעה נפתחת על כל המסך גם כשהטלפון בשימוש"
@@ -118,8 +118,8 @@ internal fun MainActivity.askLockScreen() {
     val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     if (nm.canUseFullScreenIntent()) return
     MainActivity.lockAsked = true
-    AppSheet.show(this, "התראה על מסך נעילה",
-        "כדי שההתראה תידלק מיד כשהמסך כבוי – צריך לאשר \"התראות במסך מלא\".", "אישור", {
+    AppSheet.show(this, "התרעה על מסך נעילה",
+        "כדי שההתרעה תידלק מיד כשהמסך כבוי – צריך לאשר \"התראות במסך מלא\".", "אישור", {
             startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT)
                 .setData(Uri.parse("package:$packageName")))
         }, cancel = "לא עכשיו")?.let { track(it) }

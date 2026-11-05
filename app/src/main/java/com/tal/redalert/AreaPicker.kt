@@ -143,7 +143,7 @@ internal fun MainActivity.showAreaPicker(whole: Boolean) {
     top.addView(LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
         addView(allDot, LinearLayout.LayoutParams(dp(22), dp(22)))
-        addView(text("הכל", 12f, C.TEXT).apply { setPadding(0, dp(2), 0, 0) })
+        addView(text("הכול", 12f, C.TEXT).apply { setPadding(0, dp(2), 0, 0) })
         setOnClickListener {
             // "הכל" - בוחר / מבטל את כל היישובים (או כל האזורים) בחלון הזה בלבד
             if (allOn()) kind.forEach { sel.remove(key(it)) } else kind.forEach { sel.add(key(it)) }
