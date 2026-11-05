@@ -328,8 +328,8 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
     ouiDivider(sum)
     // 3. מקור הבדיקה: השרת הראשי / המשני / הממסר בבית, או הטלפון עצמו
     val (by, secSt, relSt) = AlertService.chain(this)
-    val byName = when (by) { "secondary" -> "השרת המשני"; "relay" -> "הממסר בבית"; else -> "השרת הראשי" }
-    ouiRow(sum, "מקור הבדיקה", end = if (!on) "—" else if (srvOk) byName else if (srvConnecting) "הטלפון (זמנית)" else "הטלפון (גיבוי)",
+    val byName = when (by) { "secondary" -> "שרת משני"; "relay" -> "ממסר"; else -> "שרת ראשי" }
+    ouiRow(sum, "מקור הבדיקה", end = if (!on) "—" else if (srvOk) byName else if (srvConnecting) "טלפון (זמנית)" else "טלפון",
         endColor = if (!on) C.MUTED else if (srvOk && by == "primary") C.GREEN else C.ORANGE)
     ouiDivider(sum)
     // 4. בדיקה אחרונה
@@ -364,15 +364,15 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
             SourceHealth.connecting(k) -> "מתחבר…" to C.ORANGE
             else -> "מנותק" to C.RED
         }
-        // מאיפה המקור מחובר: דרך השרת (ישירות / Cloudflare / הממסר), דרך השרת המשני או הממסר, או מהטלפון עצמו
+        // מי מגיע למקור, לפי השרשרת: שרת ראשי (Oracle) / שרת משני (Cloudflare) / ממסר / טלפון
         val from = when {
             !on || !SourceHealth.isUp(k) -> ""
-            !srvOk -> "מהטלפון"
-            by == "secondary" -> "דרך השרת המשני"
-            by == "relay" -> "דרך הממסר בבית"
-            via[k] == "cf" -> "דרך השרת הראשי · Cloudflare"
-            via[k] == "relay" -> "דרך השרת הראשי · הממסר בבית"
-            else -> "דרך השרת הראשי"
+            !srvOk -> "טלפון"
+            by == "secondary" -> "שרת משני"
+            by == "relay" -> "ממסר"
+            via[k] == "cf" -> "שרת משני"
+            via[k] == "relay" -> "ממסר"
+            else -> "שרת ראשי"
         }
         ouiRow(list, name, sub = from, subColor = C.MUTED, end = label, endColor = color)
     }
