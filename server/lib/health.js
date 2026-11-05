@@ -3,7 +3,11 @@ const { adminPush } = require('./push');
 
 const STARTED = Date.now();
 const okAt = {};
-const ok = k => { okAt[k] = Date.now(); };
+// מאיפה כל מקור מחובר: direct (ישירות מהשרת) / cf (דרך Cloudflare) / relay (דרך הממסר בבית)
+const viaOf = {};
+const ok = (k, via = 'direct') => { okAt[k] = Date.now(); viaOf[k] = via; };
+/** לסימן החיים: מקורות שלא מחוברים ישירות - "oref=cf,history=cf" */
+const viaList = () => Object.keys(viaOf).filter(k => viaOf[k] !== 'direct' && Date.now() - okAt[k] < 5 * 60 * 1000).map(k => k + '=' + viaOf[k]).join(',');
 let tzofarOpen = false;
 const setTzofar = v => { tzofarOpen = v; };
 function upList() {
@@ -32,4 +36,4 @@ function watchDown() {
   }, 60 * 1000);
 }
 
-module.exports = { STARTED, ok, setTzofar, upList, watchDown };
+module.exports = { STARTED, ok, setTzofar, upList, watchDown, viaList };

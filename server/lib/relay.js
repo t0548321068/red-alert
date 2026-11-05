@@ -48,9 +48,9 @@ function handle(req, res, u) {
     const oref = require('../sources/oref');
     try {
       if (kind === 'live') {
-        if (!t) ok('oref');
-        else { JSON.parse(t); ok('oref'); if (oref.liveText(t)) sent = 1; }
-      } else if (kind === 'history' || kind === 'archive') sent = oref.historyText(kind, t) || 0;
+        if (!t) ok('oref', 'relay');
+        else { JSON.parse(t); ok('oref', 'relay'); if (oref.liveText(t)) sent = 1; }
+      } else if (kind === 'history' || kind === 'archive') sent = oref.historyText(kind, t, 'relay') || 0;
     } catch (_) { /* תשובה לא תקינה */ }
     forwarded += sent;
     res.writeHead(200, { 'Content-Type': 'application/json' });
