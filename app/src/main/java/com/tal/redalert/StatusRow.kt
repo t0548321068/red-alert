@@ -328,7 +328,7 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
     ouiDivider(sum)
     // 3. מקור הבדיקה: השרת הראשי / המשני / הממסר בבית, או הטלפון עצמו
     val (by, secSt, relSt) = AlertService.chain(this)
-    val byName = when (by) { "secondary" -> "השרת המשני"; "relay" -> "הממסר בבית"; else -> "השרת" }
+    val byName = when (by) { "secondary" -> "השרת המשני"; "relay" -> "הממסר בבית"; else -> "השרת הראשי" }
     ouiRow(sum, "מקור הבדיקה", end = if (!on) "—" else if (srvOk) byName else if (srvConnecting) "הטלפון (זמנית)" else "הטלפון (גיבוי)",
         endColor = if (!on) C.MUTED else if (srvOk && by == "primary") C.GREEN else C.ORANGE)
     ouiDivider(sum)
@@ -370,9 +370,9 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
             !srvOk -> "מהטלפון"
             by == "secondary" -> "דרך השרת המשני"
             by == "relay" -> "דרך הממסר בבית"
-            via[k] == "cf" -> "דרך השרת · Cloudflare"
-            via[k] == "relay" -> "דרך השרת · הממסר בבית"
-            else -> "דרך השרת"
+            via[k] == "cf" -> "דרך השרת הראשי · Cloudflare"
+            via[k] == "relay" -> "דרך השרת הראשי · הממסר בבית"
+            else -> "דרך השרת הראשי"
         }
         ouiRow(list, name, sub = from, subColor = C.MUTED, end = label, endColor = color)
     }
