@@ -66,7 +66,7 @@ internal class ShabbatScreen(private val a: MainActivity) {
     private var press: ValueAnimator? = null
     /** נגד צריבת מסך: השעון מחשיך עד שחור ומאיר שוב (10 שניות לכל כיוון), כמו שעון הלילה - בלי לזוז */
     private var breathe: ValueAnimator? = null
-    /** וגם תזוזה איטית למעלה ולמטה (5 דקות לכל כיוון) - השעון לא נשאר באותו מקום */
+    /** וגם תזוזה איטית למעלה ולמטה (דקה לכל כיוון) - השעון לא נשאר באותו מקום */
     private var drift: ValueAnimator? = null
     private fun breathing(on: Boolean) {
         if (!on) {
@@ -74,7 +74,7 @@ internal class ShabbatScreen(private val a: MainActivity) {
             drift?.cancel(); drift = null; clockBox.translationY = 0f; return
         }
         if (drift == null) drift = ValueAnimator.ofFloat(-dp(90).toFloat(), dp(90).toFloat()).apply {
-            duration = 5 * 60_000L
+            duration = 60_000L
             interpolator = android.view.animation.AccelerateDecelerateInterpolator()
             repeatCount = ValueAnimator.INFINITE; repeatMode = ValueAnimator.REVERSE
             addUpdateListener { clockBox.translationY = it.animatedValue as Float }
