@@ -33,6 +33,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { push.saveNow();
 // ---- סימן חיים ----
 // בחמש הדקות הראשונות אחרי עלייה - המקורות עוד מתחברים
 const chain = require('./lib/chain');
+const tiles = require('./lib/tiles');   // מפת הרחובות מהשרת
 const heartbeat = () => push.heartbeat(health.upList(), files.dataIndex.v, Date.now() - health.STARTED < 5 * 60 * 1000, chain.state());
 setInterval(heartbeat, 10 * 60 * 1000);
 setTimeout(heartbeat, 20 * 1000);
@@ -64,6 +65,8 @@ function route(req, res) {
   // השרת המשני והממסר בודקים כאן כל דקה שהשרת חי (בלי לשלוח סימן חיים לטלפונים כמו /status)
   if (u.pathname === '/alive') { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end('{"ok":true}'); }
   if (u.pathname.startsWith('/relay/')) return relay.handle(req, res, u);
+  // מפת הרחובות (אריחים, גופנים) - הרבה בקשות קטנות, בלי מגבלת הקצב
+  if (u.pathname.startsWith('/tiles/')) return tiles.serve(req, res, decodeURIComponent(u.pathname.slice(7)));
   if (tooMany(ip)) { res.writeHead(429); return res.end(); }
   // האתר (רק לך, עם קוד כניסה)
   if (web.handle(req, res, u, () => ({ up: health.upList(), started: health.STARTED, now: Date.now(), version: versions.latest, data: files.dataIndex.v, chain: chain.state(), via: health.viaList() }))) return;
