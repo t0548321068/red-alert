@@ -69,6 +69,20 @@ internal class ShabbatScreen(private val a: MainActivity) {
             setColor(Color.parseColor("#1AFFFFFF")); cornerRadius = dp(24).toFloat() }, fill))
     }
     private var press: ValueAnimator? = null
+    /** נגד צריבת מסך: השעון מחשיך עד שחור ומאיר שוב (10 שניות לכל כיוון), כמו שעון הלילה - בלי לזוז */
+    private var breathe: ValueAnimator? = null
+    private fun breathing(on: Boolean) {
+        if (!on) { breathe?.cancel(); breathe = null; clockBox.alpha = 1f; exitBtn.alpha = 1f; return }
+        if (breathe != null) return
+        breathe = ValueAnimator.ofFloat(1f, 0f).apply {
+            duration = 10_000
+            interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+            repeatCount = ValueAnimator.INFINITE; repeatMode = ValueAnimator.REVERSE
+            // בזמן לחיצה על היציאה - הכפתור נשאר גלוי
+            addUpdateListener { val v = it.animatedValue as Float; clockBox.alpha = v; exitBtn.alpha = if (press != null) 1f else v }
+            start()
+        }
+    }
 
     init {
         clockBox.addView(time)
@@ -119,21 +133,20 @@ internal class ShabbatScreen(private val a: MainActivity) {
         update()
     }
 
-    /** שעון במסך: לפי ההגדרה, ותמיד כשהופעל מכפתור השעון */
-    private fun clockOn() = Prefs.shabbatClock(a) || Prefs.shabbatQuick(a) >= 0
+    private fun clockOn() = Prefs.shabbatClock(a)
 
     /** כל חצי שנייה מהשעון של המסך הראשי */
     fun update() {
         val now = TimeSync.now(a)
         val show = Shabbat.active(a) && System.currentTimeMillis() >= Prefs.shabbatExitUntil(a)
-        if (!show) { if (root.visibility != View.GONE) { root.visibility = View.GONE; window(false) }; return }
+        if (!show) { if (root.visibility != View.GONE) { root.visibility = View.GONE; window(false); breathing(false) }; return }
         if (root.visibility != View.VISIBLE) { root.visibility = View.VISIBLE; root.requestApplyInsets() }
         window(true)
 
         val j = Prefs.activeAlert(a)
         val level = j?.optInt("level") ?: 0
         val firedAt = j?.optLong("firedAt") ?: 0L
-        if (j != null && !AlertUi.expired(level, firedAt, System.currentTimeMillis())) { showAlert(j, level, firedAt); return }
+        if (j != null && !AlertUi.expired(level, firedAt, System.currentTimeMillis())) { breathing(false); showAlert(j, level, firedAt); return }
 
         alertKey = ""
         alertBox.visibility = View.GONE
@@ -141,6 +154,7 @@ internal class ShabbatScreen(private val a: MainActivity) {
         // בלי "שעון במסך" - מסך שחור, והטלפון מכבה אותו לבד
         clockBox.visibility = if (clockOn()) View.VISIBLE else View.INVISIBLE
         exitBtn.visibility = View.VISIBLE
+        breathing(clockOn())
         if (!clockOn()) return
         time.text = android.text.format.DateFormat.format(if (Prefs.shabbatSeconds(a)) "HH:mm:ss" else "HH:mm", now)
         time.textSize = if (Prefs.shabbatSeconds(a)) 72f else 96f
@@ -210,12 +224,15 @@ internal class ShabbatScreen(private val a: MainActivity) {
     }
 
     fun destroy() {
-        press?.cancel(); press = null
+        press?.cancel(); press = null; breathe?.cancel(); breathe = null
         try { (a.window.decorView as FrameLayout).removeView(root) } catch (_: Exception) { }
     }
 }
 
-/** כפתור השעון: שעון לילה או מצב שבת (הפעלה מהירה - עם שעון; היציאה מחזירה את המצב שהיה) */
+/**
+ * כפתור השעון: שעון לילה או מצב שבת. מצב שבת מופעל מיד (היציאה מחזירה את המצב שהיה);
+ * בלי "שעון במסך" - המסך ננעל (הרשאת "נעילת מסך", מאשרים פעם אחת)
+ */
 internal fun MainActivity.chooseClock() {
     AppSheet.show(this, "איזה שעון להפעיל?", "", "מצב שבת", onOk = {
         if (!Shabbat.active(this, cached = false)) {
@@ -224,6 +241,22 @@ internal fun MainActivity.chooseClock() {
             Prefs.setShabbatQuick(this, prev)
         } else Prefs.setShabbatExitUntil(this, 0L)   // כבר שבת - רק מחזירים את המסך
         shabbatScreen?.update()
+        if (!Prefs.shabbatClock(this)) lockScreen()
     }, cancel = "שעון לילה", onCancel = { startActivity(android.content.Intent(this, ClockActivity::class.java)) },
         content = { card, _ -> card.addView(android.view.View(this), android.widget.LinearLayout.LayoutParams(1, (8 * resources.displayMetrics.density).toInt())) })
+}
+
+private fun MainActivity.lockScreen() {
+    val dpm = getSystemService(android.content.Context.DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+    val admin = android.content.ComponentName(this, LockAdmin::class.java)
+    if (dpm.isAdminActive(admin)) { try { dpm.lockNow() } catch (_: Exception) { }; return }
+    AppSheet.show(this, "נעילת מסך", "כדי שהפעלת מצב שבת תנעל את המסך מיד, צריך לאשר פעם אחת את ההרשאה \"נעילת מסך\".\n\nבלי ההרשאה המסך יישאר שחור ויכבה לבד.",
+        "אישור", onOk = {
+            try {
+                startActivity(android.content.Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
+                    .putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin)
+                    .putExtra(android.app.admin.DevicePolicyManager.EXTRA_ADD_EXPLANATION, "רק נעילת המסך כשמפעילים מצב שבת"))
+                pendingLock = true
+            } catch (_: Exception) { }
+        }, cancel = "לא עכשיו")
 }

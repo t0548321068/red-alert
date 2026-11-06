@@ -229,6 +229,8 @@ class MainActivity : Activity() {
 
     /** מסך שבת פשוט - מעל המסך הראשי בזמן מצב שבת */
     internal var shabbatScreen: ShabbatScreen? = null
+    /** חזרה מאישור "נעילת מסך" - נועלים את המסך (מצב שבת הופעל מכפתור השעון) */
+    internal var pendingLock = false
 
     internal lateinit var alertCard: LinearLayout
     internal lateinit var alertWrap: FrameLayout
@@ -696,6 +698,14 @@ class MainActivity : Activity() {
         ui.post(tick)
         Thread { try { TimeSync.sync(this) } catch (_: Exception) { } }.start()   // שעון אחיד עם השרת (לכל היותר פעם בשעה)
         askLockScreen()
+        if (pendingLock) {
+            pendingLock = false
+            ui.postDelayed({
+                val dpm = getSystemService(DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+                if (dpm.isAdminActive(android.content.ComponentName(this, LockAdmin::class.java)) && Shabbat.active(this) && !Prefs.shabbatClock(this))
+                    try { dpm.lockNow() } catch (_: Exception) { }
+            }, 600)
+        }
         refreshNearby()
         // בכל חזרה לאפליקציה (כולל לחיצה על התראת "גרסה חדשה"), לכל היותר פעם ב-10 דקות
         if (System.currentTimeMillis() - updateCheckedAt > 10 * 60 * 1000) {
