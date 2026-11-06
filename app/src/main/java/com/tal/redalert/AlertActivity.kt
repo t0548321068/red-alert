@@ -289,7 +289,7 @@ open class AlertActivity : Activity() {
         pre = MiniPreload.take(this) { ui.post { if (!isDestroyed) pre?.evaluateJavascript(show, null) } }
         val web = pre ?: android.webkit.WebView(this).apply {
             settings.javaScriptEnabled = true
-            // שקוף עד שהמפה מוכנה - רואים את הציור המיידי של האזור
+            // שקוף עד שהמפה מוכנה - רואים את צבע ההתרעה, לא מלבן כהה
             setBackgroundColor(Color.TRANSPARENT)
             isVerticalScrollBarEnabled = false; isHorizontalScrollBarEnabled = false
             webViewClient = object : android.webkit.WebViewClient() {
@@ -303,22 +303,7 @@ open class AlertActivity : Activity() {
             loadUrl("file:///android_asset/map.html#mini=" + android.net.Uri.encode(q.toString()))
         }
         miniWeb = web
-        // מתחת למפה: ציור מיידי של אזור ההתרעה והמיקום, באותו זום - נראה מהשנייה הראשונה,
-        // והמפה החיה נכנסת מעליו כשהיא מוכנה
-        val polys = ArrayList<List<DoubleArray>>()
-        try {
-            val all = AreaData.areas(this)
-            for (k in 0 until names.length()) {
-                val o = all.optJSONObject(names.getString(k)) ?: continue
-                val p = o.optJSONArray("p")
-                if (p != null) polys += (0 until p.length()).map { val pt = p.getJSONArray(it); doubleArrayOf(pt.getDouble(0), pt.getDouble(1)) }
-                else o.optJSONArray("c")?.let { polys += listOf(doubleArrayOf(it.getDouble(0), it.getDouble(1))) }
-            }
-        } catch (_: Exception) { }
-        return android.widget.FrameLayout(this).apply {
-            addView(MapSketch(this@AlertActivity, polys, level, me?.latitude, me?.longitude, dark), android.widget.FrameLayout.LayoutParams(-1, -1))
-            addView(web, android.widget.FrameLayout.LayoutParams(-1, -1))
-        }
+        return web
     }
 
     @Deprecated("Deprecated in Java")
