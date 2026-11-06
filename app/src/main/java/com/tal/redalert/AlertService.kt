@@ -891,8 +891,8 @@ class AlertService : Service() {
             .putExtra("title", title).putExtra("body", body).putExtra("level", level)
             .putExtra("shelter", shelterSec ?: -1).putExtra("firedAt", now0)
             .putExtra("source", srcName)
-            // מקדימה נסגרת אחרי 2 דקות, סיום אחרי דקה, ירי נשאר עד הסיום. בשבת - לכל היותר דקה
-            .putExtra("autoCloseMs", AlertUi.keepMs(level).let { k -> if (shabbat) minOf(k ?: 60_000L, 60_000L) else k ?: 0L })
+            // מקדימה נסגרת אחרי 2 דקות, סיום אחרי דקה, ירי נשאר עד הסיום. בשבת - כל התרעה נסגרת אחרי 2 דקות
+            .putExtra("autoCloseMs", if (shabbat) 2 * 60_000L else AlertUi.keepMs(level) ?: 0L)
             .putExtra("mapAreas", (mapAreas ?: areas).joinToString(", "))   // בבדיקה: המפה מראה את האזורים שלי
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val fullPi = PendingIntent.getActivity(

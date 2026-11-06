@@ -340,6 +340,19 @@ internal fun MainActivity.chooseShabbat() = ouiPage("מצב שבת") { body, reb
     ouiAdd(body, modes)
     ouiNote(body, "במצב אוטומטי, מצב שבת נדלק בכניסת השבת ונכבה ביציאתה – בלי לגעת")
 
+    // מסך שבת
+    val scr = ouiCard()
+    val clk = Prefs.shabbatClock(this)
+    ouiRow(scr, "שעון במסך", sub = if (clk) "המסך נשאר דלוק עם שעון, תאריך וצאת השבת" else "כבוי – המסך נכבה, ונדלק רק בהתרעה",
+        on = clk) { Prefs.setShabbatClock(this, !clk); rebuild() }
+    if (clk) {
+        ouiDivider(scr)
+        val sec = Prefs.shabbatSeconds(this)
+        ouiRow(scr, "שניות", sub = onOff(sec), on = sec) { Prefs.setShabbatSeconds(this, !sec); rebuild() }
+    }
+    ouiAdd(body, scr)
+    ouiNote(body, "בזמן מצב שבת המסך לא מגיב לנגיעות. יציאה – לחיצה ארוכה של 5 שניות על הכפתור בתחתית")
+
     // זמנים
     val fmtDay = java.text.SimpleDateFormat("EEEE, d בMMMM", java.util.Locale("iw"))
     val fmtTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
@@ -379,7 +392,7 @@ internal fun MainActivity.chooseShabbat() = ouiPage("מצב שבת") { body, reb
     ouiText(info, listOf(
         "כל התרעה נפתחת במסך מלא, גם כשהטלפון בשימוש",
         "ההתרעה מוקראת בקול, גם אם ההקראה כבויה בהגדרות",
-        "מסך ההתרעה נסגר לבד אחרי דקה – אין צורך לגעת בטלפון",
+        "בהתרעה המסך נדלק, ואחרי 2 דקות נכבה (או חוזר לשעון) – אין צורך לגעת בטלפון",
         "עוקף הכול: שעות שקט, נא לא להפריע, מצב שקט של הטלפון, וגם צלילים ורטט כבויים"
     ).joinToString("\n") { "• $it" })
     ouiAdd(body, info)
