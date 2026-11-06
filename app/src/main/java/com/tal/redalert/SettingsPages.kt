@@ -62,7 +62,7 @@ internal fun MainActivity.showSettings() {
     fun rebuild() {
         body.removeAllViews()
         // כותרת כמו בשאר מסכי ההגדרות
-        body.addView(text("הגדרות", 20f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(14), dp(24), dp(14)) })
+        body.addView(pageHeader("הגדרות"))
         cats.forEach { (_, rows) ->
             // בלי כותרת מעל כל כרטיס - רק רווח בין הכרטיסים
             val card = LinearLayout(this).apply {
@@ -101,7 +101,7 @@ internal fun MainActivity.showSettings() {
                 }
                 card.addView(row)
             }
-            body.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(12)) })
+            body.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(PAGE_SIDE), 0, dp(PAGE_SIDE), dp(12)) })
         }
         body.addView(View(this), LinearLayout.LayoutParams(-1, dp(30)))
     }
@@ -545,7 +545,7 @@ internal fun MainActivity.showDisplay() {
     }
     val blue = Color.parseColor("#5AA9FF")
     fun card() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = graphite(26); clipToOutline = true }
-    fun addCard(c: View) = body.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(8)) })
+    fun addCard(c: View) = body.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(PAGE_SIDE), 0, dp(PAGE_SIDE), dp(12)) })
     fun note(t: String) = body.addView(text(t, 11f, C.MUTED2).apply { setPadding(dp(26), 0, dp(26), dp(14)) })
     // קו מפריד עם שוליים מהצדדים (לא מקצה לקצה), כמו בהגדרות של סמסונג
     fun divider(c: LinearLayout) = c.addView(View(this).apply { setBackgroundColor(C.DIV) },
@@ -577,7 +577,7 @@ internal fun MainActivity.showDisplay() {
     fun rebuild() {
         body.removeAllViews()
         // כותרת עם חזרה
-        body.addView(text("תצוגה", 20f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(14), dp(24), dp(14)) })
+        body.addView(pageHeader("תצוגה"))
         // ערכת צבעים: תצוגה מקדימה חשוך / בהיר + "לפי המערכת"
         val mode = Prefs.themeMode(this)
         val theme = card()
