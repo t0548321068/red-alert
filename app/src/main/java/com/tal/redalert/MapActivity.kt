@@ -1,11 +1,7 @@
 package com.tal.redalert
 
 import android.app.Activity
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
@@ -15,7 +11,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import org.json.JSONArray
 import org.json.JSONObject
-import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -23,7 +18,6 @@ import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
-import org.maplibre.android.offline.OfflineManager
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.FillLayer
@@ -63,18 +57,12 @@ class MapActivity : Activity() {
     private var hasBounds = false
     private val ui = android.os.Handler(android.os.Looper.getMainLooper())
 
-    private val colors = intArrayOf(0xFFFF3B30.toInt(), 0xFFFF9F0A.toInt(), 0xFF30D158.toInt())
-    private fun hex(c: Int) = String.format("#%06X", 0xFFFFFF and c)
+    private val colors = MapKit.COLORS
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        MapLibre.getInstance(this)
-        // רחובות שכבר נטענו נשמרים בטלפון - עד 20MB (הטלפון יכול לנקות)
-        try { OfflineManager.getInstance(this).setMaximumAmbientCacheSize(20L * 1024 * 1024, object : OfflineManager.FileSourceCallback {
-            override fun onSuccess() { }
-            override fun onError(message: String) { }
-        }) } catch (_: Exception) { }
+        MapKit.init(this)
         val dark = Prefs.darkTheme(this)
         val bg = Color.parseColor(if (dark) "#000000" else "#F2F2F7")
         val panel = Color.parseColor(if (dark) "#1C1C1E" else "#FFFFFF")
@@ -83,7 +71,7 @@ class MapActivity : Activity() {
 
         val mv = MapView(this).apply {
             // רקע המפה עד שהרחובות מופיעים - בצבע של מפת הרחובות
-            setBackgroundColor(Color.parseColor(if (dark) "#2C3042" else "#F5F1E8"))
+            setBackgroundColor(MapKit.bg(dark))
         }
         mapView = mv
         mv.onCreate(savedInstanceState)
@@ -175,7 +163,7 @@ class MapActivity : Activity() {
 
     // ---- שכבות ----
     private fun addLayers(st: Style) {
-        st.addImage("pin", pinBitmap())
+        st.addImage("pin", MapKit.pinBitmap(resources.displayMetrics.density))
         st.addSource(GeoJsonSource("alerts"))
         st.addSource(GeoJsonSource("pins"))
         st.addSource(GeoJsonSource("here"))
@@ -197,37 +185,8 @@ class MapActivity : Activity() {
             iconAllowOverlap(true), iconIgnorePlacement(true)))
     }
 
-    /** סיכת מיקום אדומה (כמו במפה הקודמת) */
-    private fun pinBitmap(): Bitmap {
-        val w = dp(26); val h = dp(34); val s = w / 26f
-        val b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        val cv = Canvas(b); cv.scale(s, s)
-        val p = Path().apply {
-            moveTo(13f, 1f); cubicTo(6.4f, 1f, 1f, 6.3f, 1f, 12.8f); cubicTo(1f, 21.6f, 13f, 33f, 13f, 33f)
-            cubicTo(13f, 33f, 25f, 21.6f, 25f, 12.8f); cubicTo(25f, 6.3f, 19.6f, 1f, 13f, 1f); close()
-        }
-        cv.drawPath(p, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFD50000.toInt() })
-        cv.drawPath(p, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 2f })
-        cv.drawCircle(13f, 12.8f, 4.4f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE })
-        return b
-    }
-
     // ---- נתונים ----
     private class Shown(val name: String, val title: String, val ts: Long, val level: Int)
-
-    private fun geometryOf(o: JSONObject): JSONObject? {
-        val p = o.optJSONArray("p")
-        if (p != null && p.length() > 2) {
-            val ring = JSONArray()
-            for (i in 0 until p.length()) { val pt = p.getJSONArray(i); ring.put(JSONArray().put(pt.getDouble(1)).put(pt.getDouble(0))) }
-            ring.put(ring.getJSONArray(0))
-            return JSONObject().put("type", "Polygon").put("coordinates", JSONArray().put(ring))
-        }
-        val c = o.optJSONArray("c") ?: return null
-        return point(c.getDouble(0), c.getDouble(1))
-    }
-    private fun point(lat: Double, lon: Double) = JSONObject().put("type", "Point").put("coordinates", JSONArray().put(lon).put(lat))
-    private fun fc(features: List<JSONObject>) = JSONObject().put("type", "FeatureCollection").put("features", JSONArray(features)).toString()
 
     /** מה מציגים: מהרשימה - רק ההתרעה שנלחצה; אחרת - ההתרעה האחרונה בכל אזור ב-24 השעות האחרונות */
     private fun shownList(): Pair<List<Shown>, Boolean> {
@@ -260,14 +219,14 @@ class MapActivity : Activity() {
             val feats = ArrayList<JSONObject>(); val pins = ArrayList<JSONObject>(); val pts = ArrayList<LatLng>()
             list.forEach { s ->
                 val o = all?.optJSONObject(s.name) ?: return@forEach
-                val g = geometryOf(o) ?: return@forEach
-                val col = hex(colors.getOrElse(s.level) { colors[0] })
+                val g = MapKit.geometryOf(o) ?: return@forEach
+                val col = MapKit.levelHex(s.level)
                 feats += JSONObject().put("type", "Feature").put("geometry", g).put("properties", JSONObject()
                     .put("color", col).put("op", if (focused) 0.6 else 0.55).put("w", if (focused) 2.5 else 2.0)
                     .put("name", s.name).put("title", s.title).put("ts", s.ts).put("t", o.optInt("t", -1)))
                 val c = o.optJSONArray("c")
                 if (c != null) {
-                    if (s.level == AlertService.LEVEL_ALERT) pins += JSONObject().put("type", "Feature").put("geometry", point(c.getDouble(0), c.getDouble(1)))
+                    if (s.level == AlertService.LEVEL_ALERT) pins += JSONObject().put("type", "Feature").put("geometry", MapKit.point(c.getDouble(0), c.getDouble(1)))
                     if (focused) {
                         val p = o.optJSONArray("p")
                         if (p != null) for (i in 0 until p.length()) { val q = p.getJSONArray(i); pts += LatLng(q.getDouble(0), q.getDouble(1)) }
@@ -277,8 +236,8 @@ class MapActivity : Activity() {
             }
             runOnUiThread {
                 if (isDestroyed) return@runOnUiThread
-                (st.getSource("alerts") as? GeoJsonSource)?.setGeoJson(fc(feats))
-                (st.getSource("pins") as? GeoJsonSource)?.setGeoJson(fc(pins))
+                (st.getSource("alerts") as? GeoJsonSource)?.setGeoJson(MapKit.fc(feats))
+                (st.getSource("pins") as? GeoJsonSource)?.setGeoJson(MapKit.fc(pins))
                 hasBounds = pts.isNotEmpty()
                 if (pts.isEmpty()) {
                     emptyCard.visibility = View.VISIBLE
@@ -342,15 +301,15 @@ class MapActivity : Activity() {
             }
             feats += JSONObject().put("type", "Feature").put("geometry", JSONObject().put("type", "Polygon").put("coordinates", JSONArray().put(ring)))
         }
-        feats += JSONObject().put("type", "Feature").put("geometry", point(l.latitude, l.longitude))
-        (st.getSource("me") as? GeoJsonSource)?.setGeoJson(fc(feats))
+        feats += JSONObject().put("type", "Feature").put("geometry", MapKit.point(l.latitude, l.longitude))
+        (st.getSource("me") as? GeoJsonSource)?.setGeoJson(MapKit.fc(feats))
         // האזור שבו אני נמצא עכשיו - מסגרת כחולה מקווקוות
         Thread {
             val here = try { AreaData.areasAt(this, l.latitude, l.longitude, 0.0) } catch (_: Exception) { emptyList() }
             val all = try { AreaData.areas(this) } catch (_: Exception) { null }
-            val hf = here.mapNotNull { n -> all?.optJSONObject(n)?.let { o -> geometryOf(o)?.takeIf { it.getString("type") == "Polygon" } } }
+            val hf = here.mapNotNull { n -> all?.optJSONObject(n)?.let { o -> MapKit.geometryOf(o)?.takeIf { it.getString("type") == "Polygon" } } }
                 .map { JSONObject().put("type", "Feature").put("geometry", it) }
-            runOnUiThread { if (!isDestroyed) (st.getSource("here") as? GeoJsonSource)?.setGeoJson(fc(hf)) }
+            runOnUiThread { if (!isDestroyed) (st.getSource("here") as? GeoJsonSource)?.setGeoJson(MapKit.fc(hf)) }
         }.start()
         if (first && !hasBounds) map?.moveCamera(CameraUpdateFactory.newLatLngZoom(me!!, 12.0))
     }
