@@ -369,6 +369,7 @@ class AlertService : Service() {
     override fun onCreate() {
         super.onCreate()
         createChannels()
+        Prefs.dropOldVisits(this)
         val n = Notification.Builder(this, CH_SERVICE)
             .setSmallIcon(R.drawable.ic_stat_siren)
             .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
@@ -860,7 +861,6 @@ class AlertService : Service() {
 
     private fun useLocation(loc: android.location.Location) = Thread {
         try {
-            Prefs.addVisits(this, AreaData.areasAt(this, loc.latitude, loc.longitude, 0.0), System.currentTimeMillis())
             if (Prefs.nearMe(this)) {
                 val list = AreaData.nearby(this, loc.latitude, loc.longitude)
                 if (list.isNotEmpty() && list != Prefs.nearbyAreas(this)) Prefs.setNearbyAreas(this, list)
