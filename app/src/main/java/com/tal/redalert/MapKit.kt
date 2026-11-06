@@ -20,11 +20,41 @@ object MapKit {
     fun bg(dark: Boolean) = Color.parseColor(if (dark) "#2C3042" else "#F5F1E8")
 
     @Volatile private var ready = false
-    /** פעם אחת לכל הפעלה: המפה, ומטמון הרחובות בטלפון - עד 20MB (הטלפון יכול לנקות) */
+    private const val UPSTREAM = "https://tiles.openfreemap.org/"
+    /** השרת שלנו לא ענה - עד מתי הולכים ישר למקור (בלי לחכות לו שוב בכל בקשה) */
+    @Volatile private var skipOursUntil = 0L
+
+    /**
+     * גיבוי: הרחובות והשמות מהשרת שלנו בירושלים; אם הוא לא עונה (או מחזיר שגיאה) -
+     * אותה בקשה בדיוק נשלחת ישר למקור (OpenFreeMap), ולדקה הקרובה הולכים ישר לשם
+     */
+    private val client: okhttp3.OkHttpClient by lazy {
+        okhttp3.OkHttpClient.Builder()
+            .connectTimeout(3, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+            .addInterceptor { chain ->
+                val req = chain.request()
+                val url = req.url.toString()
+                if (!url.startsWith(MapStyle.TILES)) return@addInterceptor chain.proceed(req)
+                val up = req.newBuilder().url(UPSTREAM + url.removePrefix(MapStyle.TILES)).build()
+                if (System.currentTimeMillis() < skipOursUntil) return@addInterceptor chain.proceed(up)
+                try {
+                    val r = chain.proceed(req)
+                    if (r.code < 500) return@addInterceptor r
+                    r.close()
+                } catch (_: java.io.IOException) { }
+                skipOursUntil = System.currentTimeMillis() + 60_000
+                chain.proceed(up)
+            }
+            .build()
+    }
+
+    /** פעם אחת לכל הפעלה: המפה, הגיבוי לשרת, ומטמון הרחובות בטלפון - עד 20MB (הטלפון יכול לנקות) */
     fun init(c: Context) {
         MapLibre.getInstance(c.applicationContext)
         if (ready) return
         ready = true
+        try { org.maplibre.android.module.http.HttpRequestUtil.setOkHttpClient(client) } catch (_: Exception) { }
         try {
             OfflineManager.getInstance(c.applicationContext).setMaximumAmbientCacheSize(20L * 1024 * 1024,
                 object : OfflineManager.FileSourceCallback { override fun onSuccess() { } ; override fun onError(message: String) { } })
