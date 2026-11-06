@@ -29,6 +29,24 @@ class PushService : FirebaseMessagingService() {
                 }
             } finally { c.disconnect() }
         } catch (_: Exception) { null }
+        /** התרעה מהשרת: כותרת, יישובים, זמן (null = עכשיו), מקור, מזהה */
+        data class PushAlert(val title: String, val areas: List<String>, val at: Long?, val src: String, val eid: String)
+
+        /**
+         * פענוח הודעת התרעה מהשרת (בלי צד-השפעות - נבדק בבדיקות). null - לא התרעה / בלי יישובים.
+         * isKnown - האם שם הוא יישוב אמיתי (בטלגרם מסננים שורות שאינן יישובים)
+         */
+        fun pushAlertOf(d: Map<String, String>, isKnown: (String) -> Boolean): PushAlert? {
+            if (d["type"] != "alert") return null
+            val title = d["title"] ?: return null
+            val src = d["src"] ?: ""
+            var areas = (d["areas"] ?: "").split('|').map { it.trim() }.filter { it.isNotEmpty() }
+            // טלגרם: רק שמות יישובים אמיתיים (כמו כשהטלפון קרא את הערוצים בעצמו)
+            if (src.startsWith("tg:")) areas = areas.filter(isKnown)
+            if (areas.isEmpty()) return null
+            return PushAlert(title, areas, d["at"]?.toLongOrNull(), src, d["eid"] ?: "")
+        }
+
         fun subscribe(c: android.content.Context) {
             try { FirebaseMessaging.getInstance().subscribeToTopic(TOPIC) } catch (_: Exception) { }
             // הודעות מהאתר למכשיר הזה בלבד
@@ -61,14 +79,9 @@ class PushService : FirebaseMessagingService() {
                 testBody = "בדיקת גיבוי · " + if (d["by"] == "relay") "ממסר" else "שרת משני (Cloudflare)") } catch (_: Exception) { }
             return
         }
-        if (d["type"] != "alert") return
-        val title = d["title"] ?: return
-        val src = d["src"] ?: ""
-        var areas = (d["areas"] ?: "").split('|').map { it.trim() }.filter { it.isNotEmpty() }
-        // טלגרם: רק שמות יישובים אמיתיים (כמו כשהטלפון קרא את הערוצים בעצמו)
-        if (src.startsWith("tg:")) areas = areas.filter { AreaData.isKnown(this, it) }
-        if (areas.isEmpty()) return
-        val at = d["at"]?.toLongOrNull() ?: System.currentTimeMillis()
+        val pa = pushAlertOf(d) { AreaData.isKnown(this, it) } ?: return
+        val title = pa.title; val areas = pa.areas; val src = pa.src
+        val at = pa.at ?: System.currentTimeMillis()
         val svc = AlertService.instance
         if (svc != null) {
             // הטלפון נשאר ער עד שההתרעה טופלה (בלי זה הוא יכול להירדם לפני הצלצול)

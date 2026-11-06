@@ -182,6 +182,48 @@ class AlertService : Service() {
         const val LEVEL_PRE = 1
         const val LEVEL_END = 2
 
+        /** הקובץ החי של פיקוד העורף: (מזהה, כותרת, יישובים), או null אם אין התרעה. נבדק בבדיקות */
+        fun orefLive(text: String): Triple<String, String, List<String>>? {
+            if (text.isEmpty()) return null
+            val json = JSONObject(text)
+            val id = json.optString("id")
+            if (id.isEmpty()) return null
+            val arr = json.optJSONArray("data") ?: return null
+            return Triple(id, json.optString("title", "התרעה"), (0 until arr.length()).map { arr.getString(it) })
+        }
+
+        /**
+         * ההיסטוריה / הארכיון של פיקוד העורף: התרעות מהדקה וחצי האחרונות, מקובצות לפי סוג + זמן.
+         * (כותרת, זמן, יישובים). נבדק בבדיקות
+         */
+        fun orefHistory(text: String, now: Long, windowMs: Long = HISTORY_WINDOW_MS): List<Triple<String, Long, List<String>>> {
+            if (!text.startsWith("[")) return emptyList()
+            val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
+                timeZone = java.util.TimeZone.getTimeZone("Asia/Jerusalem")
+            }
+            val arr = org.json.JSONArray(text)
+            // לפי סוג + זמן ההתראה המקורי (כדי שהתראה ישנה לא תיחשב חדשה)
+            val byTitle = LinkedHashMap<Pair<String, Long>, MutableList<String>>()
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                val date = o.optString("alertDate").replace('T', ' ').take(19)
+                val t = try { fmt.parse(date)?.time } catch (_: Exception) { null } ?: continue
+                if (now - t > windowMs) continue
+                val title = o.optString("title").ifEmpty { o.optString("category_desc", "התרעה") }
+                byTitle.getOrPut(title to t) { mutableListOf() }.add(o.optString("data"))
+            }
+            return byTitle.map { (k, areas) -> Triple(k.first, k.second, areas) }
+        }
+
+        /** פיקוד העורף מחזיר לפעמים UTF-8 עם BOM ולפעמים UTF-16 */
+        fun decodeOref(b: ByteArray): String = when {
+            b.size >= 2 && b[0] == 0xFF.toByte() && b[1] == 0xFE.toByte() ->
+                String(b, 2, b.size - 2, Charsets.UTF_16LE)
+            b.size >= 3 && b[0] == 0xEF.toByte() && b[1] == 0xBB.toByte() && b[2] == 0xBF.toByte() ->
+                String(b, 3, b.size - 3, Charsets.UTF_8)
+            else -> String(b, Charsets.UTF_8)
+        }
+
         /** סיווג לפי נוסח ההודעה של פיקוד העורף - המילים בהגדרות מהשרת (config.json) */
         fun levelOf(title: String): Int = when {
             Config.endWords.any { title.contains(it) } -> LEVEL_END
@@ -557,7 +599,7 @@ class AlertService : Service() {
             if (!r.isSuccessful) throw java.io.IOException("HTTP " + r.code)
             r.body?.bytes() ?: ByteArray(0)
         }
-        return decode(bytes).trim()
+        return decodeOref(bytes).trim()
     }
 
     /** מקור 1: הקובץ החי של פיקוד העורף */
@@ -571,9 +613,8 @@ class AlertService : Service() {
         if (id.isEmpty() || id == lastId) return
         lastId = id
 
-        val title = json.optString("title", "התרעה")
-        val arr = json.optJSONArray("data") ?: return
-        handle(title, (0 until arr.length()).map { arr.getString(it) }, source = "oref", eid = id)
+        val (_, title, areas) = orefLive(text) ?: return
+        handle(title, areas, source = "oref", eid = id)
     }
 
     /**
@@ -697,9 +738,6 @@ class AlertService : Service() {
      * שניהם גיבוי להתראות שנפלו בין בדיקות.
      */
     private fun historyLoop() {
-        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply {
-            timeZone = java.util.TimeZone.getTimeZone("Asia/Jerusalem")
-        }
         while (running) {
             for (url in listOf(URL_HISTORY, URL_ARCHIVE)) {
                 if (serverOk(this)) break   // השרת בודק את ההיסטוריה והארכיון
@@ -710,20 +748,8 @@ class AlertService : Service() {
                     val text = OrefArchive.convert(raw)
                     SourceHealth.ok(if (url == URL_HISTORY) "history" else "archive")
                     if (!text.startsWith("[")) continue
-                    val arr = org.json.JSONArray(text)
-                    val now = System.currentTimeMillis()
-                    // לפי סוג + זמן ההתראה המקורי (כדי שהתראה ישנה לא תיחשב חדשה)
-                    val byTitle = LinkedHashMap<Pair<String, Long>, MutableList<String>>()
-                    for (i in 0 until arr.length()) {
-                        val o = arr.getJSONObject(i)
-                        val date = o.optString("alertDate").replace('T', ' ').take(19)
-                        val t = fmt.parse(date)?.time ?: continue
-                        if (now - t > HISTORY_WINDOW_MS) continue
-                        val title = o.optString("title").ifEmpty { o.optString("category_desc", "התרעה") }
-                        byTitle.getOrPut(title to t) { mutableListOf() }.add(o.optString("data"))
-                    }
                     val src = if (url == URL_HISTORY) "history" else "archive"
-                    byTitle.forEach { (k, areas) -> handle(k.first, areas, k.second, src) }
+                    orefHistory(text, System.currentTimeMillis()).forEach { (title, t, areas) -> handle(title, areas, t, src) }
                 } catch (_: Exception) { }
             }
             // גיבוי: מסך דלוק או אירוע - כל 30 שניות; מסך כבוי - כל 2 דקות.
@@ -813,14 +839,6 @@ class AlertService : Service() {
         fire(title, fresh, source = source)
     }
 
-    /** השרת מחזיר לפעמים UTF-8 עם BOM ולפעמים UTF-16 */
-    private fun decode(b: ByteArray): String = when {
-        b.size >= 2 && b[0] == 0xFF.toByte() && b[1] == 0xFE.toByte() ->
-            String(b, 2, b.size - 2, Charsets.UTF_16LE)
-        b.size >= 3 && b[0] == 0xEF.toByte() && b[1] == 0xBB.toByte() && b[2] == 0xBF.toByte() ->
-            String(b, 3, b.size - 3, Charsets.UTF_8)
-        else -> String(b, Charsets.UTF_8)
-    }
 
     /**
      * "התרעות לפי מיקום": כל 2 דקות לוקח מיקום עדכני (לא רק מה שהטלפון זוכר)
