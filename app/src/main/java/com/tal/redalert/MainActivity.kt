@@ -392,7 +392,7 @@ class MainActivity : Activity() {
                 GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) })
             setOnClickListener { click() }
         }, LinearLayout.LayoutParams(dp(46), dp(46)))
-        headerIcon(R.drawable.ic_nav_clock) { startActivity(Intent(this@MainActivity, ClockActivity::class.java)) }
+        headerIcon(R.drawable.ic_nav_clock) { chooseClock() }
         headerIcon(R.drawable.ic_nav_alerts) { showRecent() }
         headerIcon(R.drawable.ic_gear) { showSettings() }
         col.addView(header, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
