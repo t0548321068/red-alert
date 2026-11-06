@@ -16,7 +16,8 @@ const agent = new https.Agent({ keepAlive: true, maxSockets: 6 });
 const inflight = new Map();
 const JSON_TTL = 3600 * 1000, KEEP_DAYS = 45;
 
-function file(p) { return path.join(DIR, p.replace(/[^\w\/.%-]/g, '_')); }
+// תיאור המפה (planet) נשמר בשם נפרד - "planet" הוא גם התיקייה של האריחים
+function file(p) { return path.join(DIR, p === 'planet' ? 'planet.json' : p.replace(/[^\w\/.%-]/g, '_')); }
 function isJson(p) { return !p.endsWith('.pbf') && !p.endsWith('.png'); }
 
 function fetchUp(p) {
