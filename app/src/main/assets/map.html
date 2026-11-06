@@ -58,15 +58,15 @@
   /* מפה קטנה במסך ההתראה: רק המפה והאזורים, בלי כפתורים */
   body.mini .legend, body.mini .me-btn, body.mini .empty { display: none !important; }
   html:has(body.mini), body.mini { background: transparent; }
-  body.mini #map { opacity: 0; }   /* מוצגת ברגע שהיא מתמקדת - בלי מעבר הדרגתי */
+  body.mini #map { opacity: 0; transition: opacity .35s ease-out; }
   body.mini.ready #map { opacity: 1; }
 </style>
 </head>
 <body>
 <!-- מסך ההתרעה פותח את המפה עם #mini=... - מצב קטן מהרגע הראשון, בלי לחכות לאפליקציה -->
-<script>if (location.hash.indexOf('#mini=') === 0 || location.hash.indexOf('#minipre') === 0) document.body.classList.add('mini');
+<script>if (location.hash.indexOf('#mini=') === 0) document.body.classList.add('mini');
   // עיצוב בהיר מהרגע הראשון (מפה גדולה: #light, מפת ההתרעה: "dark":false)
-  if (location.hash === '#light' || location.hash === '#minipre-light' || location.hash.indexOf('%22dark%22%3Afalse') > 0 || location.hash.indexOf('"dark":false') > 0)
+  if (location.hash === '#light' || location.hash.indexOf('%22dark%22%3Afalse') > 0 || location.hash.indexOf('"dark":false') > 0)
     document.body.classList.add('light');</script>
 <div id="map"></div>
 <div class="empty" id="empty">אין התראות ב-24 השעות האחרונות</div>
@@ -167,7 +167,6 @@
   function setPoly(on) {
     POLY = on;
     document.body.classList.toggle('nostreets', on);
-    refreshBase(true);
     var land = css('--land'), edge = css('--edge');
     baseLayer.eachLayer(function (l) { if (l.setStyle) l.setStyle(on ? { color: edge, fillColor: land, fillOpacity: 1, opacity: 1 } : { fillOpacity: 0, opacity: 0 }); });
     syncLabels();
@@ -209,23 +208,6 @@
   var meLayer = L.layerGroup().addTo(map);
   var DATA = { dark: true, all: [], mine: [] }, HOURS = 24, MODE = 'all', ME = null, HAS_BOUNDS = false;
 
-  var CITY_DONE = false;
-  // מפה גדולה: האזורים נבנים רק בסביבת התצוגה (לא כל 1,400 בכל פתיחה), ומתעדכנים בתזוזה.
-  // ברחוק (זום מתחת ל-10) עם רחובות - בלי אזורי רקע בכלל (שקופים ממילא, והשמות רק מזום 12)
-  var DRAWN = null;
-  function refreshBase(force) {
-    if (document.body.classList.contains('mini')) return;
-    if (!POLY && map.getZoom() < 10) {
-      if (DRAWN !== 'none') { baseLayer.clearLayers(); labelLayer.clearLayers(); DRAWN = 'none'; drawBase(L.latLngBounds([0, 0], [0, 0])); }
-      return;
-    }
-    var view = map.getBounds();
-    if (!force && DRAWN && DRAWN !== 'none' && DRAWN.contains(view)) return;
-    DRAWN = view.pad(0.6);
-    drawBase(DRAWN);
-    [alertLayer, visitLayer, meLayer].forEach(function (g) { g.eachLayer(function (l) { if (l.bringToFront) l.bringToFront(); }); });
-    syncLabels();
-  }
   function drawBase(only) {
     baseLayer.clearLayers(); labelLayer.clearLayers();
     var land = css('--land'), edge = css('--edge');
@@ -237,9 +219,8 @@
       L.tooltip({ permanent: true, direction: 'center', className: 'lbl' })
         .setLatLng(a.c).setContent(name).addTo(labelLayer);
     });
-    // מרכז כל עיר גדולה = ממוצע מרכזי האזורים שלה (מחושב פעם אחת)
-    if (CITY_DONE) return;
-    CITY_DONE = true;
+    // מרכז כל עיר גדולה = ממוצע מרכזי האזורים שלה
+    cityLayer.clearLayers();
     CITIES.forEach(function (city) {
       var pts = Object.keys(ALL_AREAS).filter(function (n) { return n === city || n.indexOf(city + ' - ') === 0; })
                   .map(function (n) { return ALL_AREAS[n].c; });
@@ -345,7 +326,7 @@
     DATA = data;
     document.body.classList.toggle('light', !data.dark);
     setStreetsTheme(!!data.dark);
-    drawAlerts(); refreshBase(true); syncLabels();
+    drawBase(); drawAlerts(); syncLabels();
   }
   function setMe(lat, lon, acc) {
     ME = [lat, lon];
@@ -461,8 +442,8 @@
     document.body.classList.add('ready');
     // סיכות המיקום (התרעה אדומה) נופלות באנימציה - כל הסיכות של ההתרעה יחד
     var pins = MINI_PINS; MINI_PINS = [];
-    // הסיכות נופלות מיד (המפה מוצגת בלי מעבר הדרגתי)
-    dropPins(pins, alertLayer);
+    // אחרי שהמפה סיימה להופיע (מעבר של 0.35 שניות) - אחרת הנפילה קורית כשהמפה עוד שקופה
+    setTimeout(function () { dropPins(pins, alertLayer); }, 550);
   }
   window.addEventListener('resize', function () {
     if (document.body.classList.contains('mini') && MINI_FIT) {
@@ -471,12 +452,7 @@
   });
 
   // מצויר מיד, עוד לפני שהאפליקציה שולחת נתונים (במפת ההתרעה - רק אחרי המיקוד, ורק הסביבה)
-  // מפת התרעה שנטענת מראש: מצב קטן, ומחכה לאפליקציה (miniShow) עם האזורים
-  if (location.hash.indexOf('#minipre') === 0) miniMode();
-  else if (location.hash.indexOf('#mini=') !== 0) {
-    refreshBase(true);
-    map.on('moveend', function () { refreshBase(false); });
-  }
+  if (location.hash.indexOf('#mini=') !== 0) { drawBase(); syncLabels(); }
   // מסך ההתרעה: הנתונים מגיעים בכתובת עצמה (#mini={names,level,lat,lon})
   if (location.hash.indexOf('#mini=') === 0) {
     try {

@@ -744,7 +744,6 @@ class AlertService : Service() {
         // תזמון הגנה: מחוץ לימים ולשעות שנבחרו - לא מקבלים התרעות
         if (Prefs.scheduleOffNow(this)) return
         lastEventAt = System.currentTimeMillis()   // אירוע בארץ - בבדיקה עצמית בודקים בקצב מהיר
-        MiniPreload.onEvent(this)   // מפת מסך ההתרעה נטענת כבר עכשיו - מוצגת מיד
         val level = levelOf(rawTitle)
         // כל סוגי הסיום ("החשש הוסר" וכו') מוצגים כ"האירוע הסתיים"; "איום מלבנון" - "התרעה מקדימה - איום מלבנון"
         val title = displayTitle(rawTitle)

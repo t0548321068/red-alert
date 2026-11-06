@@ -13,10 +13,10 @@ import org.json.JSONObject
 class MapActivity : Activity() {
 
     private var webView: WebView? = null
+
     override fun onDestroy() {
         webView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it); it.destroy() }
         webView = null
-        MapPreload.locate = null
         super.onDestroy()
     }
 
@@ -26,10 +26,7 @@ class MapActivity : Activity() {
         val dark = Prefs.darkTheme(this)
         window.decorView.setBackgroundColor(Color.parseColor(if (dark) "#000000" else "#F2F2F7"))
 
-        // מפה שנטענה מראש ברקע (מוצגת מיד), או - אם אין - טוענים עכשיו
-        var pageReady: (() -> Unit)? = null
-        val pre = MapPreload.take(this) { pageReady?.invoke() ?: run { pageReady = {} } }
-        val web = pre ?: WebView(this).apply {
+        val web = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             setBackgroundColor(Color.TRANSPARENT)
@@ -56,8 +53,7 @@ class MapActivity : Activity() {
             android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
             android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS)
         setContentView(frame)
-        if (pre != null) MapPreload.locate = { if (webView != null && !isDestroyed) locate(web) }
-        else web.addJavascriptInterface(object {
+        web.addJavascriptInterface(object {
             @android.webkit.JavascriptInterface
             fun locate() = runOnUiThread { if (webView != null && !isDestroyed) locate(web) }
         }, "App")
@@ -67,7 +63,7 @@ class MapActivity : Activity() {
         var data = ""; var focusNames: JSONArray? = null
         Thread {
             try {
-                data = buildData(this@MapActivity, dark)
+                data = buildData(dark)
                 // נפתח מהתראה ברשימה - האזורים שלה
                 focusNames = intent.getStringExtra("focus")?.let { body ->
                     JSONArray().also { names ->
@@ -79,8 +75,10 @@ class MapActivity : Activity() {
             finally { ready.countDown() }
         }.start()
 
-        // הדף מוכן: מציירים את ההתראות, ההתמקדות והמיקום
-        fun onReady(view: WebView) {
+        web.webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(view: WebView, req: android.webkit.WebResourceRequest) =
+                DataFiles.web(this@MapActivity, req.url.toString())   // יישובים מעודכנים מהשרת
+            override fun onPageFinished(view: WebView, url: String) {
                 Thread {
                     ready.await()
                     if (data.isEmpty()) return@Thread
@@ -95,16 +93,7 @@ class MapActivity : Activity() {
                         locate(view)
                     }
                 }.start()
-        }
-        if (pre != null) {
-            // נטען מראש: אם כבר נטען - עכשיו, אחרת כשיסתיים
-            if (pageReady != null) onReady(web) else pageReady = { onReady(web) }
-            return
-        }
-        web.webViewClient = object : WebViewClient() {
-            override fun shouldInterceptRequest(view: WebView, req: android.webkit.WebResourceRequest) =
-                DataFiles.web(this@MapActivity, req.url.toString())   // יישובים מעודכנים מהשרת
-            override fun onPageFinished(view: WebView, url: String) = onReady(view)
+            }
         }
         web.loadUrl("file:///android_asset/map.html" + if (dark) "" else "#light")   // ערכת נושא מהרגע הראשון
     }
@@ -123,48 +112,46 @@ class MapActivity : Activity() {
         view.evaluateJavascript("setMe(${l.latitude}, ${l.longitude}, ${l.accuracy});", null)
     }
 
-    companion object {
-        /** ממיר רשימת התראות לנתונים למפה (שמות האזורים המלאים) */
-        private fun events(c: android.content.Context, list: List<Prefs.Entry>): JSONArray {
-            val events = JSONArray()
-            list.filter { it.ts > 0 }.forEach { e ->
-                val names = JSONArray()
-                e.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach { raw ->
-                    AreaData.match(c, raw).forEach { name -> names.put(name) }
-                }
-                if (names.length() > 0) {
-                    events.put(JSONObject()
-                        .put("ts", e.ts).put("title", e.title)
-                        .put("level", e.level).put("areas", names))   // "איום" - בכתום
-                }
+    /** ממיר רשימת התראות לנתונים למפה (שמות האזורים המלאים) */
+    private fun events(list: List<Prefs.Entry>): JSONArray {
+        val events = JSONArray()
+        list.filter { it.ts > 0 }.forEach { e ->
+            val names = JSONArray()
+            e.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach { raw ->
+                AreaData.match(this, raw).forEach { name -> names.put(name) }
             }
-            return events
+            if (names.length() > 0) {
+                events.put(JSONObject()
+                    .put("ts", e.ts).put("title", e.title)
+                    .put("level", e.level).put("areas", names))   // "איום" - בכתום
+            }
         }
+        return events
+    }
 
-        /**
-         * כל הארץ, ו"שלי" = ההתראות שקיבלתי + התראות בארץ באזורים שהייתי בהם באותו זמן
-         * (לפי היסטוריית המיקום)
-         */
-        fun buildData(c: android.content.Context, dark: Boolean): String {
-            val visits = Prefs.visits(c)
-            val all = events(c, Prefs.feed(c))
-            val mine = events(c, Prefs.history(c))
-            for (i in 0 until all.length()) {
-                val e = all.getJSONObject(i)
-                val ts = e.getLong("ts")
-                val areas = e.getJSONArray("areas")
-                val here = JSONArray()
-                for (j in 0 until areas.length()) {
-                    val a = areas.getString(j)
-                    if (Prefs.wasIn(visits, a, ts)) here.put(a)
-                }
-                if (here.length() > 0) mine.put(JSONObject(e.toString()).put("areas", here))
+    /**
+     * כל הארץ, ו"שלי" = ההתראות שקיבלתי + התראות בארץ באזורים שהייתי בהם באותו זמן
+     * (לפי היסטוריית המיקום)
+     */
+    private fun buildData(dark: Boolean): String {
+        val visits = Prefs.visits(this)
+        val all = events(Prefs.feed(this))
+        val mine = events(Prefs.history(this))
+        for (i in 0 until all.length()) {
+            val e = all.getJSONObject(i)
+            val ts = e.getLong("ts")
+            val areas = e.getJSONArray("areas")
+            val here = JSONArray()
+            for (j in 0 until areas.length()) {
+                val a = areas.getString(j)
+                if (Prefs.wasIn(visits, a, ts)) here.put(a)
             }
-            val data = JSONObject()
-                .put("all", all)
-                .put("mine", mine)
-                .put("dark", dark)
-            return data.toString()
+            if (here.length() > 0) mine.put(JSONObject(e.toString()).put("areas", here))
         }
+        val data = JSONObject()
+            .put("all", all)
+            .put("mine", mine)
+            .put("dark", dark)
+        return data.toString()
     }
 }

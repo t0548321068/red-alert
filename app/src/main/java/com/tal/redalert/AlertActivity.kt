@@ -281,13 +281,7 @@ open class AlertActivity : Activity() {
         (intent.getStringExtra("mapAreas") ?: intent.getStringExtra("body") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
             .forEach { raw -> try { AreaData.match(this, raw).forEach { names.put(it) } } catch (_: Exception) { } }
         if (names.length() == 0) return null
-        val me = try { Weather.lastLocation(this@AlertActivity) } catch (_: Exception) { null }
-        val dark = Prefs.darkTheme(this)
-        // מפה שנטענה מראש (בזמן אירוע / "מוכנה תמיד") - מקבלת את האזורים ומוצגת מיד
-        val show = "miniShow($names, $level, ${me?.latitude ?: "null"}, ${me?.longitude ?: "null"});"
-        var pre: android.webkit.WebView? = null
-        pre = MiniPreload.take(this) { ui.post { if (!isDestroyed) pre?.evaluateJavascript(show, null) } }
-        val web = pre ?: android.webkit.WebView(this).apply {
+        val web = android.webkit.WebView(this).apply {
             settings.javaScriptEnabled = true
             // שקוף עד שהמפה מוכנה - רואים את צבע ההתרעה, לא מלבן כהה
             setBackgroundColor(Color.TRANSPARENT)
@@ -297,8 +291,9 @@ open class AlertActivity : Activity() {
                     DataFiles.web(this@AlertActivity, req.url.toString())   // יישובים מעודכנים מהשרת
             }
             // הנתונים עוברים בכתובת - המפה נפתחת ישר במצב הקטן על אזור ההתרעה
+            val me = try { Weather.lastLocation(this@AlertActivity) } catch (_: Exception) { null }
             val q = org.json.JSONObject().put("names", names).put("level", level)
-                .put("dark", dark)   // מפה בהירה בעיצוב בהיר
+                .put("dark", Prefs.darkTheme(this@AlertActivity))   // מפה בהירה בעיצוב בהיר
             if (me != null) q.put("lat", me.latitude).put("lon", me.longitude)
             loadUrl("file:///android_asset/map.html#mini=" + android.net.Uri.encode(q.toString()))
         }
@@ -370,7 +365,6 @@ open class AlertActivity : Activity() {
         ui.removeCallbacksAndMessages(null)   // כולל הסגירה האוטומטית במצב שבת
         miniWeb?.let { (it.parent as? android.view.ViewGroup)?.removeView(it); it.destroy() }
         miniWeb = null
-        MiniPreload.afterUse(this)   // מפה חדשה ומוכנה אם עדיין בזמן אירוע
         super.onDestroy()
     }
 }

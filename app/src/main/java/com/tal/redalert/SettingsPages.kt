@@ -174,7 +174,7 @@ internal fun MainActivity.showAlertSettings() = ouiPage("הגדרות התרעו
     style.addView(opts)
     ouiDivider(style)
     ouiRow(style, "מפה במסך ההתרעה", on = Prefs.alertMap(this)) {
-        Prefs.setAlertMap(this, !Prefs.alertMap(this)); MiniPreload.sync(this); rebuild() }
+        Prefs.setAlertMap(this, !Prefs.alertMap(this)); rebuild() }
     ouiAdd(body, style)
     ouiNote(body, "המפה מוצגת במסך מלא ובפופ-אפ")
 
