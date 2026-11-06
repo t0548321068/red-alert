@@ -87,6 +87,6 @@ object MapPreload {
 
     private fun drop() {
         web?.let { (it.parent as? android.view.ViewGroup)?.removeView(it); it.destroy() }
-        web = null; loaded = false; onLoaded = null; takenView = null
+        web = null; loaded = false   // מפה שכבר נלקחה למסך המפה (takenView) ממשיכה כרגיל
     }
 }
