@@ -34,11 +34,6 @@ internal class ShabbatScreen(private val a: MainActivity) {
         setBackgroundColor(Color.BLACK)
         visibility = View.GONE
         setOnTouchListener { _, _ -> true }   // לא מגיב לנגיעות, וגם לא מעביר למסך שמתחת
-        setOnApplyWindowInsetsListener { v, insets ->
-            @Suppress("DEPRECATION")
-            v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
-            insets
-        }
     }
 
     // שעון
@@ -135,12 +130,11 @@ internal class ShabbatScreen(private val a: MainActivity) {
 
     private fun clockOn() = Prefs.shabbatClock(a)
 
-    /** שורת המצב ושורת כפתורי הניווט לא מסתירות את התוכן (כפתור היציאה) - לפי הגדלים בפועל, בכל טלפון */
-    @Suppress("DEPRECATION")
+    /** השורות מוסתרות - ריווח רק סביב החור/הנוץ' של המצלמה, ככה שום דבר לא מוסתר */
     private fun fitBars() {
-        val ins = a.window.decorView.rootWindowInsets ?: return
-        val l = maxOf(ins.systemWindowInsetLeft, ins.stableInsetLeft); val t = maxOf(ins.systemWindowInsetTop, ins.stableInsetTop)
-        val r = maxOf(ins.systemWindowInsetRight, ins.stableInsetRight); val b = maxOf(ins.systemWindowInsetBottom, ins.stableInsetBottom)
+        val cut = if (android.os.Build.VERSION.SDK_INT >= 28) a.window.decorView.rootWindowInsets?.displayCutout else null
+        val l = cut?.safeInsetLeft ?: 0; val t = cut?.safeInsetTop ?: 0
+        val r = cut?.safeInsetRight ?: 0; val b = cut?.safeInsetBottom ?: 0
         if (root.paddingLeft != l || root.paddingTop != t || root.paddingRight != r || root.paddingBottom != b) root.setPadding(l, t, r, b)
     }
 
@@ -212,7 +206,7 @@ internal class ShabbatScreen(private val a: MainActivity) {
     }
 
     /**
-     * החלון בזמן מסך השבת: סמלי שורת המצב לבנים על השחור; עם "שעון במסך" - המסך נשאר דלוק
+     * החלון בזמן מסך השבת: מסך מלא בלי שורת המצב ושורת הניווט; עם "שעון במסך" - המסך נשאר דלוק
      * ומופיע גם מעל מסך הנעילה. ביציאה - הכול חוזר למה שהיה
      */
     private var savedBars: Int? = null
@@ -220,11 +214,18 @@ internal class ShabbatScreen(private val a: MainActivity) {
     @Suppress("DEPRECATION")
     private fun window(on: Boolean) {
         val d = a.window.decorView
+        // מסך מלא: שורת המצב ושורת כפתורי הניווט מוסתרות (מופיעות לרגע רק בהחלקה מהקצה), וחוזרות ביציאה
         if (on && savedBars == null) {
             savedBars = d.systemUiVisibility
-            d.systemUiVisibility = d.systemUiVisibility and
-                (View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR).inv()
-        } else if (!on) savedBars?.let { d.systemUiVisibility = it; savedBars = null }
+            if (android.os.Build.VERSION.SDK_INT >= 30) a.window.insetsController?.let {
+                it.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                it.hide(android.view.WindowInsets.Type.systemBars())
+            } else d.systemUiVisibility = View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_FULLSCREEN or
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        } else if (!on) savedBars?.let {
+            if (android.os.Build.VERSION.SDK_INT >= 30) a.window.insetsController?.show(android.view.WindowInsets.Type.systemBars())
+            d.systemUiVisibility = it; savedBars = null
+        }
         val want = on && clockOn()
         if (want == keepOn) return
         keepOn = want
