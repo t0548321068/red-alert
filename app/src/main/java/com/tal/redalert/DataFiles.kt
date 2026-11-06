@@ -30,6 +30,7 @@ object DataFiles {
 
     /** המפה (WebView) טוענת קבצים מתוך האפליקציה - קובץ שעודכן מהשרת (למשל areas.js) נטען במקומו */
     fun web(c: Context, url: String): android.webkit.WebResourceResponse? {
+        if (url.startsWith("https://")) return MapCache.web(c, url)   // רחובות שמורים ורכיב העברית
         val path = url.substringAfter("file:///android_asset/", "").substringBefore('#').substringBefore('?')
         if (path.isEmpty()) return null
         val f = file(c, path) ?: return null

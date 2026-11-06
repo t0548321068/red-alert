@@ -281,9 +281,15 @@ open class AlertActivity : Activity() {
         (intent.getStringExtra("mapAreas") ?: intent.getStringExtra("body") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
             .forEach { raw -> try { AreaData.match(this, raw).forEach { names.put(it) } } catch (_: Exception) { } }
         if (names.length() == 0) return null
-        val web = android.webkit.WebView(this).apply {
+        val me = try { Weather.lastLocation(this@AlertActivity) } catch (_: Exception) { null }
+        val dark = Prefs.darkTheme(this)
+        // מפה שנטענה מראש (בזמן אירוע / "מוכנה תמיד") - מקבלת את האזורים ומוצגת מיד
+        val show = "miniShow($names, $level, ${me?.latitude ?: "null"}, ${me?.longitude ?: "null"});"
+        var pre: android.webkit.WebView? = null
+        pre = MiniPreload.take(this) { ui.post { if (!isDestroyed) pre?.evaluateJavascript(show, null) } }
+        val web = pre ?: android.webkit.WebView(this).apply {
             settings.javaScriptEnabled = true
-            // שקוף עד שהמפה מוכנה - רואים את צבע ההתרעה, לא מלבן כהה
+            // שקוף עד שהמפה מוכנה - רואים את הציור המיידי של האזור
             setBackgroundColor(Color.TRANSPARENT)
             isVerticalScrollBarEnabled = false; isHorizontalScrollBarEnabled = false
             webViewClient = object : android.webkit.WebViewClient() {
@@ -291,14 +297,28 @@ open class AlertActivity : Activity() {
                     DataFiles.web(this@AlertActivity, req.url.toString())   // יישובים מעודכנים מהשרת
             }
             // הנתונים עוברים בכתובת - המפה נפתחת ישר במצב הקטן על אזור ההתרעה
-            val me = try { Weather.lastLocation(this@AlertActivity) } catch (_: Exception) { null }
             val q = org.json.JSONObject().put("names", names).put("level", level)
-                .put("dark", Prefs.darkTheme(this@AlertActivity))   // מפה בהירה בעיצוב בהיר
+                .put("dark", dark)   // מפה בהירה בעיצוב בהיר
             if (me != null) q.put("lat", me.latitude).put("lon", me.longitude)
             loadUrl("file:///android_asset/map.html#mini=" + android.net.Uri.encode(q.toString()))
         }
         miniWeb = web
-        return web
+        // מתחת למפה: ציור מיידי של אזור ההתרעה והמיקום, באותו זום - נראה מהשנייה הראשונה,
+        // והמפה החיה נכנסת מעליו כשהיא מוכנה
+        val polys = ArrayList<List<DoubleArray>>()
+        try {
+            val all = AreaData.areas(this)
+            for (k in 0 until names.length()) {
+                val o = all.optJSONObject(names.getString(k)) ?: continue
+                val p = o.optJSONArray("p")
+                if (p != null) polys += (0 until p.length()).map { val pt = p.getJSONArray(it); doubleArrayOf(pt.getDouble(0), pt.getDouble(1)) }
+                else o.optJSONArray("c")?.let { polys += listOf(doubleArrayOf(it.getDouble(0), it.getDouble(1))) }
+            }
+        } catch (_: Exception) { }
+        return android.widget.FrameLayout(this).apply {
+            addView(MapSketch(this@AlertActivity, polys, level, me?.latitude, me?.longitude, dark), android.widget.FrameLayout.LayoutParams(-1, -1))
+            addView(web, android.widget.FrameLayout.LayoutParams(-1, -1))
+        }
     }
 
     @Deprecated("Deprecated in Java")
@@ -365,6 +385,7 @@ open class AlertActivity : Activity() {
         ui.removeCallbacksAndMessages(null)   // כולל הסגירה האוטומטית במצב שבת
         miniWeb?.let { (it.parent as? android.view.ViewGroup)?.removeView(it); it.destroy() }
         miniWeb = null
+        MiniPreload.afterUse(this)   // מפה חדשה ומוכנה אם עדיין בזמן אירוע
         super.onDestroy()
     }
 }

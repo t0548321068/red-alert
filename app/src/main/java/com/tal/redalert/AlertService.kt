@@ -369,6 +369,7 @@ class AlertService : Service() {
     override fun onCreate() {
         super.onCreate()
         createChannels()
+        MiniPreload.sync(this)   // "מפת התרעה מוכנה תמיד"
         val n = Notification.Builder(this, CH_SERVICE)
             .setSmallIcon(R.drawable.ic_stat_siren)
             .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
@@ -744,6 +745,7 @@ class AlertService : Service() {
         // תזמון הגנה: מחוץ לימים ולשעות שנבחרו - לא מקבלים התרעות
         if (Prefs.scheduleOffNow(this)) return
         lastEventAt = System.currentTimeMillis()   // אירוע בארץ - בבדיקה עצמית בודקים בקצב מהיר
+        MiniPreload.onEvent(this)   // מפת מסך ההתרעה נטענת כבר עכשיו - מוצגת מיד
         val level = levelOf(rawTitle)
         // כל סוגי הסיום ("החשש הוסר" וכו') מוצגים כ"האירוע הסתיים"; "איום מלבנון" - "התרעה מקדימה - איום מלבנון"
         val title = displayTitle(rawTitle)

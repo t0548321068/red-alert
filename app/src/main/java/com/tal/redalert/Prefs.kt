@@ -378,6 +378,9 @@ object Prefs {
     /** מפה במסך ההתרעה (מסך מלא ופופ-אפ) */
     fun alertMap(c: Context) = sp(c).getBoolean("alertMap", true)
     fun setAlertMap(c: Context, v: Boolean) = sp(c).edit().putBoolean("alertMap", v).apply()
+    /** מפת מסך ההתרעה טעונה ברקע כל הזמן (מוצגת מיד גם בהתרעה ראשונה) */
+    fun alertMapAlways(c: Context) = sp(c).getBoolean("alertMapAlways", false)
+    fun setAlertMapAlways(c: Context, v: Boolean) = sp(c).edit().putBoolean("alertMapAlways", v).apply()
     fun setAlertStyle(c: Context, v: Int) = sp(c).edit().putInt("alertStyle", v).apply()
 
     /** ההתרעה הפעילה (לכרטיס מעל השעון): title, body, level, shelter, firedAt, source */
