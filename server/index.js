@@ -103,4 +103,5 @@ require('./sources/telegram').start();
 archive.start();
 versions.start();
 health.watchDown();
+health.watchDisk();   // התראה לך כשהדיסק בשרת מתמלא
 log('red-alert push server started');

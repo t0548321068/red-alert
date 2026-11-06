@@ -49,8 +49,10 @@ async function get(p) {
   if (st && (!isJson(p) || Date.now() - st.mtimeMs < JSON_TTL)) return fs.readFileSync(f);
   try {
     const b = await fetchUp(p);
-    fs.mkdirSync(path.dirname(f), { recursive: true });
-    fs.writeFileSync(f + '.tmp', b); fs.renameSync(f + '.tmp', f);
+    // דיסק כמעט מלא - רק מעבירים, בלי לשמור
+    if (!require('./health').diskCritical()) {
+      try { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f + '.tmp', b); fs.renameSync(f + '.tmp', f); } catch (_) { }
+    }
     return b;
   } catch (e) { if (st) return fs.readFileSync(f); throw e; }
 }
@@ -98,6 +100,7 @@ async function warm() {
       for (let x = tx(BOX.w, z); x <= tx(BOX.e, z); x++)
         for (let y = ty(BOX.n, z); y <= ty(BOX.s, z); y++) list.push(`planet/${ver}/${z}/${x}/${y}.pbf`);
     let ok = 0, i = 0;
+    if (require('./health').diskCritical()) throw new Error('הדיסק כמעט מלא');
     await Promise.all([0, 1, 2].map(async () => {
       while (i < list.length) { const p = list[i++]; try { await get(p); ok++; } catch (_) { } }
     }));
