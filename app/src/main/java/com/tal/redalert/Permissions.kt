@@ -195,7 +195,6 @@ internal fun MainActivity.refreshNearby() {
         android.content.pm.PackageManager.PERMISSION_GRANTED) return
     fun use(loc: android.location.Location) = Thread {
         try {
-            Prefs.addVisits(this, AreaData.areasAt(this, loc.latitude, loc.longitude, 0.0), System.currentTimeMillis())
             val list = AreaData.nearby(this, loc.latitude, loc.longitude)
             if (list.isNotEmpty()) Prefs.setNearbyAreas(this, list)
         } catch (_: Exception) { }
