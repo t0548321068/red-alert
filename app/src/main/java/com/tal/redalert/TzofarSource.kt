@@ -31,6 +31,30 @@ class TzofarSource(
         )
         private const val PRE_TITLE = "בדקות הקרובות צפויות להתקבל התרעות באזורך"
         private const val END_TITLE = "האירוע הסתיים"
+
+        /** פענוח הודעה של צופר: (כותרת, יישובים), או null. בלי צד-השפעות - נבדק בבדיקות */
+        fun messageOf(msg: JSONObject, cityOf: (Int) -> String?): Pair<String, List<String>>? {
+            val data = msg.optJSONObject("data") ?: return null
+            return when (msg.optString("type")) {
+                "ALERT" -> {
+                    if (data.optBoolean("isDrill")) return null
+                    val title = THREATS[data.optInt("threat", 0)] ?: return null
+                    val arr = data.optJSONArray("cities") ?: return null
+                    title to (0 until arr.length()).map { arr.getString(it) }
+                }
+                "SYSTEM_MESSAGE" -> {
+                    val title = when (data.optInt("instructionType", -1)) {
+                        0 -> PRE_TITLE
+                        1 -> END_TITLE
+                        else -> return null
+                    }
+                    val arr = data.optJSONArray("citiesIds") ?: return null
+                    val areas = (0 until arr.length()).mapNotNull { cityOf(arr.optInt(it)) }
+                    if (areas.isNotEmpty()) title to areas else null
+                }
+                else -> null
+            }
+        }
     }
 
     private val client = OkHttpClient.Builder()
@@ -124,23 +148,7 @@ class TzofarSource(
             if (seenIds.size > 200) seenIds.remove(seenIds.first())
         }
 
-        when (type) {
-            "ALERT" -> {
-                if (data.optBoolean("isDrill")) return
-                val title = THREATS[data.optInt("threat", 0)] ?: return
-                val arr = data.optJSONArray("cities") ?: return
-                onAlert(title, (0 until arr.length()).map { arr.getString(it) })
-            }
-            "SYSTEM_MESSAGE" -> {
-                val title = when (data.optInt("instructionType", -1)) {
-                    0 -> PRE_TITLE
-                    1 -> END_TITLE
-                    else -> return
-                }
-                val arr = data.optJSONArray("citiesIds") ?: return
-                val areas = (0 until arr.length()).mapNotNull { cityIds[arr.optInt(it)] }
-                if (areas.isNotEmpty()) onAlert(title, areas)
-            }
-        }
+        // רשימת היישובים נטענת רק כשצריך אותה (הודעת מערכת) - לא מעכבת התרעה
+        messageOf(msg) { cityIds[it] }?.let { (title, areas) -> onAlert(title, areas) }
     }
 }

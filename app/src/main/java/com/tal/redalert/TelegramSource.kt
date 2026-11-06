@@ -19,6 +19,59 @@ class TelegramSource(
         private val SECONDS_RE = Regex("\\(\\s*[\\d\\s]*(שניות|דקות|מיידי)[^)]*\\)")
         private val DATE_RE = Regex("\\(\\d{1,2}/\\d{1,2}/\\d{4}\\).*$")
         private val ENDED_IN_RE = Regex("הסתיים ב(.+)")
+
+        /** פענוח הודעת טלגרם: (כותרת, יישובים), או null אם אין בה התרעה. בלי צד-השפעות - נבדק בבדיקות */
+        fun parseText(text: String): Pair<String, List<String>>? {
+            val lines = text.lines().map { it.trim() }.filter { it.isNotEmpty() }
+            if (lines.isEmpty()) return null
+
+            val title = when {
+                text.contains("הסתיים") || text.contains("הוסר החשש") || text.contains("החשש הוסר") ||
+                    text.contains("ניתן לצאת") -> "האירוע הסתיים"
+                text.contains("בדקות הקרובות") -> "בדקות הקרובות צפויות להתקבל התרעות באזורך"
+                text.contains("כלי טיס") -> "חדירת כלי טיס עוין"
+                text.contains("מחבלים") -> "חדירת מחבלים"
+                text.contains("צבע אדום") || text.contains("רקטות") || text.contains("אזעקה") -> "ירי רקטות וטילים"
+                else -> lines[0]
+                    .replace(DATE_RE, "")
+                    .filter { it.isLetterOrDigit() || it == ' ' || it == '\'' || it == '"' || it == '-' }
+                    .trim()
+            }
+            if (title.isEmpty()) return null
+
+            // אם יש שורות עם "•" (צופר / כומתה / רדאר) - היישובים צמודים אליהן
+            val hasBullets = lines.any { it.contains("•") }
+            var underRegion = false   // רדאר: שורת "• אזור" ואחריה שורות יישובים
+            val areas = lines.flatMapIndexed { i, l ->
+                val ended = ENDED_IN_RE.find(l)
+                val bullet = l.contains("•")
+                val afterColon = l.substringAfter("•").substringAfterLast(":", "").trim()
+                when {
+                    // צופר: "האירוע הסתיים בכפר יובל, דפנה"
+                    ended != null -> ended.groupValues[1].split(",")
+                    // כומתה: "• עוטף עזה 231 - נירים, עין השלושה"
+                    bullet && l.contains(" - ") -> { underRegion = false; l.substringAfter(" - ").split(",") }
+                    // צופר: "05:23: • עוטף עזה: כיסופים (15 שניות)"
+                    bullet && afterColon.isNotEmpty() -> { underRegion = false; afterColon.split(",") }
+                    // רדאר: "• קו העימות" - היישובים בשורות הבאות
+                    bullet -> { underRegion = true; emptyList() }
+                    // שורת יישובים (פיקוד העורף / רדאר)
+                    i > 0 && (!hasBullets || underRegion) && !skip(l) -> l.split(",")
+                    else -> emptyList()
+                }
+            }
+                .map { it.replace(SECONDS_RE, "").trim().trimEnd('.') }
+                .filter { it.isNotEmpty() && it.length <= 40 }
+
+            return if (areas.isNotEmpty()) title to areas else null
+        }
+
+        private fun skip(l: String) =
+            l.startsWith("אזור") || l.contains("מרחב המוגן") || l.contains("השוהים") ||
+                l.contains("הסתיים") || l.contains("בדקות הקרובות") || l.contains(".") ||
+                l.startsWith("עדכון") || l.startsWith("על תושבי") ||
+                l.contains("היכנסו") || l.contains("בהמשך ל") || l.contains("נעלו") ||
+                l.contains("הישארו") || l.contains("|")
     }
 
     private val postRe = Regex("data-post=\"" + Regex.escape(channel) + "/(\\d+)\"", RegexOption.IGNORE_CASE)
@@ -81,54 +134,6 @@ class TelegramSource(
     }
 
     private fun parse(text: String) {
-        val lines = text.lines().map { it.trim() }.filter { it.isNotEmpty() }
-        if (lines.isEmpty()) return
-
-        val title = when {
-            text.contains("הסתיים") || text.contains("הוסר החשש") || text.contains("החשש הוסר") ||
-                text.contains("ניתן לצאת") -> "האירוע הסתיים"
-            text.contains("בדקות הקרובות") -> "בדקות הקרובות צפויות להתקבל התרעות באזורך"
-            text.contains("כלי טיס") -> "חדירת כלי טיס עוין"
-            text.contains("מחבלים") -> "חדירת מחבלים"
-            text.contains("צבע אדום") || text.contains("רקטות") || text.contains("אזעקה") -> "ירי רקטות וטילים"
-            else -> lines[0]
-                .replace(DATE_RE, "")
-                .filter { it.isLetterOrDigit() || it == ' ' || it == '\'' || it == '"' || it == '-' }
-                .trim()
-        }
-        if (title.isEmpty()) return
-
-        // אם יש שורות עם "•" (צופר / כומתה / רדאר) - היישובים צמודים אליהן
-        val hasBullets = lines.any { it.contains("•") }
-        var underRegion = false   // רדאר: שורת "• אזור" ואחריה שורות יישובים
-        val areas = lines.flatMapIndexed { i, l ->
-            val ended = ENDED_IN_RE.find(l)
-            val bullet = l.contains("•")
-            val afterColon = l.substringAfter("•").substringAfterLast(":", "").trim()
-            when {
-                // צופר: "האירוע הסתיים בכפר יובל, דפנה"
-                ended != null -> ended.groupValues[1].split(",")
-                // כומתה: "• עוטף עזה 231 - נירים, עין השלושה"
-                bullet && l.contains(" - ") -> { underRegion = false; l.substringAfter(" - ").split(",") }
-                // צופר: "05:23: • עוטף עזה: כיסופים (15 שניות)"
-                bullet && afterColon.isNotEmpty() -> { underRegion = false; afterColon.split(",") }
-                // רדאר: "• קו העימות" - היישובים בשורות הבאות
-                bullet -> { underRegion = true; emptyList() }
-                // שורת יישובים (פיקוד העורף / רדאר)
-                i > 0 && (!hasBullets || underRegion) && !skip(l) -> l.split(",")
-                else -> emptyList()
-            }
-        }
-            .map { it.replace(SECONDS_RE, "").trim().trimEnd('.') }
-            .filter { it.isNotEmpty() && it.length <= 40 }
-
-        if (areas.isNotEmpty()) onAlert(title, areas)
+        parseText(text)?.let { (title, areas) -> onAlert(title, areas) }
     }
-
-    private fun skip(l: String) =
-        l.startsWith("אזור") || l.contains("מרחב המוגן") || l.contains("השוהים") ||
-            l.contains("הסתיים") || l.contains("בדקות הקרובות") || l.contains(".") ||
-            l.startsWith("עדכון") || l.startsWith("על תושבי") ||
-            l.contains("היכנסו") || l.contains("בהמשך ל") || l.contains("נעלו") ||
-            l.contains("הישארו") || l.contains("|")
 }

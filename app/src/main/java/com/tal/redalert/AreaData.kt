@@ -48,11 +48,14 @@ object AreaData {
     }
     fun districts(c: Context): List<String> = districtMap(c).values.toSortedSet().toList()
     /** האם אזור התרעה (מההתראה) שייך לבחירה: יישוב או "מחוז X" */
-    fun matches(c: Context, area: String, pick: String): Boolean =
+    fun matches(c: Context, area: String, pick: String): Boolean = matchesPick(area, pick) { districtMap(c)[it] }
+
+    /** אותו דבר בלי טלפון (נבדק בבדיקות): districtOf - המחוז של יישוב */
+    internal fun matchesPick(area: String, pick: String, districtOf: (String) -> String?): Boolean =
         if (pick == DISTRICT_PREFIX + ALL_COUNTRY) true   // כל הארץ - כל התרעה
-        else if (pick.startsWith(DISTRICT_PREFIX)) districtMap(c)[area] == pick.removePrefix(DISTRICT_PREFIX)
+        else if (pick.startsWith(DISTRICT_PREFIX)) districtOf(area) == pick.removePrefix(DISTRICT_PREFIX)
         // "כל הארץ" ו"ברחבי הארץ" - אותו דבר (פיקוד העורף משתמש בשניהם)
-        else if (pick == ALL_COUNTRY) area == ALL_COUNTRY || area == "ברחבי הארץ"
+        else if (pick == ALL_COUNTRY) area == ALL_COUNTRY || area == ALL_COUNTRY_2
         else area == pick || area.startsWith("$pick -")   // "יבנה" לא תופס את "גן יבנה"
 
     fun areas(c: Context): JSONObject = areasCache ?: synchronized(this) {
@@ -86,8 +89,10 @@ object AreaData {
         return k.isNotEmpty() && k in keys(c)
     }
 
-    fun match(c: Context, raw: String): List<String> {
-        val all = areas(c)
+    fun match(c: Context, raw: String): List<String> = matchIn(areas(c), raw)
+
+    /** אותו דבר בלי טלפון (נבדק בבדיקות): השמות המלאים במפה לשם שהגיע מהמקור */
+    internal fun matchIn(all: JSONObject, raw: String): List<String> {
         if (all.has(raw)) return listOf(raw)
         val out = mutableListOf<String>()
         val keys = all.keys()
