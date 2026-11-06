@@ -672,6 +672,7 @@ class MainActivity : Activity() {
         try { Shabbat.refresh(this) } catch (_: Exception) { }   // זמני שבת וחג מהשרת
         Prefs.refreshBeta(this)   // מכשירי הבטא - הרשימה בשרת
         DataFiles.sync(this)      // הגדרות, יישובים והקלטות מהשרת (לכל היותר פעם בשעה)
+        MapPreload.warm(this)     // המפה נטענת ברקע - נפתחת מיד בלחיצה
         // קיצור דרך מאייקון האפליקציה (לחיצה ארוכה)
         intent?.getStringExtra("shortcut")?.let { sc ->
             intent.removeExtra("shortcut")
@@ -720,6 +721,12 @@ class MainActivity : Activity() {
         verBlink?.pause(); srvBlink?.pause()
         ui.removeCallbacks(srvAlt); srvColors = null   // ההחלפה מתחדשת בחזרה לאפליקציה
         super.onPause()
+    }
+
+    /** האפליקציה ברקע (או שהמפה נפתחה ולקחה את המפה המוכנה) - משחררים את המפה שנטענה מראש */
+    override fun onStop() {
+        MapPreload.release()
+        super.onStop()
     }
 
     /** המסך נסגר / נבנה מחדש (סיבוב, החלפת ערכת צבעים) - סוגרים עמודים וטיימרים שלא יישארו תלויים */
