@@ -61,32 +61,11 @@ object MapStyle {
                 .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5), minzoom = 12,
                 layout = JSONObject().put("symbol-placement", "line").put("text-field", name).put("text-font", font)
                     .put("text-size", arr("interpolate", arr("linear"), arr("zoom"), 12, 10, 16, 12))),
-            // מקומות בשטח: מוסדות, חנויות, בתי כנסת, בתי ספר - כשמתקרבים
-            layer("poi", "symbol", "poi", JSONObject().put("text-color", c["road_label"])
-                .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5),
-                // בלי תחנות אוטובוס
-                arr("all", arr("!=", arr("get", "class"), "bus"),
-                    arr("!", arr("in", arr("get", "subclass"), arr("literal", arr("bus_stop", "bus_station", "platform", "stop_position"))))),
-                minzoom = 15,
-                layout = JSONObject().put("text-field", name).put("text-font", font).put("text-size", 10)
-                    .put("text-max-width", 8)),
-            // הרים וגבעות, ים ואגמים
-            layer("peak", "symbol", "mountain_peak", JSONObject().put("text-color", c["road_label"])
-                .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5), minzoom = 11,
-                layout = JSONObject().put("text-field", name).put("text-font", font).put("text-size", 10)),
-            layer("water-name", "symbol", "water_name", JSONObject().put("text-color", c["road_label"])
-                .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5),
-                layout = JSONObject().put("text-field", name).put("text-font", font).put("text-size", 12)),
             layer("place", "symbol", "place", JSONObject().put("text-color", c["place"])
                 .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5),
-                inClass("city", "town", "village", "suburb", "neighbourhood"),
+                inClass("city", "town", "village", "suburb", "neighbourhood", "quarter"),
                 layout = JSONObject().put("text-field", name).put("text-font", font)
-                    .put("text-size", arr("match", arr("get", "class"), "city", 16, "town", 14, 12))),
-            // מקומות קטנים (חוות, שכונות קטנות, מקומות בודדים, איים) - כשמתקרבים
-            layer("place-small", "symbol", "place", JSONObject().put("text-color", c["place"])
-                .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5),
-                inClass("hamlet", "isolated_dwelling", "quarter", "locality", "island"), minzoom = 11,
-                layout = JSONObject().put("text-field", name).put("text-font", font).put("text-size", 11))
+                    .put("text-size", arr("match", arr("get", "class"), "city", 16, "town", 14, 12)))
         )
         return JSONObject()
             .put("version", 8)
