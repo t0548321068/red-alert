@@ -5,7 +5,8 @@ const path = require('path');
 
 const SH = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'shabbat.json'), 'utf8'));
 const polyArea = p => Math.abs(p.reduce((s, q, i) => { const r = p[(i + 1) % p.length]; return s + q[1] * r[0] - r[1] * q[0]; }, 0)) / 2;
-const PLACES = SH.c.map(c => ({ ...c, area: polyArea(c.p) }));
+const PLACES = SH.c.map((c, i) => ({ ...c, i, area: polyArea(c.p) }));
+const itim = require('./itim');
 function inside(lat, lon, p) {
   let c = false;
   for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
@@ -67,10 +68,19 @@ function windows(lat, lon) {
   }
   return out;
 }
+// השבוע הקרוב - הזמנים האמיתיים מהאתר (נטענים במוצאי שבת); אחריו - הנוסחה
+function merged(lat, lon) {
+  const f = windows(lat, lon), c = place(lat, lon);
+  const w = c.i != null ? itim.windowsFor(c.i) : null;
+  if (!w) return f;
+  const real = w.list.filter(([, o]) => o > Date.now()).map(([i, o]) => ({ in: i, out: o }));
+  // חלונות מהנוסחה שמתחילים בטווח שנטען מהאתר מוחלפים בזמנים מהאתר
+  return [...real, ...f.filter(x => x.in >= w.to - 86400000)].sort((a, b) => a.in - b.in);
+}
 function serve(res, lat, lon) {
   if (!isFinite(lat) || !isFinite(lon)) { res.writeHead(400); return res.end(); }
   res.writeHead(200, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({ windows: windows(lat, lon), at: Date.now() }));
+  res.end(JSON.stringify({ windows: merged(lat, lon), at: Date.now() }));
 }
 
-module.exports = { serve };
+module.exports = { serve, merged };
