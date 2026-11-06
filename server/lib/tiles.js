@@ -117,7 +117,8 @@ function prune() {
   } } catch (_) { } return n; };
   const n = walk(path.join(DIR, 'planet')); if (n) log(`tiles: נמחקו ${n} אריחים ישנים`);
 }
-setTimeout(() => { const w = lastWarm(); if (!w || Date.now() - w.at > 7 * 86400000) warm(); }, 60 * 1000);
+// בהפעלה: אם לא הוכן, ישן משבוע, או שההכנה הקודמת נכשלה ברובה - מכינים מחדש
+setTimeout(() => { const w = lastWarm(); if (!w || Date.now() - w.at > 7 * 86400000 || w.ok < w.all * 0.9) warm(); }, 60 * 1000);
 setInterval(() => { const w = lastWarm(); if (!w || Date.now() - w.at > 7 * 86400000) warm(); prune(); }, 6 * 3600 * 1000);
 
 function status() { const w = lastWarm(); return w ? { at: w.at, ver: w.ver, ok: w.ok, all: w.all } : null; }
