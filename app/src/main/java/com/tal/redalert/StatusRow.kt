@@ -142,7 +142,7 @@ internal fun MainActivity.updateIndicators() {
     val vib = Prefs.vibesOn(this)
     when {
         Prefs.mutedNow(this) -> setInd(sndInd, R.drawable.ic_volume_off, "מושתק", C.GREEN)   // ההתרעות מגיעות - רק בלי צליל ורטט
-        Shabbat.active(this) -> setSnd("שבת", Color.parseColor("#4C7DFF"), true)   // מצב שבת: תמיד עם צליל ורטט
+        Shabbat.active(this) -> setInd(sndInd, R.drawable.ic_ind_shabbat, "שבת", Color.parseColor("#4C7DFF"))   // מצב שבת (תמיד עם צליל ורטט): נרות בפמוטים
         Prefs.loudSound(this) -> setSnd("חזק", C.GREEN, vib)
         !Prefs.soundsOn(this) && vib -> setInd(sndInd, R.drawable.ic_ind_vibrate, "רטט", C.ORANGE)
         !Prefs.soundsOn(this) -> setInd(sndInd, R.drawable.ic_volume_off, "כבוי", C.RED)
