@@ -148,6 +148,28 @@ internal class ShabbatScreen(private val a: MainActivity) {
         val l = cut?.safeInsetLeft ?: 0; val t = cut?.safeInsetTop ?: 0
         val r = cut?.safeInsetRight ?: 0; val b = cut?.safeInsetBottom ?: 0
         if (root.paddingLeft != l || root.paddingTop != t || root.paddingRight != r || root.paddingBottom != b) root.setPadding(l, t, r, b)
+        // כפתור היציאה תמיד מעל המקום של שורת כפתורי הניווט - גם כשהיא מוסתרת,
+        // כדי שכשהיא מופיעה (החלקה מהקצה / טלפונים שלא מסתירים אותה) היא לא תכסה אותו
+        val nav = navBarHeight()
+        val lp = exitBtn.layoutParams as? FrameLayout.LayoutParams ?: return
+        val want = (nav - b).coerceAtLeast(0) + dp(28)
+        if (lp.bottomMargin != want) { lp.bottomMargin = want; exitBtn.layoutParams = lp }
+    }
+
+    /** גובה שורת כפתורי הניווט, גם כשהיא מוסתרת כרגע */
+    @Suppress("DEPRECATION")
+    private fun navBarHeight(): Int {
+        val ins = a.window.decorView.rootWindowInsets
+        val h = when {
+            ins == null -> 0
+            android.os.Build.VERSION.SDK_INT >= 30 ->
+                ins.getInsetsIgnoringVisibility(android.view.WindowInsets.Type.navigationBars()).bottom
+            else -> ins.stableInsetBottom
+        }
+        if (h > 0) return h
+        // גיבוי: הגובה שהמערכת מגדירה לשורת הניווט
+        val id = a.resources.getIdentifier("navigation_bar_height", "dimen", "android")
+        return if (id > 0) a.resources.getDimensionPixelSize(id) else 0
     }
 
     /** כל חצי שנייה מהשעון של המסך הראשי */
