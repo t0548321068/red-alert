@@ -17,7 +17,6 @@ class MapActivity : Activity() {
         webView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it); it.destroy() }
         webView = null
         MapPreload.locate = null
-        MapPreload.warm(this, 2000)   // מפה חדשה ונקייה מוכנה לפעם הבאה
         super.onDestroy()
     }
 
@@ -68,7 +67,7 @@ class MapActivity : Activity() {
         var data = ""; var focusNames: JSONArray? = null
         Thread {
             try {
-                data = buildData(dark)
+                data = buildData(this@MapActivity, dark)
                 // נפתח מהתראה ברשימה - האזורים שלה
                 focusNames = intent.getStringExtra("focus")?.let { body ->
                     JSONArray().also { names ->
@@ -124,46 +123,48 @@ class MapActivity : Activity() {
         view.evaluateJavascript("setMe(${l.latitude}, ${l.longitude}, ${l.accuracy});", null)
     }
 
-    /** ממיר רשימת התראות לנתונים למפה (שמות האזורים המלאים) */
-    private fun events(list: List<Prefs.Entry>): JSONArray {
-        val events = JSONArray()
-        list.filter { it.ts > 0 }.forEach { e ->
-            val names = JSONArray()
-            e.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach { raw ->
-                AreaData.match(this, raw).forEach { name -> names.put(name) }
+    companion object {
+        /** ממיר רשימת התראות לנתונים למפה (שמות האזורים המלאים) */
+        private fun events(c: android.content.Context, list: List<Prefs.Entry>): JSONArray {
+            val events = JSONArray()
+            list.filter { it.ts > 0 }.forEach { e ->
+                val names = JSONArray()
+                e.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach { raw ->
+                    AreaData.match(c, raw).forEach { name -> names.put(name) }
+                }
+                if (names.length() > 0) {
+                    events.put(JSONObject()
+                        .put("ts", e.ts).put("title", e.title)
+                        .put("level", e.level).put("areas", names))   // "איום" - בכתום
+                }
             }
-            if (names.length() > 0) {
-                events.put(JSONObject()
-                    .put("ts", e.ts).put("title", e.title)
-                    .put("level", e.level).put("areas", names))   // "איום" - בכתום
-            }
+            return events
         }
-        return events
-    }
 
-    /**
-     * כל הארץ, ו"שלי" = ההתראות שקיבלתי + התראות בארץ באזורים שהייתי בהם באותו זמן
-     * (לפי היסטוריית המיקום)
-     */
-    private fun buildData(dark: Boolean): String {
-        val visits = Prefs.visits(this)
-        val all = events(Prefs.feed(this))
-        val mine = events(Prefs.history(this))
-        for (i in 0 until all.length()) {
-            val e = all.getJSONObject(i)
-            val ts = e.getLong("ts")
-            val areas = e.getJSONArray("areas")
-            val here = JSONArray()
-            for (j in 0 until areas.length()) {
-                val a = areas.getString(j)
-                if (Prefs.wasIn(visits, a, ts)) here.put(a)
+        /**
+         * כל הארץ, ו"שלי" = ההתראות שקיבלתי + התראות בארץ באזורים שהייתי בהם באותו זמן
+         * (לפי היסטוריית המיקום)
+         */
+        fun buildData(c: android.content.Context, dark: Boolean): String {
+            val visits = Prefs.visits(c)
+            val all = events(c, Prefs.feed(c))
+            val mine = events(c, Prefs.history(c))
+            for (i in 0 until all.length()) {
+                val e = all.getJSONObject(i)
+                val ts = e.getLong("ts")
+                val areas = e.getJSONArray("areas")
+                val here = JSONArray()
+                for (j in 0 until areas.length()) {
+                    val a = areas.getString(j)
+                    if (Prefs.wasIn(visits, a, ts)) here.put(a)
+                }
+                if (here.length() > 0) mine.put(JSONObject(e.toString()).put("areas", here))
             }
-            if (here.length() > 0) mine.put(JSONObject(e.toString()).put("areas", here))
+            val data = JSONObject()
+                .put("all", all)
+                .put("mine", mine)
+                .put("dark", dark)
+            return data.toString()
         }
-        val data = JSONObject()
-            .put("all", all)
-            .put("mine", mine)
-            .put("dark", dark)
-        return data.toString()
     }
 }
