@@ -41,7 +41,8 @@ internal fun MainActivity.dp(v: Int) = (v * resources.displayMetrics.density).to
  */
 internal fun MainActivity.pageHeader(title: String) = LinearLayout(this).apply {
     gravity = Gravity.CENTER_VERTICAL
-    minimumHeight = dp(46)
+    // כמו במסך הראשי: 10 מלמעלה, ואז שורה בגובה 46 שהכותרת ממורכזת בה (minimumHeight כולל את הריווח)
+    minimumHeight = dp(10 + 46 + 12)
     setPadding(dp(16), dp(10), dp(16), dp(12))
     addView(text(title, 24f, C.TEXT, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) },
         LinearLayout.LayoutParams(0, -2, 1f))
