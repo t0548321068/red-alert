@@ -135,6 +135,15 @@ internal class ShabbatScreen(private val a: MainActivity) {
 
     private fun clockOn() = Prefs.shabbatClock(a)
 
+    /** שורת המצב ושורת כפתורי הניווט לא מסתירות את התוכן (כפתור היציאה) - לפי הגדלים בפועל, בכל טלפון */
+    @Suppress("DEPRECATION")
+    private fun fitBars() {
+        val ins = a.window.decorView.rootWindowInsets ?: return
+        val l = maxOf(ins.systemWindowInsetLeft, ins.stableInsetLeft); val t = maxOf(ins.systemWindowInsetTop, ins.stableInsetTop)
+        val r = maxOf(ins.systemWindowInsetRight, ins.stableInsetRight); val b = maxOf(ins.systemWindowInsetBottom, ins.stableInsetBottom)
+        if (root.paddingLeft != l || root.paddingTop != t || root.paddingRight != r || root.paddingBottom != b) root.setPadding(l, t, r, b)
+    }
+
     /** כל חצי שנייה מהשעון של המסך הראשי */
     fun update() {
         val now = TimeSync.now(a)
