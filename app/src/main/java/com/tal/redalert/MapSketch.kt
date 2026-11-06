@@ -65,8 +65,8 @@ class MapSketch(c: Context, private val polys: List<List<DoubleArray>>, level: I
             cv.drawPath(path, fill); cv.drawPath(path, stroke)
         }
         if (meLat != null && meLon != null) {
-            cv.drawCircle(px(meLon), py(meLat), 10 * d, dotRing)
-            cv.drawCircle(px(meLon), py(meLat), 7 * d, dotFill)
+            cv.drawCircle(px(meLon), py(meLat), 8.5f * d, dotRing)
+            cv.drawCircle(px(meLon), py(meLat), 5.5f * d, dotFill)
         }
     }
 }
