@@ -64,7 +64,12 @@ object MapStyle {
                 .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5),
                 inClass("city", "town", "village", "suburb", "neighbourhood"),
                 layout = JSONObject().put("text-field", name).put("text-font", font)
-                    .put("text-size", arr("match", arr("get", "class"), "city", 16, "town", 14, 12)))
+                    .put("text-size", arr("match", arr("get", "class"), "city", 16, "town", 14, 12))),
+            // מקומות קטנים (חוות, שכונות קטנות, מקומות בודדים, איים) - כשמתקרבים
+            layer("place-small", "symbol", "place", JSONObject().put("text-color", c["place"])
+                .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5),
+                inClass("hamlet", "isolated_dwelling", "quarter", "locality", "island"), minzoom = 12,
+                layout = JSONObject().put("text-field", name).put("text-font", font).put("text-size", 11))
         )
         return JSONObject()
             .put("version", 8)
