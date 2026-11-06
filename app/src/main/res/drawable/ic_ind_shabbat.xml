@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- מצב שבת בשורת החיוויים: שני נרות בפמוטים, מלא -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-    <!-- מוקטן מעט סביב המרכז - שהלהבות לא ייחתכו למעלה -->
-    <group android:scaleX="0.85" android:scaleY="0.85" android:pivotX="12" android:pivotY="12">
+    <!-- באותו גובה כמו שאר אייקוני החיוויים: מ-2 עד 22 (כמו הגלובוס והמידע) - בלי שהלהבות ייחתכו למעלה -->
+    <group android:scaleX="0.93" android:scaleY="0.93" android:pivotX="12" android:pivotY="15.3">
     <path android:fillColor="#FFFFFFFF" android:pathData="M7.5,1c1.44,1.68 1.92,2.88 1.92,3.7199999999999998c0,1.08 -0.84,1.92 -1.92,1.92s-1.92,-0.84 -1.92,-1.92c0,-0.84 0.48,-2.04 1.92,-3.7199999999999998z"/>
     <path android:fillColor="#FFFFFFFF" android:pathData="M16.5,1c1.44,1.68 1.92,2.88 1.92,3.7199999999999998c0,1.08 -0.84,1.92 -1.92,1.92s-1.92,-0.84 -1.92,-1.92c0,-0.84 0.48,-2.04 1.92,-3.7199999999999998z"/>
     <path android:fillColor="#FFFFFFFF" android:pathData="M4.5,14.5h6l-1.6,2.6v2.4l2.1,1.6v1.4h-7v-1.4l2.1,-1.6v-2.4zM13.5,14.5h6l-1.6,2.6v2.4l2.1,1.6v1.4h-7v-1.4l2.1,-1.6v-2.4z"/>
