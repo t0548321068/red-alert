@@ -49,7 +49,7 @@ object MapKit {
 
     @Volatile private var namesCache: String? = null
     /**
-     * שמות כל אזורי ההתרעה של פיקוד העורף (גם מקומות שאין להם שם במפת הרחובות) - מזום 12.
+     * שמות כל אזורי ההתרעה של פיקוד העורף (גם מקומות שאין להם שם במפת הרחובות) - מזום 11.
      * מתחת לשמות של מפת הרחובות, כך ששם שכבר מופיע שם מקבל עדיפות ולא נכפל
      */
     fun addAreaNames(c: Context, st: org.maplibre.android.maps.Style, dark: Boolean) {
@@ -62,7 +62,7 @@ object MapKit {
             org.maplibre.android.style.layers.PropertyFactory.textColor(if (dark) "#D0D3DA" else "#3C4043"),
             org.maplibre.android.style.layers.PropertyFactory.textHaloColor(if (dark) "#1E2130" else "#FFFFFF"),
             org.maplibre.android.style.layers.PropertyFactory.textHaloWidth(1.5f))
-        layer.minZoom = 12f
+        layer.minZoom = 11f
         if (st.getLayer("place") != null) st.addLayerBelow(layer, "place") else st.addLayer(layer)
         Thread {
             val json = namesCache ?: try {
