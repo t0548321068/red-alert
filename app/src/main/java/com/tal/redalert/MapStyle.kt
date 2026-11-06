@@ -61,9 +61,13 @@ object MapStyle {
                 .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5), minzoom = 12,
                 layout = JSONObject().put("symbol-placement", "line").put("text-field", name).put("text-font", font)
                     .put("text-size", arr("interpolate", arr("linear"), arr("zoom"), 12, 10, 16, 12))),
-            // מקומות בשטח: מוסדות, חנויות, בתי כנסת, בתי ספר, תחנות - כשמתקרבים
+            // מקומות בשטח: מוסדות, חנויות, בתי כנסת, בתי ספר - כשמתקרבים
             layer("poi", "symbol", "poi", JSONObject().put("text-color", c["road_label"])
-                .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5), minzoom = 15,
+                .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5),
+                // בלי תחנות אוטובוס
+                arr("all", arr("!=", arr("get", "class"), "bus"),
+                    arr("!", arr("in", arr("get", "subclass"), arr("literal", arr("bus_stop", "bus_station", "platform", "stop_position"))))),
+                minzoom = 15,
                 layout = JSONObject().put("text-field", name).put("text-font", font).put("text-size", 10)
                     .put("text-max-width", 8)),
             // הרים וגבעות, ים ואגמים
