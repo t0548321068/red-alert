@@ -223,7 +223,6 @@ internal class ShabbatScreen(private val a: MainActivity) {
      */
     private var savedBars: Int? = null
     private var keepOn = false
-    private var savedOrientation: Int? = null
     @Suppress("DEPRECATION")
     private fun window(on: Boolean) {
         val d = a.window.decorView
@@ -232,7 +231,6 @@ internal class ShabbatScreen(private val a: MainActivity) {
             if (savedBars == null) {
                 savedBars = d.systemUiVisibility
                 // רק לאורך - המסך לא מסתובב בזמן מצב שבת
-                savedOrientation = a.requestedOrientation
                 a.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             }
             // בכל עדכון - גם אחרי חזרה לאפליקציה או החלקה מהקצה השורות נעלמות שוב
@@ -244,7 +242,7 @@ internal class ShabbatScreen(private val a: MainActivity) {
         } else if (!on) savedBars?.let {
             if (android.os.Build.VERSION.SDK_INT >= 30) a.window.insetsController?.show(android.view.WindowInsets.Type.systemBars())
             d.systemUiVisibility = it; savedBars = null
-            savedOrientation?.let { o -> a.requestedOrientation = o }; savedOrientation = null
+            a.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED   // שוב מסתובב כרגיל
         }
         val want = on && clockOn()
         if (want == keepOn) return
