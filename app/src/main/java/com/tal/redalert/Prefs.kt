@@ -290,10 +290,13 @@ object Prefs {
     fun shabbatSeconds(c: Context) = sp(c).getBoolean("shabbatSec", false)
     fun setShabbatSeconds(c: Context, v: Boolean) = sp(c).edit().putBoolean("shabbatSec", v).commit()
     /** "יציאה" ממסך השבת - עד מתי (סוף השבת הנוכחית) */
+    /** הפעלה מהירה מכפתור השעון: המצב שהיה לפני (-1 = לא בהפעלה מהירה). ביציאה חוזרים אליו */
+    fun shabbatQuick(c: Context) = sp(c).getInt("shabbatQuick", -1)
+    fun setShabbatQuick(c: Context, prev: Int) = sp(c).edit().putInt("shabbatQuick", prev).commit()
     fun shabbatExitUntil(c: Context) = sp(c).getLong("shabbatExit", 0L)
     fun setShabbatExitUntil(c: Context, v: Long) = sp(c).edit().putLong("shabbatExit", v).apply()
     fun setShabbatMode(c: Context, v: Int): Boolean {
-        val ok = sp(c).edit().putInt("shabbatMode", v).remove("shabbatExit").commit()   // שינוי מצב - מסך השבת חוזר
+        val ok = sp(c).edit().putInt("shabbatMode", v).remove("shabbatExit").remove("shabbatQuick").commit()   // שינוי מצב - מסך השבת חוזר
         try { ShabbatLocReceiver.schedule(c) } catch (_: Exception) { }   // התעוררות לפני השבת (באוטומטי)
         return ok
     }

@@ -104,13 +104,23 @@ internal class ShabbatScreen(private val a: MainActivity) {
         (a.window.decorView as FrameLayout).addView(root, FrameLayout.LayoutParams(-1, -1))
     }
 
-    /** יציאה ממסך השבת עד סוף השבת הנוכחית (במצב "דלוק" ידני - עד שמשנים את המצב) */
+    /**
+     * יציאה ממסך השבת עד סוף השבת הנוכחית (במצב "דלוק" ידני - עד שמשנים את המצב).
+     * הופעל מכפתור השעון - חוזרים למצב השבת שהיה לפני
+     */
     private fun leave() {
         press?.cancel(); press = null; fill.level = 0
-        val end = try { Shabbat.endsAt(a) } catch (_: Exception) { null }
-        Prefs.setShabbatExitUntil(a, end ?: Long.MAX_VALUE)
+        val prev = Prefs.shabbatQuick(a)
+        if (prev >= 0) Prefs.setShabbatMode(a, prev)
+        if (Shabbat.active(a, cached = false)) {
+            val end = try { Shabbat.endsAt(a) } catch (_: Exception) { null }
+            Prefs.setShabbatExitUntil(a, end ?: Long.MAX_VALUE)
+        }
         update()
     }
+
+    /** שעון במסך: לפי ההגדרה, ותמיד כשהופעל מכפתור השעון */
+    private fun clockOn() = Prefs.shabbatClock(a) || Prefs.shabbatQuick(a) >= 0
 
     /** כל חצי שנייה מהשעון של המסך הראשי */
     fun update() {
@@ -129,9 +139,9 @@ internal class ShabbatScreen(private val a: MainActivity) {
         alertBox.visibility = View.GONE
         root.setBackgroundColor(Color.BLACK)
         // בלי "שעון במסך" - מסך שחור, והטלפון מכבה אותו לבד
-        clockBox.visibility = if (Prefs.shabbatClock(a)) View.VISIBLE else View.INVISIBLE
+        clockBox.visibility = if (clockOn()) View.VISIBLE else View.INVISIBLE
         exitBtn.visibility = View.VISIBLE
-        if (!Prefs.shabbatClock(a)) return
+        if (!clockOn()) return
         time.text = android.text.format.DateFormat.format(if (Prefs.shabbatSeconds(a)) "HH:mm:ss" else "HH:mm", now)
         time.textSize = if (Prefs.shabbatSeconds(a)) 72f else 96f
         // התאריך של היום עצמו: בליל שבת - של יום שישי, ומ-00:00 - של שבת
@@ -191,7 +201,7 @@ internal class ShabbatScreen(private val a: MainActivity) {
             d.systemUiVisibility = d.systemUiVisibility and
                 (View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR).inv()
         } else if (!on) savedBars?.let { d.systemUiVisibility = it; savedBars = null }
-        val want = on && Prefs.shabbatClock(a)
+        val want = on && clockOn()
         if (want == keepOn) return
         keepOn = want
         if (want) a.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -203,4 +213,17 @@ internal class ShabbatScreen(private val a: MainActivity) {
         press?.cancel(); press = null
         try { (a.window.decorView as FrameLayout).removeView(root) } catch (_: Exception) { }
     }
+}
+
+/** כפתור השעון: שעון לילה או מצב שבת (הפעלה מהירה - עם שעון; היציאה מחזירה את המצב שהיה) */
+internal fun MainActivity.chooseClock() {
+    AppSheet.show(this, "איזה שעון להפעיל?", "", "מצב שבת", onOk = {
+        if (!Shabbat.active(this, cached = false)) {
+            val prev = Prefs.shabbatMode(this)
+            Prefs.setShabbatMode(this, Shabbat.ON)
+            Prefs.setShabbatQuick(this, prev)
+        } else Prefs.setShabbatExitUntil(this, 0L)   // כבר שבת - רק מחזירים את המסך
+        shabbatScreen?.update()
+    }, cancel = "שעון לילה", onCancel = { startActivity(android.content.Intent(this, ClockActivity::class.java)) },
+        content = { card, _ -> card.addView(android.view.View(this), android.widget.LinearLayout.LayoutParams(1, (8 * resources.displayMetrics.density).toInt())) })
 }
