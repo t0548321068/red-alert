@@ -15,6 +15,8 @@ const DIR = path.join(__dirname, '..', 'tilecache');
 const agent = new https.Agent({ keepAlive: true, maxSockets: 6 });
 const inflight = new Map();
 const JSON_TTL = 3600 * 1000, KEEP_DAYS = 45;
+// מגרסה קודמת: תיאור המפה נשמר בקובץ בשם planet - מוחקים, כדי שתיקיית האריחים תיווצר
+try { if (fs.statSync(path.join(DIR, 'planet')).isFile()) fs.unlinkSync(path.join(DIR, 'planet')); } catch (_) { }
 
 // תיאור המפה (planet) נשמר בשם נפרד - "planet" הוא גם התיקייה של האריחים
 function file(p) { return path.join(DIR, p === 'planet' ? 'planet.json' : p.replace(/[^\w\/.%-]/g, '_')); }
