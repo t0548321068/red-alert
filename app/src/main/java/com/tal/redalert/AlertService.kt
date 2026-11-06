@@ -1083,7 +1083,7 @@ class AlertService : Service() {
     /** התראת הספירה לאחור (נוספת, בלי צליל): מתעדכנת בכל מעבר שלב, נעלמת בסיום האירוע */
     private var countTitle = ""; private var countBody = ""; private var countPi: PendingIntent? = null
     private var countEnter = 0L; private var countStayEnd = 0L; private var countTest = false
-    private val countNotif = Runnable {
+    private val countNotif: Runnable = Runnable {
         val now = System.currentTimeMillis()
         val (label, until) = when {
             now < countEnter -> "זמן התגוננות" to countEnter
