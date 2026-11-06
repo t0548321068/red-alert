@@ -142,6 +142,7 @@ internal class ShabbatScreen(private val a: MainActivity) {
         if (!show) { if (root.visibility != View.GONE) { root.visibility = View.GONE; window(false); breathing(false) }; return }
         if (root.visibility != View.VISIBLE) { root.visibility = View.VISIBLE; root.requestApplyInsets() }
         window(true)
+        fitBars()
 
         val j = Prefs.activeAlert(a)
         val level = j?.optInt("level") ?: 0
