@@ -201,6 +201,8 @@ class AlertService : Service() {
          * בכל הפעלה אחרת (הדלקת הטלפון, אחרי עדכון, חזרה אחרי שנסגר) - התראה עם המנגינה.
          */
         private const val ID_OFF = 8
+        private const val ID_COUNT = 9                 // ספירה לאחור למרחב המוגן - התראה נוספת
+        private const val CH_COUNT = "countdown"       // בלי צליל ורטט
 
         /** התראה קבועה כשההאזנה כבויה: "לא מוגן" + כפתור הפעלה */
         fun showOff(c: Context) {
@@ -507,7 +509,7 @@ class AlertService : Service() {
         try { unregisterReceiver(unlockReceiver) } catch (_: Exception) { }
         ringtone?.stop(); stopSpeaker()
         main.removeCallbacks(stayDone)
-        main.removeCallbacks(stayNotif)
+        main.removeCallbacks(stayNotif); main.removeCallbacks(countNotif)
         main.removeCallbacks(seqAlert); main.removeCallbacks(seqEnd); main.removeCallbacks(updateLater)
         wakeLock?.let { if (it.isHeld) it.release() }
         bg.shutdown()   // מה שכבר בתור נכתב עד הסוף
@@ -959,6 +961,13 @@ class AlertService : Service() {
             stayNotifPi = fullPi; stayTitle = title; stayBody = body; stayEnd = System.currentTimeMillis() + (shelterSec ?: 0).coerceAtLeast(0) * 1000L + Prefs.STAY_MS
             main.postDelayed(stayNotif, ((shelterSec ?: 0).coerceAtLeast(0) * 1000L) + 500)
         } else if (level == LEVEL_END) main.removeCallbacks(stayNotif)
+        // התראה נוספת עם ספירה לאחור: זמן התגוננות -> נשארים במרחב המוגן -> ממתינים לסיום
+        if (level == LEVEL_ALERT) {
+            countTitle = title; countBody = body; countPi = fullPi; countTest = test
+            countEnter = System.currentTimeMillis() + (shelterSec ?: 0).coerceAtLeast(0) * 1000L
+            countStayEnd = countEnter + Prefs.STAY_MS
+            main.removeCallbacks(countNotif); main.post(countNotif)
+        } else if (level == LEVEL_END) cancelCount()
 
         if (test) { /* בלי ספירה וטיימר בווידג'ט */ }
         else if (level == LEVEL_ALERT && shelterSec != null && shelterSec > 0) {
@@ -1069,6 +1078,37 @@ class AlertService : Service() {
             .setAutoCancel(true)
             .setTimeoutAfter(stayEnd - System.currentTimeMillis())
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n.build())
+    }
+
+    /** התראת הספירה לאחור (נוספת, בלי צליל): מתעדכנת בכל מעבר שלב, נעלמת בסיום האירוע */
+    private var countTitle = ""; private var countBody = ""; private var countPi: PendingIntent? = null
+    private var countEnter = 0L; private var countStayEnd = 0L; private var countTest = false
+    private val countNotif = Runnable {
+        val now = System.currentTimeMillis()
+        val (label, until) = when {
+            now < countEnter -> "זמן התגוננות" to countEnter
+            now < countStayEnd -> "נשארים במרחב המוגן" to countStayEnd
+            else -> "ממתינים להודעת סיום אירוע" to 0L
+        }
+        // בדיקה: נעלמת בסוף השהייה; אמיתית - בהודעת הסיום (רשת ביטחון: שעה)
+        val gone = if (countTest) countStayEnd else countEnter + 60 * 60_000L
+        if (now >= gone) { cancelCount(); return@Runnable }
+        val n = Notification.Builder(this, CH_COUNT)
+            .setSmallIcon(R.drawable.ic_stat_siren)
+            .setColor(0xFFD50000.toInt())
+            .setContentTitle(label)
+            .setContentText("$countTitle · $countBody")
+            .setOngoing(true).setOnlyAlertOnce(true)
+            .setContentIntent(countPi)
+            .setTimeoutAfter(gone - now)
+            .setShowWhen(until > 0)
+        if (until > 0) n.setWhen(until).setUsesChronometer(true).setChronometerCountDown(true)
+        try { (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_COUNT, n.build()) } catch (_: Exception) { }
+        main.postDelayed(countNotif, if (until > 0) until - now + 300 else gone - now + 300)
+    }
+    private fun cancelCount() {
+        main.removeCallbacks(countNotif)
+        try { (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(ID_COUNT) } catch (_: Exception) { }
     }
 
     /** עברו 10 הדקות - רק מעדכנים תצוגה. "ניתן לצאת" רק בהודעת סיום אירוע */
@@ -1288,6 +1328,11 @@ class AlertService : Service() {
 
     private fun createChannels() {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        nm.createNotificationChannel(
+            NotificationChannel(CH_COUNT, "ספירה לאחור למרחב המוגן", NotificationManager.IMPORTANCE_LOW).apply {
+                setSound(null, null); enableVibration(false)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            })
         nm.createNotificationChannel(
             NotificationChannel(CH_SERVICE, "שירות רקע", NotificationManager.IMPORTANCE_MIN))
         nm.createNotificationChannel(
