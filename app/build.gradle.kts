@@ -19,6 +19,8 @@ android {
         val branch = System.getenv("GITHUB_REF_NAME") ?: "main"
         resValue("string", "build_number", runNum)
         resValue("bool", "is_beta", (branch != "main").toString())
+        // המפה המובנית (MapLibre) - רק לטלפונים (ARM), כדי לא להגדיל את האפליקציה בחינם
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
     // החתימה נעשית בבנייה ב-GitHub (build.yml) - המפתחות מוצפנים, לא בקוד
@@ -39,6 +41,7 @@ android {
 
 dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("org.maplibre.gl:android-sdk:11.8.0")   // המפה המובנית
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-messaging")
 }
