@@ -31,7 +31,7 @@ open class AlertActivity : Activity() {
 
     private var stageIconV: ImageView? = null
     private var chipsFlow: Flow? = null
-    private var miniWeb: android.webkit.WebView? = null
+    private var alertMap: AlertMap? = null
     private val shownAreas = LinkedHashSet<String>()
     private var alertTitle = ""
     private var stageRes = 0
@@ -107,7 +107,7 @@ open class AlertActivity : Activity() {
             addView(tv(headNote, 20f).apply { setPadding(0, dpx(2), 0, 0) })
         }
         root.addView(titleView)
-        (if (Prefs.alertMap(this)) miniMap(level) else null)?.let { map ->   // אפשר לכבות את המפה בהגדרות
+        (if (Prefs.alertMap(this)) miniMap(level, savedInstanceState) else null)?.let { map ->   // אפשר לכבות את המפה בהגדרות
             val h = if (popup) dpx(170) else (resources.displayMetrics.heightPixels * 0.34f).toInt()
             root.addView(map, LinearLayout.LayoutParams(-1, h))
         }
@@ -276,30 +276,20 @@ open class AlertActivity : Activity() {
 
     /** מפה קטנה (בלי אינטרנט) שמסמנת את האזורים של ההתראה בצבע שלה */
     @android.annotation.SuppressLint("SetJavaScriptEnabled")
-    private fun miniMap(level: Int): android.view.View? {
-        val names = org.json.JSONArray()
-        (intent.getStringExtra("mapAreas") ?: intent.getStringExtra("body") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
-            .forEach { raw -> try { AreaData.match(this, raw).forEach { names.put(it) } } catch (_: Exception) { } }
-        if (names.length() == 0) return null
-        val web = android.webkit.WebView(this).apply {
-            settings.javaScriptEnabled = true
-            // שקוף עד שהמפה מוכנה - רואים את צבע ההתרעה, לא מלבן כהה
-            setBackgroundColor(Color.TRANSPARENT)
-            isVerticalScrollBarEnabled = false; isHorizontalScrollBarEnabled = false
-            webViewClient = object : android.webkit.WebViewClient() {
-                override fun shouldInterceptRequest(view: android.webkit.WebView, req: android.webkit.WebResourceRequest) =
-                    DataFiles.web(this@AlertActivity, req.url.toString())   // יישובים מעודכנים מהשרת
-            }
-            // הנתונים עוברים בכתובת - המפה נפתחת ישר במצב הקטן על אזור ההתרעה
-            val me = try { Weather.lastLocation(this@AlertActivity) } catch (_: Exception) { null }
-            val q = org.json.JSONObject().put("names", names).put("level", level)
-                .put("dark", Prefs.darkTheme(this@AlertActivity))   // מפה בהירה בעיצוב בהיר
-            if (me != null) q.put("lat", me.latitude).put("lon", me.longitude)
-            loadUrl("file:///android_asset/map.html#mini=" + android.net.Uri.encode(q.toString()))
-        }
-        miniWeb = web
-        return web
+    /** מפת אזור ההתרעה - מפה מובנית, נפתחת מיד */
+    private fun miniMap(level: Int, saved: Bundle?): android.view.View? {
+        val names = mapNames(intent)
+        if (names.isEmpty()) return null
+        val me = try { Weather.lastLocation(this) } catch (_: Exception) { null }
+        val m = AlertMap(this, saved, names, level, me?.latitude, me?.longitude, Prefs.darkTheme(this))
+        alertMap = m
+        return m.view
     }
+
+    /** האזורים של ההתרעה בשמות המלאים שבמפה */
+    private fun mapNames(i: Intent): List<String> =
+        (i.getStringExtra("mapAreas") ?: i.getStringExtra("body") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            .flatMap { raw -> try { AreaData.match(this, raw) } catch (_: Exception) { emptyList() } }.distinct()
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
@@ -326,10 +316,7 @@ open class AlertActivity : Activity() {
             val fresh = (i.getStringExtra("body") ?: "").split(",").map { AreaData.unify(it.trim()) }
                 .filter { it.isNotEmpty() && it !in shownAreas }.distinct()
             fresh.forEach { a -> shownAreas += a; chips.addView(chip(a)) }
-            val names = org.json.JSONArray()
-            (i.getStringExtra("mapAreas") ?: i.getStringExtra("body") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                .forEach { raw -> try { AreaData.match(this, raw).forEach { names.put(it) } } catch (_: Exception) { } }
-            if (names.length() > 0) miniWeb?.evaluateJavascript("miniAdd($names);", null)
+            mapNames(i).takeIf { it.isNotEmpty() }?.let { alertMap?.add(it) }
             // הכוונה: אותה כותרת, כל האזורים; הטיימר - מההתרעה החדשה
             val all = shownAreas.joinToString(", ")
             val oldMap = intent.getStringExtra("mapAreas") ?: ""
@@ -346,12 +333,19 @@ open class AlertActivity : Activity() {
         recreate()
     }
 
+    override fun onStart() { super.onStart(); alertMap?.onStart() }
+    override fun onStop() { alertMap?.onStop(); super.onStop() }
+    override fun onLowMemory() { super.onLowMemory(); alertMap?.onLowMemory() }
+    override fun onSaveInstanceState(outState: Bundle) { super.onSaveInstanceState(outState); alertMap?.onSave(outState) }
+
     override fun onResume() {
         super.onResume()
+        alertMap?.onResume()
         ui.post(tick)
     }
 
     override fun onPause() {
+        alertMap?.onPause()
         ui.removeCallbacks(tick)
         super.onPause()
     }
@@ -363,8 +357,7 @@ open class AlertActivity : Activity() {
         try { tipsSheet?.dismiss() } catch (_: Exception) { }
         tipsSheet = null
         ui.removeCallbacksAndMessages(null)   // כולל הסגירה האוטומטית במצב שבת
-        miniWeb?.let { (it.parent as? android.view.ViewGroup)?.removeView(it); it.destroy() }
-        miniWeb = null
+        alertMap?.onDestroy(); alertMap = null
         super.onDestroy()
     }
 }

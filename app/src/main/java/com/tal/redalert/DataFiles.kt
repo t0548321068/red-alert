@@ -28,15 +28,6 @@ object DataFiles {
     fun exists(c: Context, path: String): Boolean =
         file(c, path) != null || try { c.assets.open(path).close(); true } catch (_: Exception) { false }
 
-    /** המפה (WebView) טוענת קבצים מתוך האפליקציה - קובץ שעודכן מהשרת (למשל areas.js) נטען במקומו */
-    fun web(c: Context, url: String): android.webkit.WebResourceResponse? {
-        val path = url.substringAfter("file:///android_asset/", "").substringBefore('#').substringBefore('?')
-        if (path.isEmpty()) return null
-        val f = file(c, path) ?: return null
-        val mime = when (f.extension) { "js" -> "application/javascript"; "json" -> "application/json"; else -> "text/plain" }
-        return android.webkit.WebResourceResponse(mime, "utf-8", f.inputStream())
-    }
-
     private fun sp(c: Context) = c.getSharedPreferences("data_files", Context.MODE_PRIVATE)
     /** גרסת הנתונים שכבר אצלנו - משווים לגרסה שמגיעה בסימן החיים של השרת */
     fun version(c: Context): String = sp(c).getString("v", "") ?: ""
