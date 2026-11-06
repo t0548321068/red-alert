@@ -36,4 +36,30 @@ function watchDown() {
   }, 60 * 1000);
 }
 
-module.exports = { STARTED, ok, setTzofar, upList, watchDown, viaList };
+// ---- הדיסק בשרת: התראה לך ב-80% (ושוב ב-90%), וכשחוזר מתחת ל-75% ----
+const fs = require('fs');
+const path = require('path');
+let diskPct = 0, diskLevel = 0;   // 0 תקין, 1 מעל 80%, 2 מעל 90%
+function readDisk() {
+  const dir = path.join(__dirname, '..');
+  try {
+    if (fs.statfsSync) { const s = fs.statfsSync(dir); return Math.round((1 - s.bavail / s.blocks) * 100); }
+  } catch (_) { }
+  try {
+    const out = require('child_process').execFileSync('df', ['-Pk', dir], { encoding: 'utf8' }).trim().split('\n').pop().split(/\s+/);
+    return parseInt(out[4], 10);
+  } catch (_) { return 0; }
+}
+function checkDisk() {
+  diskPct = readDisk();
+  if (!diskPct) return;
+  const lvl = diskPct >= 90 ? 2 : diskPct >= 80 ? 1 : diskPct < 75 ? 0 : diskLevel;
+  if (lvl > diskLevel) adminPush(lvl === 2 ? `🛑 הדיסק בשרת כמעט מלא (${diskPct}%) – שמירת הרחובות הופסקה` : `⚠️ הדיסק בשרת מתמלא (${diskPct}%)`);
+  else if (lvl === 0 && diskLevel > 0) adminPush(`✅ הדיסק בשרת חזר לתקין (${diskPct}%)`);
+  diskLevel = lvl;
+}
+function watchDisk() { setTimeout(checkDisk, 2 * 60 * 1000); setInterval(checkDisk, 30 * 60 * 1000); }
+/** מעל 90% - לא שומרים עוד רחובות בדיסק (רק מעבירים), כדי לא לפגוע בהתרעות */
+const diskCritical = () => diskLevel >= 2;
+
+module.exports = { STARTED, ok, setTzofar, upList, watchDown, viaList, watchDisk, diskCritical, diskPct: () => diskPct };
