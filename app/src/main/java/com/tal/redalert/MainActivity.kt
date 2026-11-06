@@ -269,6 +269,7 @@ class MainActivity : Activity() {
         if (c == mainTint) return
         mainTint = c
         window.decorView.setBackgroundColor(c)
+        MapPreload.setCoverColor(c)   // הכיסוי מעל המפה המוכנה - באותו צבע
         @Suppress("DEPRECATION")
         window.statusBarColor = c
         @Suppress("DEPRECATION")
