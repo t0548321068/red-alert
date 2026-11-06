@@ -633,6 +633,11 @@ class MainActivity : Activity() {
             }
         }
         setContentView(scroll)
+        // מסך שבת עם שעון: מופיע מעל מסך הנעילה; בכניסת השבת (מהתזמון) - גם מדליק את המסך
+        if (android.os.Build.VERSION.SDK_INT >= 27 && Shabbat.active(this) && Prefs.shabbatClock(this)) {
+            setShowWhenLocked(true)
+            if (intent?.getBooleanExtra("shabbatClock", false) == true) setTurnScreenOn(true)
+        }
         shabbatScreen = ShabbatScreen(this)
         // פתיחה מחדש (המסך נסגר ברקע): לא מציירים את המסך הריק - הטלפון ממשיך להציג את התמונה האחרונה
         // עד שנתוני היישובים נטענו והמסך מולא, ואז מוצג ישר המסך המלא (לכל היותר 1.5 שניות)

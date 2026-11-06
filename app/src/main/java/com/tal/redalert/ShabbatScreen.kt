@@ -1,10 +1,14 @@
 package com.tal.redalert
 
+import android.animation.ValueAnimator
 import android.graphics.Color
+import android.graphics.drawable.ClipDrawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -13,10 +17,11 @@ import java.util.Calendar
 import java.util.TimeZone
 
 /**
- * מסך שבת פשוט: בזמן מצב שבת המסך הראשי מתחלף במסך שלא צריך לגעת בו -
- * רקע שחור, שעון גדול, תאריך עברי, צאת השבת, ו"מוגן · צליל ורטט פעילים".
- * בהתרעה - המסך בצבע ההתרעה עם הסוג, האזור והספירה לאחור, וחוזר לשעון לבד (לפי זמני התצוגה של כל צבע).
- * לחיצה ארוכה (3 שניות) - המסך הרגיל ל-5 דקות.
+ * מסך שבת: בזמן מצב שבת המסך הראשי מתחלף במסך שלא מגיב לנגיעות.
+ * "שעון במסך" דלוק - המסך נשאר דלוק עם שעון (אפשר עם שניות), תאריך עברי, צאת השבת ומצב ההגנה.
+ * כבוי - המסך שחור ונכבה לבד (כמו תמיד), ונדלק רק בהתרעה.
+ * בהתרעה - המסך בצבע ההתרעה עם הסוג, האזור והספירה לאחור.
+ * יציאה - כפתור בלחיצה ארוכה של 5 שניות (עד סוף השבת הנוכחית).
  */
 internal class ShabbatScreen(private val a: MainActivity) {
     private fun dp(v: Int) = (v * a.resources.displayMetrics.density).toInt()
@@ -27,8 +32,8 @@ internal class ShabbatScreen(private val a: MainActivity) {
 
     private val root = FrameLayout(a).apply {
         setBackgroundColor(Color.BLACK)
-        isClickable = true; isFocusable = true   // לא עובר למסך שמתחת
         visibility = View.GONE
+        setOnTouchListener { _, _ -> true }   // לא מגיב לנגיעות, וגם לא מעביר למסך שמתחת
         setOnApplyWindowInsetsListener { v, insets ->
             @Suppress("DEPRECATION")
             v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
@@ -54,9 +59,16 @@ internal class ShabbatScreen(private val a: MainActivity) {
     private var aIconRes = 0
     private var alertKey = ""
 
-    private var hiddenUntil = 0L
-    private var downAt = 0L
-    private val longPress = Runnable { hiddenUntil = System.currentTimeMillis() + 5 * 60_000L; update() }
+    // כפתור יציאה: מתמלא בזמן הלחיצה, ויוצא רק אחרי 5 שניות רצופות
+    private val fill = ClipDrawable(GradientDrawable().apply { setColor(Color.parseColor("#55FFFFFF")); cornerRadius = dp(24).toFloat() },
+        Gravity.RIGHT, ClipDrawable.HORIZONTAL)
+    private val exitBtn = tv(15f, Color.parseColor("#9A9A9A")).apply {
+        text = "יציאה – לחיצה ארוכה 5 שניות"
+        setPadding(dp(20), dp(12), dp(20), dp(12))
+        background = LayerDrawable(arrayOf(GradientDrawable().apply {
+            setColor(Color.parseColor("#1AFFFFFF")); cornerRadius = dp(24).toFloat() }, fill))
+    }
+    private var press: ValueAnimator? = null
 
     init {
         clockBox.addView(time)
@@ -77,23 +89,36 @@ internal class ShabbatScreen(private val a: MainActivity) {
         alertBox.addView(aTimer)
         root.addView(alertBox, FrameLayout.LayoutParams(-1, -1))
 
-        // אין לחיצות - רק לחיצה ארוכה של 3 שניות מחזירה זמנית את המסך הרגיל
-        root.setOnTouchListener { _, e ->
+        exitBtn.setOnTouchListener { _, e ->
             when (e.actionMasked) {
-                MotionEvent.ACTION_DOWN -> { downAt = System.currentTimeMillis(); a.ui.postDelayed(longPress, 3000) }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> a.ui.removeCallbacks(longPress)
+                MotionEvent.ACTION_DOWN -> press = ValueAnimator.ofInt(0, 10000).apply {
+                    duration = 5000
+                    addUpdateListener { fill.level = it.animatedValue as Int; if (it.animatedFraction >= 1f) leave() }
+                    start()
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> { press?.cancel(); press = null; fill.level = 0 }
             }
             true
         }
+        root.addView(exitBtn, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(28) })
         (a.window.decorView as FrameLayout).addView(root, FrameLayout.LayoutParams(-1, -1))
+    }
+
+    /** יציאה ממסך השבת עד סוף השבת הנוכחית (במצב "דלוק" ידני - עד שמשנים את המצב) */
+    private fun leave() {
+        press?.cancel(); press = null; fill.level = 0
+        val end = try { Shabbat.endsAt(a) } catch (_: Exception) { null }
+        Prefs.setShabbatExitUntil(a, end ?: Long.MAX_VALUE)
+        update()
     }
 
     /** כל חצי שנייה מהשעון של המסך הראשי */
     fun update() {
         val now = TimeSync.now(a)
-        val show = System.currentTimeMillis() >= hiddenUntil && Shabbat.active(a)
-        if (!show) { if (root.visibility != View.GONE) { root.visibility = View.GONE; lightBars(true) }; return }
-        if (root.visibility != View.VISIBLE) { root.visibility = View.VISIBLE; root.requestApplyInsets(); lightBars(false) }
+        val show = Shabbat.active(a) && System.currentTimeMillis() >= Prefs.shabbatExitUntil(a)
+        if (!show) { if (root.visibility != View.GONE) { root.visibility = View.GONE; window(false) }; return }
+        if (root.visibility != View.VISIBLE) { root.visibility = View.VISIBLE; root.requestApplyInsets() }
+        window(true)
 
         val j = Prefs.activeAlert(a)
         val level = j?.optInt("level") ?: 0
@@ -101,15 +126,22 @@ internal class ShabbatScreen(private val a: MainActivity) {
         if (j != null && !AlertUi.expired(level, firedAt, System.currentTimeMillis())) { showAlert(j, level, firedAt); return }
 
         alertKey = ""
-        alertBox.visibility = View.GONE; clockBox.visibility = View.VISIBLE
+        alertBox.visibility = View.GONE
         root.setBackgroundColor(Color.BLACK)
-        time.text = android.text.format.DateFormat.format("HH:mm", now)
+        // בלי "שעון במסך" - מסך שחור, והטלפון מכבה אותו לבד
+        clockBox.visibility = if (Prefs.shabbatClock(a)) View.VISIBLE else View.INVISIBLE
+        exitBtn.visibility = View.VISIBLE
+        if (!Prefs.shabbatClock(a)) return
+        time.text = android.text.format.DateFormat.format(if (Prefs.shabbatSeconds(a)) "HH:mm:ss" else "HH:mm", now)
+        time.textSize = if (Prefs.shabbatSeconds(a)) 72f else 96f
+        // התאריך של היום עצמו: בליל שבת - של יום שישי, ומ-00:00 - של שבת
+        val cal = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jerusalem")).apply { timeInMillis = now }
+        val days = arrayOf("ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת")
+        val dow = cal.get(Calendar.DAY_OF_WEEK)
+        date.text = (if (dow == Calendar.SATURDAY) "שבת" else "יום " + days[dow - 1]) + ", " + TimeFormat.hebrewDate(now)
         val end = try { Shabbat.endsAt(a, now) } catch (_: Exception) { null }
-        // התאריך של יום היציאה - נכון לאורך כל השבת (גם בליל שבת, כשהתאריך העברי כבר התחלף)
-        val ref = end?.let { it - 3600_000L } ?: now
-        val sat = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jerusalem")).apply { timeInMillis = ref }
-            .get(Calendar.DAY_OF_WEEK) == Calendar.SATURDAY
-        date.text = (if (sat) "שבת קודש" else "חג שמח") + " · " + TimeFormat.hebrewDate(ref)
+        val sat = end != null && Calendar.getInstance(TimeZone.getTimeZone("Asia/Jerusalem"))
+            .apply { timeInMillis = end }.get(Calendar.DAY_OF_WEEK) == Calendar.SATURDAY
         exit.text = end?.let { (if (sat) "צאת השבת " else "צאת החג ") + android.text.format.DateFormat.format("HH:mm", it) } ?: ""
         exit.visibility = if (end == null) View.GONE else View.VISIBLE
         if (Prefs.enabled(a)) {
@@ -122,7 +154,7 @@ internal class ShabbatScreen(private val a: MainActivity) {
     }
 
     private fun showAlert(j: org.json.JSONObject, level: Int, firedAt: Long) {
-        clockBox.visibility = View.GONE; alertBox.visibility = View.VISIBLE
+        clockBox.visibility = View.GONE; alertBox.visibility = View.VISIBLE; exitBtn.visibility = View.VISIBLE
         root.setBackgroundColor(Color.parseColor(AlertUi.color(level)))
         val key = j.toString()
         if (key != alertKey) {
@@ -145,20 +177,30 @@ internal class ShabbatScreen(private val a: MainActivity) {
         }
     }
 
-    /** סמלי שורת המצב לבנים על הרקע השחור, וחזרה למה שהיה כשהמסך נסגר */
+    /**
+     * החלון בזמן מסך השבת: סמלי שורת המצב לבנים על השחור; עם "שעון במסך" - המסך נשאר דלוק
+     * ומופיע גם מעל מסך הנעילה. ביציאה - הכול חוזר למה שהיה
+     */
     private var savedBars: Int? = null
+    private var keepOn = false
     @Suppress("DEPRECATION")
-    private fun lightBars(restore: Boolean) {
+    private fun window(on: Boolean) {
         val d = a.window.decorView
-        if (!restore) {
+        if (on && savedBars == null) {
             savedBars = d.systemUiVisibility
             d.systemUiVisibility = d.systemUiVisibility and
                 (View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR).inv()
-        } else savedBars?.let { d.systemUiVisibility = it; savedBars = null }
+        } else if (!on) savedBars?.let { d.systemUiVisibility = it; savedBars = null }
+        val want = on && Prefs.shabbatClock(a)
+        if (want == keepOn) return
+        keepOn = want
+        if (want) a.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else a.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        if (android.os.Build.VERSION.SDK_INT >= 27) a.setShowWhenLocked(want)
     }
 
     fun destroy() {
-        a.ui.removeCallbacks(longPress)
+        press?.cancel(); press = null
         try { (a.window.decorView as FrameLayout).removeView(root) } catch (_: Exception) { }
     }
 }

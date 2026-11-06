@@ -71,7 +71,7 @@ open class AlertActivity : Activity() {
         level = intent.getIntExtra("level", AlertService.LEVEL_ALERT)
         shelterSec = intent.getIntExtra("shelter", -1)
         firedAt = intent.getLongExtra("firedAt", System.currentTimeMillis())
-        // מצב שבת: המסך נסגר לבד אחרי דקה
+        // סגירה אוטומטית לפי הצבע; מצב שבת - אחרי 2 דקות
         val autoClose = intent.getLongExtra("autoCloseMs", 0L)
         if (autoClose > 0) ui.postDelayed(autoCloseRun, (firedAt + autoClose - System.currentTimeMillis()).coerceAtLeast(1000L))
 
@@ -306,7 +306,15 @@ open class AlertActivity : Activity() {
         android.widget.Toast.makeText(this, "לסגירה: ✕ סגור", android.widget.Toast.LENGTH_SHORT).show()
     }
 
-    private val autoCloseRun = Runnable { finish() }
+    /**
+     * סגירה אוטומטית (מצב שבת: אחרי 2 דקות). עם "שעון במסך" - חוזרים לשעון של מסך השבת,
+     * בלי - המסך נסגר והטלפון מכבה אותו
+     */
+    private val autoCloseRun = Runnable {
+        if (Shabbat.active(this) && Prefs.shabbatClock(this))
+            try { startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)) } catch (_: Exception) { }
+        finish()
+    }
 
     /** התרעה חדשה כשהמסך כבר פתוח - מציגים אותה */
     override fun onNewIntent(i: Intent) {

@@ -284,8 +284,16 @@ object Prefs {
     fun testSpeak(c: Context) = sp(c).getBoolean("testSpeak", true)
     fun setTestSpeak(c: Context, v: Boolean) = sp(c).edit().putBoolean("testSpeak", v).commit()
     fun shabbatMode(c: Context) = sp(c).getInt("shabbatMode", Shabbat.OFF)
+    /** מסך שבת: שעון במסך (המסך נשאר דלוק). כבוי - המסך נכבה ונדלק רק בהתרעה */
+    fun shabbatClock(c: Context) = sp(c).getBoolean("shabbatClock", false)
+    fun setShabbatClock(c: Context, v: Boolean) = sp(c).edit().putBoolean("shabbatClock", v).commit()
+    fun shabbatSeconds(c: Context) = sp(c).getBoolean("shabbatSec", false)
+    fun setShabbatSeconds(c: Context, v: Boolean) = sp(c).edit().putBoolean("shabbatSec", v).commit()
+    /** "יציאה" ממסך השבת - עד מתי (סוף השבת הנוכחית) */
+    fun shabbatExitUntil(c: Context) = sp(c).getLong("shabbatExit", 0L)
+    fun setShabbatExitUntil(c: Context, v: Long) = sp(c).edit().putLong("shabbatExit", v).apply()
     fun setShabbatMode(c: Context, v: Int): Boolean {
-        val ok = sp(c).edit().putInt("shabbatMode", v).commit()
+        val ok = sp(c).edit().putInt("shabbatMode", v).remove("shabbatExit").commit()   // שינוי מצב - מסך השבת חוזר
         try { ShabbatLocReceiver.schedule(c) } catch (_: Exception) { }   // התעוררות לפני השבת (באוטומטי)
         return ok
     }
