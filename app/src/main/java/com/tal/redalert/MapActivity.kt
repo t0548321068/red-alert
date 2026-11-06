@@ -17,6 +17,8 @@ class MapActivity : Activity() {
     override fun onDestroy() {
         webView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it); it.destroy() }
         webView = null
+        MapPreload.locate = null
+        MapPreload.warm(this, 2000)   // מפה חדשה ונקייה מוכנה לפעם הבאה
         super.onDestroy()
     }
 
@@ -26,7 +28,10 @@ class MapActivity : Activity() {
         val dark = Prefs.darkTheme(this)
         window.decorView.setBackgroundColor(Color.parseColor(if (dark) "#000000" else "#F2F2F7"))
 
-        val web = WebView(this).apply {
+        // מפה שנטענה מראש ברקע (מוצגת מיד), או - אם אין - טוענים עכשיו
+        var pageReady: (() -> Unit)? = null
+        val pre = MapPreload.take(this) { pageReady?.invoke() ?: run { pageReady = {} } }
+        val web = pre ?: WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             setBackgroundColor(Color.TRANSPARENT)
@@ -53,7 +58,8 @@ class MapActivity : Activity() {
             android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
             android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS)
         setContentView(frame)
-        web.addJavascriptInterface(object {
+        if (pre != null) MapPreload.locate = { if (webView != null && !isDestroyed) locate(web) }
+        else web.addJavascriptInterface(object {
             @android.webkit.JavascriptInterface
             fun locate() = runOnUiThread { if (webView != null && !isDestroyed) locate(web) }
         }, "App")
@@ -75,10 +81,8 @@ class MapActivity : Activity() {
             finally { ready.countDown() }
         }.start()
 
-        web.webViewClient = object : WebViewClient() {
-            override fun shouldInterceptRequest(view: WebView, req: android.webkit.WebResourceRequest) =
-                DataFiles.web(this@MapActivity, req.url.toString())   // יישובים מעודכנים מהשרת
-            override fun onPageFinished(view: WebView, url: String) {
+        // הדף מוכן: מציירים את ההתראות, ההתמקדות והמיקום
+        fun onReady(view: WebView) {
                 Thread {
                     ready.await()
                     if (data.isEmpty()) return@Thread
@@ -93,7 +97,16 @@ class MapActivity : Activity() {
                         locate(view)
                     }
                 }.start()
-            }
+        }
+        if (pre != null) {
+            // נטען מראש: אם כבר נטען - עכשיו, אחרת כשיסתיים
+            if (pageReady != null) onReady(web) else pageReady = { onReady(web) }
+            return
+        }
+        web.webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(view: WebView, req: android.webkit.WebResourceRequest) =
+                DataFiles.web(this@MapActivity, req.url.toString())   // יישובים מעודכנים מהשרת
+            override fun onPageFinished(view: WebView, url: String) = onReady(view)
         }
         web.loadUrl("file:///android_asset/map.html" + if (dark) "" else "#light")   // ערכת נושא מהרגע הראשון
     }
