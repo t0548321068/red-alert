@@ -55,6 +55,8 @@ class MapActivity : Activity() {
     private lateinit var emptyCard: TextView
     private var me: LatLng? = null
     private var hasBounds = false
+    /** נפתח מהרשימה על התרעה אחת - ואחרי לחיצה על "כל ההתרעות" עוברים לכולן */
+    private var showAll = false
     private val ui = android.os.Handler(android.os.Looper.getMainLooper())
 
     private val colors = MapKit.COLORS
@@ -119,11 +121,30 @@ class MapActivity : Activity() {
             }
         }
 
+        // מעל "המיקום שלי": חזרה לכל ההתרעות של 24 השעות האחרונות (רק כשנפתח מהרשימה על התרעה אחת)
+        val allBtn = FrameLayout(this).apply {
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(panel) }
+            elevation = dp(4).toFloat()
+            contentDescription = "כל ההתרעות"
+            addView(android.widget.ImageView(this@MapActivity).apply {
+                setImageResource(R.drawable.ic_map_all)
+                imageTintList = android.content.res.ColorStateList.valueOf(0xFF4C7DFF.toInt())
+            }, FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER))
+            visibility = if (intent.getStringExtra("focus") != null && intent.getIntExtra("focusLevel", -1) >= 0) View.VISIBLE else View.GONE
+            setOnClickListener {
+                showAll = true
+                visibility = View.GONE
+                infoCard.visibility = View.GONE
+                drawAlerts()
+            }
+        }
+
         val frame = FrameLayout(this).apply {
             setBackgroundColor(bg)
             addView(mv, FrameLayout.LayoutParams(-1, -1))
             addView(legend, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.RIGHT).apply { setMargins(dp(12), 0, dp(12), dp(18)) })
             addView(meBtn, FrameLayout.LayoutParams(dp(50), dp(50), Gravity.BOTTOM or Gravity.LEFT).apply { setMargins(dp(12), 0, dp(12), dp(18)) })
+            addView(allBtn, FrameLayout.LayoutParams(dp(50), dp(50), Gravity.BOTTOM or Gravity.LEFT).apply { setMargins(dp(12), 0, dp(12), dp(18 + 50 + 12)) })
             addView(emptyCard, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = dp(12) })
             addView(infoCard, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { setMargins(dp(16), dp(12), dp(16), 0) })
             // המפה לא נכנסת מתחת לשורת המצב ולשורת הניווט של הטלפון
@@ -193,7 +214,7 @@ class MapActivity : Activity() {
     private fun shownList(): Pair<List<Shown>, Boolean> {
         val focusLevel = intent.getIntExtra("focusLevel", -1)
         val focus = intent.getStringExtra("focus")
-        if (focus != null && focusLevel >= 0) {
+        if (!showAll && focus != null && focusLevel >= 0) {
             val ts = intent.getLongExtra("focusTs", 0L); val title = intent.getStringExtra("focusTitle") ?: ""
             val names = focus.split(",").map { it.trim() }.filter { it.isNotEmpty() }
                 .flatMap { AreaData.match(this, it) }.distinct()
