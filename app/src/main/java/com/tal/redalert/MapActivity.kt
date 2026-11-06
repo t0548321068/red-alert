@@ -13,35 +13,6 @@ import org.json.JSONObject
 class MapActivity : Activity() {
 
     private var webView: WebView? = null
-    /** תמונת המפה מהפעם הקודמת - מוצגת מיד כשאין מפה מוכנה, עד שהמפה החיה מוכנה */
-    private var snapView: android.widget.ImageView? = null
-    private var rendered = false
-    private fun snapFile(dark: Boolean) = java.io.File(cacheDir, if (dark) "map_last_dark.png" else "map_last_light.png")
-
-    /** המפה החיה מוכנה - התמונה הזמנית נעלמת (רגע אחרי, כשהמפה כבר מצוירת) */
-    private fun hideSnap() {
-        snapView?.let { v -> v.postDelayed({ v.animate().alpha(0f).setDuration(150)
-            .withEndAction { (v.parent as? android.view.ViewGroup)?.removeView(v) }.start() }, 250) }
-        snapView = null
-    }
-
-    /** יוצאים מהמפה - שומרים תמונה שלה (גם הרחובות) לפעם הבאה */
-    override fun onPause() {
-        super.onPause()
-        val w = webView ?: return
-        if (!rendered || android.os.Build.VERSION.SDK_INT < 26 || w.width == 0 || w.height == 0) return
-        try {
-            val loc = IntArray(2); w.getLocationInWindow(loc)
-            val bmp = android.graphics.Bitmap.createBitmap(w.width, w.height, android.graphics.Bitmap.Config.ARGB_8888)
-            val f = snapFile(Prefs.darkTheme(this))
-            android.view.PixelCopy.request(window, android.graphics.Rect(loc[0], loc[1], loc[0] + w.width, loc[1] + w.height), bmp, { r ->
-                if (r == android.view.PixelCopy.SUCCESS) Thread {
-                    try { java.io.FileOutputStream(f).use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) } } catch (_: Exception) { }
-                }.start()
-            }, android.os.Handler(android.os.Looper.getMainLooper()))
-        } catch (_: Exception) { }
-    }
-
     override fun onDestroy() {
         webView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it); it.destroy() }
         webView = null
@@ -70,17 +41,6 @@ class MapActivity : Activity() {
         val frame = android.widget.FrameLayout(this).apply {
             setBackgroundColor(bg)
             addView(web, android.widget.FrameLayout.LayoutParams(-1, -1))
-            // אין מפה מוכנה - בינתיים התמונה מהפעם הקודמת
-            val instant = pre != null && pageReady != null
-            val f = snapFile(dark)
-            if (!instant && f.isFile) try {
-                android.graphics.BitmapFactory.decodeFile(f.path)?.let { b ->
-                    snapView = android.widget.ImageView(this@MapActivity).apply {
-                        setImageBitmap(b); scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-                    }
-                    addView(snapView, android.widget.FrameLayout.LayoutParams(-1, -1))
-                }
-            } catch (_: Exception) { }
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")
                 v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop,
@@ -124,7 +84,7 @@ class MapActivity : Activity() {
         fun onReady(view: WebView) {
                 Thread {
                     ready.await()
-                    if (data.isEmpty()) { runOnUiThread { hideSnap() }; return@Thread }
+                    if (data.isEmpty()) return@Thread
                     runOnUiThread {
                         if (isDestroyed) return@runOnUiThread   // המפה נסגרה בינתיים
                         view.evaluateJavascript("render($data);", null)
@@ -134,8 +94,6 @@ class MapActivity : Activity() {
                                 "${org.json.JSONObject.quote(intent.getStringExtra("focusTitle") ?: "")});", null)
                         }
                         locate(view)
-                        rendered = true
-                        hideSnap()
                     }
                 }.start()
         }

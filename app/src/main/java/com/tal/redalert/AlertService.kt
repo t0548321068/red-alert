@@ -369,7 +369,6 @@ class AlertService : Service() {
     override fun onCreate() {
         super.onCreate()
         createChannels()
-        MiniPreload.sync(this)   // "מפת התרעה מוכנה תמיד"
         val n = Notification.Builder(this, CH_SERVICE)
             .setSmallIcon(R.drawable.ic_stat_siren)
             .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה

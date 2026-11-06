@@ -13,8 +13,7 @@ import android.webkit.WebViewClient
  * מפת מסך ההתרעה מוכנה מראש, כדי שתוצג מיד:
  * - בכל התרעה בארץ (גם מקדימה / במקום אחר) - נטענת ברקע ונשארת מוכנה 10 דקות אחרי ההתרעה האחרונה.
  *   גם כשההתרעה היא אצלך - הטעינה מתחילה ברגע שהשרת מעיר את הטלפון, במקביל לפתיחת המסך
- * - בהגדרה "מפת התרעה מוכנה תמיד" - נשארת מוכנה כל הזמן
- * מפה שהוצגה לא חוזרת לשימוש - אחרי מסך ההתרעה נטענת מפה חדשה (אם עדיין בזמן אירוע / "תמיד")
+ * מפה שהוצגה לא חוזרת לשימוש - אחרי מסך ההתרעה נטענת מפה חדשה (אם עדיין בזמן אירוע)
  */
 @SuppressLint("StaticFieldLeak", "SetJavaScriptEnabled")
 object MiniPreload {
@@ -28,9 +27,7 @@ object MiniPreload {
     /** עד מתי להחזיק מפה מוכנה (זמן אירוע) */
     private var until = 0L
     private val h = Handler(Looper.getMainLooper())
-    private val expire = Runnable { if (!always()) drop() }
-
-    private fun always() = DataFiles.app?.let { Prefs.alertMapAlways(it) } ?: false
+    private val expire = Runnable { drop() }
 
     /** התרעה בארץ (מכל מקור): מפה מוכנה ל-10 הדקות הבאות. נקרא מכל thread */
     fun onEvent(c: Context) {
@@ -43,11 +40,11 @@ object MiniPreload {
         }
     }
 
-    /** "מוכנה תמיד" הודלקה / השירות עלה - טוענים אם צריך; כובתה - משחררים אם לא בזמן אירוע */
+    /** המפה הודלקה / כובתה בהגדרות, או מסך ההתרעה נסגר - טוענים אם עדיין בזמן אירוע, אחרת משחררים */
     fun sync(c: Context) {
         val app = c.applicationContext
         h.post {
-            if (Prefs.alertMap(app) && (always() || System.currentTimeMillis() < until)) build(app)
+            if (Prefs.alertMap(app) && System.currentTimeMillis() < until) build(app)
             else drop()
         }
     }
