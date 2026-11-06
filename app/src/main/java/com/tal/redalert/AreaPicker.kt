@@ -138,7 +138,7 @@ internal fun MainActivity.showAreaPicker(whole: Boolean) {
         orientation = LinearLayout.VERTICAL; setBackgroundColor(C.BG); layoutDirection = View.LAYOUT_DIRECTION_RTL }
 
     // כותרת: [עיגול "הכל"] "N נבחרו"
-    val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(14), dp(20), dp(10)) }
+    val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(10), dp(20), dp(12)) }
     val allDot = CheckDot(this, false)
     top.addView(LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
@@ -150,7 +150,7 @@ internal fun MainActivity.showAreaPicker(whole: Boolean) {
             render()
         }
     }, LinearLayout.LayoutParams(dp(44), -2))
-    val count = text("", 26f, C.TEXT, bold = true)
+    val count = text("", 24f, C.TEXT, bold = true)
     top.addView(count, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(12) })
     root.addView(top)
 
@@ -161,7 +161,7 @@ internal fun MainActivity.showAreaPicker(whole: Boolean) {
         background = GradientDrawable().apply { setColor(C.CARD2); cornerRadius = dp(24).toFloat() }
         setPadding(dp(20), 0, dp(20), 0)
     }
-    root.addView(search, LinearLayout.LayoutParams(-1, dp(48)).apply { setMargins(dp(12), 0, dp(12), dp(10)) })
+    root.addView(search, LinearLayout.LayoutParams(-1, dp(48)).apply { setMargins(dp(PAGE_SIDE), 0, dp(PAGE_SIDE), dp(12)) })
 
     // הרשימה
     val items = ArrayList<String>()

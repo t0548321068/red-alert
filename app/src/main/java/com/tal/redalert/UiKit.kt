@@ -35,6 +35,32 @@ import com.tal.redalert.MainActivity.SameHeight
 internal fun MainActivity.dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
 // סגנון One UI: כרטיס אפור כהה אחיד עם פינות מעוגלות מאוד
+/**
+ * כותרת עמוד אחידה - בדיוק כמו "צופר חירום" במסך הראשי: גודל 24 מודגש, אותו מרחק מהקצה ומלמעלה,
+ * גובה 46 (כמו האייקונים). אייקוני פעולה נוספים מתווספים לסוף השורה (שמאל), באותו מקום כמו במסך הראשי
+ */
+internal fun MainActivity.pageHeader(title: String) = LinearLayout(this).apply {
+    gravity = Gravity.CENTER_VERTICAL
+    minimumHeight = dp(46)
+    setPadding(dp(16), dp(10), dp(16), dp(12))
+    addView(text(title, 24f, C.TEXT, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) },
+        LinearLayout.LayoutParams(0, -2, 1f))
+}
+
+/** אייקון בראש העמוד - כמו האייקונים במסך הראשי: 46, בלי רקע, רק הבהוב בלחיצה */
+internal fun MainActivity.headerIcon(res: Int, click: () -> Unit) = android.widget.ImageView(this).apply {
+    setImageResource(res)
+    imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT)
+    setPadding(dp(11), dp(11), dp(11), dp(11))
+    background = android.graphics.drawable.RippleDrawable(
+        android.content.res.ColorStateList.valueOf(C.LINE2), null,
+        GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) })
+    setOnClickListener { click() }
+}
+
+/** שוליים מהצדדים לכרטיסים - כמו במסך הראשי */
+internal const val PAGE_SIDE = 16
+
 internal fun MainActivity.graphite(@Suppress("UNUSED_PARAMETER") radius: Int) = GradientDrawable().apply {
     setColor(C.CARD2); cornerRadius = dp(28).toFloat() }
 
@@ -58,7 +84,7 @@ internal fun MainActivity.ouiPage(title: String, refreshOnFocus: Boolean = true,
     lateinit var rebuild: () -> Unit
     rebuild = {
         body.removeAllViews()
-        body.addView(text(title, 20f, C.TEXT, bold = true).apply { setPadding(dp(24), dp(14), dp(24), dp(14)) })
+        body.addView(pageHeader(title))
         build(body, rebuild)
     }
     rebuild()
@@ -124,10 +150,10 @@ internal fun MainActivity.ouiPage(title: String, refreshOnFocus: Boolean = true,
 internal fun MainActivity.ouiCard() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = graphite(26); clipToOutline = true }
 
 internal fun MainActivity.ouiAdd(body: LinearLayout, c: View) =
-    body.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), dp(8)) })
+    body.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(PAGE_SIDE), 0, dp(PAGE_SIDE), dp(12)) })
 
 internal fun MainActivity.ouiNote(body: LinearLayout, t: String) =
-    body.addView(text(t, 11f, C.MUTED2).apply { setPadding(dp(26), 0, dp(26), dp(14)) })
+    body.addView(text(t, 11f, C.MUTED2).apply { setPadding(dp(PAGE_SIDE + 16), 0, dp(PAGE_SIDE + 16), dp(14)) })
 
 internal fun MainActivity.ouiDivider(c: LinearLayout) = c.addView(View(this).apply { setBackgroundColor(C.DIV) },
     LinearLayout.LayoutParams(-1, dp(1)).apply { setMargins(dp(18), 0, dp(18), 0) })
@@ -199,7 +225,7 @@ internal fun MainActivity.ouiText(c: LinearLayout, t: String) =
     c.addView(text(t, 14f, C.TEXT).apply { setPadding(dp(18), dp(12), dp(18), dp(12)); setLineSpacing(dp(3).toFloat(), 1f) })
 
 /** עמוד בסגנון One UI: כותרת גדולה ותוכן נגלל (למשל "התרעות אחרונות") */
-internal fun MainActivity.onePage(title: String, action: Pair<Int, () -> Unit>? = null, headerExtra: ((LinearLayout) -> Unit)? = null,
+internal fun MainActivity.onePage(title: String, action: Pair<Int, () -> Unit>? = null, subHeader: ((LinearLayout) -> Unit)? = null,
                     build: (LinearLayout) -> Unit) {
     val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
     val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -213,25 +239,12 @@ internal fun MainActivity.onePage(title: String, action: Pair<Int, () -> Unit>? 
         v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
         insets
     }
-    // כותרת כמו בשאר מסכי ההגדרות, ואם יש - כפתור פעולה בצד (למשל מפה)
-    body.addView(LinearLayout(this).apply {
-        gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(24), dp(14), dp(12), dp(14))
-        addView(text(title, 20f, C.TEXT, bold = true), LinearLayout.LayoutParams(0, -2, 1f))
-        headerExtra?.invoke(this)
-        action?.let { (icon, run) ->
-            // כמו האייקונים בראש המסך הראשי: בלי רקע, רק הבהוב בלחיצה
-            addView(android.widget.ImageView(this@onePage).apply {
-                setImageResource(icon)
-                imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT)
-                setPadding(dp(11), dp(11), dp(11), dp(11))
-                background = android.graphics.drawable.RippleDrawable(
-                    android.content.res.ColorStateList.valueOf(C.LINE2), null,
-                    GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) })
-                setOnClickListener { run() }
-            }, LinearLayout.LayoutParams(dp(46), dp(46)))
-        }
+    // כותרת כמו במסך הראשי, ואם יש - כפתור פעולה באותו מקום כמו האייקונים שם (למשל מפה)
+    body.addView(pageHeader(title).apply {
+        action?.let { (icon, run) -> addView(headerIcon(icon, run), LinearLayout.LayoutParams(dp(46), dp(46))) }
     })
+    // שורה ממורכזת מתחת לכותרת (למשל סינון הכול / שלי)
+    subHeader?.let { body.addView(LinearLayout(this).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(4)); it(this) }) }
     val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
     body.addView(content)
     body.addView(View(this), LinearLayout.LayoutParams(-1, dp(30)))

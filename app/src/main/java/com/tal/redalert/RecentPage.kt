@@ -63,10 +63,10 @@ internal fun MainActivity.buildRecentSeg(seg: LinearLayout) {
 
 internal fun MainActivity.showRecent() = onePage("התרעות אחרונות",
     action = R.drawable.ic_map to { startActivity(Intent(this, MapActivity::class.java)) },
-    headerExtra = { h ->
+    subHeader = { h ->
         val seg = LinearLayout(this).apply { background = graphite(22); setPadding(dp(3), dp(3), dp(3), dp(3)) }
         buildRecentSeg(seg); recentSegView = seg
-        h.addView(seg, LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(10) })
+        h.addView(seg, LinearLayout.LayoutParams(-2, -2))
     }) { c ->
     recentList = c
     val cached = archiveCache
@@ -123,14 +123,14 @@ internal fun MainActivity.appendRecent(c: LinearLayout, count: Int) {
         var card = recentCard
         if (card == null || day != recentDay) {
             recentDay = day
-            if (day.isNotEmpty()) c.addView(text(day, 13f, muted).apply { setPadding(dp(28), dp(14), dp(28), dp(6)) })
+            if (day.isNotEmpty()) c.addView(text(day, 13f, muted).apply { setPadding(dp(PAGE_SIDE + 4), dp(14), dp(PAGE_SIDE + 4), dp(6)) })
             card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 background = graphite(28)
                 clipToOutline = true
             }
             recentCard = card
-            c.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(10), 0, dp(10), 0) })
+            c.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(PAGE_SIDE), 0, dp(PAGE_SIDE), 0) })
         } else card.addView(View(this).apply { setBackgroundColor(C.DIV) }, LinearLayout.LayoutParams(-1, dp(1)))
         val row = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
