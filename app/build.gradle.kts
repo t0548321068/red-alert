@@ -6,6 +6,8 @@ plugins {
 
 android {
     namespace = "com.tal.redalert"
+    // בבדיקות בלי טלפון: פונקציות של אנדרואיד מחזירות ברירת מחדל במקום להיכשל
+    testOptions { unitTests.isReturnDefaultValues = true }
     compileSdk = 35
 
     defaultConfig {
@@ -42,6 +44,14 @@ android {
 dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.maplibre.gl:android-sdk:11.8.0")   // המפה המובנית
+    // בדיקות אוטומטיות (רצות בכל בנייה)
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-messaging")
+}
+
+// הבדיקות האוטומטיות רצות לפני כל בנייה של גרסה - אם משהו נשבר, הגרסה לא נוצרת
+afterEvaluate {
+    tasks.named("assembleRelease") { dependsOn("testReleaseUnitTest") }
 }

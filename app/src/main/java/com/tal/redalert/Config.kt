@@ -10,6 +10,8 @@ import org.json.JSONObject
 object Config {
     @Volatile private var cache: JSONObject? = null
     fun reset() { cache = null }
+    /** טעינה ישירה (בבדיקות האוטומטיות - בלי טלפון) */
+    internal fun load(o: JSONObject) { cache = o }
 
     private fun cfg(): JSONObject = cache ?: synchronized(this) {
         cache ?: (try { DataFiles.app?.let { JSONObject(DataFiles.text(it, "config.json")) } } catch (_: Exception) { null }
