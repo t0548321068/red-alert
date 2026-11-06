@@ -78,7 +78,7 @@ class MapActivity : Activity() {
         val dark = Prefs.darkTheme(this)
         val bg = Color.parseColor(if (dark) "#000000" else "#F2F2F7")
         val panel = Color.parseColor(if (dark) "#1C1C1E" else "#FFFFFF")
-        val text = Color.parseColor(if (dark) "#F2F2F7" else "#1C1C1E")
+        val ink = Color.parseColor(if (dark) "#F2F2F7" else "#1C1C1E")
         window.decorView.setBackgroundColor(bg)
 
         val mv = MapView(this).apply {
@@ -89,7 +89,7 @@ class MapActivity : Activity() {
         mv.onCreate(savedInstanceState)
 
         fun card(): TextView = TextView(this).apply {
-            setTextColor(text); textSize = 14f; textDirection = View.TEXT_DIRECTION_RTL
+            setTextColor(ink); textSize = 14f; textDirection = View.TEXT_DIRECTION_RTL
             setPadding(dp(18), dp(10), dp(18), dp(10))
             background = GradientDrawable().apply { setColor(panel); cornerRadius = dp(22).toFloat() }
             elevation = dp(4).toFloat()
@@ -112,7 +112,7 @@ class MapActivity : Activity() {
                         if (dashed) setStroke(dp(2), c, dp(2).toFloat(), dp(1).toFloat()) else setColor(c)
                     }
                 }, LinearLayout.LayoutParams(dp(10), dp(10)).apply { marginEnd = dp(6) })
-                addView(TextView(this@MapActivity).apply { this.text = label; setTextColor(text); textSize = 13f })
+                addView(TextView(this@MapActivity).apply { this.text = label; setTextColor(ink); textSize = 13f })
             }, LinearLayout.LayoutParams(-2, dp(25)))
             row(colors[0], "ירי / חדירה"); row(colors[1], "התראה מקדימה"); row(colors[2], "האירוע הסתיים")
             row(0xFF0A84FF.toInt(), "המיקום שלי"); row(0xFF0A84FF.toInt(), "האזור שלי עכשיו", dashed = true)
