@@ -58,8 +58,21 @@ object MapStyle {
             layer("rail", "line", "transportation", JSONObject().put("line-color", c["rail"]).put("line-width", 1)
                 .put("line-dasharray", arr(4, 3)), arr("==", arr("get", "class"), "rail"), 11),
             layer("road-label", "symbol", "transportation_name", JSONObject().put("text-color", c["road_label"])
-                .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5), minzoom = 13,
-                layout = JSONObject().put("symbol-placement", "line").put("text-field", name).put("text-font", font).put("text-size", 12)),
+                .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5), minzoom = 12,
+                layout = JSONObject().put("symbol-placement", "line").put("text-field", name).put("text-font", font)
+                    .put("text-size", arr("interpolate", arr("linear"), arr("zoom"), 12, 10, 16, 12))),
+            // מקומות בשטח: מוסדות, חנויות, בתי כנסת, בתי ספר, תחנות - כשמתקרבים
+            layer("poi", "symbol", "poi", JSONObject().put("text-color", c["road_label"])
+                .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5), minzoom = 15,
+                layout = JSONObject().put("text-field", name).put("text-font", font).put("text-size", 10)
+                    .put("text-max-width", 8)),
+            // הרים וגבעות, ים ואגמים
+            layer("peak", "symbol", "mountain_peak", JSONObject().put("text-color", c["road_label"])
+                .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5), minzoom = 11,
+                layout = JSONObject().put("text-field", name).put("text-font", font).put("text-size", 10)),
+            layer("water-name", "symbol", "water_name", JSONObject().put("text-color", c["road_label"])
+                .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5),
+                layout = JSONObject().put("text-field", name).put("text-font", font).put("text-size", 12)),
             layer("place", "symbol", "place", JSONObject().put("text-color", c["place"])
                 .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5),
                 inClass("city", "town", "village", "suburb", "neighbourhood"),
@@ -68,7 +81,7 @@ object MapStyle {
             // מקומות קטנים (חוות, שכונות קטנות, מקומות בודדים, איים) - כשמתקרבים
             layer("place-small", "symbol", "place", JSONObject().put("text-color", c["place"])
                 .put("text-halo-color", c["halo"]).put("text-halo-width", 1.5),
-                inClass("hamlet", "isolated_dwelling", "quarter", "locality", "island"), minzoom = 12,
+                inClass("hamlet", "isolated_dwelling", "quarter", "locality", "island"), minzoom = 11,
                 layout = JSONObject().put("text-field", name).put("text-font", font).put("text-size", 11))
         )
         return JSONObject()
