@@ -209,6 +209,7 @@ class MainActivity : Activity() {
             val ms = TimeSync.now(this@MainActivity) % 1000   // לפי שעון השרת - זהה בכל הטלפונים
             ui.postDelayed(this, if (ms < 500) 500 - ms else 1000 - ms)
             try { updateClock() } catch (_: Exception) { }
+            try { shabbatScreen?.update() } catch (_: Exception) { }   // מסך שבת פשוט (בזמן מצב שבת)
             // שאר המסך - פעם בשנייה (בתחילת השנייה), ובנפרד מהשעון
             if (ms < 500) ui.post(slowTick)
         }
@@ -225,6 +226,9 @@ class MainActivity : Activity() {
             if (key != lastHistoryKey) { lastHistoryKey = key; refresh() }
         } catch (_: Exception) { }
     }
+
+    /** מסך שבת פשוט - מעל המסך הראשי בזמן מצב שבת */
+    internal var shabbatScreen: ShabbatScreen? = null
 
     internal lateinit var alertCard: LinearLayout
     internal lateinit var alertWrap: FrameLayout
@@ -629,6 +633,7 @@ class MainActivity : Activity() {
             }
         }
         setContentView(scroll)
+        shabbatScreen = ShabbatScreen(this)
         // פתיחה מחדש (המסך נסגר ברקע): לא מציירים את המסך הריק - הטלפון ממשיך להציג את התמונה האחרונה
         // עד שנתוני היישובים נטענו והמסך מולא, ואז מוצג ישר המסך המלא (לכל היותר 1.5 שניות)
         var ready = false
@@ -712,6 +717,7 @@ class MainActivity : Activity() {
         verBlink?.cancel(); verBlink = null   // הבהובי שורת החיוויים - שלא יחזיקו את המסך הישן
         srvBlink?.cancel(); srvBlink = null
         recentList = null; recentSegView = null
+        shabbatScreen?.destroy(); shabbatScreen = null
         super.onDestroy()
     }
 
