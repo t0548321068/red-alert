@@ -70,6 +70,7 @@ class AlertMap(private val a: Activity, savedState: Bundle?, names: List<String>
             m.cameraPosition = CameraPosition.Builder().target(LatLng(31.6, 34.9)).zoom(8.0).build()
             m.setStyle(Style.Builder().fromJson(MapStyle.json(dark))) { st ->
                 style = st
+                MapKit.addAreaNames(a, st, dark)
                 layers(st)
                 me?.let { (st.getSource("me") as? GeoJsonSource)?.setGeoJson(MapKit.fc(listOf(MapKit.feature(MapKit.point(it.latitude, it.longitude))))) }
                 val first = pending; pending = emptyList()

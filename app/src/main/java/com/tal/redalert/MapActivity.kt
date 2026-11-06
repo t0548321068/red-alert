@@ -153,6 +153,7 @@ class MapActivity : Activity() {
             m.cameraPosition = CameraPosition.Builder().target(LatLng(31.6, 34.9)).zoom(8.0).build()
             m.setStyle(Style.Builder().fromJson(MapStyle.json(dark))) { st ->
                 style = st
+                MapKit.addAreaNames(this, st, dark)
                 addLayers(st)
                 drawAlerts()
                 locate()

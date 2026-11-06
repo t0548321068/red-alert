@@ -47,6 +47,39 @@ object MapKit {
     fun feature(g: JSONObject, props: JSONObject = JSONObject()): JSONObject = JSONObject().put("type", "Feature").put("geometry", g).put("properties", props)
     fun fc(features: List<JSONObject>) = JSONObject().put("type", "FeatureCollection").put("features", JSONArray(features)).toString()
 
+    @Volatile private var namesCache: String? = null
+    /**
+     * שמות כל אזורי ההתרעה של פיקוד העורף (גם מקומות שאין להם שם במפת הרחובות) - מזום 12.
+     * מתחת לשמות של מפת הרחובות, כך ששם שכבר מופיע שם מקבל עדיפות ולא נכפל
+     */
+    fun addAreaNames(c: Context, st: org.maplibre.android.maps.Style, dark: Boolean) {
+        val src = org.maplibre.android.style.sources.GeoJsonSource("area-names")
+        st.addSource(src)
+        val layer = org.maplibre.android.style.layers.SymbolLayer("area-names", "area-names").withProperties(
+            org.maplibre.android.style.layers.PropertyFactory.textField(org.maplibre.android.style.expressions.Expression.get("n")),
+            org.maplibre.android.style.layers.PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+            org.maplibre.android.style.layers.PropertyFactory.textSize(11f),
+            org.maplibre.android.style.layers.PropertyFactory.textColor(if (dark) "#D0D3DA" else "#3C4043"),
+            org.maplibre.android.style.layers.PropertyFactory.textHaloColor(if (dark) "#1E2130" else "#FFFFFF"),
+            org.maplibre.android.style.layers.PropertyFactory.textHaloWidth(1.5f))
+        layer.minZoom = 12f
+        if (st.getLayer("place") != null) st.addLayerBelow(layer, "place") else st.addLayer(layer)
+        Thread {
+            val json = namesCache ?: try {
+                val all = AreaData.areas(c)
+                val feats = ArrayList<JSONObject>()
+                val keys = all.keys()
+                while (keys.hasNext()) {
+                    val n = keys.next()
+                    val cc = all.optJSONObject(n)?.optJSONArray("c") ?: continue
+                    feats += feature(point(cc.getDouble(0), cc.getDouble(1)), JSONObject().put("n", n))
+                }
+                fc(feats).also { namesCache = it }
+            } catch (_: Exception) { null } ?: return@Thread
+            android.os.Handler(android.os.Looper.getMainLooper()).post { try { src.setGeoJson(json) } catch (_: Exception) { } }
+        }.start()
+    }
+
     /** סיכת מיקום אדומה */
     fun pinBitmap(density: Float): Bitmap {
         val w = (26 * density).toInt(); val h = (34 * density).toInt()
