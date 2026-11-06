@@ -66,8 +66,20 @@ internal class ShabbatScreen(private val a: MainActivity) {
     private var press: ValueAnimator? = null
     /** נגד צריבת מסך: השעון מחשיך עד שחור ומאיר שוב (10 שניות לכל כיוון), כמו שעון הלילה - בלי לזוז */
     private var breathe: ValueAnimator? = null
+    /** וגם תזוזה איטית למעלה ולמטה (5 דקות לכל כיוון) - השעון לא נשאר באותו מקום */
+    private var drift: ValueAnimator? = null
     private fun breathing(on: Boolean) {
-        if (!on) { breathe?.cancel(); breathe = null; clockBox.alpha = 1f; exitBtn.alpha = 1f; return }
+        if (!on) {
+            breathe?.cancel(); breathe = null; clockBox.alpha = 1f; exitBtn.alpha = 1f
+            drift?.cancel(); drift = null; clockBox.translationY = 0f; return
+        }
+        if (drift == null) drift = ValueAnimator.ofFloat(-dp(90).toFloat(), dp(90).toFloat()).apply {
+            duration = 5 * 60_000L
+            interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+            repeatCount = ValueAnimator.INFINITE; repeatMode = ValueAnimator.REVERSE
+            addUpdateListener { clockBox.translationY = it.animatedValue as Float }
+            start()
+        }
         if (breathe != null) return
         breathe = ValueAnimator.ofFloat(1f, 0f).apply {
             duration = 10_000
@@ -211,12 +223,18 @@ internal class ShabbatScreen(private val a: MainActivity) {
      */
     private var savedBars: Int? = null
     private var keepOn = false
+    private var savedOrientation: Int? = null
     @Suppress("DEPRECATION")
     private fun window(on: Boolean) {
         val d = a.window.decorView
         // מסך מלא: שורת המצב ושורת כפתורי הניווט מוסתרות (מופיעות לרגע רק בהחלקה מהקצה), וחוזרות ביציאה
         if (on) {
-            if (savedBars == null) savedBars = d.systemUiVisibility
+            if (savedBars == null) {
+                savedBars = d.systemUiVisibility
+                // רק לאורך - המסך לא מסתובב בזמן מצב שבת
+                savedOrientation = a.requestedOrientation
+                a.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            }
             // בכל עדכון - גם אחרי חזרה לאפליקציה או החלקה מהקצה השורות נעלמות שוב
             if (android.os.Build.VERSION.SDK_INT >= 30) a.window.insetsController?.let {
                 it.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
@@ -226,6 +244,7 @@ internal class ShabbatScreen(private val a: MainActivity) {
         } else if (!on) savedBars?.let {
             if (android.os.Build.VERSION.SDK_INT >= 30) a.window.insetsController?.show(android.view.WindowInsets.Type.systemBars())
             d.systemUiVisibility = it; savedBars = null
+            savedOrientation?.let { o -> a.requestedOrientation = o }; savedOrientation = null
         }
         val want = on && clockOn()
         if (want == keepOn) return
@@ -236,7 +255,7 @@ internal class ShabbatScreen(private val a: MainActivity) {
     }
 
     fun destroy() {
-        press?.cancel(); press = null; breathe?.cancel(); breathe = null
+        press?.cancel(); press = null; breathe?.cancel(); breathe = null; drift?.cancel(); drift = null
         try { (a.window.decorView as FrameLayout).removeView(root) } catch (_: Exception) { }
     }
 }
