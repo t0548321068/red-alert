@@ -38,11 +38,7 @@ internal fun MainActivity.showAlertSettings() = ouiPage("התרעות") { body, 
     // סוג תצוגת התרעה: שורה אחת - העמוד שלה מרכז את הבחירה הכללית וההתאמה האישית לכל נושא
     val style = ouiCard()
     ouiRow(style, "סגנון התרעה", sub = styleSummary()) { showCustomStyles() }
-    ouiDivider(style)
-    ouiRow(style, "מפה במסך ההתרעה", on = Prefs.alertMap(this)) {
-        Prefs.setAlertMap(this, !Prefs.alertMap(this)); rebuild() }
     ouiAdd(body, style)
-    ouiNote(body, "המפה מוצגת במסך מלא ובפופ-אפ")
 
     val c = ouiCard()
     // מתג = הדלקה/כיבוי, לחיצה על השם = ההגדרות המלאות
@@ -307,6 +303,11 @@ internal fun MainActivity.showCustomStyles() = ouiPage("סגנון התרעה") 
     ouiAdd(body, c)
     ouiNote(body, if (custom) "התרעות – אדום · מבזקים והנחיות – כתום · עדכונים – ירוק\nבמצב שבת כל ההתרעות במסך מלא"
         else "כשמופעל – הסימון למעלה מתבטל, ולכל נושא בוחרים סגנון משלו")
+    // המפה במסך ההתרעה (הועבר מעמוד ההתרעות)
+    val m = ouiCard()
+    ouiRow(m, "הצג מפה", on = Prefs.alertMap(this)) { Prefs.setAlertMap(this, !Prefs.alertMap(this)); rebuild() }
+    ouiAdd(body, m)
+    ouiNote(body, "המפה מוצגת במסך מלא ובפופ-אפ")
 }
 
 /** בחירת סוג התצוגה לנושא: אותן הדמיות כמו בסוג התצוגה הכללי, בצבע הנושא */
