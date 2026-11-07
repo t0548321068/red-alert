@@ -60,7 +60,9 @@ class AlertMap(private val a: Activity, savedState: Bundle?, names: List<String>
         MapKit.init(a)
         // TextureView: המפה מצוירת יחד עם שאר המסך. ב-SurfaceView (ברירת המחדל) היא הבהבה,
         // כי הספירה לאחור מתעדכנת כל שנייה ומסדרת מחדש את המסך סביבה
-        view = MapView(a, org.maplibre.android.maps.MapLibreMapOptions.createFromAttributes(a).textureMode(true))
+        // foregroundLoadColor: הצבע שהמפה מציירת עד שהסגנון נטען - ברירת המחדל בהירה (הבהוב לבן בערכה החשוכה)
+        view = MapView(a, org.maplibre.android.maps.MapLibreMapOptions.createFromAttributes(a).textureMode(true)
+            .foregroundLoadColor(MapKit.bg(dark)))
             .apply { setBackgroundColor(MapKit.bg(dark)) }
         view.onCreate(savedState)
         view.getMapAsync { m ->
