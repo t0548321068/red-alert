@@ -214,7 +214,7 @@ internal fun MainActivity.showUpdateCheck() {
                         ouiDivider(cd)
                         ouiRow(cd, "ערוץ", end = channel, endColor = C.MUTED)
                         ouiAdd(content, cd)
-                        notesCard("מה חדש בגרסה שלך", Updater.currentNotes(this))
+                        notesCard("מה חדש", Updater.currentNotes(this))
                     }
                 }
                 updateVerInd()   // החיווי מעל מספר הגרסה (כתום / ירוק) לפי התוצאה
