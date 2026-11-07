@@ -129,7 +129,10 @@ object MiniOverlay {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP
-            x = 0; y = dp(36)
+            // מתחת לשורת המצב של הטלפון (הגובה שלה שונה בין טלפונים - עם מצלמה במסך היא גבוהה יותר)
+            val sb = app.resources.getIdentifier("status_bar_height", "dimen", "android")
+                .takeIf { it > 0 }?.let { app.resources.getDimensionPixelSize(it) } ?: dp(28)
+            x = 0; y = sb + dp(6)
             horizontalMargin = 0.03f
         }
         try { wm.addView(bar, lp) } catch (_: Exception) { return }
