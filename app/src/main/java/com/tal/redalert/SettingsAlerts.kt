@@ -302,11 +302,38 @@ internal fun MainActivity.showCustomStyles() = ouiPage("סגנון התרעה") 
     ouiAdd(body, c)
     ouiNote(body, if (custom) "התרעות – אדום · מבזקים והנחיות – כתום · עדכונים – ירוק\nבמצב שבת כל ההתרעות במסך מלא"
         else "כשמופעל – הסימון למעלה מתבטל, ולכל נושא בוחרים סגנון משלו")
+    // מה מוצג אחרי שסוגרים מסך מלא / פופ-אפ
+    val ac = ouiCard()
+    ouiRow(ac, "אחרי סגירה", sub = if (Prefs.afterClose(this) == 1) "ממוזער" else "כרטיס") { chooseAfterClose { rebuild() } }
+    ouiAdd(body, ac)
+    ouiNote(body, "מה מוצג כשסוגרים התרעה במסך מלא או בפופ-אפ")
     // המפה במסך ההתרעה (הועבר מעמוד ההתרעות)
     val m = ouiCard()
     ouiRow(m, "הצג מפה", on = Prefs.alertMap(this)) { Prefs.setAlertMap(this, !Prefs.alertMap(this)); rebuild() }
     ouiAdd(body, m)
     ouiNote(body, "המפה מוצגת במסך מלא ובפופ-אפ")
+}
+
+/** אחרי סגירה: כרטיס במסך הראשי או החלון הקטן למעלה */
+private fun MainActivity.chooseAfterClose(done: () -> Unit) = ouiPage("אחרי סגירה", onClose = done) { body, rebuild ->
+    val cur = Prefs.afterClose(this)
+    val c = ouiCard()
+    c.addView(LinearLayout(this).apply {
+        setPadding(dp(6), dp(20), dp(6), dp(16))
+        listOf(2 to "כרטיס", 3 to "ממוזער").forEachIndexed { i, (kind, label) ->
+            addView(LinearLayout(this@chooseAfterClose).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                addView(alertStylePreview(kind), LinearLayout.LayoutParams(dp(58), dp(116)))
+                addLabelRadio(this, label, cur == i)
+                setOnClickListener { Prefs.setAfterClose(this@chooseAfterClose, i); rebuild() }
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+    })
+    ouiAdd(body, c)
+    ouiNote(body, if (cur == 1 && !android.provider.Settings.canDrawOverlays(this))
+        "ממוזער צריך הרשאת \"הצגה מעל אפליקציות\" – בלעדיה יוצג כרטיס"
+        else "כרטיס – במסך הראשי, מעל השעון\nממוזער – חלון קטן בראש המסך, מעל כל אפליקציה")
 }
 
 /** בחירת סוג התצוגה לנושא: אותן הדמיות כמו בסוג התצוגה הכללי, בצבע הנושא */
