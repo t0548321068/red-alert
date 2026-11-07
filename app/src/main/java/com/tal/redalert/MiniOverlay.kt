@@ -132,7 +132,8 @@ object MiniOverlay {
             // מתחת לשורת המצב של הטלפון (הגובה שלה שונה בין טלפונים - עם מצלמה במסך היא גבוהה יותר)
             val sb = app.resources.getIdentifier("status_bar_height", "dimen", "android")
                 .takeIf { it > 0 }?.let { app.resources.getDimensionPixelSize(it) } ?: dp(28)
-            x = 0; y = sb + dp(6)
+            // מתחת לשורת החיוויים של המסך הראשי (אם ידוע איפה היא), ואם לא - מתחת לשורת המצב
+            x = 0; y = (Prefs.miniY(app).takeIf { it > sb } ?: sb) + dp(6)
             horizontalMargin = 0.03f
         }
         try { wm.addView(bar, lp) } catch (_: Exception) { return }

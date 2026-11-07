@@ -183,7 +183,11 @@ class MainActivity : Activity() {
     /** התרעה חדשה כשהמסך הראשי מאחורי פופ-אפ / ממוזער: הצבע והכרטיס מתעדכנים מיד (בלי לחכות לחזרה למסך) */
     private val alertListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == "activeAlert" || key == "alertDismissed" || key == "alertScreenAt") ui.post { if (::alertWrap.isInitialized) updateAlertCard() }
+        // בדיקה במסך מלא / פופ-אפ: עמודי ההגדרות נסגרים רק כשמסך ההתרעה כבר מעליהם (בסגירה - המסך הראשי)
+        if (key == "alertScreenAt" && closePagesOnScreen) ui.post { closePagesOnScreen = false; closeAllPages() }
     }
+    internal var closePagesOnScreen = false
+    internal fun closeAllPages() { pages.toList().forEach { it.dismiss() }; refresh() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val dark = Prefs.darkTheme(this)
@@ -300,6 +304,10 @@ class MainActivity : Activity() {
         }
         col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
         statusRow = status
+        // החלון הממוזער מוצג מתחת לשורת החיוויים - שומרים איפה היא נגמרת על המסך
+        status.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+            if (v.isShown) { val xy = IntArray(2); v.getLocationOnScreen(xy); Prefs.setMiniY(this, xy[1] + v.height) }
+        }
         applyStatusRow()
         weatherLine = text("", 19f, C.TEXT).apply {
             gravity = Gravity.CENTER
