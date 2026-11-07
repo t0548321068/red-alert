@@ -147,8 +147,7 @@ internal fun MainActivity.chooseTest() = ouiPage("בדיקת התרעה") { body
     // הקראה בהתרעת בדיקה - אפשר לכבות (רק בבדיקה; בהתרעה אמיתית לפי הגדרות ההקראה)
     val spk = ouiCard()
     val spkOn = Prefs.testSpeak(this)
-    ouiRow(spk, "הקראה בבדיקה", sub = if (spkOn) "מוקרא" else "לא מוקרא", on = spkOn,
-        onToggle = { Prefs.setTestSpeak(this, !spkOn); rebuild() }) { Prefs.setTestSpeak(this, !spkOn); rebuild() }
+    ouiRow(spk, "הקראה בבדיקה", on = spkOn) { Prefs.setTestSpeak(this, !spkOn); rebuild() }   // כל השורה מדליקה/מכבה - בלי קו
     ouiAdd(body, spk)
     ouiNote(body, "רק בהתרעות בדיקה – בהתרעה אמיתית ההקראה לפי ההגדרות")
     // אירוע מלא: התרעה מקדימה, ירי וסיום - ברצף, כמו אירוע אמיתי (מקוצר)
