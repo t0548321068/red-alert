@@ -10,16 +10,7 @@ const ARCH_FILE = path.join(__dirname, '..', 'archive.json');
 // הארכיון החדש של פיקוד העורף (נובמבר 2026; alerts-history הישן מפנה לדף האתר). period: lastDay / lastWeek / lastMonth
 const ARCH_BASE = 'https://www.oref.org.il/api/v1/AlertHistory/heb?period=';
 // התשובה החדשה (מקובצת לפי תאריך) -> שורות בפורמט הישן: data, category_desc, alertDate עם שניות, date, time
-function convert(t) {
-  if (!t.startsWith('{')) return null;
-  const rows = [];
-  for (const day of JSON.parse(t).alarmsGroupedByDate || []) for (const o of day.value || []) {
-    const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(String(o.date || '')), tm = String(o.time || '');
-    rows.push({ data: o.data, category_desc: o.category_Desc, date: o.date, time: o.time,
-      alertDate: m && tm.length >= 8 ? `${m[3]}-${m[2]}-${m[1]}T${tm.slice(0, 8)}` : o.dateTime });
-  }
-  return rows;
-}
+const convert = require('./parse').archiveRows;   // נבדק בבדיקות
 const YEAR = 366 * 24 * 3600 * 1000;
 const arch = new Map();   // "כותרת|דקה" -> { t, ts, b: Set }
 try { for (const e of JSON.parse(fs.readFileSync(ARCH_FILE, 'utf8'))) arch.set(e.k, { t: e.t, ts: e.ts, b: new Set(e.b) }); } catch (_) {}

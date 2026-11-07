@@ -1,6 +1,7 @@
 // פיקוד העורף: הקובץ החי (כל שנייה, בחיבור קבוע) + היסטוריה וארכיון (גיבוי להתרעות שהקובץ החי פספס)
 const https = require('https');
 const { get, ilTime, once, fail, log, OREF_HEADERS } = require('../lib/util');
+const P = require('../lib/parse');   // הפענוח עצמו (נבדק בבדיקות)
 const { send, state, saveState } = require('../lib/push');
 const { ok } = require('../lib/health');
 const egress = require('../lib/egress');
@@ -53,10 +54,10 @@ async function pollLive() {
 /** תוכן הקובץ החי (מהשרת או מהממסר בבית) - התרעה חדשה נשלחת. מחזיר true אם נשלחה */
 function liveText(txt) {
   try {
-    const j = JSON.parse(txt);
-    if (!j.id || j.id === state.orefId) return false;
+    const j = P.orefLive(txt);
+    if (!j || j.id === String(state.orefId)) return false;
     state.orefId = j.id; saveState();   // נשמר - אחרי הפעלה מחדש לא שולחים שוב את אותה התרעה
-    if (Array.isArray(j.data) && j.data.length) { send(j.title || 'התראה', j.data, 'oref', Date.now(), String(j.id)); return true; }   // המזהה - מטח חדש לא נבלע ככפילות
+    if (j.areas.length) { send(j.title, j.areas, 'oref', Date.now(), j.id); return true; }   // המזהה - מטח חדש לא נבלע ככפילות
   } catch (_) { /* תשובה לא תקינה - בסבב הבא */ }
   return false;
 }
@@ -86,16 +87,7 @@ function historyText(key, t, from = 'direct') {
   ok(key, from);
   if (key === 'archive') archive.ingest(rows);   // גם לרשימת ההתרעות האחרונות
   let n = 0;
-  const by = new Map();
-  for (const o of rows) {
-    const at = ilTime(String(o.alertDate || ''));
-    if (!at || Date.now() - at > 90 * 1000) continue;
-    const title = o.title || o.category_desc || 'התראה';
-    const k = title + '|' + at;
-    if (!by.has(k)) by.set(k, { title, at, areas: [] });
-    by.get(k).areas.push(o.data);
-  }
-  for (const e of by.values()) { send(e.title, e.areas, key, e.at); n++; }
+  for (const e of P.historyGroups(rows)) { send(e.title, e.areas, key, e.at); n++; }
   return n;
 }
 

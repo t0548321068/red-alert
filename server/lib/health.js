@@ -58,7 +58,19 @@ function checkDisk() {
   else if (lvl === 0 && diskLevel > 0) adminPush(`✅ הדיסק בשרת חזר לתקין (${diskPct}%)`);
   diskLevel = lvl;
 }
-function watchDisk() { setTimeout(checkDisk, 2 * 60 * 1000); setInterval(checkDisk, 30 * 60 * 1000); }
+function watchDisk() {
+  setTimeout(checkDisk, 2 * 60 * 1000); setInterval(checkDisk, 30 * 60 * 1000);
+  setTimeout(checkUpdateFailed, 60 * 1000); setInterval(checkUpdateFailed, 60 * 1000);
+}
+
+// ---- עדכון עצמי שנכשל (deploy/selfupdate.sh חזר לגרסה הקודמת) - התראה לך ----
+const FAILED_FILE = '/home/ubuntu/update_failed';
+const WHY = { tests: 'הבדיקות האוטומטיות נכשלו', syntax: 'שגיאה בקוד', npm: 'התקנת רכיבים נכשלה', 'not running': 'השרת לא עלה', 'no answer': 'השרת לא ענה' };
+function checkUpdateFailed() {
+  let why;
+  try { why = fs.readFileSync(FAILED_FILE, 'utf8').trim(); fs.unlinkSync(FAILED_FILE); } catch (_) { return; }
+  adminPush(`⚠️ עדכון השרת לא עלה (${WHY[why] || why}) – השרת ממשיך לעבוד בגרסה הקודמת`);
+}
 /** מעל 90% - לא שומרים עוד רחובות בדיסק (רק מעבירים), כדי לא לפגוע בהתרעות */
 const diskCritical = () => diskLevel >= 2;
 
