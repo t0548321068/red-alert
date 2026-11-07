@@ -297,25 +297,36 @@ internal fun MainActivity.showCustomStyles() = ouiPage("התאמה אישית") 
     ouiNote(body, "התרעות – אדום · מבזקים והנחיות – כתום · עדכונים – ירוק\nבמצב שבת כל ההתרעות במסך מלא")
 }
 
+/** בחירת סוג התצוגה לנושא: אותן הדמיות כמו בסוג התצוגה הכללי, בצבע הנושא */
 private fun MainActivity.chooseTopicStyle(level: Int, name: String, done: () -> Unit) = ouiPage(name, onClose = done) { body, rebuild ->
-    val c = ouiCard()
+    val color = AlertUi.color(level)
     val cur = Prefs.topicStyle(this, level)
+    val c = ouiCard()
+    c.addView(text("סוג תצוגה", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+    val opts = LinearLayout(this).apply { setPadding(dp(6), dp(10), dp(6), dp(16)) }
+    STYLE_NAMES.forEachIndexed { i, label ->
+        opts.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            addView(alertStylePreview(i, color), LinearLayout.LayoutParams(dp(58), dp(116)))
+            addLabelRadio(this, label, cur == i)
+            setOnClickListener { Prefs.setTopicStyle(this@chooseTopicStyle, level, i); rebuild() }
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+    }
+    c.addView(opts)
+    ouiDivider(c)
     ouiRow(c, "כמו הכללי", sub = STYLE_NAMES[Prefs.alertStyle(this)], radio = cur !in 0..3) {
         Prefs.setTopicStyle(this, level, -1); rebuild() }
-    STYLE_NAMES.forEachIndexed { i, n ->
-        ouiDivider(c)
-        ouiRow(c, n, radio = cur == i) { Prefs.setTopicStyle(this, level, i); rebuild() }
-    }
     ouiAdd(body, c)
 }
 
 /** הדמיה קטנה של סוג תצוגת ההתרעה: 0 מסך מלא · 1 פופ-אפ · 2 כרטיס · 3 ממוזער */
-internal fun MainActivity.alertStylePreview(kind: Int): View {
+internal fun MainActivity.alertStylePreview(kind: Int, color: String = "#6E6E73"): View {
     fun rect(c: String, r: Int) = GradientDrawable().apply { setColor(Color.parseColor(c)); cornerRadius = dp(r).toFloat() }
     // בהיר / חשוך לפי ערכת הצבעים
     val bg = if (C.LIGHT) "#D9D9DC" else "#2B2B2E"
     val block = if (C.LIGHT) "#BDBDC2" else "#3E3E42"
-    val red = "#6E6E73"   // אפור ניטרלי: סוג התצוגה חל על כל הנושאים (אדום, כתום וירוק)
+    val red = color   // בכללי אפור ניטרלי (חל על כל הנושאים); בהתאמה אישית - צבע הנושא
     val f = FrameLayout(this).apply { background = rect(bg, 10); clipToOutline = true }
     // רשימת כרטיסים עם רווח שווה; בכרטיס/ממוזער - ההתרעה היא אחד הכרטיסים ברשימה
     val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(5), dp(5), dp(5), dp(5)) }
