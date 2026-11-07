@@ -35,21 +35,19 @@ import com.tal.redalert.MainActivity.SameHeight
 
 /** עמוד התרעות: כל ההגדרות של ההתרעה במקום אחד */
 internal fun MainActivity.showAlertSettings() = ouiPage("הגדרות התרעות") { body, rebuild ->
-    // סוג תצוגת התרעה: הדמיה קטנה של כל סוג + בחירה (הועבר מעמוד תצוגה)
+    // סוג תצוגה: הגדרות מוכנות, או מותאם אישית לכל נושא
     val style = ouiCard()
-    style.addView(text("סוג תצוגת התרעה", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-    val opts = LinearLayout(this).apply { setPadding(dp(6), dp(10), dp(6), dp(16)) }
-    listOf("מסך מלא", "פופ-אפ", "כרטיס", "ממוזער").forEachIndexed { i, label ->
-        val sel = Prefs.alertStyle(this) == i
-        opts.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            addView(alertStylePreview(i), LinearLayout.LayoutParams(dp(58), dp(116)))
-            addLabelRadio(this, label, sel)
-            setOnClickListener { Prefs.setAlertStyle(this@showAlertSettings, i); rebuild() }
-        }, LinearLayout.LayoutParams(0, -2, 1f))
+    style.addView(text("סוג תצוגה", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+    val cur = (0..2).map { Prefs.alertStyle(this, it) }
+    val preset = STYLE_PRESETS.indexOfFirst { it.third == cur }
+    STYLE_PRESETS.forEachIndexed { i, (label, sub, v) ->
+        if (i > 0) ouiDivider(style)
+        ouiRow(style, label, sub = sub, radio = preset == i) {
+            v.forEachIndexed { lvl, st -> Prefs.setAlertStyle(this, lvl, st) }; rebuild() }
     }
-    style.addView(opts)
+    ouiDivider(style)
+    ouiRow(style, "מותאם אישית", sub = if (preset < 0) cur.joinToString(" · ") { STYLE_NAMES[it] } else "בוחרים לכל נושא בנפרד",
+        radio = preset < 0) { chooseCustomStyles { rebuild() } }
     ouiDivider(style)
     ouiRow(style, "תצוגה מקדימה", sub = "רק איך זה נראה – בלי צליל ורטט") { choosePreview() }
     ouiDivider(style)
@@ -271,12 +269,13 @@ internal fun MainActivity.previewAlertStyle(title: String = "ירי רקטות �
     val shelter = if (level == AlertService.LEVEL_ALERT) AreaData.shelterSeconds(this, listOf(body)) ?: 90 else -1
     val now = System.currentTimeMillis()
     val src = "תצוגה מקדימה"
-    val full = Intent(this, if (Prefs.alertStyle(this) == 1) AlertPopupActivity::class.java else AlertActivity::class.java)
+    val st = Prefs.alertStyle(this, level)
+    val full = Intent(this, if (st == 1) AlertPopupActivity::class.java else AlertActivity::class.java)
         .putExtra("title", title).putExtra("body", body).putExtra("level", level)
         .putExtra("shelter", shelter).putExtra("firedAt", now).putExtra("source", src)
         .putExtra("autoCloseMs", 20_000L).putExtra("mapAreas", body)
     // עמודי ההגדרות נשארים פתוחים - בסגירת התצוגה המקדימה חוזרים אליהם
-    when (Prefs.alertStyle(this)) {
+    when (st) {
         0, 1 -> startActivity(full)
         2 -> {
             // הכרטיס נמצא במסך הראשי: מסתירים את עמודי ההגדרות זמנית, ומחזירים בסיום (20 שניות או ✕)
@@ -295,6 +294,42 @@ internal fun MainActivity.previewAlertStyle(title: String = "ירי רקטות �
     }
 }
 
+internal val STYLE_NAMES = listOf("מסך מלא", "פופ-אפ", "כרטיס", "ממוזער")
+/** הגדרות מוכנות: (שם, הסבר, סוג לכל נושא - התרעה / מבזקים והנחיות / עדכונים) */
+internal val STYLE_PRESETS = listOf(
+    Triple("הכל במסך מלא", "כל הנושאים קופצים על כל המסך", listOf(0, 0, 0)),
+    Triple("רק התרעות במסך מלא", "מבזקים ככרטיס, עדכונים ממוזער", listOf(0, 2, 3)),
+    Triple("הכי שקט", "התרעות בפופ-אפ, השאר ממוזער", listOf(1, 3, 3)))
+
+/** מותאם אישית: לכל נושא ארבע הדמיות קטנות בצבע שלו */
+internal fun MainActivity.chooseCustomStyles(done: () -> Unit) = ouiPage("מותאם אישית", onClose = done) { body, rebuild ->
+    listOf(Triple("התרעות", AlertService.LEVEL_ALERT, "#D50000"),
+        Triple("מבזקים והנחיות", AlertService.LEVEL_PRE, AlertUi.color(AlertService.LEVEL_PRE)),
+        Triple("עדכונים", AlertService.LEVEL_END, AlertUi.color(AlertService.LEVEL_END))).forEach { (label, lvl, col) ->
+        val c = ouiCard()
+        c.addView(LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(14), dp(18), dp(4))
+            addView(View(this@chooseCustomStyles).apply {
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(col)) } },
+                LinearLayout.LayoutParams(dp(10), dp(10)).apply { marginEnd = dp(8) })
+            addView(text(label, 16f, C.TEXT))
+        })
+        val opts = LinearLayout(this).apply { setPadding(dp(6), dp(10), dp(6), dp(16)) }
+        STYLE_NAMES.forEachIndexed { i, name ->
+            val sel = Prefs.alertStyle(this, lvl) == i
+            opts.addView(LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                addView(alertStylePreview(i, col), LinearLayout.LayoutParams(dp(58), dp(116)))
+                addLabelRadio(this, name, sel)
+                setOnClickListener { Prefs.setAlertStyle(this@chooseCustomStyles, lvl, i); rebuild() }
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        c.addView(opts)
+        ouiAdd(body, c)
+    }
+}
+
 /** סוף התצוגה המקדימה של הכרטיס: הכרטיס נעלם ועמודי ההגדרות חוזרים */
 internal fun MainActivity.endCardPreview() {
     previewAlert = null
@@ -303,12 +338,11 @@ internal fun MainActivity.endCardPreview() {
 }
 
 /** הדמיה קטנה של סוג תצוגת ההתרעה: 0 מסך מלא · 1 פופ-אפ · 2 כרטיס · 3 ממוזער */
-internal fun MainActivity.alertStylePreview(kind: Int): View {
+internal fun MainActivity.alertStylePreview(kind: Int, red: String = "#D50000"): View {
     fun rect(c: String, r: Int) = GradientDrawable().apply { setColor(Color.parseColor(c)); cornerRadius = dp(r).toFloat() }
     // בהיר / חשוך לפי ערכת הצבעים
     val bg = if (C.LIGHT) "#D9D9DC" else "#2B2B2E"
     val block = if (C.LIGHT) "#BDBDC2" else "#3E3E42"
-    val red = "#D50000"
     val f = FrameLayout(this).apply { background = rect(bg, 10); clipToOutline = true }
     // רשימת כרטיסים עם רווח שווה; בכרטיס/ממוזער - ההתרעה היא אחד הכרטיסים ברשימה
     val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(5), dp(5), dp(5), dp(5)) }

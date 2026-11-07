@@ -657,7 +657,7 @@ class AlertService : Service() {
         val quiet = !shabbat && level != LEVEL_ALERT && Prefs.isQuietNow(this)
         val shelterSec = shelter ?: if (level == LEVEL_ALERT) AreaData.shelterSeconds(this, areas) else null
         // סוג התצוגה מההגדרות (במצב שבת - תמיד מסך מלא)
-        val style = if (shabbat) 0 else Prefs.alertStyle(this)
+        val style = if (shabbat) 0 else Prefs.alertStyle(this, level)   // לכל נושא סוג משלו
         val now0 = System.currentTimeMillis()
         // לכרטיס מעל השעון במסך הראשי (מוצג עד סוף האירוע, גם אחרי סגירת המסך)
         Prefs.setActiveAlert(this, org.json.JSONObject().put("title", title).put("body", body).put("level", level)

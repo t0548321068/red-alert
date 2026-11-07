@@ -346,6 +346,9 @@ object Prefs {
 
     /** סוג תצוגת התרעה: 0 מסך מלא · 1 פופ-אפ · 2 כרטיס מעל השעון · 3 ממוזער */
     fun alertStyle(c: Context) = sp(c).getInt("alertStyle", 0)
+    /** סוג התצוגה לכל נושא: 0 התרעה (אדום) · 1 מבזקים והנחיות (כתום) · 2 עדכונים (ירוק). בהתחלה - הבחירה הקודמת (אחת לכולם) */
+    fun alertStyle(c: Context, level: Int) = sp(c).getInt("alertStyle$level", alertStyle(c))
+    fun setAlertStyle(c: Context, level: Int, v: Int) = sp(c).edit().putInt("alertStyle$level", v).apply()
     /** מפה במסך ההתרעה (מסך מלא ופופ-אפ) */
     fun alertMap(c: Context) = sp(c).getBoolean("alertMap", true)
     fun setAlertMap(c: Context, v: Boolean) = sp(c).edit().putBoolean("alertMap", v).apply()
