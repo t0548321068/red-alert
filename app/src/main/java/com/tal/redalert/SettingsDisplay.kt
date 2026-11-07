@@ -80,7 +80,7 @@ internal fun MainActivity.showDisplay() {
     /** שורה: שם + מצב בכחול + מתג. open = לחיצה על השם פותחת הגדרה נוספת (והמתג לבד מדליק/מכבה) */
     fun row(c: LinearLayout, title: String, sub: String = "", on: Boolean? = null, sep: Boolean = true,
             open: (() -> Unit)? = null, click: () -> Unit) {
-        // גובה קבוע כמו בסמסונג: שורה רגילה 48, שורה עם מצב מתחת 56 (המתג לא מגביה)
+        // גובה קבוע לכל השורות - כמו במסך ההגדרות הראשי (המתג לא מגביה)
         val r = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(18), 0, dp(18), 0)
@@ -98,7 +98,7 @@ internal fun MainActivity.showDisplay() {
                 r.addView(OuiSwitch(this, on, C.LIGHT).apply { isClickable = false })
             }
         }
-        c.addView(r, LinearLayout.LayoutParams(-1, dp(if (sub.isEmpty()) 48 else 56)))
+        c.addView(r, LinearLayout.LayoutParams(-1, dp(ROW_H)))   // כמו שורות מסך ההגדרות הראשי
     }
     fun rebuild() {
         body.removeAllViews()
