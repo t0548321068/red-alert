@@ -71,6 +71,17 @@
             android:launchMode="singleTop"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
+        <!-- כרטיס / ממוזער על מסך נעול: רק הרצועה בראש מסך הנעילה -->
+        <activity
+            android:name=".LockAlertActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=".lock"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <!-- התראות מיידיות מהשרת (Firebase) -->
         <!-- כפתורים בהגדרות המהירות: מצב ההגנה, השתקה זמנית, מצב שבת -->
         <service android:name=".StatusTile" android:exported="true" android:label="צופר חירום"
