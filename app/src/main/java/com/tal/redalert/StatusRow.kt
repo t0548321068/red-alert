@@ -245,19 +245,6 @@ internal fun MainActivity.blinkServer(on: Boolean) {
     }
 }
 
-/** לחיצה על חיווי הרשת: הודעה קצרה עם סוג החיבור (כמו "מעדכן מיקום…") */
-internal fun MainActivity.showNetworkInfo() {
-    val net = network()
-    val msg = when {
-        net == null -> "אין רשת – התרעות לא יגיעו"
-        !net.second -> "מחובר, אבל אין אינטרנט"
-        net.first == "wifi" -> "מחובר ל-Wi-Fi"
-        net.first == "cell" -> "מחובר לנתונים ניידים"
-        else -> "מחובר לאינטרנט"
-    }
-    android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
-}
-
 internal fun MainActivity.onLocationIndicator() {
     when {
         !hasLocationPerm() || !hasPrecise() -> onWeatherClick()
@@ -299,7 +286,28 @@ internal fun MainActivity.agoText(t: Long): String {
     }
 }
 
-internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
+/** מצב הקשר לשרת - משותף לעמוד הרשת ולעמוד המקורות */
+private class SrvState(val on: Boolean, val hb: Long, val srvOk: Boolean, val connecting: Boolean, val by: String, val secSt: String, val relSt: String)
+
+private fun MainActivity.srvState(): SrvState {
+    val on = Prefs.enabled(this)
+    val (by, secSt, relSt) = AlertService.chain(this)
+    return SrvState(on, AlertService.serverHbAt(this), AlertService.serverOk(this), on && serverConnecting(), by, secSt, relSt)
+}
+
+/** עמודים שמתעדכנים בלייב כל שנייה כל עוד הם פתוחים */
+private fun MainActivity.liveRefresh(body: LinearLayout, rebuild: () -> Unit) {
+    (body.tag as? Runnable)?.let { ui.removeCallbacks(it) }
+    val live = object : Runnable { override fun run() {
+        if (!body.isAttachedToWindow) return
+        if (hasWindowFocus()) rebuild() else ui.postDelayed(this, 1000)   // ברקע - לא בונים את העמוד מחדש
+    } }
+    body.tag = live
+    ui.postDelayed(live, 1000)
+}
+
+/** לחיצה על חיווי הרשת: עמוד הרשת - סוג החיבור, השרת, מקור הבדיקה ושרשרת הגיבוי, עם כפתור בדיקה */
+internal fun MainActivity.showNetworkInfo() = ouiPage("רשת",
     button = "בדיקה" to { done ->
         Thread {
             val up = PushService.checkServer()
@@ -311,30 +319,35 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
             }
         }.start()
     }) { body, rebuild ->
-    val on = Prefs.enabled(this)
-    // השרת שלנו: בודק את כל המקורות כל שנייה ושולח לטלפון. בלי סימן חיים 35 דקות - הטלפון בודק בעצמו
-    val hb = AlertService.serverHbAt(this)
-    val srvOk = AlertService.serverOk(this)
-    // סימן החיים הראשון מגיע תוך 10 דקות מהפעלת ההאזנה - עד אז "מתחבר"
-    val srvConnecting = on && serverConnecting()
+    val st = srvState(); val on = st.on; val hb = st.hb; val srvOk = st.srvOk; val by = st.by
     // הבדיקה האחרונה (כפתור) נכשלה ואין סימן חיים חדש יותר
     val checkFailed = srvCheckAt > hb && srvCheckUp == null
     val sum = ouiCard()
+    // 0. סוג החיבור (מה שהופיע קודם בהודעה הקצרה)
+    val net = network()
+    val (netLabel, netColor) = when {
+        net == null -> "אין רשת" to C.RED
+        !net.second -> "אין אינטרנט" to C.ORANGE
+        net.first == "wifi" -> "Wi-Fi" to C.GREEN
+        net.first == "cell" -> "נתונים ניידים" to C.GREEN
+        else -> "מחובר" to C.GREEN
+    }
+    ouiRow(sum, "חיבור", end = netLabel, endColor = netColor)
+    ouiDivider(sum)
     // 1. שרת התרעות
     val (srvLabel, srvColor) = when {
         !on -> "כבוי" to C.MUTED
         checkFailed -> "לא עונה" to C.RED
         srvOk -> "מחובר" to C.GREEN
-        srvConnecting -> "מתחבר…" to C.ORANGE
+        st.connecting -> "מתחבר…" to C.ORANGE
         else -> "מנותק" to C.RED
     }
     ouiRow(sum, "שרת התרעות", sub = if (hb > 0) "סימן חיים ${agoText(hb)}" else "עוד לא התקבל סימן חיים",
         subColor = C.MUTED, end = srvLabel, endColor = srvColor)
     ouiDivider(sum)
     // 2. מקור הבדיקה: השרת הראשי / המשני / הממסר בבית, או הטלפון עצמו
-    val (by, secSt, relSt) = AlertService.chain(this)
     val byName = when (by) { "secondary" -> "שרת משני (Cloudflare)"; "relay" -> "ממסר"; else -> "שרת ראשי (Oracle)" }
-    ouiRow(sum, "מקור הבדיקה", end = if (!on) "—" else if (srvOk) byName else if (srvConnecting) "טלפון (זמנית)" else "טלפון",
+    ouiRow(sum, "מקור הבדיקה", end = if (!on) "—" else if (srvOk) byName else if (st.connecting) "טלפון (זמנית)" else "טלפון",
         endColor = if (!on) C.MUTED else if (srvOk && by == "primary") C.GREEN else C.ORANGE)
     ouiDivider(sum)
     // 3. בדיקה אחרונה
@@ -342,8 +355,29 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
     ouiRow(sum, "בדיקה אחרונה", end = if (on) agoText(last) else "—", endColor = C.MUTED)
     ouiAdd(body, sum)
     if (!on) ouiNote(body, "ההאזנה כבויה")
-    else ouiNote(body, (if (srvOk) "השרת בודק את כל המקורות כל כמה שניות ושולח לטלפון רק כשיש התרעה – חוסך סוללה"
-        else "כשהשרת לא זמין, הטלפון בודק את המקורות בעצמו") + "\nההתרעה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד")
+    else ouiNote(body, if (srvOk) "השרת בודק את כל המקורות כל כמה שניות ושולח לטלפון רק כשיש התרעה – חוסך סוללה"
+        else "כשהשרת לא זמין, הטלפון בודק את המקורות בעצמו")
+    // שרשרת הגיבוי: ראשי ← משני ← ממסר ← הטלפון
+    if (on) {
+        val ch = ouiCard()
+        ch.addView(text("שרשרת הגיבוי", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+        fun stl(s: String) = when (s) { "active" -> "פעיל" to C.ORANGE; "standby" -> "בהמתנה" to C.GREEN; "down" -> "לא עונה" to C.RED; "off" -> "לא מחובר" to C.MUTED; else -> "—" to C.MUTED }
+        val p = if (srvOk && by == "primary") "פעיל" to C.GREEN else "לא עונה" to C.RED
+        val s2 = if (srvOk && by == "secondary") "פעיל" to C.ORANGE else if (by == "relay") "לא עונה" to C.RED else stl(st.secSt)
+        val r3 = if (srvOk && by == "relay") "פעיל" to C.ORANGE else stl(st.relSt)
+        ouiRow(ch, "1. שרת ראשי (Oracle)", end = p.first, endColor = p.second); ouiDivider(ch)
+        ouiRow(ch, "2. שרת משני (Cloudflare)", sub = "נכנס כשהראשי לא עונה", subColor = C.MUTED, end = s2.first, endColor = s2.second); ouiDivider(ch)
+        ouiRow(ch, "3. ממסר בבית", sub = "נכנס כששני השרתים לא עונים", subColor = C.MUTED, end = r3.first, endColor = r3.second); ouiDivider(ch)
+        ouiRow(ch, "4. הטלפון הזה", sub = if (srvOk) "לא בודק בעצמו – חוסך סוללה" else "בודק את המקורות בעצמו",
+            subColor = C.MUTED, end = if (srvOk) "בהמתנה" else "פעיל", endColor = if (srvOk) C.GREEN else C.ORANGE)
+        ouiAdd(body, ch)
+    }
+    liveRefresh(body, rebuild)
+}
+
+/** לחיצה על חיווי השרת: רשימת המקורות ומצב כל אחד */
+internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה") { body, rebuild ->
+    val st = srvState(); val on = st.on; val srvOk = st.srvOk; val by = st.by
     val list = ouiCard()
     val via = AlertService.viaMap(this)
     // בראש הרשימה: כמה מקורות מחוברים - המספר בצבע: כולם ירוק, חלק כתום, אף אחד אדום
@@ -371,29 +405,8 @@ internal fun MainActivity.showSourcesInfo() = ouiPage("מקורות התרעה",
         ouiRow(list, name, sub = from, subColor = C.MUTED, end = label, endColor = color)
     }
     ouiAdd(body, list)
-    // שרשרת הגיבוי: ראשי ← משני ← ממסר ← הטלפון
-    if (on) {
-        val ch = ouiCard()
-        ch.addView(text("שרשרת הגיבוי", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-        fun st(s: String) = when (s) { "active" -> "פעיל" to C.ORANGE; "standby" -> "בהמתנה" to C.GREEN; "down" -> "לא עונה" to C.RED; "off" -> "לא מחובר" to C.MUTED; else -> "—" to C.MUTED }
-        val p = if (srvOk && by == "primary") "פעיל" to C.GREEN else "לא עונה" to C.RED
-        val s2 = if (srvOk && by == "secondary") "פעיל" to C.ORANGE else if (by == "relay") "לא עונה" to C.RED else st(secSt)
-        val r3 = if (srvOk && by == "relay") "פעיל" to C.ORANGE else st(relSt)
-        ouiRow(ch, "1. שרת ראשי (Oracle)", end = p.first, endColor = p.second); ouiDivider(ch)
-        ouiRow(ch, "2. שרת משני (Cloudflare)", sub = "נכנס כשהראשי לא עונה", subColor = C.MUTED, end = s2.first, endColor = s2.second); ouiDivider(ch)
-        ouiRow(ch, "3. ממסר בבית", sub = "נכנס כששני השרתים לא עונים", subColor = C.MUTED, end = r3.first, endColor = r3.second); ouiDivider(ch)
-        ouiRow(ch, "4. הטלפון הזה", sub = if (srvOk) "לא בודק בעצמו – חוסך סוללה" else "בודק את המקורות בעצמו",
-            subColor = C.MUTED, end = if (srvOk) "בהמתנה" else "פעיל", endColor = if (srvOk) C.GREEN else C.ORANGE)
-        ouiAdd(body, ch)
-    }
-    // מתעדכן בלייב כל שנייה כל עוד העמוד פתוח
-    (body.tag as? Runnable)?.let { ui.removeCallbacks(it) }
-    val live = object : Runnable { override fun run() {
-        if (!body.isAttachedToWindow) return
-        if (hasWindowFocus()) rebuild() else ui.postDelayed(this, 1000)   // ברקע - לא בונים את העמוד מחדש
-    } }
-    body.tag = live
-    ui.postDelayed(live, 1000)
+    ouiNote(body, if (on) "ההתרעה מוצגת מהמקור שהגיע הכי מהר, פעם אחת בלבד" else "ההאזנה כבויה")
+    liveRefresh(body, rebuild)
 }
 
 // ---- מה חדש ----
