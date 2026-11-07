@@ -28,7 +28,7 @@ import android.widget.TextView
 // המסך הראשי: מזג אוויר ודיוק המיקום שמוצג
 
 /** מתעדכן כל 15 דקות, או מיד כשמכריחים (לחיצה על השורה) */
-internal fun MainActivity.updateWeather(force: Boolean = false) {
+internal fun MainActivity.updateWeather(force: Boolean = false, manual: Boolean = false) {
     if (!Prefs.showWeather(this)) { weatherLine.visibility = View.GONE; return }
     weatherLine.visibility = View.VISIBLE
     if (!hasLocationPerm()) {
@@ -39,7 +39,8 @@ internal fun MainActivity.updateWeather(force: Boolean = false) {
     if (!force && System.currentTimeMillis() - weatherAt < Prefs.weatherMinutes(this) * 60 * 1000L) return
     weatherAt = System.currentTimeMillis()
     // כשכבר מוצג מזג אוויר - נשאר עד שמגיע החדש (בלי להבהב "מאתר מיקום")
-    if (!weatherShown) {
+    // בלחיצה על חיווי המיקום - רואים שהוא מתעדכן
+    if (!weatherShown || manual) {
         weatherLine.text = "מאתר מיקום מדויק…"
         weatherLine.setTextColor(C.MUTED)
     }
@@ -54,7 +55,7 @@ internal fun MainActivity.updateWeather(force: Boolean = false) {
         if (loc == null) {
             if (shown == null) {
                 weatherRetrySoon()
-                if (!weatherShown) {   // מזג אוויר קודם נשאר על המסך
+                if (!weatherShown || manual) {   // מזג אוויר קודם נשאר על המסך (חוץ מלחיצה ידנית)
                     weatherLine.text = "📍 לא נמצא מיקום – לחץ כדי לנסות שוב"
                     weatherLine.setTextColor(C.MUTED)
                 }
@@ -64,8 +65,8 @@ internal fun MainActivity.updateWeather(force: Boolean = false) {
         // המיקום מהרשת גס (מאות מטרים) - שם השכונה לפיו יכול להיות של השכונה הסמוכה.
         // כשמגיע המיקום המדויק - טוענים שוב (גם השם), אלא אם המיקום הראשון כבר היה מדויק וקרוב
         val first = shown
-        keepAccuracy(loc)
-        if (first == null || first.accuracy > 50f || loc.distanceTo(first) > 300f) loadWeather(loc)
+        keepAccuracy(loc, manual)
+        if (manual || first == null || first.accuracy > 50f || loc.distanceTo(first) > 300f) loadWeather(loc)
     }
 }
 
@@ -73,12 +74,12 @@ internal fun MainActivity.updateWeather(force: Boolean = false) {
  * חיווי הדיוק יציב: מציג את הדיוק הטוב ביותר שנמדד לאחרונה (נשמר גם אחרי סגירה ופתיחה).
  * מתעדכן רק כשה-GPS מוצא דיוק טוב יותר, כשזזת (מעל 200 מטר), או כשהמדידה האחרונה בת יותר מחצי שעה
  */
-internal fun MainActivity.keepAccuracy(loc: android.location.Location) {
+internal fun MainActivity.keepAccuracy(loc: android.location.Location, manual: Boolean = false) {
     val m = Math.round(loc.accuracy)
     val (prev, at, pos) = Prefs.lastAcc(this)
     val moved = FloatArray(1).also { android.location.Location.distanceBetween(pos.first, pos.second, loc.latitude, loc.longitude, it) }[0] > 200f
     val stale = System.currentTimeMillis() - at > 30 * 60_000L
-    if (prev <= 0 || m <= prev || moved || stale) {
+    if (manual || prev <= 0 || m <= prev || moved || stale) {   // בלחיצה ידנית - המדידה הנוכחית
         Prefs.setLastAcc(this, m, loc.latitude, loc.longitude)
         weatherAccuracy = m
     }
