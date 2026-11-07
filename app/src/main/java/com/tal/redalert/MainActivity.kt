@@ -180,6 +180,11 @@ class MainActivity : Activity() {
     /** רווח אחיד בין כרטיס לכרטיס במסך הראשי */
     internal val GAP = 12
 
+    /** התרעה חדשה כשהמסך הראשי מאחורי פופ-אפ / ממוזער: הצבע והכרטיס מתעדכנים מיד (בלי לחכות לחזרה למסך) */
+    private val alertListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == "activeAlert" || key == "alertDismissed") ui.post { if (::alertWrap.isInitialized) updateAlertCard() }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         val dark = Prefs.darkTheme(this)
         setTheme(if (dark) android.R.style.Theme_DeviceDefault_NoActionBar
@@ -461,6 +466,7 @@ class MainActivity : Activity() {
             }
         }
         setContentView(scroll)
+        Prefs.listen(this, alertListener)
         // מסך שבת עם שעון: מופיע מעל מסך הנעילה; בכניסת השבת (מהתזמון) - גם מדליק את המסך
         if (android.os.Build.VERSION.SDK_INT >= 27 && Shabbat.active(this) && Prefs.shabbatClock(this)) {
             setShowWhenLocked(true)
@@ -561,6 +567,7 @@ class MainActivity : Activity() {
 
     /** המסך נסגר / נבנה מחדש (סיבוב, החלפת ערכת צבעים) - סוגרים עמודים וטיימרים שלא יישארו תלויים */
     override fun onDestroy() {
+        Prefs.unlisten(this, alertListener)
         // בלי להפעיל את פעולות הסגירה של העמודים (למשל טעינה מחדש אחרי החלפת ערכת צבעים)
         pages.toList().forEach { try { it.setOnDismissListener(null); it.dismiss() } catch (_: Exception) { } }
         pages.clear()

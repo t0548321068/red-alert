@@ -50,8 +50,10 @@ internal fun MainActivity.updateAlertCard() {
     val firedAt = j?.optLong("firedAt") ?: 0L
     // בתצוגה "ממוזער" אין כרטיס במסך הראשי כל עוד החלון הקטן פתוח (כפילות); אחרי שנסגר - הכרטיס מופיע
     val mini = !Shabbat.active(this) && MiniOverlay.isShowing()   // גם "אחרי סגירה: ממוזער"
-    if (j == null || mini || AlertUi.expired(level, firedAt) || Prefs.alertDismissed(this) == firedAt) {
-        applyMainTint(null)
+    val active = j != null && !AlertUi.expired(level, firedAt) && Prefs.alertDismissed(this) != firedAt
+    if (!active || mini) {
+        // המסך הראשי נצבע בצבע ההתרעה כל עוד היא פעילה - גם כשהיא מוצגת בממוזער או בפופ-אפ (בלי כרטיס)
+        applyMainTint(if (active) level else null)
         if (alertWrap.visibility != View.GONE) alertWrap.visibility = View.GONE
         setScrollMode(false)
         alertCardKey = ""; return

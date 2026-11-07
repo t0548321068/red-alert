@@ -10,6 +10,9 @@ object Prefs {
 
     // הגדרות נשמרות מיד לדיסק (commit) - שלא ילכו לאיבוד אם האפליקציה נסגרת לעדכון
     private fun sp(c: Context) = c.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+    /** האזנה לשינוי בהגדרות (למשל התרעה פעילה חדשה) - גם כשהמסך הראשי ברקע */
+    fun listen(c: Context, l: android.content.SharedPreferences.OnSharedPreferenceChangeListener) = sp(c).registerOnSharedPreferenceChangeListener(l)
+    fun unlisten(c: Context, l: android.content.SharedPreferences.OnSharedPreferenceChangeListener) = sp(c).unregisterOnSharedPreferenceChangeListener(l)
 
     /**
      * יישובים/אזורים שנבחרו. נשמר כמערך JSON - יש שמות עם פסיק בתוכם ("אשדוד - א,ב,ד,ה"),
