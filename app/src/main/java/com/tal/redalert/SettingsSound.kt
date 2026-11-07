@@ -52,6 +52,9 @@ internal fun MainActivity.showSoundSettings() = ouiPage("צלילים ורטט")
         on = vib, onToggle = { Prefs.setVibesOn(this, !vib); rebuild() }) {
         openNotificationSettings() }
     ouiDivider(c)
+    ouiRow(c, "הקראה", sub = onOff(Prefs.speakAlerts(this)), on = Prefs.speakAlerts(this),
+        onToggle = { Prefs.setSpeakAlerts(this, !Prefs.speakAlerts(this)); rebuild() }) { showSpeech() }
+    ouiDivider(c)
     val loud = Prefs.loudSound(this)
     ouiRow(c, "צליל חזק", sub = if (loud) "תמיד בעוצמה מלאה – גם כשהעוצמה נמוכה, בשעות שקט ובמצב שקט" else "כבוי", on = loud) {
         Prefs.setLoudSound(this, !loud); rebuild() }
