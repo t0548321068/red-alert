@@ -61,6 +61,8 @@ internal fun MainActivity.headerIcon(res: Int, click: () -> Unit) = android.widg
 
 /** שוליים מהצדדים לכרטיסים - כמו במסך הראשי */
 internal const val PAGE_SIDE = 16
+/** גובה שורה בכל מסכי ההגדרות - כמו במסך ההגדרות הראשי (אייקון 34 + 12 למעלה ולמטה) */
+internal const val ROW_H = 58
 
 internal fun MainActivity.graphite(@Suppress("UNUSED_PARAMETER") radius: Int) = GradientDrawable().apply {
     setColor(C.CARD2); cornerRadius = dp(28).toFloat() }
@@ -218,7 +220,7 @@ internal fun MainActivity.ouiRow(c: LinearLayout, title: String, sub: String = "
     if (on != null && onToggle != null) switchZone(r, on, dp(18)) { onToggle() }
     else if (on != null) r.addView(OuiSwitch(this, on, C.LIGHT).apply { isClickable = false },
         LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
-    c.addView(r, LinearLayout.LayoutParams(-1, dp(if (sub.isEmpty()) 48 else 56)))
+    c.addView(r, LinearLayout.LayoutParams(-1, dp(ROW_H)))   // כמו שורות מסך ההגדרות הראשי
 }
 
 /** טקסט חופשי בתוך כרטיס (הסברים, מה חדש) */

@@ -219,7 +219,7 @@ internal fun MainActivity.chooseTest() = ouiPage("בדיקת התרעה") { body
                 pages.toList().forEach { it.dismiss() }
                 refresh()
             }
-        }, LinearLayout.LayoutParams(-1, dp(56)))
+        }, LinearLayout.LayoutParams(-1, dp(ROW_H)))
     }
     ouiAdd(body, c)
     ouiNote(body, "ההתרעה נשלחת מיד, בדיוק כמו התרעה אמיתית")
