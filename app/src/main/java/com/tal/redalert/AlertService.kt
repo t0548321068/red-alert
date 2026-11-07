@@ -83,14 +83,15 @@ class AlertService : Service() {
         fun inEvent() = System.currentTimeMillis() - lastEventAt < 10 * 60 * 1000L
 
         /** היישובים מתוך ההתרעה שהם שלי: לפי המיקום + האזורים שהוספתי. אף פעם לא "כל הארץ" */
-        fun mine(c: Context, areas: List<String>): List<String> {
-            val manual = Prefs.cities(c)
-            val near = if (Prefs.nearMe(c)) Prefs.nearbyAreas(c) else emptyList()
-            return areas.filter { a ->
-                manual.any { f -> AreaData.matches(c, a, f) } ||   // יישוב או אזור שלם
+        fun mine(c: Context, areas: List<String>): List<String> =
+            mineOf(areas, Prefs.cities(c), if (Prefs.nearMe(c)) Prefs.nearbyAreas(c) else emptyList()) { a, f -> AreaData.matches(c, a, f) }
+
+        /** אותו דבר בלי טלפון (נבדק בבדיקות): picks - הבחירות שלי, near - האזורים סביב המיקום שלי */
+        fun mineOf(areas: List<String>, picks: List<String>, near: List<String>, matches: (String, String) -> Boolean): List<String> =
+            areas.filter { a ->
+                picks.any { f -> matches(a, f) } ||   // יישוב או אזור שלם
                     near.any { n -> n == a || n.startsWith("$a -") || a.startsWith("$n -") }
             }
-        }
 
         /**
          * גיבוי: התרעה מהשרת הגיעה כשהשירות לא רץ, ואנדרואיד לא הרשה להפעיל אותו -
@@ -312,15 +313,12 @@ class AlertService : Service() {
     /** סוג וזמן ההתרעה האחרונה שהוקפצה (לאיחוד מקורות לאותה שורה) */
     @Volatile private var lastFired: Pair<Int, Long>? = null
 
-    /** "יישוב|סוג" -> זמן האירוע - למניעת כפילות בין מקורות */
-    private val seen = HashMap<String, Long>()
-    private val seenFeed = HashMap<String, Long>()
+    /** מניעת כפילות בין מקורות (נבדק בבדיקות האוטומטיות) */
+    private val dedup = AlertDedup()
     private val DEDUP_MS = Prefs.DUP_MS
     /** התראות מאותו סוג בתוך דקה וחצי = אותו אירוע -> שורה אחת ברשימה */
     private val MERGE_MS = 90 * 1000L
-    private val ALERT_DUP_MS = 2 * 60 * 1000L
-    /** מזהה האירוע של פיקוד העורף לכל יישוב, ושל ההתרעה האחרונה שצלצלה - להבחין בין כפילות למטח חדש */
-    private val seenEid = HashMap<String, String>()
+    /** מזהה האירוע של פיקוד העורף של ההתרעה האחרונה שצלצלה - להבחין בין כפילות למטח חדש */
     private var lastFiredEid = ""
     /** האזורים של ההתרעה האחרונה שצלצלה (כולל מה שהצטרף אליה) */
     @Volatile private var lastFiredAreas: MutableSet<String> = mutableSetOf()
@@ -352,8 +350,6 @@ class AlertService : Service() {
     /** דור הצליל - ראו fire() */
     @Volatile private var soundGen = 0
 
-    /** מפתח ליישוב - אותו יישוב בכל המקורות ("תל אביב - מרכז העיר" = "תל אביב" = "תל-אביב") */
-    private fun key(area: String, level: Int) = Prefs.areaKey(area) + "|" + level
     private var wakeLock: PowerManager.WakeLock? = null
     /** השומר: כמה שניות ער - החיבורים מתחדשים ופיקוד העורף נבדק - ותזמון הבא */
     fun onWatchdog() {
@@ -781,32 +777,16 @@ class AlertService : Service() {
             .distinct()   // לפי השם המלא - "ירושלים - מרכז" ו"ירושלים - צפון" נשארים שניהם
 
         // פיד ארצי: כל ההתראות, לפני הסינון לפי אזורים (בלי צליל)
-        val feedNew = areas.filter { a ->
-            val prev = seenFeed[key(a, level)]
-            prev == null || eventTime - prev > DEDUP_MS
-        }
+        val feedNew = dedup.feedNew(areas, level, eventTime)
         if (feedNew.isNotEmpty()) {
-            feedNew.forEach { seenFeed[key(it, level)] = eventTime }
             val e = Prefs.Entry("", title, feedNew.joinToString(", "), level, now)
             later { try { Prefs.addFeed(this, e, MERGE_MS) } catch (_: Exception) { } }
         }
 
-        // ירי: אותו יישוב שוב אחרי יותר מ-2 דקות = מטח חדש (כמו בשרת). בשאר הסוגים - 5 דקות
-        val dup = if (level == LEVEL_ALERT) ALERT_DUP_MS else DEDUP_MS
-        val fresh = mine(this, areas)
-            .filter { a ->
-                val k = key(a, level)
-                val prev = seen[k]
-                if (prev == null || eventTime - prev > dup) return@filter true
-                // אותו יישוב בתוך החלון: מטח חדש רק אם זה אירוע אחר של פיקוד העורף (מזהה שונה).
-                // כבר התריע ממקור בלי מזהה (צופר / טלגרם) - זה אותו אירוע; זוכרים את המזהה שלו למטח הבא
-                if (eid.isEmpty()) return@filter false
-                val pe = seenEid[k] ?: run { seenEid[k] = eid; return@filter false }
-                pe != eid
-            }
+        // רק היישובים שלי, ובלי כפילות בין מקורות (מטח חדש - כן)
+        val fresh = dedup.fresh(mine(this, areas), level, eventTime, eid)
         if (fresh.isEmpty()) return
         awake(60_000)   // התרעה באזור שלי - הטלפון נשאר ער לזמן הטיפול בה
-        fresh.forEach { val k = key(it, level); seen[k] = eventTime; if (eid.isNotEmpty()) seenEid[k] = eid else seenEid.remove(k) }   // מזהה ישן לא נשאר למטח הבא
 
         // המקור הכי מהיר כבר התריע על האירוע הזה (לפני פחות מדקה וחצי) -
         // היישובים הנוספים מצטרפים לאותה שורה, בלי צליל ומסך נוספים.
