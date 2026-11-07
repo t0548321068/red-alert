@@ -1,4 +1,5 @@
 package com.tal.redalert
+import com.tal.redalert.MainActivity.C
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.NotificationManager
