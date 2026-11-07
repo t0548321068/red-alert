@@ -598,7 +598,7 @@ class MainActivity : Activity() {
     /** עיגול בחירה כמו בבחירת קבצים בסמסונג: טבעת, ובנבחר עיגול כחול מלא עם וי */
 
     /** on != null - השורה מציגה מתג (לחיצה על השורה מדליקה/מכבה) */
-    internal class Row(val icon: String, val title: String, val value: () -> String,
+    internal class Row(val icon: String, val title: String,
                       val on: (() -> Boolean)? = null, val toggle: (() -> Unit)? = null, val action: () -> Unit)
 
     /** קטגוריה פתוחה במגירת ההגדרות (נשמרת בין פתיחות) */

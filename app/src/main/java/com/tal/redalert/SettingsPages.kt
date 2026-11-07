@@ -49,16 +49,16 @@ internal fun MainActivity.showSettings() {
     }
     val cats = listOf(
         // הפעלה / כיבוי של האפליקציה - כמו הכפתור בשורת החיווי
-        "צופר חירום" to { listOf(Row("⏻", "הגנה", { protectionLabel() },
+        "צופר חירום" to { listOf(Row("⏻", "הגנה",
             on = { Prefs.enabled(this) }, toggle = { toggle() }) { showProtection() }) },
-        "תצוגה" to { listOf(Row("🎨", "תצוגה", { "ערכת צבעים · שעון · תאריך · מזג אוויר" }) { showDisplay() }) },
+        "תצוגה" to { listOf(Row("🎨", "תצוגה") { showDisplay() }) },
         "התרעות" to { listOf(
-            Row("🔔", "הגדרות התרעות", { "סוג תצוגה · מיקום · אזורים נוספים · צלילים ורטט · הקראה · בדיקה" }) { showAlertSettings() }) },
+            Row("🔔", "הגדרות התרעות") { showAlertSettings() }) },
         "הרשאות" to { phoneRows() },
         // עדכונים ואודות - כל אחד בכרטיס נפרד
-        "עדכונים" to { listOf(Row("⬆️", "בדיקת עדכונים", { "v" + Updater.versionLabel(this) }) { showUpdates() }) },
-        "אודות" to { listOf(Row("ℹ️", "אודות", { "" }) { showAbout() }) }
-        // יצירת קשר מושהית - כדי להחזיר: "יצירת קשר" to { listOf(Row("✉️", "יצירת קשר", { "דיווח על בעיה למפתח" }) { showContact() }) }
+        "עדכונים" to { listOf(Row("⬆️", "בדיקת עדכונים") { showUpdates() }) },
+        "אודות" to { listOf(Row("ℹ️", "אודות") { showAbout() }) }
+        // יצירת קשר מושהית - כדי להחזיר: "יצירת קשר" to { listOf(Row("✉️", "יצירת קשר") { showContact() }) }
     )
     fun rebuild() {
         body.removeAllViews()

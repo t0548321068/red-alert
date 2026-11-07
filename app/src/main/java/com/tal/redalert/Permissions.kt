@@ -34,10 +34,7 @@ import com.tal.redalert.MainActivity.SameHeight
 
 /** הרשאות: שורה אחת שפותחת מסך עם כל ההרשאות והמצב של כל אחת */
 internal fun MainActivity.phoneRows(): List<Row> = listOf(
-    Row("🛡", "הרשאות", {
-        val bad = permissionItems().count { !it.ok }
-        if (bad == 0) "הכול תקין ✓" else if (bad == 1) "הרשאה אחת דורשת טיפול" else "$bad הרשאות דורשות טיפול"
-    }) { showPermissions() }
+    Row("🛡", "הרשאות") { showPermissions() }
 )
 
 internal fun MainActivity.permissionItems(): List<Perm> {
