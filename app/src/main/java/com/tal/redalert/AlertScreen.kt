@@ -1,4 +1,16 @@
 package com.tal.redalert
+
+import com.tal.redalert.AlertService.Companion.CH_ALERT
+import com.tal.redalert.AlertService.Companion.CH_COUNT
+import com.tal.redalert.AlertService.Companion.CH_INFO
+import com.tal.redalert.AlertService.Companion.CH_NO_SOUND
+import com.tal.redalert.AlertService.Companion.CH_NO_VIBE
+import com.tal.redalert.AlertService.Companion.CH_QUIET
+import com.tal.redalert.AlertService.Companion.CH_SERVICE
+import com.tal.redalert.AlertService.Companion.CH_SILENT
+import com.tal.redalert.AlertService.Companion.CH_STAY
+import com.tal.redalert.AlertService.Companion.CH_UPDATE
+import com.tal.redalert.AlertService.Companion.CH_WATCH
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -25,7 +37,7 @@ import java.net.URL
 internal fun AlertService.overlayOk(): Boolean {
     if (android.provider.Settings.canDrawOverlays(this)) return true
     return try {
-        val ops = getSystemService(APP_OPS_SERVICE) as android.app.AppOpsManager
+        val ops = getSystemService(android.content.Context.APP_OPS_SERVICE) as android.app.AppOpsManager
         @Suppress("DEPRECATION")
         ops.checkOpNoThrow(android.app.AppOpsManager.OPSTR_SYSTEM_ALERT_WINDOW,
             android.os.Process.myUid(), packageName) == android.app.AppOpsManager.MODE_ALLOWED
@@ -38,7 +50,7 @@ internal fun AlertService.overlayOk(): Boolean {
  * אז מוסיפים חלון שקוף בגודל פיקסל, פותחים את המסך, ומסירים אותו אחרי כמה שניות.
  */
 internal fun AlertService.launchOver(i: Intent) = main.post {
-    val wm = getSystemService(WINDOW_SERVICE) as android.view.WindowManager
+    val wm = getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager
     var v: android.view.View? = null
     if (overlayOk()) try {
         v = android.view.View(this)
@@ -55,7 +67,7 @@ internal fun AlertService.launchOver(i: Intent) = main.post {
 }
 
 internal fun AlertService.wakeScreen() {
-    val pm = getSystemService(POWER_SERVICE) as PowerManager
+    val pm = getSystemService(android.content.Context.POWER_SERVICE) as PowerManager
     if (pm.isInteractive) return
     try {
         pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
@@ -64,14 +76,14 @@ internal fun AlertService.wakeScreen() {
 }
 
 internal fun AlertService.createChannels() {
-    val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    val nm = getSystemService(android.content.Context.NOTIFICATION_SERVICE) as NotificationManager
     nm.createNotificationChannel(
         NotificationChannel(CH_COUNT, "ספירה לאחור למרחב המוגן", NotificationManager.IMPORTANCE_LOW).apply {
             setSound(null, null); enableVibration(false)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         })
     nm.createNotificationChannel(
-        NotificationChannel(CH_SERVICE, "שירות רקע", NotificationManager.IMPORTANCE_MIN))
+        NotificationChannel(android.content.Context.CH_SERVICE, "שירות רקע", NotificationManager.IMPORTANCE_MIN))
     nm.createNotificationChannel(
         NotificationChannel(CH_ALERT, "התראות צופר חירום", NotificationManager.IMPORTANCE_HIGH).apply {
             // צליל ורטט - ברירת המחדל של הטלפון

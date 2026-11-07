@@ -1,4 +1,9 @@
 package com.tal.redalert
+
+import com.tal.redalert.AlertService.Companion.HEADSETS
+import com.tal.redalert.AlertService.Companion.LEVEL_ALERT
+import com.tal.redalert.AlertService.Companion.builtinSpeaker
+import com.tal.redalert.AlertService.Companion.start
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -22,7 +27,7 @@ import java.net.URL
 // שירות ההתרעות: צליל, עוצמה, מצב שקט / נא לא להפריע, אוזניות ושיחה
 
 /** מה שצריך להחזיר (נא לא להפריע / מצב צלצול / עוצמת שעון) - נשמר גם בקובץ, למקרה שהשירות נסגר באמצע */
-internal fun AlertService.restoreSp() = getSharedPreferences("restore", MODE_PRIVATE)
+internal fun AlertService.restoreSp() = getSharedPreferences("restore", android.content.Context.MODE_PRIVATE)
 
 /** השירות עלה מחדש אחרי שנסגר באמצע התרעה - מחזירים את ההגדרות למה שהיו */
 internal fun AlertService.restorePending() {
@@ -36,7 +41,7 @@ internal fun AlertService.restorePending() {
 
 internal fun AlertService.overrideDnd(force: Boolean = false): Unit = synchronized(audioLock) {
     if (!force && !Prefs.dndOverride(this)) return
-    val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    val nm = getSystemService(android.content.Context.NOTIFICATION_SERVICE) as NotificationManager
     if (!nm.isNotificationPolicyAccessGranted) return
     val cur = nm.currentInterruptionFilter
     if (cur == NotificationManager.INTERRUPTION_FILTER_ALL) return
@@ -48,7 +53,7 @@ internal fun AlertService.overrideDnd(force: Boolean = false): Unit = synchroniz
 
 internal fun AlertService.boostAlarmVolume(ms: Long): Unit = synchronized(audioLock) {
     try {
-        val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+        val am = getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
         val s = android.media.AudioManager.STREAM_ALARM
         if (savedAlarmVol < 0) { savedAlarmVol = am.getStreamVolume(s); restoreSp().edit().putLong("at", System.currentTimeMillis()).putInt("alarmVol", savedAlarmVol).apply() }
         am.setStreamVolume(s, am.getStreamMaxVolume(s), 0)
@@ -58,7 +63,7 @@ internal fun AlertService.boostAlarmVolume(ms: Long): Unit = synchronized(audioL
 }
 
 internal fun AlertService.ringerToNormal(ms: Long): Boolean = synchronized(audioLock) {
-    val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+    val am = getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
     return try {
         if (ringerSaved == -1) { ringerSaved = am.ringerMode; restoreSp().edit().putLong("at", System.currentTimeMillis()).putInt("ringer", ringerSaved).apply() }
         am.ringerMode = android.media.AudioManager.RINGER_MODE_NORMAL
@@ -94,7 +99,7 @@ internal fun AlertService.holdFocus(ms: Long): Unit = synchronized(audioLock) {
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
             .setOnAudioFocusChangeListener { }
             .build()
-        (getSystemService(AUDIO_SERVICE) as android.media.AudioManager).requestAudioFocus(r)
+        (getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager).requestAudioFocus(r)
         focusReq = r
         main.postDelayed(releaseFocus, ms)
     } catch (_: Exception) { }
