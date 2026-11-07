@@ -53,6 +53,7 @@ class AlertMap(private val a: Activity, savedState: Bundle?, names: List<String>
     private val me: LatLng? = if (meLat != null && meLon != null) LatLng(meLat, meLon) else null
     private var pending: List<String> = names
     private var drop: ValueAnimator? = null
+    private var dropGen = 0
     private val ui = android.os.Handler(android.os.Looper.getMainLooper())
 
     init {
@@ -169,6 +170,7 @@ class AlertMap(private val a: Activity, savedState: Bundle?, names: List<String>
         val st = style ?: return
         if (list.isEmpty()) return
         drop?.end()
+        val gen = ++dropGen
         (st.getSource("drop") as? GeoJsonSource)?.setGeoJson(MapKit.fc(list))
         val layer = st.getLayer("drop") ?: return
         drop = ValueAnimator.ofFloat(0f, 1f).apply {
@@ -180,13 +182,17 @@ class AlertMap(private val a: Activity, savedState: Bundle?, names: List<String>
             }
             addListener(object : android.animation.AnimatorListenerAdapter() {
                 override fun onAnimationEnd(an: android.animation.Animator) {
-                    // נפלו - עוברות לשכבה הקבועה
+                    // נפלו - עוברות לשכבה הקבועה. העדכון של מקור במפה לא מיידי: אם מנקים את שכבת הנפילה
+                    // באותו רגע, יש פריים שבו אף שכבה לא מציגה אותן (הבהוב). לכן מנקים רק אחרי שהקבועה כבר מוצגת
                     pinsStatic += list
-                    style?.let { s ->
-                        (s.getSource("pins") as? GeoJsonSource)?.setGeoJson(MapKit.fc(pinsStatic))
-                        (s.getSource("drop") as? GeoJsonSource)?.setGeoJson(MapKit.fc(emptyList()))
-                        s.getLayer("drop")?.setProperties(iconOpacity(0f))
-                    }
+                    style?.let { s -> (s.getSource("pins") as? GeoJsonSource)?.setGeoJson(MapKit.fc(pinsStatic)) }
+                    ui.postDelayed({
+                        if (gen != dropGen) return@postDelayed   // כבר התחילה נפילה חדשה - היא משתמשת בשכבה
+                        style?.let { s ->
+                            s.getLayer("drop")?.setProperties(iconOpacity(0f))
+                            (s.getSource("drop") as? GeoJsonSource)?.setGeoJson(MapKit.fc(emptyList()))
+                        }
+                    }, 600)
                 }
             })
             start()
