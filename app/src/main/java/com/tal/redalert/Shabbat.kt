@@ -184,6 +184,32 @@ object Shabbat {
     private fun tzeit(day: Calendar, lat: Double, lon: Double) =
         roundMin(sunset(day, lat, lon, 98.5) + (offset(place(lat, lon).e, day) * 60_000).toLong())   // צאת השבת כמו בעתים לבינה
 
+    /** זריחה / שקיעה רגילה ביום נתון (לערכת הצבעים "לפי זמן") - זמן במילישניות */
+    fun sunEvent(day: Calendar, lat: Double, lon: Double, rising: Boolean): Long {
+        if (!rising) return sunset(day, lat, lon, 90.833)
+        val n = day.get(Calendar.DAY_OF_YEAR)
+        val lngHour = lon / 15.0
+        val t = n + ((6 - lngHour) / 24)
+        val m = 0.9856 * t - 3.289
+        var l = m + 1.916 * sin(Math.toRadians(m)) + 0.020 * sin(Math.toRadians(2 * m)) + 282.634
+        l = (l + 360) % 360
+        var ra = Math.toDegrees(atan(0.91764 * tan(Math.toRadians(l))))
+        ra = (ra + 360) % 360
+        ra += (floor(l / 90) * 90 - floor(ra / 90) * 90)
+        ra /= 15
+        val sinDec = 0.39782 * sin(Math.toRadians(l))
+        val cosDec = cos(asin(sinDec))
+        val cosH = (cos(Math.toRadians(90.833)) - sinDec * sin(Math.toRadians(lat))) / (cosDec * cos(Math.toRadians(lat)))
+        val h = (360 - Math.toDegrees(acos(cosH.coerceIn(-1.0, 1.0)))) / 15
+        val localT = h + ra - 0.06571 * t - 6.622
+        val ut = ((localT - lngHour) % 24 + 24) % 24
+        val utc = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+            clear()
+            set(day.get(Calendar.YEAR), day.get(Calendar.MONTH), day.get(Calendar.DAY_OF_MONTH))
+        }
+        return utc.timeInMillis + (ut * 3600_000).toLong()
+    }
+
     /** שקיעה (או זנית אחר) ביום נתון - אלגוריתם NOAA, מחזיר זמן UTC במילישניות */
     private fun sunset(day: Calendar, lat: Double, lon: Double, zenith: Double): Long {
         val n = day.get(Calendar.DAY_OF_YEAR)
