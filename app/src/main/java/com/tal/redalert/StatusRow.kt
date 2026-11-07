@@ -263,13 +263,23 @@ internal fun MainActivity.onLocationIndicator() {
         !hasLocationPerm() || !hasPrecise() -> onWeatherClick()
         !locationOn() -> startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
         else -> {
-            // לחיצות חוזרות בזמן שהמיקום עוד מתעדכן - לא מתחילים שוב
+            fun toast(m: String) = android.widget.Toast.makeText(this, m, android.widget.Toast.LENGTH_SHORT).show()
+            // לחיצות חוזרות בזמן שהמיקום עוד מתעדכן - לא מתחילים שוב, אבל תמיד עונים
             val now = System.currentTimeMillis()
-            if (now - locTapAt < 30_000L) return
+            if (now - locTapAt < 30_000L) { toast("המיקום כבר מתעדכן…"); return }
             locTapAt = now
-            android.widget.Toast.makeText(this, "מעדכן מיקום…", android.widget.Toast.LENGTH_SHORT).show()
-            refreshNearby()
+            toast("מעדכן מיקום…")
             updateWeather(force = true)
+            refreshNearby { list ->
+                locTapAt = 0L
+                if (isFinishing || isDestroyed) return@refreshNearby
+                val area = list?.firstOrNull() ?: Prefs.nearbyAreas(this).firstOrNull()
+                toast(when {
+                    list == null && area == null -> "לא הצלחתי לקבל מיקום – נסה שוב"
+                    area != null -> "המיקום עודכן · $area"
+                    else -> "המיקום עודכן"
+                })
+            }
         }
     }
 }

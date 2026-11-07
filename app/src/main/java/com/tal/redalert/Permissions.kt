@@ -190,14 +190,16 @@ internal fun MainActivity.toggleNearMe() {
 }
 
 /** בכל פתיחה - מיקום עדכני ל"התרעות לפי מיקום" (בנוסף לעדכון של השירות כל 2 דקות) */
-internal fun MainActivity.refreshNearby() {
+internal fun MainActivity.refreshNearby(done: ((List<String>?) -> Unit)? = null) {
     if (!Prefs.nearMe(this) || checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) !=
-        android.content.pm.PackageManager.PERMISSION_GRANTED) return
-    fun use(loc: android.location.Location) = Thread {
+        android.content.pm.PackageManager.PERMISSION_GRANTED) { done?.invoke(null); return }
+    fun use(loc: android.location.Location, last: Boolean = false) = Thread {
+        var list: List<String>? = null
         try {
-            val list = AreaData.nearby(this, loc.latitude, loc.longitude)
+            list = AreaData.nearby(this, loc.latitude, loc.longitude)
             if (list.isNotEmpty()) Prefs.setNearbyAreas(this, list)
         } catch (_: Exception) { }
+        if (last && done != null) runOnUiThread { done(list) }
     }.start()
     // קודם מיקום מהרשת (אנטנות / Wi-Fi - שנייה-שתיים): אם זזת למקום אחר, האזור מתעדכן מיד.
     // אחר כך המיקום המדויק (GPS, עד חצי דקה) מדייק אותו
@@ -209,6 +211,6 @@ internal fun MainActivity.refreshNearby() {
         gpsDone = true
         got?.let { keepAccuracy(it) }
         val loc = got?.let { Weather.chooseLocation(it) }   // מיקום גס לא דורס מיקום מדויק
-        if (loc != null) use(loc)
+        if (loc != null) use(loc, last = true) else done?.let { runOnUiThread { it(null) } }
     }
 }
