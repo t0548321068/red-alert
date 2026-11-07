@@ -45,7 +45,7 @@ internal fun MainActivity.applyMainTint(level: Int?) {
 
 /** כרטיס ההתרעה מעל השעון: נבנה כשההתרעה משתנה, והטיימר מתעדכן כל שנייה */
 internal fun MainActivity.updateAlertCard() {
-    val j = Prefs.activeAlert(this)
+    val j = previewAlert ?: Prefs.activeAlert(this)
     val level = j?.optInt("level") ?: 0
     val firedAt = j?.optLong("firedAt") ?: 0L
     // בתצוגה "ממוזער" אין כרטיס במסך הראשי כל עוד החלון הקטן פתוח (כפילות); אחרי שנסגר - הכרטיס מופיע
@@ -103,7 +103,7 @@ internal fun MainActivity.updateAlertCard() {
 
 /** לחיצה על הכרטיס - מסך ההתרעה המלא */
 internal fun MainActivity.openActiveAlert() {
-    val j = Prefs.activeAlert(this) ?: return
+    val j = previewAlert ?: Prefs.activeAlert(this) ?: return
     startActivity(Intent(this, AlertActivity::class.java)
         .putExtra("title", j.optString("title")).putExtra("body", j.optString("body"))
         .putExtra("level", j.optInt("level")).putExtra("shelter", j.optInt("shelter", -1))
