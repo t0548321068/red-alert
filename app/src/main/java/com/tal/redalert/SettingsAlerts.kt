@@ -266,9 +266,8 @@ private val TOPICS = listOf(AlertService.LEVEL_ALERT to "התרעות", AlertSer
 
 /** השורה בהגדרות: הבחירה הכללית, ואילו נושאים שונים ממנה */
 internal fun MainActivity.styleSummary(): String {
-    val diff = if (!Prefs.customStyles(this)) emptyList() else TOPICS.filter { (l, _) -> Prefs.topicStyle(this, l) in 0..3 }
-        .map { (l, n) -> "$n: ${STYLE_NAMES[Prefs.topicStyle(this, l)]}" }
-    return (listOf(STYLE_NAMES[Prefs.alertStyle(this)]) + diff).joinToString(" · ")
+    if (!Prefs.customStyles(this)) return STYLE_NAMES[Prefs.alertStyle(this)]
+    return "התאמה אישית · " + TOPICS.joinToString(" · ") { (l, n) -> "$n: ${STYLE_NAMES[Prefs.alertStyleFor(this, l)]}" }
 }
 
 /** סוג תצוגת התרעה: למעלה הבחירה לכל הנושאים (הדמיות אפורות, בלי כותרת), ומתחת התאמה אישית - כל נושא בשורה */
@@ -280,8 +279,10 @@ internal fun MainActivity.showCustomStyles() = ouiPage("סגנון התרעה") 
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             addView(alertStylePreview(i), LinearLayout.LayoutParams(dp(58), dp(116)))
-            addLabelRadio(this, label, Prefs.alertStyle(this@showCustomStyles) == i)
-            setOnClickListener { Prefs.setAlertStyle(this@showCustomStyles, i); rebuild() }
+            // התאמה אישית מבטלת את הסימון כאן; בחירה כאן מכבה את ההתאמה האישית
+            addLabelRadio(this, label, !Prefs.customStyles(this@showCustomStyles) && Prefs.alertStyle(this@showCustomStyles) == i)
+            setOnClickListener {
+                Prefs.setAlertStyle(this@showCustomStyles, i); Prefs.setCustomStyles(this@showCustomStyles, false); rebuild() }
         }, LinearLayout.LayoutParams(0, -2, 1f))
     }
     all.addView(opts)
@@ -293,23 +294,25 @@ internal fun MainActivity.showCustomStyles() = ouiPage("סגנון התרעה") 
     // מתג: כשמופעל - השורות של כל נושא מוצגות מתחת
     val c = ouiCard()
     val custom = Prefs.customStyles(this)
-    ouiRow(c, "התאמה אישית", sub = "סגנון נפרד לכל נושא", on = custom) { Prefs.setCustomStyles(this, !custom); rebuild() }
+    ouiRow(c, "התאמה אישית", sub = "סגנון נפרד לכל נושא", on = custom) {
+        // בהפעלה: כל נושא שעוד לא נבחר לו סגנון מקבל את הסגנון שהיה מסומן למעלה
+        if (!custom) TOPICS.forEach { (l, _) -> if (Prefs.topicStyle(this, l) !in 0..3) Prefs.setTopicStyle(this, l, Prefs.alertStyle(this)) }
+        Prefs.setCustomStyles(this, !custom); rebuild() }
     if (custom) TOPICS.forEach { (level, name) ->
         ouiDivider(c)
-        val t = Prefs.topicStyle(this, level)
-        ouiRow(c, name, sub = if (t in 0..3) STYLE_NAMES[t] else "כמו הכללי (${STYLE_NAMES[Prefs.alertStyle(this)]})") {
+        ouiRow(c, name, sub = STYLE_NAMES[Prefs.alertStyleFor(this, level)]) {
             chooseTopicStyle(level, name) { rebuild() }
         }
     }
     ouiAdd(body, c)
     ouiNote(body, if (custom) "התרעות – אדום · מבזקים והנחיות – כתום · עדכונים – ירוק\nבמצב שבת כל ההתרעות במסך מלא"
-        else "כשכבוי – כל הנושאים בסגנון שנבחר למעלה")
+        else "כשמופעל – הסימון למעלה מתבטל, ולכל נושא בוחרים סגנון משלו")
 }
 
 /** בחירת סוג התצוגה לנושא: אותן הדמיות כמו בסוג התצוגה הכללי, בצבע הנושא */
 private fun MainActivity.chooseTopicStyle(level: Int, name: String, done: () -> Unit) = ouiPage(name, onClose = done) { body, rebuild ->
     val color = AlertUi.color(level)
-    val cur = Prefs.topicStyle(this, level)
+    val cur = Prefs.alertStyleFor(this, level)
     val c = ouiCard()
     c.addView(text("סוג תצוגה", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
     val opts = LinearLayout(this).apply { setPadding(dp(6), dp(10), dp(6), dp(16)) }
@@ -323,9 +326,6 @@ private fun MainActivity.chooseTopicStyle(level: Int, name: String, done: () -> 
         }, LinearLayout.LayoutParams(0, -2, 1f))
     }
     c.addView(opts)
-    ouiDivider(c)
-    ouiRow(c, "כמו הכללי", sub = STYLE_NAMES[Prefs.alertStyle(this)], radio = cur !in 0..3) {
-        Prefs.setTopicStyle(this, level, -1); rebuild() }
     ouiDivider(c)
     ouiRow(c, "תצוגה מקדימה", sub = "רק איך זה נראה – בלי צליל ורטט") { previewAlertStyle(level) }
     ouiAdd(body, c)
