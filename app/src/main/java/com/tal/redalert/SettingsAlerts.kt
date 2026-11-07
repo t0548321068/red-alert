@@ -72,12 +72,9 @@ internal fun MainActivity.showAlertSettings() = ouiPage("הגדרות התרעו
     }
     ouiRow(c, "אזורים נוספים", sub = extraSub) { showExtraAreas() }
     ouiAdd(body, c)
-    // צלילים ורטט והקראה - כרטיס אחד
+    // צלילים ורטט (ההקראה בתוכו)
     val snd = ouiCard()
-    ouiRow(snd, "צלילים ורטט", sub = "שעות שקט · נא לא להפריע · מצב שקט · שבת") { showSoundSettings() }
-    ouiDivider(snd)
-    ouiRow(snd, "הקראה", sub = onOff(Prefs.speakAlerts(this)), on = Prefs.speakAlerts(this),
-        onToggle = { Prefs.setSpeakAlerts(this, !Prefs.speakAlerts(this)); rebuild() }) { showSpeech() }
+    ouiRow(snd, "צלילים ורטט", sub = "הקראה · שעות שקט · נא לא להפריע · מצב שקט · שבת") { showSoundSettings() }
     ouiAdd(body, snd)
     // בדיקת התראה (עברה מהכפתור שבמסך הראשי)
     val t = ouiCard()
