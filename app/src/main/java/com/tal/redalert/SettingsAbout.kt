@@ -240,7 +240,7 @@ private fun MainActivity.deviceInfo(): String {
         "מושתק" to yes(Prefs.mutedNow(this)), "צליל חזק" to yes(Prefs.loudSound(this)),
         "עקיפת שקט" to yes(Prefs.bypassSilent(this)), "שעות שקט" to yes(Prefs.quietOn(this)),
         "מצב שבת" to Shabbat.label(Prefs.shabbatMode(this)), "הקראה" to yes(Prefs.speakAlerts(this)),
-        "תצוגה" to listOf("מסך מלא", "פופ-אפ", "כרטיס", "ממוזער").getOrElse(Prefs.alertStyle(this)) { Prefs.alertStyle(this).toString() },
+        "תצוגה" to (0..2).joinToString(" / ") { STYLE_NAMES.getOrElse(Prefs.alertStyle(this, it)) { "?" } },
         "רשת" to (network()?.first ?: "אין"),
     )
     return lines.joinToString("\n") { "${it.first}: ${it.second}" }
