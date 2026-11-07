@@ -109,22 +109,32 @@ class AlertMap(private val a: Activity, savedState: Bundle?, names: List<String>
     }
 
     private fun addAreas(names: List<String>, initial: Boolean) {
-        val st = style ?: return
-        val all = try { AreaData.areas(a) } catch (_: Exception) { return }
+        if (style == null) return
         val fresh = names.filter { shown.add(it) }
         if (fresh.isEmpty()) return
-        val newPins = ArrayList<JSONObject>(); val newPts = ArrayList<LatLng>()
-        fresh.forEach { n ->
-            val o = all.optJSONObject(n) ?: return@forEach
-            val g = MapKit.geometryOf(o) ?: return@forEach
-            areas += MapKit.feature(g)
-            val p = o.optJSONArray("p")
-            if (p != null) for (i in 0 until p.length()) { val q = p.getJSONArray(i); newPts += LatLng(q.getDouble(0), q.getDouble(1)) }
-            o.optJSONArray("c")?.let { c ->
-                if (p == null) newPts += LatLng(c.getDouble(0), c.getDouble(1))
-                if (level == AlertService.LEVEL_ALERT) newPins += MapKit.feature(MapKit.point(c.getDouble(0), c.getDouble(1)))
+        // בניית הצורות ברקע: בהתרעה על הרבה אזורים (למשל כל הארץ - כ-1,500) זה כבד,
+        // ועל המסך הראשי זה עיכב את ציור המפה (מסך אפור עד שהרחובות הופיעו)
+        Thread {
+            val all = try { AreaData.areas(a) } catch (_: Exception) { return@Thread }
+            val newAreas = ArrayList<JSONObject>(); val newPins = ArrayList<JSONObject>(); val newPts = ArrayList<LatLng>()
+            fresh.forEach { n ->
+                val o = all.optJSONObject(n) ?: return@forEach
+                val g = MapKit.geometryOf(o) ?: return@forEach
+                newAreas += MapKit.feature(g)
+                val p = o.optJSONArray("p")
+                if (p != null) for (i in 0 until p.length()) { val q = p.getJSONArray(i); newPts += LatLng(q.getDouble(0), q.getDouble(1)) }
+                o.optJSONArray("c")?.let { c ->
+                    if (p == null) newPts += LatLng(c.getDouble(0), c.getDouble(1))
+                    if (level == AlertService.LEVEL_ALERT) newPins += MapKit.feature(MapKit.point(c.getDouble(0), c.getDouble(1)))
+                }
             }
-        }
+            ui.post { showAreas(newAreas, newPins, newPts, initial) }
+        }.start()
+    }
+
+    private fun showAreas(newAreas: List<JSONObject>, newPins: List<JSONObject>, newPts: List<LatLng>, initial: Boolean) {
+        val st = style ?: return
+        areas += newAreas
         pts += newPts
         (st.getSource("areas") as? GeoJsonSource)?.setGeoJson(MapKit.fc(areas))
         if (initial) {
