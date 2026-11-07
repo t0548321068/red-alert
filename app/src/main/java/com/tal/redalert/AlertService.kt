@@ -701,7 +701,11 @@ class AlertService : Service() {
             .setAutoCancel(true)
         // סיום אירוע כשהחלון הקטן פתוח - מוצג בו (ירוק), בלי מסך מלא
         val toMini = level == LEVEL_END && MiniOverlay.isShowing()
-        if (!quiet && !toMini) nb.setFullScreenIntent(fullPi, true)
+        // כרטיס / ממוזער: גם כשהמערכת פותחת את ההתראה על מסך נעול - רק הרצועה / הכרטיס, לא מסך מלא
+        val lockIntent = Intent(full).setClass(this, LockAlertActivity::class.java).putExtra("style", style)
+        val screenPi = if (style >= 2) PendingIntent.getActivity(this, 2, lockIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE) else fullPi
+        if (!quiet && !toMini) nb.setFullScreenIntent(screenPi, true)
         // ספירה לאחור ישר בשורת ההתראות
         // ספירה לאחור גדולה בתוך ההתראה הקופצת
         // (בלי תצוגת טיימר מיוחדת - נראית כמו שאר ההתראות)
@@ -713,11 +717,13 @@ class AlertService : Service() {
         // בבדיקה (האפליקציה בחזית) או עם הרשאת "הצגה מעל אפליקציות אחרות"
         if (!quiet) wakeScreen()
         val screenOff = !(getSystemService(POWER_SERVICE) as PowerManager).isInteractive
-        val canShow = forceScreen || shabbat || screenOff || overlayOk()
+        val locked = (getSystemService(KEYGUARD_SERVICE) as android.app.KeyguardManager).isKeyguardLocked
+        val canShow = forceScreen || shabbat || screenOff || locked || overlayOk()
         if (toMini) main.post { MiniOverlay.showEnd(body) }
         else if (!quiet && canShow) {
             when {
-                // מסך כבוי/נעול: חלון ממוזער וכרטיס לא נראים שם - מסך מלא
+                // מסך כבוי / נעול בכרטיס / ממוזער: רק הרצועה / הכרטיס בראש מסך הנעילה
+                (screenOff || locked) && style >= 2 -> launchOver(lockIntent)
                 screenOff || style <= 1 -> launchOver(full)
                 // כרטיס מעל השעון: פותחים את המסך הראשי מעל האפליקציה הפתוחה
                 style == 2 -> launchOver(Intent(this, MainActivity::class.java)

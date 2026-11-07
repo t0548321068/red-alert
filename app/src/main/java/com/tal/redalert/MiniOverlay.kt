@@ -29,7 +29,10 @@ object MiniOverlay {
     private var timerV: TextView? = null
     private var timerLabelV: TextView? = null
 
-    fun isShowing() = view != null
+    fun isShowing() = view != null && host == null
+    /** כשהרצועה מוצגת בתוך מסך הנעילה (LockAlertActivity) ולא כחלון מעל אפליקציות */
+    private var host: android.view.ViewGroup? = null
+    private var onClosed: (() -> Unit)? = null
 
     /** סגירה אוטומטית לפי הצבע: מקדימה אחרי 2 דקות, סיום אחרי דקה (ירי - עד הסיום) */
     private var autoHide: Runnable? = null
@@ -45,7 +48,7 @@ object MiniOverlay {
 
     fun canShow(c: Context) = Settings.canDrawOverlays(c)
 
-    fun show(c: Context, full: Intent) {
+    fun show(c: Context, full: Intent, into: android.view.ViewGroup? = null, closed: (() -> Unit)? = null) {
         hide(c)
         val app = c.applicationContext
         val wm = app.getSystemService(Context.WINDOW_SERVICE) as WindowManager
@@ -104,8 +107,10 @@ object MiniOverlay {
         val closeX = circle(R.drawable.ic_close, 34).apply {
             setOnClickListener {
                 // ✕ סוגר לגמרי: בלי לפתוח את המסך הראשי, וגם הכרטיס שם לא יופיע להתרעה הזו
+                val cb = onClosed
                 hide(app)
                 Prefs.setAlertDismissed(app, firedAt)
+                cb?.invoke()
             }
         }
         val bar = LinearLayout(app).apply {
@@ -122,6 +127,11 @@ object MiniOverlay {
             addView(closeX, LinearLayout.LayoutParams(dp(34), dp(34)))
             // לחיצה על החלון לא פותחת מסך מלא - בממוזער החלון הוא התצוגה עצמה (סגירה ב-✕)
         }
+        // מתחת לשורת המצב של הטלפון (הגובה שלה שונה בין טלפונים - עם מצלמה במסך היא גבוהה יותר),
+        // ומתחת לשורת החיוויים של המסך הראשי אם ידוע איפה היא
+        val sb = app.resources.getIdentifier("status_bar_height", "dimen", "android")
+            .takeIf { it > 0 }?.let { app.resources.getDimensionPixelSize(it) } ?: dp(28)
+        val top = (Prefs.miniY(app).takeIf { it > sb } ?: sb) + dp(6)
         val lp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
@@ -129,14 +139,15 @@ object MiniOverlay {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP
-            // מתחת לשורת המצב של הטלפון (הגובה שלה שונה בין טלפונים - עם מצלמה במסך היא גבוהה יותר)
-            val sb = app.resources.getIdentifier("status_bar_height", "dimen", "android")
-                .takeIf { it > 0 }?.let { app.resources.getDimensionPixelSize(it) } ?: dp(28)
-            // מתחת לשורת החיוויים של המסך הראשי (אם ידוע איפה היא), ואם לא - מתחת לשורת המצב
-            x = 0; y = (Prefs.miniY(app).takeIf { it > sb } ?: sb) + dp(6)
+            x = 0; y = top
             horizontalMargin = 0.03f
         }
-        try { wm.addView(bar, lp) } catch (_: Exception) { return }
+        if (into != null) {
+            // על מסך נעול: בתוך המסך הקטן, בראשו
+            into.addView(bar, android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.TOP).apply {
+                setMargins(dp(10), top, dp(10), 0) })
+            host = into; onClosed = closed
+        } else try { wm.addView(bar, lp) } catch (_: Exception) { return }
         view = bar
         labelV = label; areaV = areaLine; timerV = timer; timerLabelV = timerLabel; iconV = icon
 
@@ -183,12 +194,17 @@ object MiniOverlay {
         view?.context?.let { scheduleHide(it.applicationContext, System.currentTimeMillis() + (AlertUi.keepMs(AlertService.LEVEL_END) ?: 60_000L)) }
     }
 
+    /** סוגר רק את הרצועה שבתוך מסך הנעילה (לא את החלון שמעל אפליקציות) */
+    fun hideHosted(c: Context) { if (host != null) hide(c) }
+
     fun hide(c: Context) {
         tick?.let { ui.removeCallbacks(it) }; tick = null
         autoHide?.let { ui.removeCallbacks(it) }; autoHide = null
         bg = null; labelV = null; areaV = null; timerV = null; timerLabelV = null; iconV = null
         val v = view ?: return
         view = null
+        val h = host; host = null; onClosed = null
+        if (h != null) { h.removeView(v); return }
         try { (c.applicationContext.getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(v) } catch (_: Exception) { }
     }
 }
