@@ -229,7 +229,7 @@ internal fun MainActivity.chooseTest() = ouiPage("בדיקת התרעה") { body
  * תצוגה מקדימה של סוג התצוגה שנבחר: רק במסך - בלי צליל, רטט, התראה, היסטוריה או ווידג'ט.
  * נסגרת לבד אחרי 20 שניות. כשיש התרעה אמיתית פעילה - לא מציגים (שלא תידרס)
  */
-internal fun MainActivity.previewAlertStyle() {
+internal fun MainActivity.previewAlertStyle(level: Int = AlertService.LEVEL_ALERT) {
     val real = Prefs.activeAlert(this)
     if (real != null && !AlertUi.expired(real.optInt("level"), real.optLong("firedAt"))) {
         android.widget.Toast.makeText(this, "יש התרעה פעילה – אפשר לנסות אחרי שתסתיים", android.widget.Toast.LENGTH_SHORT).show()
@@ -237,13 +237,17 @@ internal fun MainActivity.previewAlertStyle() {
     }
     val areas = (Prefs.nearbyAreas(this).take(1) + Prefs.cities(this)).distinct().ifEmpty { listOf("ירושלים - צפון") }
     val body = areas.first()
-    val shelter = AreaData.shelterSeconds(this, listOf(body)) ?: 90
+    val title = when (level) {
+        AlertService.LEVEL_PRE -> "בדקות הקרובות צפויות להתקבל התרעות באזורך"
+        AlertService.LEVEL_END -> "האירוע הסתיים"
+        else -> "ירי רקטות וטילים"
+    }
+    val shelter = if (level == AlertService.LEVEL_ALERT) AreaData.shelterSeconds(this, listOf(body)) ?: 90 else -1
     val now = System.currentTimeMillis()
-    val title = "ירי רקטות וטילים"
     val src = "תצוגה מקדימה"
-    val st = Prefs.alertStyleFor(this, AlertService.LEVEL_ALERT)
+    val st = Prefs.alertStyleFor(this, level)
     val full = Intent(this, if (st == 1) AlertPopupActivity::class.java else AlertActivity::class.java)
-        .putExtra("title", title).putExtra("body", body).putExtra("level", AlertService.LEVEL_ALERT)
+        .putExtra("title", title).putExtra("body", body).putExtra("level", level)
         .putExtra("shelter", shelter).putExtra("firedAt", now).putExtra("source", src)
         .putExtra("autoCloseMs", 20_000L).putExtra("mapAreas", body)
     // עמודי ההגדרות נשארים פתוחים - בסגירת התצוגה המקדימה חוזרים אליהם
@@ -251,7 +255,7 @@ internal fun MainActivity.previewAlertStyle() {
         0, 1 -> startActivity(full)
         2 -> {
             // הכרטיס נמצא במסך הראשי: מסתירים את עמודי ההגדרות זמנית, ומחזירים בסיום (20 שניות או ✕)
-            previewAlert = org.json.JSONObject().put("title", title).put("body", body).put("level", AlertService.LEVEL_ALERT)
+            previewAlert = org.json.JSONObject().put("title", title).put("body", body).put("level", level)
                 .put("shelter", shelter).put("firedAt", now).put("source", src).put("mapAreas", body)
             pages.forEach { it.hide() }
             updateAlertCard()
@@ -317,6 +321,8 @@ private fun MainActivity.chooseTopicStyle(level: Int, name: String, done: () -> 
     ouiDivider(c)
     ouiRow(c, "כמו הכללי", sub = STYLE_NAMES[Prefs.alertStyle(this)], radio = cur !in 0..3) {
         Prefs.setTopicStyle(this, level, -1); rebuild() }
+    ouiDivider(c)
+    ouiRow(c, "תצוגה מקדימה", sub = "רק איך זה נראה – בלי צליל ורטט") { previewAlertStyle(level) }
     ouiAdd(body, c)
 }
 
