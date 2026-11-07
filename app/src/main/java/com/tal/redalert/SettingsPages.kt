@@ -118,17 +118,10 @@ internal fun MainActivity.showSettings() {
 
 internal fun MainActivity.onOff(b: Boolean) = if (b) "פעיל" else "כבוי"
 
-internal fun MainActivity.protectionLabel(): String = when {
-    !Prefs.enabled(this) -> "כבוי – לא מקבל התרעות"
-    Prefs.scheduleOffNow(this) -> "כבוי עכשיו לפי תזמון"
-    Prefs.schedOn(this) -> "פעיל – מוגן · לפי תזמון"
-    else -> "פעיל – מוגן"
-}
-
 /** מסך הגנה: הפעלה/כיבוי, ותזמון - באילו ימים ושעות האפליקציה פעילה */
 internal fun MainActivity.showProtection() = ouiPage("הגנה") { body, rebuild ->
     val main = ouiCard()
-    ouiRow(main, "הגנה", sub = protectionLabel(), on = Prefs.enabled(this)) { toggle(); rebuild() }
+    ouiRow(main, "הגנה", on = Prefs.enabled(this)) { toggle(); rebuild() }
     ouiAdd(body, main)
 
     val sc = ouiCard()
