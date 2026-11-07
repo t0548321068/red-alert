@@ -51,6 +51,8 @@ internal fun MainActivity.showAlertSettings() = ouiPage("הגדרות התרעו
     }
     style.addView(opts)
     ouiDivider(style)
+    ouiRow(style, "תצוגה מקדימה", sub = "רק איך זה נראה – בלי צליל ורטט") { previewAlertStyle() }
+    ouiDivider(style)
     ouiRow(style, "מפה במסך ההתרעה", on = Prefs.alertMap(this)) {
         Prefs.setAlertMap(this, !Prefs.alertMap(this)); rebuild() }
     ouiAdd(body, style)
@@ -219,6 +221,44 @@ internal fun MainActivity.chooseTest() = ouiPage("בדיקת התרעה") { body
     }
     ouiAdd(body, c)
     ouiNote(body, "ההתרעה נשלחת מיד, בדיוק כמו התרעה אמיתית")
+}
+
+/**
+ * תצוגה מקדימה של סוג התצוגה שנבחר: רק במסך - בלי צליל, רטט, התראה, היסטוריה או ווידג'ט.
+ * נסגרת לבד אחרי 20 שניות. כשיש התרעה אמיתית פעילה - לא מציגים (שלא תידרס)
+ */
+internal fun MainActivity.previewAlertStyle() {
+    val real = Prefs.activeAlert(this)
+    if (real != null && !AlertUi.expired(real.optInt("level"), real.optLong("firedAt"))) {
+        android.widget.Toast.makeText(this, "יש התרעה פעילה – אפשר לנסות אחרי שתסתיים", android.widget.Toast.LENGTH_SHORT).show()
+        return
+    }
+    val areas = (Prefs.nearbyAreas(this).take(1) + Prefs.cities(this)).distinct().ifEmpty { listOf("ירושלים - צפון") }
+    val body = areas.first()
+    val shelter = AreaData.shelterSeconds(this, listOf(body)) ?: 90
+    val now = System.currentTimeMillis()
+    val title = "ירי רקטות וטילים"
+    val src = "תצוגה מקדימה"
+    val full = Intent(this, if (Prefs.alertStyle(this) == 1) AlertPopupActivity::class.java else AlertActivity::class.java)
+        .putExtra("title", title).putExtra("body", body).putExtra("level", AlertService.LEVEL_ALERT)
+        .putExtra("shelter", shelter).putExtra("firedAt", now).putExtra("source", src)
+        .putExtra("autoCloseMs", 20_000L).putExtra("mapAreas", body)
+    pages.toList().forEach { it.dismiss() }
+    when (Prefs.alertStyle(this)) {
+        0, 1 -> startActivity(full)
+        2 -> {
+            previewAlert = org.json.JSONObject().put("title", title).put("body", body).put("level", AlertService.LEVEL_ALERT)
+                .put("shelter", shelter).put("firedAt", now).put("source", src).put("mapAreas", body)
+            updateAlertCard()
+            ui.postDelayed({ if (previewAlert?.optLong("firedAt") == now) { previewAlert = null; updateAlertCard() } }, 20_000L)
+        }
+        else -> if (MiniOverlay.canShow(this)) {
+            MiniOverlay.show(this, full)
+            ui.postDelayed({
+                // לא סוגרים חלון של התרעה אמיתית שהגיעה בינתיים
+                if ((Prefs.activeAlert(this)?.optLong("firedAt") ?: 0L) < now) MiniOverlay.hide(this) }, 20_000L)
+        } else android.widget.Toast.makeText(this, "התצוגה הממוזערת צריכה הרשאת \"הצגה מעל אפליקציות\"", android.widget.Toast.LENGTH_LONG).show()
+    }
 }
 
 /** הדמיה קטנה של סוג תצוגת ההתרעה: 0 מסך מלא · 1 פופ-אפ · 2 כרטיס · 3 ממוזער */

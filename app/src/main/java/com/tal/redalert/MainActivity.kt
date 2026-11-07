@@ -87,6 +87,7 @@ class MainActivity : Activity() {
     internal var weatherAt = 0L
     internal var weatherAccuracy = -1
     internal var weatherShown = false   // יש כבר מזג אוויר על המסך
+    internal var previewAlert: org.json.JSONObject? = null   // תצוגה מקדימה של כרטיס ההתרעה (רק במסך, בלי לשמור)
     internal var locTapAt = 0L          // לחיצה אחרונה על חיווי המיקום
     internal var lastHistoryKey = ""
 
