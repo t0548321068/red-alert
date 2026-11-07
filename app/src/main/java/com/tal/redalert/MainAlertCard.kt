@@ -49,7 +49,7 @@ internal fun MainActivity.updateAlertCard() {
     val level = j?.optInt("level") ?: 0
     val firedAt = j?.optLong("firedAt") ?: 0L
     // בתצוגה "ממוזער" אין כרטיס במסך הראשי כל עוד החלון הקטן פתוח (כפילות); אחרי שנסגר - הכרטיס מופיע
-    val mini = Prefs.alertStyle(this) == 3 && !Shabbat.active(this) && MiniOverlay.isShowing()
+    val mini = Prefs.alertStyleFor(this, level) == 3 && !Shabbat.active(this) && MiniOverlay.isShowing()
     if (j == null || mini || AlertUi.expired(level, firedAt) || Prefs.alertDismissed(this) == firedAt) {
         applyMainTint(null)
         if (alertWrap.visibility != View.GONE) alertWrap.visibility = View.GONE

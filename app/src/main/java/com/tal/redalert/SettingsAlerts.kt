@@ -51,6 +51,8 @@ internal fun MainActivity.showAlertSettings() = ouiPage("הגדרות התרעו
     }
     style.addView(opts)
     ouiDivider(style)
+    ouiRow(style, "התאמה אישית", sub = customStyleSub()) { showCustomStyles() }
+    ouiDivider(style)
     ouiRow(style, "תצוגה מקדימה", sub = "רק איך זה נראה – בלי צליל ורטט") { previewAlertStyle() }
     ouiDivider(style)
     ouiRow(style, "מפה במסך ההתרעה", on = Prefs.alertMap(this)) {
@@ -239,12 +241,13 @@ internal fun MainActivity.previewAlertStyle() {
     val now = System.currentTimeMillis()
     val title = "ירי רקטות וטילים"
     val src = "תצוגה מקדימה"
-    val full = Intent(this, if (Prefs.alertStyle(this) == 1) AlertPopupActivity::class.java else AlertActivity::class.java)
+    val st = Prefs.alertStyleFor(this, AlertService.LEVEL_ALERT)
+    val full = Intent(this, if (st == 1) AlertPopupActivity::class.java else AlertActivity::class.java)
         .putExtra("title", title).putExtra("body", body).putExtra("level", AlertService.LEVEL_ALERT)
         .putExtra("shelter", shelter).putExtra("firedAt", now).putExtra("source", src)
         .putExtra("autoCloseMs", 20_000L).putExtra("mapAreas", body)
     // עמודי ההגדרות נשארים פתוחים - בסגירת התצוגה המקדימה חוזרים אליהם
-    when (Prefs.alertStyle(this)) {
+    when (st) {
         0, 1 -> startActivity(full)
         2 -> {
             // הכרטיס נמצא במסך הראשי: מסתירים את עמודי ההגדרות זמנית, ומחזירים בסיום (20 שניות או ✕)
@@ -268,6 +271,42 @@ internal fun MainActivity.endCardPreview() {
     previewAlert = null
     updateAlertCard()
     pages.forEach { it.show() }
+}
+
+private val STYLE_NAMES = listOf("מסך מלא", "פופ-אפ", "כרטיס", "ממוזער")
+private val TOPICS = listOf(AlertService.LEVEL_ALERT to "התרעות", AlertService.LEVEL_PRE to "מבזקים והנחיות", AlertService.LEVEL_END to "עדכונים")
+
+/** שורת ההתאמה האישית: אילו נושאים שונים מהבחירה הכללית */
+internal fun MainActivity.customStyleSub(): String {
+    val diff = TOPICS.filter { (l, _) -> Prefs.topicStyle(this, l) in 0..3 }
+        .map { (l, n) -> "$n: ${STYLE_NAMES[Prefs.topicStyle(this, l)]}" }
+    return if (diff.isEmpty()) "כל הנושאים לפי הבחירה למעלה" else diff.joinToString(" · ")
+}
+
+/** התאמה אישית: סוג תצוגה נפרד לכל נושא - כל נושא בשורה */
+internal fun MainActivity.showCustomStyles() = ouiPage("התאמה אישית") { body, rebuild ->
+    val c = ouiCard()
+    TOPICS.forEachIndexed { i, (level, name) ->
+        if (i > 0) ouiDivider(c)
+        val t = Prefs.topicStyle(this, level)
+        ouiRow(c, name, sub = if (t in 0..3) STYLE_NAMES[t] else "כמו הכללי (${STYLE_NAMES[Prefs.alertStyle(this)]})") {
+            chooseTopicStyle(level, name) { rebuild() }
+        }
+    }
+    ouiAdd(body, c)
+    ouiNote(body, "התרעות – אדום · מבזקים והנחיות – כתום · עדכונים – ירוק\nבמצב שבת כל ההתרעות במסך מלא")
+}
+
+private fun MainActivity.chooseTopicStyle(level: Int, name: String, done: () -> Unit) = ouiPage(name, onClose = done) { body, rebuild ->
+    val c = ouiCard()
+    val cur = Prefs.topicStyle(this, level)
+    ouiRow(c, "כמו הכללי", sub = STYLE_NAMES[Prefs.alertStyle(this)], radio = cur !in 0..3) {
+        Prefs.setTopicStyle(this, level, -1); rebuild() }
+    STYLE_NAMES.forEachIndexed { i, n ->
+        ouiDivider(c)
+        ouiRow(c, n, radio = cur == i) { Prefs.setTopicStyle(this, level, i); rebuild() }
+    }
+    ouiAdd(body, c)
 }
 
 /** הדמיה קטנה של סוג תצוגת ההתרעה: 0 מסך מלא · 1 פופ-אפ · 2 כרטיס · 3 ממוזער */

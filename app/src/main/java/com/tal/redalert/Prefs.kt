@@ -346,6 +346,11 @@ object Prefs {
 
     /** סוג תצוגת התרעה: 0 מסך מלא · 1 פופ-אפ · 2 כרטיס מעל השעון · 3 ממוזער */
     fun alertStyle(c: Context) = sp(c).getInt("alertStyle", 0)
+    /** התאמה אישית לכל נושא (0 התרעות · 1 מבזקים והנחיות · 2 עדכונים): -1 = לפי סוג התצוגה הכללי */
+    fun topicStyle(c: Context, level: Int) = sp(c).getInt("alertStyle_$level", -1)
+    fun setTopicStyle(c: Context, level: Int, v: Int) = sp(c).edit().putInt("alertStyle_$level", v).apply()
+    /** סוג התצוגה בפועל לנושא: ההתאמה האישית, ואם אין - הכללי */
+    fun alertStyleFor(c: Context, level: Int) = topicStyle(c, level).takeIf { it in 0..3 } ?: alertStyle(c)
     /** מפה במסך ההתרעה (מסך מלא ופופ-אפ) */
     fun alertMap(c: Context) = sp(c).getBoolean("alertMap", true)
     fun setAlertMap(c: Context, v: Boolean) = sp(c).edit().putBoolean("alertMap", v).apply()
