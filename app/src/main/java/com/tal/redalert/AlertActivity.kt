@@ -18,6 +18,11 @@ import android.widget.TextView
 
 /** מסך שקופץ בזמן התראה - מסך מלא, או פופ-אפ באמצע המסך (AlertPopupActivity) */
 open class AlertActivity : Activity() {
+    companion object {
+        /** כמה מסכי התרעה (מסך מלא / פופ-אפ) פתוחים עכשיו */
+        @Volatile var open = 0
+    }
+
 
     /** פופ-אפ: כרטיס באמצע המסך מעל מה שפתוח */
     protected open val popup = false
@@ -61,6 +66,7 @@ open class AlertActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        open++   // כל עוד מסך ההתרעה פתוח - בלי כרטיס במסך הראשי (רק הצבע)
         MiniOverlay.hide(this)   // המסך חזר - בלי החלון הקטן
         // מופיע מעל מסך הנעילה ומדליק את המסך
         if (android.os.Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true) }
@@ -361,6 +367,7 @@ open class AlertActivity : Activity() {
     private var tipsSheet: android.app.Dialog? = null
 
     override fun onDestroy() {
+        open = (open - 1).coerceAtLeast(0)
         try { tipsSheet?.dismiss() } catch (_: Exception) { }
         tipsSheet = null
         ui.removeCallbacksAndMessages(null)   // כולל הסגירה האוטומטית במצב שבת
