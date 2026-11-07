@@ -385,7 +385,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(dp(16), dp(14), dp(16), dp(14))
-            setOnClickListener { openActiveAlert() }
+            // לחיצה על הכרטיס לא פותחת שוב את מסך ההתרעה (בכל הסגנונות)
         }
         // ✕ בפינה: מסתיר את הכרטיס עד ההתרעה הבאה
         alertWrap = FrameLayout(this).apply {
