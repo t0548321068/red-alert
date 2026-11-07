@@ -1,4 +1,20 @@
 package com.tal.redalert
+
+import com.tal.redalert.AlertService.Companion.CH_UPDATE
+import com.tal.redalert.AlertService.Companion.CH_WATCH
+import com.tal.redalert.AlertService.Companion.HISTORY_POLL_MS
+import com.tal.redalert.AlertService.Companion.ID_UPDATE
+import com.tal.redalert.AlertService.Companion.ID_WATCH
+import com.tal.redalert.AlertService.Companion.POLL_MS
+import com.tal.redalert.AlertService.Companion.UNPROTECTED_AFTER_MS
+import com.tal.redalert.AlertService.Companion.URL_ALERTS
+import com.tal.redalert.AlertService.Companion.URL_ARCHIVE
+import com.tal.redalert.AlertService.Companion.URL_HISTORY
+import com.tal.redalert.AlertService.Companion.decodeOref
+import com.tal.redalert.AlertService.Companion.inEvent
+import com.tal.redalert.AlertService.Companion.orefHistory
+import com.tal.redalert.AlertService.Companion.orefLive
+import com.tal.redalert.AlertService.Companion.serverOk
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -25,7 +41,7 @@ import java.net.URL
 internal fun AlertService.telegramInterval(): Long = when {
     serverOk(this) -> Long.MAX_VALUE / 4   // השרת בודק את טלגרם
     inEvent() -> 5_000L
-    (getSystemService(POWER_SERVICE) as PowerManager).isInteractive -> 30_000L
+    (getSystemService(android.content.Context.POWER_SERVICE) as PowerManager).isInteractive -> 30_000L
     else -> 300_000L   // מסך כבוי - כל 5 דקות (גיבוי בלבד)
 }
 
@@ -41,7 +57,7 @@ internal fun AlertService.loop() {
         // ממתינים בצעדים של 2 שניות - כשהמסך נדלק או מתחיל אירוע, חוזרים מיד לקצב המהיר
         for (step in 0 until 5) {
             Thread.sleep(POLL_MS)
-            if (inEvent() || (getSystemService(POWER_SERVICE) as PowerManager).isInteractive) break
+            if (inEvent() || (getSystemService(android.content.Context.POWER_SERVICE) as PowerManager).isInteractive) break
         }
     }
 }
@@ -83,7 +99,7 @@ internal fun AlertService.check() {
 internal fun AlertService.watchdogLoop() {
     var badSince = 0L
     var alerted = false
-    val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    val nm = getSystemService(android.content.Context.NOTIFICATION_SERVICE) as NotificationManager
     Thread.sleep(30_000)
     while (running) {
         val reason = unprotectedReason()
@@ -124,7 +140,7 @@ internal fun AlertService.watchdogLoop() {
 }
 
 internal fun AlertService.unprotectedReason(): String? {
-    val cm = getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+    val cm = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
     val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }
     return when {
         caps == null -> "אין חיבור לרשת"
@@ -172,7 +188,7 @@ internal fun AlertService.notifyIfNewVersion(): Boolean {
         .setContentIntent(openApp())
         .setAutoCancel(true)
         .build()
-    (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_UPDATE, n)
+    (getSystemService(android.content.Context.NOTIFICATION_SERVICE) as NotificationManager).notify(ID_UPDATE, n)
     return true
 }
 
@@ -201,7 +217,7 @@ internal fun AlertService.historyLoop() {
         val from = System.currentTimeMillis()
         while (running) {
             Thread.sleep(5_000)
-            val every = if (inEvent() || (getSystemService(POWER_SERVICE) as PowerManager).isInteractive)
+            val every = if (inEvent() || (getSystemService(android.content.Context.POWER_SERVICE) as PowerManager).isInteractive)
                 HISTORY_POLL_MS else 120_000L
             if (System.currentTimeMillis() - from >= every) break
         }
@@ -232,7 +248,7 @@ internal fun AlertService.nearLoop() {
             }
         } catch (_: Exception) { }
         // מסך דלוק - כל 5 דקות; כבוי - כל 15 (כשהטלפון בכיס הוא בדרך כלל לא זז הרבה)
-        Thread.sleep(if ((getSystemService(POWER_SERVICE) as PowerManager).isInteractive) 5 * 60 * 1000L else 15 * 60 * 1000L)
+        Thread.sleep(if ((getSystemService(android.content.Context.POWER_SERVICE) as PowerManager).isInteractive) 5 * 60 * 1000L else 15 * 60 * 1000L)
     }
 }
 
