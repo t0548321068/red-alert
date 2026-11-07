@@ -83,7 +83,7 @@ internal fun AlertService.createChannels() {
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         })
     nm.createNotificationChannel(
-        NotificationChannel(android.content.Context.CH_SERVICE, "שירות רקע", NotificationManager.IMPORTANCE_MIN))
+        NotificationChannel(CH_SERVICE, "שירות רקע", NotificationManager.IMPORTANCE_MIN))
     nm.createNotificationChannel(
         NotificationChannel(CH_ALERT, "התראות צופר חירום", NotificationManager.IMPORTANCE_HIGH).apply {
             // צליל ורטט - ברירת המחדל של הטלפון
