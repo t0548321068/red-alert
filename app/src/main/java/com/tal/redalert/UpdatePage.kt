@@ -189,7 +189,7 @@ internal fun MainActivity.showUpdateCheck() {
                             ouiDivider(cd); ouiRow(cd, "גודל", end = "%.1f MB".format(java.util.Locale.US, it / 1048576.0), endColor = C.MUTED)
                         }
                         ouiAdd(content, cd)
-                        notesCard("מה חדש בגרסה", det?.notes ?: emptyList())
+                        notesCard("מה חדש", det?.notes ?: emptyList())
                         if (beta) ouiNote(content, "גרסת בטא – לפני שחרור לכולם, ייתכנו בה תקלות")
                         // לחיצה כפולה לא מתחילה שתי הורדות (בלי אישור התקנה - אפשר ללחוץ שוב אחרי האישור)
                         var installing = false
