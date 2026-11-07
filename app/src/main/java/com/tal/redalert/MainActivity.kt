@@ -258,7 +258,7 @@ class MainActivity : Activity() {
             setPadding(dp(6), padV, dp(6), padV)
             background = graphite(28)
         }
-        netInd = indicator(R.drawable.ic_globe) { showNetworkInfo() }   // לחיצה: הודעה קצרה עם סוג החיבור
+        netInd = indicator(R.drawable.ic_globe) { showNetworkInfo() }   // לחיצה: עמוד הרשת (חיבור, שרת, שרשרת הגיבוי)
         protInd = indicator(R.drawable.ic_shield_ind) { toggle() }   // לחיצה: הפעלה / כיבוי (נראה כמו שאר החיוויים)
         locInd = indicator(R.drawable.ic_location) { onLocationIndicator() }   // לחיצה: רענון מיקום
         srvInd = indicator(R.drawable.ic_antenna) { showSourcesInfo() }   // לחיצה: רשימת המקורות
