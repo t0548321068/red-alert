@@ -133,6 +133,16 @@ internal fun MainActivity.chooseMute(done: () -> Unit) = ouiPage("השתקה ז�
     ouiNote(body, if (active) muteLabel() + ". ההתרעות מוצגות כרגיל, בלי צליל, רטט והקראה" else "ההתרעות יוצגו כרגיל, אבל בלי צליל, רטט והקראה")
 }
 
+/**
+ * בדיקה בסגנון כרטיס - סוגרים את עמודי ההגדרות כדי לראות את הכרטיס במסך הראשי.
+ * במסך מלא / פופ-אפ / ממוזער ההגדרות נשארות: ההתרעה עולה מעליהן, ובסגירה חוזרים אליהן (בלי לראות את המסך הראשי לפני)
+ */
+private fun MainActivity.closePagesForCard(level: Int) {
+    if (Shabbat.active(this) || Prefs.alertStyleFor(this, level) != 2) return
+    pages.toList().forEach { it.dismiss() }
+    refresh()
+}
+
 internal fun MainActivity.chooseTest() = ouiPage("בדיקת התרעה") { body, rebuild ->
     val fab = ouiCard()
     val fm = Prefs.testFabMode(this)
@@ -155,8 +165,7 @@ internal fun MainActivity.chooseTest() = ouiPage("בדיקת התרעה") { body
     ouiRow(seq, "אירוע מלא", sub = "מקדימה ← ירי ← סיום") {
         Prefs.setEnabled(this, true)
         AlertService.startTestSequence(this)
-        pages.toList().forEach { it.dismiss() }
-        refresh()
+        closePagesForCard(AlertService.LEVEL_PRE)
     }
     ouiAdd(body, seq)
     ouiNote(body, "ירי אחרי 15 שניות, וסיום 20 שניות אחרי שנגמר הזמן להגעה למרחב המוגן")
@@ -194,9 +203,7 @@ internal fun MainActivity.chooseTest() = ouiPage("בדיקת התרעה") { body
                         "שעות שקט פעילות – ההתרעה נשלחה בשקט, בלי צליל ומסך מלא",
                         android.widget.Toast.LENGTH_LONG).show()
                 }
-                // סוגרים את עמודי ההגדרות - ההתרעה מוצגת מיד (גם כרטיס / ממוזער שבמסך הראשי)
-                pages.toList().forEach { it.dismiss() }
-                refresh()
+                closePagesForCard(level)
             }
         }, LinearLayout.LayoutParams(-1, dp(ROW_H)))
     }

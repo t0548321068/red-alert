@@ -67,6 +67,7 @@ open class AlertActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         open++   // כל עוד מסך ההתרעה פתוח - בלי כרטיס במסך הראשי (רק הצבע)
+        Prefs.markAlertScreen(this)   // המסך הראשי שמאחור מתעדכן (צבע מאחורי הפופ-אפ)
         MiniOverlay.hide(this)   // המסך חזר - בלי החלון הקטן
         // מופיע מעל מסך הנעילה ומדליק את המסך
         if (android.os.Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true) }
