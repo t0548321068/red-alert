@@ -134,13 +134,14 @@ internal fun MainActivity.chooseMute(done: () -> Unit) = ouiPage("השתקה ז�
 }
 
 /**
- * בדיקה בסגנון כרטיס - סוגרים את עמודי ההגדרות כדי לראות את הכרטיס במסך הראשי.
- * במסך מלא / פופ-אפ / ממוזער ההגדרות נשארות: ההתרעה עולה מעליהן, ובסגירה חוזרים אליהן (בלי לראות את המסך הראשי לפני)
+ * בדיקה: ההתרעה מוצגת על המסך הראשי, ובסגירה חוזרים אליו.
+ * כרטיס / ממוזער - עמודי ההגדרות נסגרים מיד. מסך מלא / פופ-אפ - רק כשמסך ההתרעה כבר עלה (שלא ייראה המסך הראשי לפני)
  */
 private fun MainActivity.closePagesForCard(level: Int) {
-    if (Shabbat.active(this) || Prefs.alertStyleFor(this, level) != 2) return
-    pages.toList().forEach { it.dismiss() }
-    refresh()
+    val st = if (Shabbat.active(this)) 0 else Prefs.alertStyleFor(this, level)
+    if (st >= 2) { closeAllPages(); return }
+    closePagesOnScreen = true
+    ui.postDelayed({ if (closePagesOnScreen) { closePagesOnScreen = false; closeAllPages() } }, 5000)   // אם מסך ההתרעה לא עלה
 }
 
 internal fun MainActivity.chooseTest() = ouiPage("בדיקת התרעה") { body, rebuild ->

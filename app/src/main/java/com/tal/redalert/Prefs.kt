@@ -355,6 +355,9 @@ object Prefs {
     fun afterClose(c: Context) = sp(c).getInt("afterClose", 0)
     /** מסך התרעה נפתח - רק כדי שהמסך הראשי (שמאזין לשינויים) יתעדכן */
     fun markAlertScreen(c: Context) = sp(c).edit().putLong("alertScreenAt", System.currentTimeMillis()).apply()
+    /** איפה נגמרת שורת החיוויים במסך הראשי (פיקסלים מראש המסך) - החלון הממוזער מתחתיה. 0 = לא ידוע */
+    fun miniY(c: Context) = sp(c).getInt("miniY", 0)
+    fun setMiniY(c: Context, v: Int) { if (v > 0 && v != miniY(c)) sp(c).edit().putInt("miniY", v).apply() }
     fun setAfterClose(c: Context, v: Int) = sp(c).edit().putInt("afterClose", v).apply()
     /** מפה במסך ההתרעה (מסך מלא ופופ-אפ) */
     fun alertMap(c: Context) = sp(c).getBoolean("alertMap", true)
