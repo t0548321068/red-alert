@@ -182,7 +182,7 @@ class MainActivity : Activity() {
 
     /** התרעה חדשה כשהמסך הראשי מאחורי פופ-אפ / ממוזער: הצבע והכרטיס מתעדכנים מיד (בלי לחכות לחזרה למסך) */
     private val alertListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == "activeAlert" || key == "alertDismissed") ui.post { if (::alertWrap.isInitialized) updateAlertCard() }
+        if (key == "activeAlert" || key == "alertDismissed" || key == "alertScreenAt") ui.post { if (::alertWrap.isInitialized) updateAlertCard() }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

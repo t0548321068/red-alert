@@ -353,6 +353,8 @@ object Prefs {
     fun setCustomStyles(c: Context, v: Boolean) = sp(c).edit().putBoolean("customStyles", v).apply()
     /** אחרי סגירת מסך מלא / פופ-אפ: 0 = כרטיס במסך הראשי, 1 = ממוזער (החלון הקטן למעלה) */
     fun afterClose(c: Context) = sp(c).getInt("afterClose", 0)
+    /** מסך התרעה נפתח - רק כדי שהמסך הראשי (שמאזין לשינויים) יתעדכן */
+    fun markAlertScreen(c: Context) = sp(c).edit().putLong("alertScreenAt", System.currentTimeMillis()).apply()
     fun setAfterClose(c: Context, v: Int) = sp(c).edit().putInt("afterClose", v).apply()
     /** מפה במסך ההתרעה (מסך מלא ופופ-אפ) */
     fun alertMap(c: Context) = sp(c).getBoolean("alertMap", true)
