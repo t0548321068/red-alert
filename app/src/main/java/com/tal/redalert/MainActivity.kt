@@ -278,7 +278,7 @@ class MainActivity : Activity() {
             ui.postDelayed(openUpdates, 600)
             if (taps >= 7 && !Prefs.betaUnlocked(this@MainActivity) && Prefs.betaAllowed(this@MainActivity)) {
                 Prefs.setBetaUnlocked(this@MainActivity, true)
-                android.widget.Toast.makeText(this@MainActivity, "🧪 גרסאות בטא נפתחו (⚙ ← בדיקת עדכונים)",
+                android.widget.Toast.makeText(this@MainActivity, "🧪 גרסאות בטא נפתחו (⚙ ← עדכונים)",
                     android.widget.Toast.LENGTH_SHORT).show()
             }
             // מכשיר שלא ברשימת הבטא: 7 לחיצות מציגות את מזהה המכשיר (כדי להוסיף אותו לרשימה)

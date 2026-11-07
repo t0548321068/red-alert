@@ -202,7 +202,7 @@ object Updater {
         AppSheet.show(a, (if (beta) "🧪 גרסת בטא זמינה – " else "🆕 גרסה חדשה זמינה – ") + u.label,
             "הגרסה שלך: ${versionLabel(a)}\nלהתקין עכשיו?" +
                 (if (beta) "\n\nגרסת בטא – לפני שחרור לכולם, ייתכנו בה תקלות." else "") +
-                "\n\n\"מאוחר יותר\" – אפשר לעדכן בכל עת דרך ⚙ ← בדיקת עדכונים",
+                "\n\n\"מאוחר יותר\" – אפשר לעדכן בכל עת דרך ⚙ ← עדכונים",
             "התקן עכשיו", { download(a, u.label.replace(" ", "-"), u.url) },
             cancel = "מאוחר יותר", onCancel = { Prefs.setSkippedVersion(a, u.key) }, cancelable = false)
             ?.let { if (a is MainActivity) a.track(it) }   // נסגר יחד עם המסך (סיבוב)

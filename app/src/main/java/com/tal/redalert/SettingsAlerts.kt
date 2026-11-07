@@ -34,7 +34,7 @@ import com.tal.redalert.MainActivity.SameHeight
 // עמודי ההגדרות: התרעות - סוג התצוגה, מרחק, השתקה זמנית ובדיקת התרעה
 
 /** עמוד התרעות: כל ההגדרות של ההתרעה במקום אחד */
-internal fun MainActivity.showAlertSettings() = ouiPage("הגדרות התרעות") { body, rebuild ->
+internal fun MainActivity.showAlertSettings() = ouiPage("התרעות") { body, rebuild ->
     // סוג תצוגת התרעה: שורה אחת - העמוד שלה מרכז את הבחירה הכללית וההתאמה האישית לכל נושא
     val style = ouiCard()
     ouiRow(style, "סגנון התרעה", sub = styleSummary()) { showCustomStyles() }

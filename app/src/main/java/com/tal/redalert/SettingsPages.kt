@@ -53,10 +53,10 @@ internal fun MainActivity.showSettings() {
             on = { Prefs.enabled(this) }, toggle = { toggle() }) { showProtection() }) },
         "תצוגה" to { listOf(Row("🎨", "תצוגה") { showDisplay() }) },
         "התרעות" to { listOf(
-            Row("🔔", "הגדרות התרעות") { showAlertSettings() }) },
+            Row("🔔", "התרעות") { showAlertSettings() }) },
         "הרשאות" to { phoneRows() },
         // עדכונים ואודות - כל אחד בכרטיס נפרד
-        "עדכונים" to { listOf(Row("⬆️", "בדיקת עדכונים") { showUpdates() }) },
+        "עדכונים" to { listOf(Row("⬆️", "עדכונים") { showUpdates() }) },
         "אודות" to { listOf(Row("ℹ️", "אודות") { showAbout() }) }
         // יצירת קשר מושהית - כדי להחזיר: "יצירת קשר" to { listOf(Row("✉️", "יצירת קשר") { showContact() }) }
     )
