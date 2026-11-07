@@ -3,7 +3,6 @@ package com.tal.redalert
 import com.tal.redalert.AlertService.Companion.HEADSETS
 import com.tal.redalert.AlertService.Companion.LEVEL_ALERT
 import com.tal.redalert.AlertService.Companion.builtinSpeaker
-import com.tal.redalert.AlertService.Companion.start
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
