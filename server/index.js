@@ -86,7 +86,7 @@ function route(req, res) {
       // לכל היותר פעם בדקה (שלא יוכלו להציף את המכשירים מבחוץ)
       if (Date.now() - lastManualHb > 60 * 1000) { lastManualHb = Date.now(); heartbeat(); }
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ up: health.upList(), started: health.STARTED, now: Date.now(), version: versions.latest }));
+      return res.end(JSON.stringify({ up: health.upList(), started: health.STARTED, now: Date.now(), version: versions.latest, shabbat: require('./lib/itim').status() }));
   }
   if (u.pathname === '/data' || u.pathname.startsWith('/data/')) return files.serveData(res, decodeURIComponent(u.pathname.slice(6)));
   res.writeHead(404); res.end();

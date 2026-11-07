@@ -16,7 +16,7 @@ const il = ms => { const p = Object.fromEntries(ilParts.formatToParts(new Date(m
 
 let week = null;
 try { week = JSON.parse(fs.readFileSync(FILE, 'utf8')); } catch (_) { }
-let via = 'direct', running = false, lastTry = 0;
+let via = 'direct', running = false, lastTry = 0, lastError = null;
 
 async function itimGet(p) {
   if (via === 'direct') {
@@ -63,7 +63,7 @@ async function fetchWeek() {
     week = { at: Date.now(), from, to, via, places: res, cut: 1 };
     fs.writeFileSync(FILE + '.tmp', JSON.stringify(week)); fs.renameSync(FILE + '.tmp', FILE);
     log(`itim: זמני שבת לשבוע הבא נטענו (${okN} מקומות, ${via === 'cf' ? 'דרך Cloudflare' : 'ישירות'})`);
-  } catch (e) { log('itim: טעינה נכשלה -', e.message); }
+  } catch (e) { lastError = new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' }) + ' ' + e.message; log('itim: טעינה נכשלה -', e.message); }
   finally { running = false; }
 }
 
@@ -82,6 +82,11 @@ function windowsFor(i) {
   if (!week || !week.places || !week.places[i]) return null;
   return { from: week.from, to: week.to, list: week.places[i] };
 }
-function status() { return week ? { at: week.at, via: week.via, places: Object.keys(week.places || {}).length } : null; }
+// מצב הטעינה האחרונה (מוצג ב-/status): מתי נטען, איך, כמה מקומות, עד איזה תאריך, ומתי נכשל לאחרונה
+function status() {
+  const il = ms => ms ? new Date(ms).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' }) : null;
+  return { loaded: week ? il(week.at) : null, via: week ? week.via : null, places: week ? Object.keys(week.places || {}).length : 0,
+    until: week ? il(week.to) : null, lastTry: il(lastTry), lastError };
+}
 
 module.exports = { windowsFor, status, fetchWeek };
