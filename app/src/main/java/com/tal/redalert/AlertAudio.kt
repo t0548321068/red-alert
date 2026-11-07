@@ -64,6 +64,9 @@ internal fun AlertService.boostAlarmVolume(ms: Long): Unit = synchronized(audioL
 internal fun AlertService.ringerToNormal(ms: Long): Boolean = synchronized(audioLock) {
     val am = getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
     return try {
+        // מצב שקט מלא (לא רטט): לא נוגעים. באנדרואיד, החזרה למצב שקט מאפליקציה מדליקה "נא לא להפריע" -
+        // לכן בשקט מלא משמיעים בערוץ השעון המעורר (נשמע גם בשקט), ורק ממצב רטט עוברים לרגיל וחוזרים
+        if (ringerSaved == -1 && am.ringerMode == android.media.AudioManager.RINGER_MODE_SILENT) return false
         if (ringerSaved == -1) { ringerSaved = am.ringerMode; restoreSp().edit().putLong("at", System.currentTimeMillis()).putInt("ringer", ringerSaved).apply() }
         am.ringerMode = android.media.AudioManager.RINGER_MODE_NORMAL
         if (am.ringerMode != android.media.AudioManager.RINGER_MODE_NORMAL ||
