@@ -243,14 +243,16 @@ internal fun MainActivity.previewAlertStyle() {
         .putExtra("title", title).putExtra("body", body).putExtra("level", AlertService.LEVEL_ALERT)
         .putExtra("shelter", shelter).putExtra("firedAt", now).putExtra("source", src)
         .putExtra("autoCloseMs", 20_000L).putExtra("mapAreas", body)
-    pages.toList().forEach { it.dismiss() }
+    // עמודי ההגדרות נשארים פתוחים - בסגירת התצוגה המקדימה חוזרים אליהם
     when (Prefs.alertStyle(this)) {
         0, 1 -> startActivity(full)
         2 -> {
+            // הכרטיס נמצא במסך הראשי: מסתירים את עמודי ההגדרות זמנית, ומחזירים בסיום (20 שניות או ✕)
             previewAlert = org.json.JSONObject().put("title", title).put("body", body).put("level", AlertService.LEVEL_ALERT)
                 .put("shelter", shelter).put("firedAt", now).put("source", src).put("mapAreas", body)
+            pages.forEach { it.hide() }
             updateAlertCard()
-            ui.postDelayed({ if (previewAlert?.optLong("firedAt") == now) { previewAlert = null; updateAlertCard() } }, 20_000L)
+            ui.postDelayed({ if (previewAlert?.optLong("firedAt") == now) endCardPreview() }, 20_000L)
         }
         else -> if (MiniOverlay.canShow(this)) {
             MiniOverlay.show(this, full)
@@ -259,6 +261,13 @@ internal fun MainActivity.previewAlertStyle() {
                 if ((Prefs.activeAlert(this)?.optLong("firedAt") ?: 0L) < now) MiniOverlay.hide(this) }, 20_000L)
         } else android.widget.Toast.makeText(this, "התצוגה הממוזערת צריכה הרשאת \"הצגה מעל אפליקציות\"", android.widget.Toast.LENGTH_LONG).show()
     }
+}
+
+/** סוף התצוגה המקדימה של הכרטיס: הכרטיס נעלם ועמודי ההגדרות חוזרים */
+internal fun MainActivity.endCardPreview() {
+    previewAlert = null
+    updateAlertCard()
+    pages.forEach { it.show() }
 }
 
 /** הדמיה קטנה של סוג תצוגת ההתרעה: 0 מסך מלא · 1 פופ-אפ · 2 כרטיס · 3 ממוזער */
