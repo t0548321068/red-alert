@@ -268,8 +268,7 @@ internal fun MainActivity.onLocationIndicator() {
             val now = System.currentTimeMillis()
             if (now - locTapAt < 30_000L) { toast("המיקום כבר מתעדכן…"); return }
             locTapAt = now
-            toast("מעדכן מיקום…")
-            updateWeather(force = true)
+            updateWeather(force = true, manual = true)
             refreshNearby { list ->
                 locTapAt = 0L
                 if (isFinishing || isDestroyed) return@refreshNearby
