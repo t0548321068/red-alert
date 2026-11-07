@@ -271,11 +271,10 @@ internal fun MainActivity.styleSummary(): String {
     return (listOf(STYLE_NAMES[Prefs.alertStyle(this)]) + diff).joinToString(" · ")
 }
 
-/** סוג תצוגת התרעה: למעלה הבחירה לכל הנושאים (הדמיות אפורות), ומתחת התאמה אישית - כל נושא בשורה */
+/** סוג תצוגת התרעה: למעלה הבחירה לכל הנושאים (הדמיות אפורות, בלי כותרת), ומתחת התאמה אישית - כל נושא בשורה */
 internal fun MainActivity.showCustomStyles() = ouiPage("סוג תצוגת התרעה") { body, rebuild ->
     val all = ouiCard()
-    all.addView(text("כל הנושאים", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-    val opts = LinearLayout(this).apply { setPadding(dp(6), dp(10), dp(6), dp(16)) }
+    val opts = LinearLayout(this).apply { setPadding(dp(6), dp(20), dp(6), dp(16)) }   // בלי כותרת - ההדמיות בראש הכרטיס
     STYLE_NAMES.forEachIndexed { i, label ->
         opts.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
