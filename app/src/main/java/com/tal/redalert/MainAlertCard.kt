@@ -104,6 +104,8 @@ internal fun MainActivity.updateAlertCard() {
 /** לחיצה על הכרטיס - מסך ההתרעה המלא */
 internal fun MainActivity.openActiveAlert() {
     val j = previewAlert ?: Prefs.activeAlert(this) ?: return
+    // בסגנון "כרטיס" הכרטיס הוא התצוגה עצמה - לחיצה לא פותחת מסך מלא
+    if (Prefs.alertStyleFor(this, j.optInt("level")) == 2 && !Shabbat.active(this)) return
     startActivity(Intent(this, AlertActivity::class.java)
         .putExtra("title", j.optString("title")).putExtra("body", j.optString("body"))
         .putExtra("level", j.optInt("level")).putExtra("shelter", j.optInt("shelter", -1))
