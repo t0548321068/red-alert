@@ -71,7 +71,9 @@ class MapActivity : Activity() {
         val ink = Color.parseColor(if (dark) "#F2F2F7" else "#1C1C1E")
         window.decorView.setBackgroundColor(bg)
 
-        val mv = MapView(this).apply {
+        // foregroundLoadColor: עד שהסגנון נטען המפה מצוירת בצבע הזה (ברירת המחדל בהירה - הבהוב לבן)
+        val mv = MapView(this, org.maplibre.android.maps.MapLibreMapOptions.createFromAttributes(this)
+            .foregroundLoadColor(MapKit.bg(dark))).apply {
             // רקע המפה עד שהרחובות מופיעים - בצבע של מפת הרחובות
             setBackgroundColor(MapKit.bg(dark))
         }
