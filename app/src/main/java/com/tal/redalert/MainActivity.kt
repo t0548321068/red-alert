@@ -395,6 +395,7 @@ class MainActivity : Activity() {
                 setPadding(dp(8), dp(8), dp(8), dp(8))
                 background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#40000000")) }
                 setOnClickListener {
+                    if (previewAlert != null) { endCardPreview(); return@setOnClickListener }   // ✕ בתצוגה מקדימה - חזרה להגדרות
                     Prefs.activeAlert(this@MainActivity)?.let { Prefs.setAlertDismissed(this@MainActivity, it.optLong("firedAt")) }
                     updateAlertCard()
                 }
