@@ -91,7 +91,8 @@ internal fun MainActivity.showSettings() {
                 val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
                 texts.addView(text(r.title, 16f, C.TEXT))
                 val v = r.value()
-                if (v.isNotEmpty()) texts.addView(text(v, 12f, Color.parseColor("#5AA9FF")))
+                if (v.isNotEmpty()) texts.addView(text(v, 12f, Color.parseColor("#5AA9FF")).apply {
+                    textDirection = View.TEXT_DIRECTION_RTL })   // גם "v3.69b" (אנגלית) מיושר לימין
                 row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
                 r.on?.let { isOn ->
                     val on = isOn()
