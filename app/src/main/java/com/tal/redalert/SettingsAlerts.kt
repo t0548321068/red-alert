@@ -37,7 +37,7 @@ import com.tal.redalert.MainActivity.SameHeight
 internal fun MainActivity.showAlertSettings() = ouiPage("הגדרות התרעות") { body, rebuild ->
     // סוג תצוגת התרעה: שורה אחת - העמוד שלה מרכז את הבחירה הכללית וההתאמה האישית לכל נושא
     val style = ouiCard()
-    ouiRow(style, "סוג תצוגת התרעה", sub = styleSummary()) { showCustomStyles() }
+    ouiRow(style, "סגנון התרעה", sub = styleSummary()) { showCustomStyles() }
     ouiDivider(style)
     ouiRow(style, "מפה במסך ההתרעה", on = Prefs.alertMap(this)) {
         Prefs.setAlertMap(this, !Prefs.alertMap(this)); rebuild() }
@@ -272,7 +272,7 @@ internal fun MainActivity.styleSummary(): String {
 }
 
 /** סוג תצוגת התרעה: למעלה הבחירה לכל הנושאים (הדמיות אפורות, בלי כותרת), ומתחת התאמה אישית - כל נושא בשורה */
-internal fun MainActivity.showCustomStyles() = ouiPage("סוג תצוגת התרעה") { body, rebuild ->
+internal fun MainActivity.showCustomStyles() = ouiPage("סגנון התרעה") { body, rebuild ->
     val all = ouiCard()
     val opts = LinearLayout(this).apply { setPadding(dp(6), dp(20), dp(6), dp(16)) }   // בלי כותרת - ההדמיות בראש הכרטיס
     STYLE_NAMES.forEachIndexed { i, label ->
