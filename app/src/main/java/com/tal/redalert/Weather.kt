@@ -87,13 +87,11 @@ object Weather {
             if (finished) return
             finished = true
             stopAll()
-            l?.let { Prefs.recordAccuracy(c, it.accuracy) }
             done(l ?: lastLocation(c))
         }
 
-        // היעד: הדיוק הטוב ביותר שהמכשיר הזה הגיע אליו (+ מרווח קטן). בפעם הראשונה - 5 מטר.
-        val deviceBest = Prefs.bestAccuracy(c)
-        val target = if (deviceBest > 0f) maxOf(deviceBest * 1.3f, deviceBest + 1f) else 5f
+        // היעד: מטר אחד בכל המכשירים. מכשיר שלא מגיע לזה - נעצר כשהדיוק לא משתפר (6/10 שניות) או אחרי חצי דקה
+        val target = 1f
 
         // מיקום מהדקה האחרונה שכבר בדיוק המרבי - אין צורך לחכות
         lastLocation(c)?.let {

@@ -177,14 +177,7 @@ object Prefs {
         sp(c).edit().putString("feed", arr.toString()).apply()
     }
 
-    // ---- דיוק מיקום: נלמד לכל מכשיר ----
-    /** הדיוק הטוב ביותר (במטרים) שהמכשיר הזה הגיע אליו אי פעם. 0 = עוד לא נמדד */
-    fun bestAccuracy(c: Context) = sp(c).getFloat("bestAcc", 0f)
-    fun recordAccuracy(c: Context, acc: Float) {
-        if (acc <= 0f) return
-        val cur = bestAccuracy(c)
-        if (cur == 0f || acc < cur) sp(c).edit().putFloat("bestAcc", acc).commit()
-    }
+    // ---- דיוק מיקום ----
     fun dualFrequency(c: Context) = sp(c).getBoolean("dualFreq", false)
     fun setDualFrequency(c: Context, v: Boolean) {
         if (dualFrequency(c) != v) sp(c).edit().putBoolean("dualFreq", v).commit()
