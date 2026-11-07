@@ -300,7 +300,8 @@ private fun MainActivity.liveRefresh(body: LinearLayout, rebuild: () -> Unit) {
     (body.tag as? Runnable)?.let { ui.removeCallbacks(it) }
     val live = object : Runnable { override fun run() {
         if (!body.isAttachedToWindow) return
-        if (hasWindowFocus()) rebuild() else ui.postDelayed(this, 1000)   // ברקע - לא בונים את העמוד מחדש
+        // הפוקוס של חלון העמוד עצמו (לא של המסך הראשי שמתחתיו). ברקע - לא בונים את העמוד מחדש
+        if (body.hasWindowFocus()) rebuild() else ui.postDelayed(this, 1000)
     } }
     body.tag = live
     ui.postDelayed(live, 1000)
@@ -338,11 +339,13 @@ internal fun MainActivity.showNetworkInfo() = ouiPage("רשת",
     val (srvLabel, srvColor) = when {
         !on -> "כבוי" to C.MUTED
         checkFailed -> "לא עונה" to C.RED
-        srvOk -> "מחובר" to C.GREEN
+        srvOk || (srvCheckUp != null && srvCheckAt > hb) -> "מחובר" to C.GREEN
         st.connecting -> "מתחבר…" to C.ORANGE
         else -> "מנותק" to C.RED
     }
-    ouiRow(sum, "שרת התרעות", sub = if (hb > 0) "סימן חיים ${agoText(hb)}" else "עוד לא התקבל סימן חיים",
+    // סימן החיים האחרון - גם תשובה לכפתור "בדיקה"
+    val seen = maxOf(hb, if (srvCheckUp != null) srvCheckAt else 0L)
+    ouiRow(sum, "שרת התרעות", sub = if (seen > 0) "סימן חיים ${agoText(seen)}" else "עוד לא התקבל סימן חיים",
         subColor = C.MUTED, end = srvLabel, endColor = srvColor)
     ouiDivider(sum)
     // 2. מקור הבדיקה: השרת הראשי / המשני / הממסר בבית, או הטלפון עצמו

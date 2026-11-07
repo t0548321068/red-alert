@@ -40,6 +40,7 @@ internal fun MainActivity.updateWeather(force: Boolean = false, manual: Boolean 
     weatherAt = System.currentTimeMillis()
     // כשכבר מוצג מזג אוויר - נשאר עד שמגיע החדש (בלי להבהב "מאתר מיקום")
     // בלחיצה על חיווי המיקום - רואים שהוא מתעדכן
+    if (manual) weatherManualAt = System.currentTimeMillis()
     if (!weatherShown || manual) {
         weatherLine.text = "מאתר מיקום מדויק…"
         weatherLine.setTextColor(C.MUTED)
@@ -104,16 +105,18 @@ internal fun MainActivity.weatherRetrySoon() { weatherAt = System.currentTimeMil
 
 internal fun MainActivity.loadWeather(loc: android.location.Location) = Thread {
     val w = try { Weather.fetch(this, loc) } catch (_: Exception) { null }
-    runOnUiThread {
-        if (w == null) { weatherRetrySoon(); return@runOnUiThread }
+    fun show() {
+        if (w == null) { weatherRetrySoon(); return }
         val (icon, _) = Weather.describe(w.code, w.isDay)
         val hint = if (hasPrecise()) "" else " (לחץ למיקום מדויק)"
         weatherLine.text = listOf("$icon ${w.temp}°", w.place)
             .filter { it.isNotBlank() }.joinToString(" · ") + hint
         weatherLine.setTextColor(C.SOFT)
         weatherShown = true
-
     }
+    // אחרי לחיצה על חיווי המיקום - "מאתר מיקום מדויק…" נשאר לפחות 2 שניות (שיהיה ברור שמשהו קורה)
+    val wait = 2000L - (System.currentTimeMillis() - weatherManualAt)
+    runOnUiThread { if (wait > 0) ui.postDelayed({ show() }, wait) else show() }
 }.start()
 
 internal fun MainActivity.onWeatherClick() {
