@@ -58,11 +58,11 @@ internal fun MainActivity.showAlertSettings() = ouiPage("התרעות") { body, 
     ouiAdd(body, c)
     // צלילים ורטט (ההקראה בתוכו)
     val snd = ouiCard()
-    ouiRow(snd, "צלילים ורטט", sub = "הקראה · שעות שקט · נא לא להפריע · מצב שקט · שבת") { showSoundSettings() }
+    ouiRow(snd, "צלילים ורטט") { showSoundSettings() }
     ouiAdd(body, snd)
     // בדיקת התראה (עברה מהכפתור שבמסך הראשי)
     val t = ouiCard()
-    ouiRow(t, "בדיקת התרעה", sub = "מקדימה · ירי · סיום") { chooseTest() }
+    ouiRow(t, "בדיקת התרעה") { chooseTest() }
     ouiAdd(body, t)
 }
 
@@ -263,7 +263,7 @@ private val TOPICS = listOf(AlertService.LEVEL_ALERT to "התרעות", AlertSer
 /** השורה בהגדרות: הבחירה הכללית, ואילו נושאים שונים ממנה */
 internal fun MainActivity.styleSummary(): String {
     if (!Prefs.customStyles(this)) return STYLE_NAMES[Prefs.alertStyle(this)]
-    return "התאמה אישית · " + TOPICS.joinToString(" · ") { (l, n) -> "$n: ${STYLE_NAMES[Prefs.alertStyleFor(this, l)]}" }
+    return "מותאם אישית"
 }
 
 /** סוג תצוגת התרעה: למעלה הבחירה לכל הנושאים (הדמיות אפורות, בלי כותרת), ומתחת התאמה אישית - כל נושא בשורה */

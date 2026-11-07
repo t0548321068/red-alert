@@ -131,7 +131,7 @@ internal fun MainActivity.showDisplay() {
         pick.addView(preview(true, "בהיר", mode == 1, 1), LinearLayout.LayoutParams(0, -2, 1f))
         theme.addView(pick)
         divider(theme)
-        row(theme, "לפי המערכת", on = sys) { setTheme(d, if (sys) 0 else 2) { rebuild() } }
+        row(theme, "לפי המערכת", on = sys, sep = false) { setTheme(d, if (sys) 0 else 2) { rebuild() } }
         row(theme, "לפי זמן", themeTimeLabel(), on = byTime, sep = false,
             open = { chooseThemeTime { applyThemeNow(d) { rebuild() } } }) { setTheme(d, if (byTime) 0 else 3) { rebuild() } }
         addCard(theme)

@@ -98,8 +98,9 @@ internal fun MainActivity.showUpdateCheck() {
     fun installedAt() = try { dateFmt.format(java.util.Date(packageManager.getPackageInfo(packageName, 0).lastUpdateTime)) } catch (_: Exception) { "" }
     fun notesCard(title: String, notes: List<String>) {
         if (notes.isEmpty()) return
-        ouiNote(content, title)
+        // הכותרת בתוך הכרטיס, מעל הרשימה
         val c = ouiCard()
+        c.addView(text(title, 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), 0) })
         ouiText(c, notes.joinToString("\n") { "• $it" })
         ouiAdd(content, c)
     }
