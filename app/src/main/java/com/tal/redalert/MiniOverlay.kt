@@ -123,10 +123,7 @@ object MiniOverlay {
             addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
             addView(timerBox)
             addView(closeX, LinearLayout.LayoutParams(dp(34), dp(34)))
-            setOnClickListener {
-                hide(app)
-                app.startActivity(Intent(full).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            }
+            // לחיצה על החלון לא פותחת מסך מלא - בממוזער החלון הוא התצוגה עצמה (סגירה ב-✕)
         }
         val lp = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT,
