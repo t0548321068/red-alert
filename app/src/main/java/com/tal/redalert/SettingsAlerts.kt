@@ -266,7 +266,7 @@ private val TOPICS = listOf(AlertService.LEVEL_ALERT to "התרעות", AlertSer
 
 /** השורה בהגדרות: הבחירה הכללית, ואילו נושאים שונים ממנה */
 internal fun MainActivity.styleSummary(): String {
-    val diff = TOPICS.filter { (l, _) -> Prefs.topicStyle(this, l) in 0..3 }
+    val diff = if (!Prefs.customStyles(this)) emptyList() else TOPICS.filter { (l, _) -> Prefs.topicStyle(this, l) in 0..3 }
         .map { (l, n) -> "$n: ${STYLE_NAMES[Prefs.topicStyle(this, l)]}" }
     return (listOf(STYLE_NAMES[Prefs.alertStyle(this)]) + diff).joinToString(" · ")
 }
@@ -290,17 +290,20 @@ internal fun MainActivity.showCustomStyles() = ouiPage("סגנון התרעה") 
         previewAlertStyle(AlertService.LEVEL_ALERT, Prefs.alertStyle(this)) }
     ouiAdd(body, all)
 
+    // מתג: כשמופעל - השורות של כל נושא מוצגות מתחת
     val c = ouiCard()
-    c.addView(text("התאמה אישית", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-    TOPICS.forEachIndexed { i, (level, name) ->
-        if (i > 0) ouiDivider(c)
+    val custom = Prefs.customStyles(this)
+    ouiRow(c, "התאמה אישית", sub = "סגנון נפרד לכל נושא", on = custom) { Prefs.setCustomStyles(this, !custom); rebuild() }
+    if (custom) TOPICS.forEach { (level, name) ->
+        ouiDivider(c)
         val t = Prefs.topicStyle(this, level)
         ouiRow(c, name, sub = if (t in 0..3) STYLE_NAMES[t] else "כמו הכללי (${STYLE_NAMES[Prefs.alertStyle(this)]})") {
             chooseTopicStyle(level, name) { rebuild() }
         }
     }
     ouiAdd(body, c)
-    ouiNote(body, "התרעות – אדום · מבזקים והנחיות – כתום · עדכונים – ירוק\nבמצב שבת כל ההתרעות במסך מלא")
+    ouiNote(body, if (custom) "התרעות – אדום · מבזקים והנחיות – כתום · עדכונים – ירוק\nבמצב שבת כל ההתרעות במסך מלא"
+        else "כשכבוי – כל הנושאים בסגנון שנבחר למעלה")
 }
 
 /** בחירת סוג התצוגה לנושא: אותן הדמיות כמו בסוג התצוגה הכללי, בצבע הנושא */
