@@ -276,7 +276,7 @@ internal fun MainActivity.alertStylePreview(kind: Int): View {
     // בהיר / חשוך לפי ערכת הצבעים
     val bg = if (C.LIGHT) "#D9D9DC" else "#2B2B2E"
     val block = if (C.LIGHT) "#BDBDC2" else "#3E3E42"
-    val red = "#D50000"
+    val red = "#6E6E73"   // אפור ניטרלי: סוג התצוגה חל על כל הנושאים (אדום, כתום וירוק)
     val f = FrameLayout(this).apply { background = rect(bg, 10); clipToOutline = true }
     // רשימת כרטיסים עם רווח שווה; בכרטיס/ממוזער - ההתרעה היא אחד הכרטיסים ברשימה
     val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(5), dp(5), dp(5), dp(5)) }
@@ -296,7 +296,7 @@ internal fun MainActivity.alertStylePreview(kind: Int): View {
             addView(View(this@alertStylePreview).apply { background = rect("#40000000", 5) },
                 LinearLayout.LayoutParams(-1, dp(18)).apply { setMargins(dp(8), dp(6), dp(8), 0) })
         }, FrameLayout.LayoutParams(-1, -1))
-        // פופ-אפ: כרטיס אדום באמצע, עם המפה בתוכו (כמו במסך המלא)
+        // פופ-אפ: כרטיס באמצע, עם המפה בתוכו (כמו במסך המלא)
         1 -> f.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = rect(red, 8); clipToOutline = true
