@@ -191,7 +191,8 @@ internal fun MainActivity.toggleNearMe() {
 
 /** בכל פתיחה - מיקום עדכני ל"התרעות לפי מיקום" (בנוסף לעדכון של השירות כל 2 דקות) */
 internal fun MainActivity.refreshNearby(done: ((List<String>?) -> Unit)? = null) {
-    if (!Prefs.nearMe(this) || checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) !=
+    if (!Prefs.nearMe(this)) { done?.invoke(emptyList()); return }   // "קרוב אליי" כבוי - רק מזג האוויר מתעדכן
+    if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) !=
         android.content.pm.PackageManager.PERMISSION_GRANTED) { done?.invoke(null); return }
     fun use(loc: android.location.Location, last: Boolean = false) = Thread {
         var list: List<String>? = null
