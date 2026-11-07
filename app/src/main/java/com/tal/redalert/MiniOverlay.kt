@@ -103,12 +103,9 @@ object MiniOverlay {
         }
         val closeX = circle(R.drawable.ic_close, 34).apply {
             setOnClickListener {
+                // ✕ סוגר לגמרי: בלי לפתוח את המסך הראשי, וגם הכרטיס שם לא יופיע להתרעה הזו
                 hide(app)
-                // אחרי סגירה - במסך הראשי נשאר כרטיס ההתרעה מעל השעון
-                try {
-                    app.startActivity(Intent(app, MainActivity::class.java)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
-                } catch (_: Exception) { }
+                Prefs.setAlertDismissed(app, firedAt)
             }
         }
         val bar = LinearLayout(app).apply {
