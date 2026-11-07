@@ -358,7 +358,12 @@ open class AlertActivity : Activity() {
         ui.post(tick)
     }
 
+    private var counted = true   // נספר ב-open
+    private fun uncount() { if (counted) { counted = false; open = (open - 1).coerceAtLeast(0) } }
+
     override fun onPause() {
+        // נסגר: מורידים מהספירה כבר עכשיו - המסך הראשי חוזר לפני onDestroy, והכרטיס מופיע בו מיד
+        if (isFinishing) uncount()
         alertMap?.onPause()
         ui.removeCallbacks(tick)
         super.onPause()
@@ -368,7 +373,7 @@ open class AlertActivity : Activity() {
     private var tipsSheet: android.app.Dialog? = null
 
     override fun onDestroy() {
-        open = (open - 1).coerceAtLeast(0)
+        uncount()
         try { tipsSheet?.dismiss() } catch (_: Exception) { }
         tipsSheet = null
         ui.removeCallbacksAndMessages(null)   // כולל הסגירה האוטומטית במצב שבת
