@@ -348,6 +348,9 @@ object Prefs {
     /** מתג ההתאמה האישית (כבוי = כל הנושאים לפי הבחירה הכללית). ברירת מחדל: פעיל אם כבר נבחר משהו לנושא */
     fun customStyles(c: Context) = sp(c).getBoolean("customStyles", (0..2).any { topicStyle(c, it) in 0..3 })
     fun setCustomStyles(c: Context, v: Boolean) = sp(c).edit().putBoolean("customStyles", v).apply()
+    /** אחרי סגירת מסך מלא / פופ-אפ: 0 = כרטיס במסך הראשי, 1 = ממוזער (החלון הקטן למעלה) */
+    fun afterClose(c: Context) = sp(c).getInt("afterClose", 0)
+    fun setAfterClose(c: Context, v: Int) = sp(c).edit().putInt("afterClose", v).apply()
     /** מפה במסך ההתרעה (מסך מלא ופופ-אפ) */
     fun alertMap(c: Context) = sp(c).getBoolean("alertMap", true)
     fun setAlertMap(c: Context, v: Boolean) = sp(c).edit().putBoolean("alertMap", v).apply()
