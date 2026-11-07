@@ -23,17 +23,17 @@ import java.net.URL
 class AlertService : Service() {
 
     companion object {
-        private const val URL_ALERTS = "https://www.oref.org.il/warningMessages/alert/Alerts.json"   // הכתובת החדשה (נובמבר 2026) - הישנה מחזירה 404
-        private const val URL_HISTORY = "https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json"
-        private const val URL_ARCHIVE = OrefArchive.BASE + "lastDay"   // הארכיון החדש (נובמבר 2026)
-        private const val POLL_MS = 2000L
-        private const val HISTORY_POLL_MS = 30000L   // גיבוי בלבד
-        private const val HISTORY_WINDOW_MS = 90000L
-        private const val CH_SERVICE = "service"
-        private const val CH_ALERT = "alerts_v3"   // בינתיים: צליל ורטט ברירת מחדל של הטלפון
+        internal const val URL_ALERTS = "https://www.oref.org.il/warningMessages/alert/Alerts.json"   // הכתובת החדשה (נובמבר 2026) - הישנה מחזירה 404
+        internal const val URL_HISTORY = "https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json"
+        internal const val URL_ARCHIVE = OrefArchive.BASE + "lastDay"   // הארכיון החדש (נובמבר 2026)
+        internal const val POLL_MS = 2000L
+        internal const val HISTORY_POLL_MS = 30000L   // גיבוי בלבד
+        internal const val HISTORY_WINDOW_MS = 90000L
+        internal const val CH_SERVICE = "service"
+        internal const val CH_ALERT = "alerts_v3"   // בינתיים: צליל ורטט ברירת מחדל של הטלפון
         /** בינתיים כל הצלילים והרטטים - של הטלפון (לא של האפליקציה) */
         const val PHONE_DEFAULTS = true
-        private val HEADSETS = setOf(android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET, android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+        internal val HEADSETS = setOf(android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET, android.media.AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
             android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, android.media.AudioDeviceInfo.TYPE_USB_HEADSET,
             android.media.AudioDeviceInfo.TYPE_BLE_HEADSET)
         /** הרמקול של הטלפון */
@@ -42,8 +42,8 @@ class AlertService : Service() {
                 .getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
                 .firstOrNull { it.type == android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
         } catch (_: Exception) { null }
-        private const val ID_SERVICE = 1
-        private const val ID_ALERT = 2
+        internal const val ID_SERVICE = 1
+        internal const val ID_ALERT = 2
         const val ACTION_TEST = "test"
         const val ACTION_TEST_SEQ = "test_seq"   // בדיקת אירוע מלא: מקדימה, ירי, סיום
         const val ACTION_SILENCE = "silence"
@@ -97,7 +97,7 @@ class AlertService : Service() {
          * גיבוי: התרעה מהשרת הגיעה כשהשירות לא רץ, ואנדרואיד לא הרשה להפעיל אותו -
          * מציגים לפחות התראה רגילה (עם הצליל של הטלפון), כדי שההתרעה לא תלך לאיבוד
          */
-        private val fallbackSeen = HashMap<String, Long>()
+        internal val fallbackSeen = HashMap<String, Long>()
         @Synchronized
         fun fallbackNotify(c: Context, rawTitle: String, areas: List<String>) {
             if (!Prefs.enabled(c) || Prefs.scheduleOffNow(c)) return
@@ -167,17 +167,17 @@ class AlertService : Service() {
             c.startService(Intent(c, AlertService::class.java).setAction(ACTION_SILENCE))
         }
 
-        private const val CH_INFO = "info_v2"
-        private const val CH_NO_SOUND = "alerts_nosound"   // רטט בלי צליל
-        private const val CH_NO_VIBE = "alerts_novibe"     // צליל בלי רטט
-        private const val CH_SILENT = "alerts_silent"      // בלי צליל ובלי רטט
-        private const val CH_QUIET = "quiet"
-        private const val CH_WATCH = "watchdog_v4"
-        private const val ID_WATCH = 4
-        private const val UNPROTECTED_AFTER_MS = 2 * 60 * 1000L
-        private const val CH_STAY = "stay_v4"   // ספירת השהייה - בלי צליל (לא מצלצל שוב אחרי ההתרעה)
-        private const val CH_UPDATE = "updates_v5"  // ערוץ חדש - הצליל לפי שם הקובץ (לא לפי מספר שמשתנה בין גרסאות)
-        private const val ID_UPDATE = 3
+        internal const val CH_INFO = "info_v2"
+        internal const val CH_NO_SOUND = "alerts_nosound"   // רטט בלי צליל
+        internal const val CH_NO_VIBE = "alerts_novibe"     // צליל בלי רטט
+        internal const val CH_SILENT = "alerts_silent"      // בלי צליל ובלי רטט
+        internal const val CH_QUIET = "quiet"
+        internal const val CH_WATCH = "watchdog_v4"
+        internal const val ID_WATCH = 4
+        internal const val UNPROTECTED_AFTER_MS = 2 * 60 * 1000L
+        internal const val CH_STAY = "stay_v4"   // ספירת השהייה - בלי צליל (לא מצלצל שוב אחרי ההתרעה)
+        internal const val CH_UPDATE = "updates_v5"  // ערוץ חדש - הצליל לפי שם הקובץ (לא לפי מספר שמשתנה בין גרסאות)
+        internal const val ID_UPDATE = 3
 
         const val LEVEL_ALERT = 0
         const val LEVEL_PRE = 1
@@ -243,9 +243,9 @@ class AlertService : Service() {
          * manual = הופעל בלחיצה (על "מוגן", בדיקה, שינוי הגדרה) - בלי התראת "מאזין".
          * בכל הפעלה אחרת (הדלקת הטלפון, אחרי עדכון, חזרה אחרי שנסגר) - התראה עם המנגינה.
          */
-        private const val ID_OFF = 8
-        private const val ID_COUNT = 9                 // ספירה לאחור למרחב המוגן - התראה נוספת
-        private const val CH_COUNT = "countdown"       // בלי צליל ורטט
+        internal const val ID_OFF = 8
+        internal const val ID_COUNT = 9                 // ספירה לאחור למרחב המוגן - התראה נוספת
+        internal const val CH_COUNT = "countdown"       // בלי צליל ורטט
 
         /** התראה קבועה כשההאזנה כבויה: "לא מוגן" + כפתור הפעלה */
         fun showOff(c: Context) {
@@ -297,37 +297,37 @@ class AlertService : Service() {
         }
     }
 
-    @Volatile private var running = false
-    private var lastId = ""
-    private var tzofar: TzofarSource? = null
-    private var telegram: List<TelegramSource> = emptyList()
-    private var updatePush: UpdatePush? = null
-    private var speaker: Speaker? = null
+    @Volatile internal var running = false
+    internal var lastId = ""
+    internal var tzofar: TzofarSource? = null
+    internal var telegram: List<TelegramSource> = emptyList()
+    internal var updatePush: UpdatePush? = null
+    internal var speaker: Speaker? = null
 
     /** כתיבה להיסטוריה ולפיד - ברקע ולפי הסדר, אחרי הצלצול (שלא תעכב אותו) */
-    private val bg = java.util.concurrent.Executors.newSingleThreadExecutor()
+    internal val bg = java.util.concurrent.Executors.newSingleThreadExecutor()
     /** ברקע; אם השירות כבר נסגר - מיד, כאן (ההתרעה לא נזרקת בגלל זה) */
-    private fun later(r: () -> Unit) {
+    internal fun later(r: () -> Unit) {
         try { bg.execute(r) } catch (_: java.util.concurrent.RejectedExecutionException) { try { r() } catch (_: Exception) { } }
     }
     /** סוג וזמן ההתרעה האחרונה שהוקפצה (לאיחוד מקורות לאותה שורה) */
-    @Volatile private var lastFired: Pair<Int, Long>? = null
+    @Volatile internal var lastFired: Pair<Int, Long>? = null
 
     /** מניעת כפילות בין מקורות (נבדק בבדיקות האוטומטיות) */
-    private val dedup = AlertDedup()
-    private val DEDUP_MS = Prefs.DUP_MS
+    internal val dedup = AlertDedup()
+    internal val DEDUP_MS = Prefs.DUP_MS
     /** התראות מאותו סוג בתוך דקה וחצי = אותו אירוע -> שורה אחת ברשימה */
-    private val MERGE_MS = 90 * 1000L
+    internal val MERGE_MS = 90 * 1000L
     /** מזהה האירוע של פיקוד העורף של ההתרעה האחרונה שצלצלה - להבחין בין כפילות למטח חדש */
-    private var lastFiredEid = ""
+    internal var lastFiredEid = ""
     /** האזורים של ההתרעה האחרונה שצלצלה (כולל מה שהצטרף אליה) */
-    @Volatile private var lastFiredAreas: MutableSet<String> = mutableSetOf()
+    @Volatile internal var lastFiredAreas: MutableSet<String> = mutableSetOf()
 
     /**
      * אותו אירוע מכמה מקורות מגיע בחלקים - מצרפים לשורה הקודמת רק אזורים באותו מחוז.
      * מחוז אחר (למשל שדרות ואז תל אביב) = התרעה נפרדת עם צליל ומסך. מחוז לא ידוע - כמו קודם (מצרפים)
      */
-    private fun sameRegion(fresh: List<String>): Boolean {
+    internal fun sameRegion(fresh: List<String>): Boolean {
         val prev = lastFiredAreas.ifEmpty {
             Prefs.activeAlert(this)?.optString("mapAreas")?.split(", ")?.map { it.trim() }?.filter { it.isNotEmpty() }?.toSet() ?: emptySet()
         }
@@ -340,7 +340,7 @@ class AlertService : Service() {
     }
 
     /** אזורים שהצטרפו להתרעה הפעילה (בלי צליל) נכנסים גם לרשימה שלה */
-    private fun addActiveAreas(level: Int, add: List<String>) {
+    internal fun addActiveAreas(level: Int, add: List<String>) {
         val a = Prefs.activeAlert(this)?.takeIf { it.optInt("level") == level } ?: return
         val cur = a.optString("mapAreas").split(", ").map { it.trim() }.filter { it.isNotEmpty() }
         val all = (cur + add).distinct()
@@ -348,9 +348,9 @@ class AlertService : Service() {
         Prefs.setActiveAlert(this, org.json.JSONObject(a.toString()).put("mapAreas", all.joinToString(", ")))
     }
     /** דור הצליל - ראו fire() */
-    @Volatile private var soundGen = 0
+    @Volatile internal var soundGen = 0
 
-    private var wakeLock: PowerManager.WakeLock? = null
+    internal var wakeLock: PowerManager.WakeLock? = null
     /** השומר: כמה שניות ער - החיבורים מתחדשים ופיקוד העורף נבדק - ותזמון הבא */
     fun onWatchdog() {
         syncLocalSources()   // השרת הפסיק לשלוח סימן חיים - צופר חוזר לפעול בטלפון
@@ -365,8 +365,8 @@ class AlertService : Service() {
     }
 
     /** בדיקת גרסה חדשה רק אם עבר מספיק זמן מהבדיקה הקודמת (שעון אמיתי, כולל זמן שינה) */
-    @Volatile private var lastUpdCheck = 0L
-    private fun checkUpdateIfDue(maxAge: Long) {
+    @Volatile internal var lastUpdCheck = 0L
+    internal fun checkUpdateIfDue(maxAge: Long) {
         val now = System.currentTimeMillis()
         if (now - lastUpdCheck < maxAge) return
         lastUpdCheck = now
@@ -378,7 +378,7 @@ class AlertService : Service() {
      * בנוסף, כל עוד המסך דלוק - מחוברים ל-ntfy, וגרסה חדשה מגיעה מיד כשהיא מתפרסמת.
      * כשהמסך כבוי - מתנתקים (בלי בזבוז סוללה), ונשארות הבדיקות בהתעוררות השומר
      */
-    private val unlockReceiver = object : android.content.BroadcastReceiver() {
+    internal val unlockReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
             when (i.action) {
                 Intent.ACTION_USER_PRESENT -> if (!serverOk(c)) checkUpdateIfDue(10 * 60 * 1000L)
@@ -388,7 +388,7 @@ class AlertService : Service() {
         }
     }
 
-    private fun livePush(on: Boolean) {
+    internal fun livePush(on: Boolean) {
         if (on) {
             if (updatePush != null) return
             updatePush = UpdatePush(beta = { Prefs.betaUpdates(this) }, onPing = ::onUpdatePing).also { it.start() }
@@ -398,9 +398,9 @@ class AlertService : Service() {
     }
 
     /** מחזיק את הטלפון ער לזמן קצוב (לא כל הזמן) */
-    private fun awake(ms: Long) { try { wakeLock?.acquire(ms) } catch (_: Exception) { } }
-    private var ringtone: Ringtone? = null
-    private val main = Handler(Looper.getMainLooper())
+    internal fun awake(ms: Long) { try { wakeLock?.acquire(ms) } catch (_: Exception) { } }
+    internal var ringtone: Ringtone? = null
+    internal val main = Handler(Looper.getMainLooper())
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -470,14 +470,6 @@ class AlertService : Service() {
         }
     }
 
-    /** טלגרם: 5 שניות באירוע, 30 שניות כשהמסך דלוק, 2 דקות כשהוא כבוי */
-    private fun telegramInterval(): Long = when {
-        serverOk(this) -> Long.MAX_VALUE / 4   // השרת בודק את טלגרם
-        inEvent() -> 5_000L
-        (getSystemService(POWER_SERVICE) as PowerManager).isInteractive -> 30_000L
-        else -> 300_000L   // מסך כבוי - כל 5 דקות (גיבוי בלבד)
-    }
-
     /** צופר בטלפון רק כשהשרת לא זמין (חיבור קבוע = התעוררויות של הרדיו) */
     @Synchronized
     fun syncLocalSources() {
@@ -519,14 +511,14 @@ class AlertService : Service() {
     }
 
     /** שלבי בדיקת האירוע המלא */
-    private val seqEnd = Runnable { testFire("האירוע הסתיים") }
-    private val seqAlert = Runnable {
+    internal val seqEnd = Runnable { testFire("האירוע הסתיים") }
+    internal val seqAlert = Runnable {
         val shelter = testFire("ירי רקטות וטילים")
         main.postDelayed(seqEnd, shelter * 1000L + 20_000)
     }
 
     /** התראת בדיקה (מחזירה את זמן ההגעה למרחב המוגן בשניות) */
-    private fun testFire(title: String, body: String = "התרעת בדיקה"): Int {
+    internal fun testFire(title: String, body: String = "התרעת בדיקה"): Int {
         val mine = Prefs.cities(this) + Prefs.nearbyAreas(this)
         // זמן ההתגוננות בבדיקה - לפי המיקום שלי (ולא לפי כל האזורים הנוספים: עם "כל הארץ" הקצר ביותר הוא "מיידי",
         // ואז הבדיקה דילגה ישר ל"נשארים במרחב המוגן" ולא הראתה את אייקון סוג ההתרעה). לפחות 15 שניות
@@ -555,135 +547,16 @@ class AlertService : Service() {
         super.onDestroy()
     }
 
-    private fun loop() {
-        while (running) {
-            try {
-                // השרת בודק כל שנייה - הטלפון רק כגיבוי. אם השרת חסום אצל פיקוד העורף והאפשרות מופעלת בשרת - גם הטלפון בודק אותו
-                if (!serverOk(this) || (Config.phoneOrefWhenServerBlocked && !SourceHealth.serverHas("oref"))) check()
-            } catch (_: Exception) {
-                // רשת נפלה / תשובה לא תקינה - מנסים שוב בסבב הבא
-            }
-            // מסך כבוי ואין אירוע - כל 10 שניות (צופר ממילא מתריע מיד); אחרת כל 2 שניות.
-            // ממתינים בצעדים של 2 שניות - כשהמסך נדלק או מתחיל אירוע, חוזרים מיד לקצב המהיר
-            for (step in 0 until 5) {
-                Thread.sleep(POLL_MS)
-                if (inEvent() || (getSystemService(POWER_SERVICE) as PowerManager).isInteractive) break
-            }
-        }
-    }
-
     /**
      * חיבור קבוע לפיקוד העורף: אותו חיבור מאובטח משמש את כל הבדיקות (כל 2 שניות),
      * במקום לפתוח ולסגור חיבור חדש בכל בדיקה - חוסך הרבה סוללה, באותה מהירות
      */
-    private val orefHttp = okhttp3.OkHttpClient.Builder()
+    internal val orefHttp = okhttp3.OkHttpClient.Builder()
         .connectTimeout(4, java.util.concurrent.TimeUnit.SECONDS)
         .readTimeout(4, java.util.concurrent.TimeUnit.SECONDS)
         .connectionPool(okhttp3.ConnectionPool(2, 5, java.util.concurrent.TimeUnit.MINUTES))
         .retryOnConnectionFailure(true)
         .build()
-
-    private fun fetchOref(url: String): String {
-        val sep = if (url.contains("?")) "&" else "?"
-        val req = okhttp3.Request.Builder().url(url + sep + "t=" + System.currentTimeMillis())
-            .header("Referer", "https://www.oref.org.il/")
-            .header("X-Requested-With", "XMLHttpRequest")
-            .header("User-Agent", "Mozilla/5.0 (Linux; Android) RedAlert")
-            .header("Cache-Control", "no-cache")
-            .build()
-        val bytes = orefHttp.newCall(req).execute().use { r ->
-            if (!r.isSuccessful) throw java.io.IOException("HTTP " + r.code)
-            r.body?.bytes() ?: ByteArray(0)
-        }
-        return decodeOref(bytes).trim()
-    }
-
-    /** מקור 1: הקובץ החי של פיקוד העורף */
-    private fun check() {
-        val text = fetchOref(URL_ALERTS)
-        SourceHealth.ok("oref")   // תשובה תקינה (גם ריקה = אין התראות)
-        if (text.isEmpty()) return
-
-        val json = JSONObject(text)
-        val id = json.optString("id")
-        if (id.isEmpty() || id == lastId) return
-        lastId = id
-
-        val (_, title, areas) = orefLive(text) ?: return
-        handle(title, areas, source = "oref", eid = id)
-    }
-
-    /**
-     * שומר: אם אין אינטרנט או שאף מקור התרעות לא מחובר יותר מ-2 דקות -
-     * התראה "לא מוגן". כשהחיבור חוזר - ההתראה מתחלפת ב"חזר לפעול".
-     */
-    private fun watchdogLoop() {
-        var badSince = 0L
-        var alerted = false
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        Thread.sleep(30_000)
-        while (running) {
-            val reason = unprotectedReason()
-            val now = System.currentTimeMillis()
-            if (reason != null) {
-                if (badSince == 0L) badSince = now
-                if (!alerted && now - badSince >= UNPROTECTED_AFTER_MS) {
-                    alerted = true
-                    nm.notify(ID_WATCH, Notification.Builder(this, CH_WATCH)
-                        .setSmallIcon(R.drawable.ic_stat_siren)
-                        .setLargeIcon(android.graphics.drawable.Icon.createWithResource(this, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
-            .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
-                        .setContentTitle("⚠️ צופר חירום – לא מוגן")
-                        .setContentText("$reason – התרעות לא יגיעו כרגע")
-                        .setContentIntent(openApp())
-                        .setOngoing(true)
-                        .build())
-                }
-            } else {
-                if (alerted) {
-                    nm.notify(ID_WATCH, Notification.Builder(this, CH_WATCH)
-                        .setSmallIcon(R.drawable.ic_stat_siren)
-                        .setLargeIcon(android.graphics.drawable.Icon.createWithResource(this, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
-            .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
-                        .setContentTitle("✅ צופר חירום חזר לפעול")
-                        .setContentText("${SourceHealth.upCount()}/${SourceHealth.total()} מקורות מחוברים")
-                        .setContentIntent(openApp())
-                        .setAutoCancel(true)
-                        .setTimeoutAfter(60_000)
-                        .build())
-                }
-                badSince = 0L
-                alerted = false
-            }
-            Thread.sleep(15_000)
-        }
-        nm.cancel(ID_WATCH)
-    }
-
-    private fun unprotectedReason(): String? {
-        val cm = getSystemService(CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-        val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }
-        return when {
-            caps == null -> "אין חיבור לרשת"
-            !caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED) -> "אין אינטרנט"
-            SourceHealth.upCount() == 0 -> "אין חיבור לשרתי ההתרעות"
-            else -> null
-        }
-    }
-
-    /**
-     * גרסה חדשה: התראה מיידית דרך ntfy (GitHub שולח ברגע הפרסום),
-     * ובנוסף בדיקה כל 30 דקות כגיבוי. התראה אחת לכל גרסה, לחיצה פותחת את חלון ההתקנה.
-     */
-    private fun updateLoop() {
-        Thread.sleep(60_000)
-        while (running) {
-            if (!serverOk(this)) checkUpdateIfDue(14 * 60 * 1000L)
-            // כל 15 דקות של זמן ער - לא מעיר את הטלפון (כשהוא ישן, הספירה עוצרת),
-            // והבדיקה דרך האתר של GitHub, בלי מגבלת ה-API
-            Thread.sleep(15 * 60 * 1000L)
-        }
-    }
 
     /** הודעה מ-ntfy: בודקים מול GitHub (עם כמה ניסיונות - הפרסום לפעמים מתעכב בכמה שניות) */
     fun onUpdatePing() {
@@ -697,69 +570,9 @@ class AlertService : Service() {
     }
 
     /** עדכון שנדחה בגלל אירוע - ניסיון חוזר */
-    private val updateLater = Runnable { Thread({ try { notifyIfNewVersion() } catch (_: Exception) { } }, "update-later").start() }
+    internal val updateLater = Runnable { Thread({ try { notifyIfNewVersion() } catch (_: Exception) { } }, "update-later").start() }
     // מנעול נפרד: בדיקת הגרסה (רשת, עד עשרות שניות) לא תעכב את handle() של התרעות
-    private val updLock = Any()
-    private fun notifyIfNewVersion(): Boolean {
-        // עדכון אוטומטי ברקע - אבל לא באמצע אירוע (ההתקנה סוגרת את האפליקציה לכמה שניות): מחכים שיסתיים
-        if (Prefs.autoUpdate(this)) {
-            if (inEvent() || Prefs.stayUntil(this) > System.currentTimeMillis()) {
-                main.removeCallbacks(updateLater); main.postDelayed(updateLater, 10 * 60 * 1000L)
-                return true
-            }
-            if (Updater.autoInstall(this)) return true
-        }
-        val v = Updater.pendingVersion(this) ?: return false
-        synchronized(updLock) {
-            if (Prefs.notifiedVersion(this) == v) return true
-            Prefs.setNotifiedVersion(this, v)
-        }
-        val n = Notification.Builder(this, CH_UPDATE)
-            .setSmallIcon(R.drawable.ic_stat_siren)
-            .setLargeIcon(android.graphics.drawable.Icon.createWithResource(this, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
-            .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
-            .setContentTitle("🆕 גרסה חדשה זמינה – $v")
-            .setContentText("לחץ כדי להתקין")
-            .setCategory(Notification.CATEGORY_RECOMMENDATION)
-            .setContentIntent(openApp())
-            .setAutoCancel(true)
-            .build()
-        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_UPDATE, n)
-        return true
-    }
-
-    /**
-     * מקור 2: היסטוריית פיקוד העורף (title / alertDate)
-     * מקור 3: ארכיון פיקוד העורף (category_desc / alertDate עם T)
-     * שניהם גיבוי להתראות שנפלו בין בדיקות.
-     */
-    private fun historyLoop() {
-        while (running) {
-            for (url in listOf(URL_HISTORY, URL_ARCHIVE)) {
-                if (serverOk(this)) break   // השרת בודק את ההיסטוריה והארכיון
-                try {
-                    val raw = fetchOref(url)
-                    // הארכיון - רק תשובה בפורמט שלו נחשבת "עונה" (לא דף אתר)
-                    if (url == URL_ARCHIVE && !raw.startsWith("{")) continue
-                    val text = OrefArchive.convert(raw)
-                    SourceHealth.ok(if (url == URL_HISTORY) "history" else "archive")
-                    if (!text.startsWith("[")) continue
-                    val src = if (url == URL_HISTORY) "history" else "archive"
-                    orefHistory(text, System.currentTimeMillis()).forEach { (title, t, areas) -> handle(title, areas, t, src) }
-                } catch (_: Exception) { }
-            }
-            // גיבוי: מסך דלוק או אירוע - כל 30 שניות; מסך כבוי - כל 2 דקות.
-            // ממתינים בצעדים של 5 שניות - כשהמסך נדלק או מתחיל אירוע, הבדיקה הבאה מגיעה מיד
-            val from = System.currentTimeMillis()
-            while (running) {
-                Thread.sleep(5_000)
-                val every = if (inEvent() || (getSystemService(POWER_SERVICE) as PowerManager).isInteractive)
-                    HISTORY_POLL_MS else 120_000L
-                if (System.currentTimeMillis() - from >= every) break
-            }
-        }
-    }
-
+    internal val updLock = Any()
     /** נקודת כניסה משותפת לכל המקורות: סינון ערים + מניעת כפילות */
     @Synchronized
     fun handle(rawTitle: String, rawAreas: List<String>, eventTime: Long = TimeSync.now(this),   // שעון השרת - כמו בהתרעות מהשרת
@@ -828,45 +641,8 @@ class AlertService : Service() {
      * "התרעות לפי מיקום": כל 5 דקות. קודם מיקום מהרשת (כמעט בלי סוללה);
      * GPS נדלק רק אם זזנו (מעל 300 מ׳) או שהמיקום מהרשת לא מספיק מדויק.
      */
-    private var lastGps: android.location.Location? = null
-    private fun nearLoop() {
-        while (running) {
-            try {
-                // רק כשההתרעות לפי מיקום מופעלות - אחרת בלי מיקום ברקע בכלל
-                if (Prefs.nearMe(this) && checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) ==
-                    android.content.pm.PackageManager.PERMISSION_GRANTED) main.post {
-                    awake(15_000)   // מספיק למיקום מהרשת; GPS (כשצריך) מחזיק את הטלפון ער בעצמו
-                    Weather.networkLocation(this) { net ->
-                        val prev = lastGps
-                        // מיקום מהרשת שנופל באזור אחר מהמיקום המדויק הקודם (למשל שכונה סמוכה) - בודקים עם GPS
-                        // לפני שמחליפים אזור. כך GPS נדלק רק כשבאמת יש ספק, לא כל 5 דקות
-                        val nearBorder = net != null && prev != null && net.accuracy > 30f && try {
-                            AreaData.areasAt(this, net.latitude, net.longitude, 0.0).firstOrNull() !=
-                                AreaData.areasAt(this, prev.latitude, prev.longitude, 0.0).firstOrNull()
-                        } catch (_: Exception) { false }
-                        val needGps = net == null || prev == null || net.accuracy > 150f || net.distanceTo(prev) > 300f || nearBorder
-                        if (needGps) Weather.freshLocation(this) { loc ->
-                            if (loc != null) { val use = Weather.chooseLocation(loc); lastGps = use; useLocation(use) }
-                        }
-                        else useLocation(prev!!)   // לא זזנו - המיקום המדויק הקודם עדיין נכון
-                    }
-                }
-            } catch (_: Exception) { }
-            // מסך דלוק - כל 5 דקות; כבוי - כל 15 (כשהטלפון בכיס הוא בדרך כלל לא זז הרבה)
-            Thread.sleep(if ((getSystemService(POWER_SERVICE) as PowerManager).isInteractive) 5 * 60 * 1000L else 15 * 60 * 1000L)
-        }
-    }
-
-    private fun useLocation(loc: android.location.Location) = Thread {
-        try {
-            if (Prefs.nearMe(this)) {
-                val list = AreaData.nearby(this, loc.latitude, loc.longitude)
-                if (list.isNotEmpty() && list != Prefs.nearbyAreas(this)) Prefs.setNearbyAreas(this, list)
-            }
-        } catch (_: Exception) { }
-    }.start()
-
-    private fun fire(title: String, areas: List<String>, forceScreen: Boolean = false, shelter: Int? = null,
+    internal var lastGps: android.location.Location? = null
+    internal fun fire(title: String, areas: List<String>, forceScreen: Boolean = false, shelter: Int? = null,
                      test: Boolean = false, source: String = "", mapAreas: List<String>? = null) {
         val srcName = if (test) "בדיקה" else if (source.isEmpty()) "" else SourceHealth.name(source)
         val body = areas.joinToString(", ")
@@ -1061,9 +837,9 @@ class AlertService : Service() {
     }
 
     /** ההתראה בשורת ההתראות: ספירת שהייה במרחב המוגן, לחיצה פותחת את מסך הספירה */
-    private var stayNotifPi: PendingIntent? = null
-    private var stayTitle = ""; private var stayBody = ""; private var stayEnd = 0L
-    private val stayNotif = Runnable {
+    internal var stayNotifPi: PendingIntent? = null
+    internal var stayTitle = ""; internal var stayBody = ""; internal var stayEnd = 0L
+    internal val stayNotif = Runnable {
         if (System.currentTimeMillis() >= stayEnd) return@Runnable
         val n = Notification.Builder(this, CH_STAY)
             .setSmallIcon(R.drawable.ic_stat_siren)
@@ -1079,9 +855,9 @@ class AlertService : Service() {
     }
 
     /** התראת הספירה לאחור (נוספת, בלי צליל): מתעדכנת בכל מעבר שלב, נעלמת בסיום האירוע */
-    private var countTitle = ""; private var countBody = ""; private var countPi: PendingIntent? = null
-    private var countEnter = 0L; private var countStayEnd = 0L; private var countTest = false
-    private val countNotif: Runnable = Runnable {
+    internal var countTitle = ""; internal var countBody = ""; internal var countPi: PendingIntent? = null
+    internal var countEnter = 0L; internal var countStayEnd = 0L; internal var countTest = false
+    internal val countNotif: Runnable = Runnable {
         val now = System.currentTimeMillis()
         val (label, until) = when {
             now < countEnter -> "זמן התגוננות" to countEnter
@@ -1104,13 +880,13 @@ class AlertService : Service() {
         try { (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_COUNT, n.build()) } catch (_: Exception) { }
         main.postDelayed(countNotif, if (until > 0) until - now + 300 else gone - now + 300)
     }
-    private fun cancelCount() {
+    internal fun cancelCount() {
         main.removeCallbacks(countNotif)
         try { (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(ID_COUNT) } catch (_: Exception) { }
     }
 
     /** עברו 10 הדקות - רק מעדכנים תצוגה. "ניתן לצאת" רק בהודעת סיום אירוע */
-    private val stayDone = Runnable {
+    internal val stayDone = Runnable {
         Prefs.setStayUntil(this, 0)
         AlertWidget.updateAll(this)
     }
@@ -1119,32 +895,10 @@ class AlertService : Service() {
      * "נא לא להפריע" פעיל - מכבים אותו לדקה בזמן ההתראה ומחזירים את המצב הקודם.
      * דורש הרשאת "גישה לנא לא להפריע" (⚙ ← נא לא להפריע).
      */
-    private var dndSaved = -1
+    internal var dndSaved = -1
     /** ההתרעה רצה ברקע וההחזרה בתהליך הראשי - נעילה אחת, כדי שהערך השמור לא ילך לאיבוד באמצע */
-    private val audioLock = Any()
-    /** מה שצריך להחזיר (נא לא להפריע / מצב צלצול / עוצמת שעון) - נשמר גם בקובץ, למקרה שהשירות נסגר באמצע */
-    private fun restoreSp() = getSharedPreferences("restore", MODE_PRIVATE)
-    /** השירות עלה מחדש אחרי שנסגר באמצע התרעה - מחזירים את ההגדרות למה שהיו */
-    private fun restorePending() {
-        val sp = restoreSp()
-        // רק אם השירות נסגר באמצע התרעה ממש עכשיו - אחרי זמן רב המשתמש כבר שינה בעצמו
-        if (System.currentTimeMillis() - sp.getLong("at", 0) > 10 * 60_000L) { sp.edit().clear().apply(); return }
-        if (sp.contains("dnd")) { dndSaved = sp.getInt("dnd", -1); dndRestore.run() }
-        if (sp.contains("ringer")) { ringerSaved = sp.getInt("ringer", -1); restoreRinger.run() }
-        if (sp.contains("alarmVol")) { savedAlarmVol = sp.getInt("alarmVol", -1); restoreAlarmVol.run() }
-    }
-    private fun overrideDnd(force: Boolean = false): Unit = synchronized(audioLock) {
-        if (!force && !Prefs.dndOverride(this)) return
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        if (!nm.isNotificationPolicyAccessGranted) return
-        val cur = nm.currentInterruptionFilter
-        if (cur == NotificationManager.INTERRUPTION_FILTER_ALL) return
-        if (dndSaved == -1) { dndSaved = cur; restoreSp().edit().putLong("at", System.currentTimeMillis()).putInt("dnd", cur).apply() }
-        try { nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL) } catch (_: Exception) { return }
-        main.removeCallbacks(dndRestore)
-        main.postDelayed(dndRestore, 60_000)
-    }
-    private val dndRestore = Runnable { synchronized(audioLock) {
+    internal val audioLock = Any()
+    internal val dndRestore = Runnable { synchronized(audioLock) {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         // מחזירים רק אם המשתמש לא שינה בינתיים בעצמו
         if (dndSaved != -1 && nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_ALL)
@@ -1155,62 +909,10 @@ class AlertService : Service() {
 
     /** מדליק את המסך כשהוא כבוי - שההתראה תופיע מיד גם על מסך הנעילה */
     @Suppress("DEPRECATION")
-    /** הרשאת "הצגה מעל אפליקציות אחרות" (canDrawOverlays לפעמים טועה - בודקים גם ב-AppOps) */
-    private fun overlayOk(): Boolean {
-        if (android.provider.Settings.canDrawOverlays(this)) return true
-        return try {
-            val ops = getSystemService(APP_OPS_SERVICE) as android.app.AppOpsManager
-            @Suppress("DEPRECATION")
-            ops.checkOpNoThrow(android.app.AppOpsManager.OPSTR_SYSTEM_ALERT_WINDOW,
-                android.os.Process.myUid(), packageName) == android.app.AppOpsManager.MODE_ALLOWED
-        } catch (_: Exception) { false }
-    }
-
-    /**
-     * פתיחת מסך ההתרעה מעל אפליקציה אחרת.
-     * מאנדרואיד 15 מותר לפתוח מסך מהרקע רק כשיש לאפליקציה חלון צף גלוי -
-     * אז מוסיפים חלון שקוף בגודל פיקסל, פותחים את המסך, ומסירים אותו אחרי כמה שניות.
-     */
-    private fun launchOver(i: Intent) = main.post {
-        val wm = getSystemService(WINDOW_SERVICE) as android.view.WindowManager
-        var v: android.view.View? = null
-        if (overlayOk()) try {
-            v = android.view.View(this)
-            wm.addView(v, android.view.WindowManager.LayoutParams(1, 1,
-                android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                    android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
-                android.graphics.PixelFormat.TRANSLUCENT).apply {
-                gravity = android.view.Gravity.TOP or android.view.Gravity.START })
-        } catch (_: Exception) { v = null }
-        try { startActivity(i) } catch (_: Exception) { }
-        main.postDelayed({ try { v?.let { wm.removeView(it) } } catch (_: Exception) { } }, 4000)
-    }
-
-    private fun wakeScreen() {
-        val pm = getSystemService(POWER_SERVICE) as PowerManager
-        if (pm.isInteractive) return
-        try {
-            pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
-                "redalert:screen").acquire(20_000)
-        } catch (_: Exception) { }
-    }
-
     /** צליל בערוץ "שעון מעורר" - נשמע גם במצב שקט */
     /** עוצמת ערוץ השעון המעורר למקסימום לזמן מוגבל, ואז מחזירים את העוצמה הקודמת */
-    private var savedAlarmVol = -1
-    private fun boostAlarmVolume(ms: Long): Unit = synchronized(audioLock) {
-        try {
-            val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
-            val s = android.media.AudioManager.STREAM_ALARM
-            if (savedAlarmVol < 0) { savedAlarmVol = am.getStreamVolume(s); restoreSp().edit().putLong("at", System.currentTimeMillis()).putInt("alarmVol", savedAlarmVol).apply() }
-            am.setStreamVolume(s, am.getStreamMaxVolume(s), 0)
-            main.removeCallbacks(restoreAlarmVol)
-            main.postDelayed(restoreAlarmVol, ms + 500)
-        } catch (_: Exception) { }
-    }
-    private val restoreAlarmVol = Runnable { synchronized(audioLock) {
+    internal var savedAlarmVol = -1
+    internal val restoreAlarmVol = Runnable { synchronized(audioLock) {
         try {
             if (savedAlarmVol >= 0) (getSystemService(AUDIO_SERVICE) as android.media.AudioManager)
                 .setStreamVolume(android.media.AudioManager.STREAM_ALARM, savedAlarmVol, 0)
@@ -1223,20 +925,8 @@ class AlertService : Service() {
      * הטלפון על שקט/רטט: מעבירים לרגיל לזמן ההתרעה (כדי להשמיע בעוצמת ההתראות), ומחזירים אחרי ms.
      * מחזיר false אם אי אפשר - אז משמיעים בערוץ השעון המעורר
      */
-    private var ringerSaved = -1
-    private fun ringerToNormal(ms: Long): Boolean = synchronized(audioLock) {
-        val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
-        return try {
-            if (ringerSaved == -1) { ringerSaved = am.ringerMode; restoreSp().edit().putLong("at", System.currentTimeMillis()).putInt("ringer", ringerSaved).apply() }
-            am.ringerMode = android.media.AudioManager.RINGER_MODE_NORMAL
-            if (am.ringerMode != android.media.AudioManager.RINGER_MODE_NORMAL ||
-                am.getStreamVolume(android.media.AudioManager.STREAM_NOTIFICATION) == 0) { restoreRinger.run(); return false }
-            main.removeCallbacks(restoreRinger)
-            main.postDelayed(restoreRinger, ms)
-            true
-        } catch (_: Exception) { restoreRinger.run(); false }
-    }
-    private val restoreRinger = Runnable { synchronized(audioLock) {
+    internal var ringerSaved = -1
+    internal val restoreRinger = Runnable { synchronized(audioLock) {
         val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
         // מחזירים רק אם המשתמש לא שינה בינתיים בעצמו
         if (ringerSaved != -1 && am.ringerMode == android.media.AudioManager.RINGER_MODE_NORMAL)
@@ -1245,150 +935,15 @@ class AlertService : Service() {
         restoreSp().edit().remove("ringer").apply()
     } }
 
-    private fun playAlarm(level: Int, type: Int, durationMs: Long, usage: Int = AudioAttributes.USAGE_ALARM) {
-        val uri = Sounds.uri(this, Sounds.effective(this, level), level) ?: return
-        main.post {
-            ringtone?.stop()
-            ringtone = RingtoneManager.getRingtone(this, uri)?.apply {
-                audioAttributes = AudioAttributes.Builder()
-                    .setUsage(usage)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-                play()
-            }
-            val r = ringtone
-            main.postDelayed({ if (ringtone === r) r?.stop() }, durationMs)
-        }
-    }
-
     /** עצירת השמעה של אפליקציות אחרות לזמן ההתרעה (Audio Focus) */
-    private var focusReq: android.media.AudioFocusRequest? = null
-    private val releaseFocus = Runnable { synchronized(audioLock) {
+    internal var focusReq: android.media.AudioFocusRequest? = null
+    internal val releaseFocus = Runnable { synchronized(audioLock) {
         focusReq?.let { try { (getSystemService(AUDIO_SERVICE) as android.media.AudioManager).abandonAudioFocusRequest(it) } catch (_: Exception) { } }
         focusReq = null
     } }
-    private fun holdFocus(ms: Long): Unit = synchronized(audioLock) {
-        main.removeCallbacks(releaseFocus); releaseFocus.run()
-        try {
-            val r = android.media.AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
-                .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
-                .setOnAudioFocusChangeListener { }
-                .build()
-            (getSystemService(AUDIO_SERVICE) as android.media.AudioManager).requestAudioFocus(r)
-            focusReq = r
-            main.postDelayed(releaseFocus, ms)
-        } catch (_: Exception) { }
-    }
-
-    /** אוזניות מחוברות (חוטיות, USB או בלוטות') */
-    private fun headsetOn(am: android.media.AudioManager): Boolean = try {
-        am.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS).any { it.type in HEADSETS }
-    } catch (_: Exception) { false }
-
     /** הצליל מהרמקול של הטלפון בכוח - גם כשמחוברות אוזניות */
-    private var spk: android.media.MediaPlayer? = null
-    private fun playOnSpeaker(level: Int, durationMs: Long, usage: Int) {
-        val uri = Sounds.uri(this, Sounds.effective(this, level), level) ?: return
-        main.post {
-            ringtone?.stop(); stopSpeaker()
-            try {
-                spk = android.media.MediaPlayer().apply {
-                    setAudioAttributes(AudioAttributes.Builder().setUsage(usage)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
-                    setDataSource(this@AlertService, uri)
-                    isLooping = level == LEVEL_ALERT
-                    builtinSpeaker(this@AlertService)?.let { setPreferredDevice(it) }
-                    prepare(); start()
-                }
-            } catch (_: Exception) { stopSpeaker(); playAlarm(level, RingtoneManager.TYPE_ALARM, durationMs, usage) }
-            val p = spk
-            main.postDelayed({ if (spk === p) stopSpeaker() }, durationMs)
-        }
-    }
-    private fun stopSpeaker() {
-        spk?.let { try { it.stop() } catch (_: Exception) { }; try { it.release() } catch (_: Exception) { } }
-        spk = null
-    }
-
-    /** בשיחה: צפצופים באוזן של השיחה (הצד השני לא שומע). ירי - 3 צפצופים, מקדימה וסיום - אחד */
-    private fun callBeeps(level: Int) {
-        val n = if (level == LEVEL_ALERT) 3 else 1
-        try {
-            val tg = android.media.ToneGenerator(android.media.AudioManager.STREAM_VOICE_CALL, 100)
-            for (i in 0 until n) main.postDelayed({ try { tg.startTone(android.media.ToneGenerator.TONE_PROP_BEEP2, 500) } catch (_: Exception) { } }, i * 800L)
-            main.postDelayed({ try { tg.release() } catch (_: Exception) { } }, n * 800L + 600)
-        } catch (_: Exception) { }
-    }
-
-    private fun openApp() = PendingIntent.getActivity(
+    internal var spk: android.media.MediaPlayer? = null
+    internal fun openApp() = PendingIntent.getActivity(
         this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
 
-    private fun createChannels() {
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        nm.createNotificationChannel(
-            NotificationChannel(CH_COUNT, "ספירה לאחור למרחב המוגן", NotificationManager.IMPORTANCE_LOW).apply {
-                setSound(null, null); enableVibration(false)
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            })
-        nm.createNotificationChannel(
-            NotificationChannel(CH_SERVICE, "שירות רקע", NotificationManager.IMPORTANCE_MIN))
-        nm.createNotificationChannel(
-            NotificationChannel(CH_ALERT, "התראות צופר חירום", NotificationManager.IMPORTANCE_HIGH).apply {
-                // צליל ורטט - ברירת המחדל של הטלפון
-                enableVibration(true)
-                setBypassDnd(true)
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            })
-        nm.createNotificationChannel(
-            NotificationChannel(CH_UPDATE, "עדכוני גרסה", NotificationManager.IMPORTANCE_HIGH).apply {
-                // בינתיים: צליל ההתראות הרגיל של הטלפון (לא המנגינה של האפליקציה)
-            })
-        nm.deleteNotificationChannel("updates_v2")
-        nm.deleteNotificationChannel("updates_v3")
-        nm.deleteNotificationChannel("watchdog_v2")
-        nm.deleteNotificationChannel("stay")
-        nm.deleteNotificationChannel("alerts_v2")
-        nm.deleteNotificationChannel("info")
-        nm.deleteNotificationChannel("updates_v4")
-        nm.deleteNotificationChannel("watchdog_v3")
-        nm.deleteNotificationChannel("stay_v2")
-        nm.deleteNotificationChannel("stay_v3")
-        nm.deleteNotificationChannel("watchdog")
-        nm.deleteNotificationChannel("updates")
-        nm.deleteNotificationChannel("alerts")
-        nm.createNotificationChannel(
-            NotificationChannel(CH_QUIET, "שעות שקט", NotificationManager.IMPORTANCE_LOW))
-        nm.createNotificationChannel(
-            NotificationChannel(CH_WATCH, "האפליקציה לא מוגנת", NotificationManager.IMPORTANCE_HIGH).apply {
-                // בינתיים: צליל ההתראות הרגיל של הטלפון (לא המנגינה של האפליקציה)
-                enableVibration(true)
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            })
-        nm.createNotificationChannel(
-            NotificationChannel(CH_STAY, "נשארים במרחב המוגן", NotificationManager.IMPORTANCE_LOW).apply {
-                setSound(null, null); enableVibration(false)
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            })
-        nm.createNotificationChannel(
-            NotificationChannel(CH_NO_SOUND, "התראות – רטט בלי צליל", NotificationManager.IMPORTANCE_HIGH).apply {
-                setSound(null, null); enableVibration(true)
-                setBypassDnd(true); lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            })
-        nm.createNotificationChannel(
-            NotificationChannel(CH_NO_VIBE, "התראות – צליל בלי רטט", NotificationManager.IMPORTANCE_HIGH).apply {
-                enableVibration(false); vibrationPattern = longArrayOf(0)
-                setBypassDnd(true); lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            })
-        nm.createNotificationChannel(
-            NotificationChannel(CH_SILENT, "התראות – בלי צליל ורטט", NotificationManager.IMPORTANCE_HIGH).apply {
-                setSound(null, null); enableVibration(false); vibrationPattern = longArrayOf(0)
-                setBypassDnd(true); lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            })
-        nm.createNotificationChannel(
-            NotificationChannel(CH_INFO, "סיום אירוע", NotificationManager.IMPORTANCE_HIGH).apply {
-                enableVibration(true)
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            })
-    }
 }
