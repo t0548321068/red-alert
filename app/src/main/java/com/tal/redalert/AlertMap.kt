@@ -57,7 +57,10 @@ class AlertMap(private val a: Activity, savedState: Bundle?, names: List<String>
 
     init {
         MapKit.init(a)
-        view = MapView(a).apply { setBackgroundColor(MapKit.bg(dark)) }
+        // TextureView: המפה מצוירת יחד עם שאר המסך. ב-SurfaceView (ברירת המחדל) היא הבהבה,
+        // כי הספירה לאחור מתעדכנת כל שנייה ומסדרת מחדש את המסך סביבה
+        view = MapView(a, org.maplibre.android.maps.MapLibreMapOptions.createFromAttributes(a).textureMode(true))
+            .apply { setBackgroundColor(MapKit.bg(dark)) }
         view.onCreate(savedState)
         view.getMapAsync { m ->
             map = m
