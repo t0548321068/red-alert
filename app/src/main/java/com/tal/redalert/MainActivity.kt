@@ -491,9 +491,20 @@ class MainActivity : Activity() {
         setIntent(intent)
     }
 
+    /** ערכת צבעים "לפי זמן": אם הגיע זמן ההחלפה - טוענים מחדש; וקובעים את ההחלפה הבאה בזמן שהמסך פתוח */
+    private val themeSwitch = Runnable { scheduleThemeSwitch() }
+    private fun scheduleThemeSwitch() {
+        ui.removeCallbacks(themeSwitch)
+        if (Prefs.themeMode(this) != 3) return
+        val (dark, next) = Prefs.darkByTime(this)
+        if (dark == C.LIGHT) { recreate(); return }   // הצבעים הנוכחיים לא תואמים לזמן
+        ui.postDelayed(themeSwitch, (next - System.currentTimeMillis()).coerceIn(1000L, 6 * 3600_000L) + 1000L)
+    }
+
     override fun onResume() {
         if (::statusRow.isInitialized) { applyStatusRow(); applyTestFab() }
         refreshAccuracy()   // "לפי זמן": מוצגים בכל פתיחה
+        scheduleThemeSwitch()   // ערכת צבעים "לפי זמן": מחליפים כשמגיע הזמן
         try { Shabbat.refresh(this) } catch (_: Exception) { }   // זמני שבת וחג מהשרת
         Prefs.refreshBeta(this)   // מכשירי הבטא - הרשימה בשרת
         DataFiles.sync(this)      // הגדרות, יישובים והקלטות מהשרת (לכל היותר פעם בשעה)
@@ -540,7 +551,7 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
-        ui.removeCallbacks(tick); ui.removeCallbacks(slowTick)
+        ui.removeCallbacks(tick); ui.removeCallbacks(slowTick); ui.removeCallbacks(themeSwitch)
         pulseAnims.forEach { it.pause() }   // האנימציה לא רצה כשהאפליקציה ברקע
         verBlink?.pause(); srvBlink?.pause()
         ui.removeCallbacks(srvAlt); srvColors = null   // ההחלפה מתחדשת בחזרה לאפליקציה

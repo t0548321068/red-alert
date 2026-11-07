@@ -36,6 +36,11 @@ import com.tal.redalert.MainActivity.SameHeight
 internal fun MainActivity.setTheme(d: android.app.Dialog, mode: Int, rebuild: () -> Unit) {
     if (Prefs.themeMode(this) == mode) return
     Prefs.setThemeMode(this, mode)
+    applyThemeNow(d, rebuild)
+}
+
+/** עמוד התצוגה מתחלף מיד לצבעים לפי ההגדרה הנוכחית */
+internal fun MainActivity.applyThemeNow(d: android.app.Dialog, rebuild: () -> Unit) {
     // עמוד התצוגה מתחלף מיד לצבעים החדשים; שאר האפליקציה - ביציאה מהעמוד
     C.apply(Prefs.darkTheme(this))
     (d.window?.decorView?.findViewWithTag<View>("displayPage"))?.setBackgroundColor(C.BG)
@@ -121,13 +126,16 @@ internal fun MainActivity.showDisplay() {
             setOnClickListener { setTheme(d, value) { rebuild() } }
         }
         val sys = mode == 2
-        pick.addView(preview(false, "חשוך", !sys && mode == 0, 0), LinearLayout.LayoutParams(0, -2, 1f))
-        pick.addView(preview(true, "בהיר", !sys && mode == 1, 1), LinearLayout.LayoutParams(0, -2, 1f))
+        val byTime = mode == 3
+        pick.addView(preview(false, "חשוך", mode == 0, 0), LinearLayout.LayoutParams(0, -2, 1f))
+        pick.addView(preview(true, "בהיר", mode == 1, 1), LinearLayout.LayoutParams(0, -2, 1f))
         theme.addView(pick)
         divider(theme)
-        row(theme, "לפי המערכת", on = sys, sep = false) { setTheme(d, if (sys) 0 else 2) { rebuild() } }
+        row(theme, "לפי המערכת", on = sys) { setTheme(d, if (sys) 0 else 2) { rebuild() } }
+        row(theme, "לפי זמן", themeTimeLabel(), on = byTime, sep = false,
+            open = { chooseThemeTime { applyThemeNow(d) { rebuild() } } }) { setTheme(d, if (byTime) 0 else 3) { rebuild() } }
         addCard(theme)
-        note("כשמופעל - בהיר או חשוך לפי הגדרת הטלפון")
+        note("לפי המערכת – בהיר או חשוך לפי הגדרת הטלפון\nלפי זמן – חשוך בלילה ובהיר ביום")
         // שורת החיוויים במסך הראשי
         val ind = card()
         val sm = Prefs.statusMode(this)
@@ -164,9 +172,10 @@ internal fun MainActivity.showDisplay() {
         note("ההתרעות בכל הארץ בתחתית המסך הראשי. כשהמתג מופעל - הפיד מוצג תמיד, גם כשאין התרעות")
     }
     themeAtOpen = Prefs.themeMode(this)
+    val darkAtOpen = Prefs.darkTheme(this)
     rebuild()
     // יציאה מהעמוד: אם ערכת הצבעים השתנתה - טוענים מחדש וחוזרים להגדרות
-    track(d) { if (Prefs.themeMode(this) != themeAtOpen) { MainActivity.reopenDisplay = true; recreate() } }
+    track(d) { if (Prefs.themeMode(this) != themeAtOpen || Prefs.darkTheme(this) != darkAtOpen) { MainActivity.reopenDisplay = true; recreate() } }
     body.setPadding(0, 0, 0, dp(30))
     d.setContentView(page)
     d.window?.setLayout(-1, -1)
@@ -299,4 +308,30 @@ internal fun MainActivity.showGreetingName(done: () -> Unit) {
         body.addView(prev)
         ouiNote(body, "כך תופיע הברכה בכרטיס השעון. בלי שם – רק הברכה")
     }
+}
+
+internal fun MainActivity.themeTimeLabel(): String {
+    if (Prefs.themeTimeMode(this) == 0) return "משקיעה עד זריחה"
+    fun hm(m: Int) = "%02d:%02d".format(m / 60, m % 60)
+    return "${hm(Prefs.darkFrom(this))} – ${hm(Prefs.darkTo(this))}"
+}
+
+/** "לפי זמן": משקיעה עד זריחה, או לוח זמנים מותאם (כמו בסמסונג) */
+internal fun MainActivity.chooseThemeTime(done: () -> Unit) = ouiPage("לפי זמן", onClose = done) { body, rebuild ->
+    fun hm(m: Int) = "%02d:%02d".format(m / 60, m % 60)
+    val c = ouiCard()
+    val tm = Prefs.themeTimeMode(this)
+    ouiRow(c, "משקיעה עד זריחה", radio = tm == 0) { Prefs.setThemeTimeMode(this, 0); rebuild() }
+    ouiDivider(c)
+    ouiRow(c, "לוח זמנים מותאם", radio = tm == 1) { Prefs.setThemeTimeMode(this, 1); rebuild() }
+    if (tm == 1) {
+        ouiDivider(c)
+        ouiRow(c, "שעת התחלה", sub = hm(Prefs.darkFrom(this))) {
+            pickTime("שעת התחלה", Prefs.darkFrom(this)) { Prefs.setDarkFrom(this, it); rebuild() } }
+        ouiDivider(c)
+        ouiRow(c, "שעת סיום", sub = hm(Prefs.darkTo(this))) {
+            pickTime("שעת סיום", Prefs.darkTo(this)) { Prefs.setDarkTo(this, it); rebuild() } }
+    }
+    ouiAdd(body, c)
+    ouiNote(body, if (tm == 0) "חשוך מהשקיעה ועד הזריחה, לפי המיקום שלך" else "חשוך משעת ההתחלה ועד שעת הסיום")
 }

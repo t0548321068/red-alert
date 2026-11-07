@@ -370,8 +370,43 @@ object Prefs {
         activeCache = raw to j
         return j
     }
+    /** ערכת צבעים "לפי זמן": 0 = משקיעה עד זריחה, 1 = לוח זמנים מותאם (דקות מחצות) */
+    fun themeTimeMode(c: Context) = sp(c).getInt("themeTimeMode", 0)
+    fun setThemeTimeMode(c: Context, v: Int) = sp(c).edit().putInt("themeTimeMode", v).apply()
+    fun darkFrom(c: Context) = sp(c).getInt("darkFrom", 19 * 60)
+    fun setDarkFrom(c: Context, v: Int) = sp(c).edit().putInt("darkFrom", v).apply()
+    fun darkTo(c: Context) = sp(c).getInt("darkTo", 7 * 60)
+    fun setDarkTo(c: Context, v: Int) = sp(c).edit().putInt("darkTo", v).apply()
+    /** "לפי זמן": האם עכשיו חשוך, ומתי ההחלפה הבאה */
+    fun darkByTime(c: Context, now: Long = System.currentTimeMillis()): Pair<Boolean, Long> {
+        val cal = java.util.Calendar.getInstance().apply { timeInMillis = now }
+        if (themeTimeMode(c) == 1) {
+            val min = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)
+            val from = darkFrom(c); val to = darkTo(c)
+            val dark = if (from == to) false else if (from < to) min in from until to else min >= from || min < to
+            val next = if (dark) to else from
+            val nextCal = (cal.clone() as java.util.Calendar).apply {
+                set(java.util.Calendar.HOUR_OF_DAY, next / 60); set(java.util.Calendar.MINUTE, next % 60)
+                set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+                if (timeInMillis <= now) add(java.util.Calendar.DAY_OF_MONTH, 1)
+            }
+            return dark to nextCal.timeInMillis
+        }
+        // משקיעה עד זריחה - לפי המיקום האחרון (בלי מיקום: ירושלים)
+        val (_, _, pos) = lastAcc(c)
+        val lat = if (pos.first != 0.0) pos.first else 31.78
+        val lon = if (pos.second != 0.0) pos.second else 35.22
+        val rise = Shabbat.sunEvent(cal, lat, lon, rising = true)
+        val set = Shabbat.sunEvent(cal, lat, lon, rising = false)
+        return when {
+            now < rise -> true to rise
+            now < set -> false to set
+            else -> true to Shabbat.sunEvent((cal.clone() as java.util.Calendar).apply { add(java.util.Calendar.DAY_OF_MONTH, 1) }, lat, lon, rising = true)
+        }
+    }
     fun darkTheme(c: Context) = when (themeMode(c)) {
         1 -> false
+        3 -> darkByTime(c).first
         2 -> (c.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
                 android.content.res.Configuration.UI_MODE_NIGHT_YES
         else -> true
