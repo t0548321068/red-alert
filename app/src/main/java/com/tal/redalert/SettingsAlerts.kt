@@ -35,25 +35,9 @@ import com.tal.redalert.MainActivity.SameHeight
 
 /** עמוד התרעות: כל ההגדרות של ההתרעה במקום אחד */
 internal fun MainActivity.showAlertSettings() = ouiPage("הגדרות התרעות") { body, rebuild ->
-    // סוג תצוגת התרעה: הדמיה קטנה של כל סוג + בחירה (הועבר מעמוד תצוגה)
+    // סוג תצוגת התרעה: שורה אחת - העמוד שלה מרכז את הבחירה הכללית וההתאמה האישית לכל נושא
     val style = ouiCard()
-    style.addView(text("סוג תצוגת התרעה", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
-    val opts = LinearLayout(this).apply { setPadding(dp(6), dp(10), dp(6), dp(16)) }
-    listOf("מסך מלא", "פופ-אפ", "כרטיס", "ממוזער").forEachIndexed { i, label ->
-        val sel = Prefs.alertStyle(this) == i
-        opts.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            addView(alertStylePreview(i), LinearLayout.LayoutParams(dp(58), dp(116)))
-            addLabelRadio(this, label, sel)
-            setOnClickListener { Prefs.setAlertStyle(this@showAlertSettings, i); rebuild() }
-        }, LinearLayout.LayoutParams(0, -2, 1f))
-    }
-    style.addView(opts)
-    ouiDivider(style)
-    ouiRow(style, "התאמה אישית", sub = customStyleSub()) { showCustomStyles() }
-    ouiDivider(style)
-    ouiRow(style, "תצוגה מקדימה", sub = "רק איך זה נראה – בלי צליל ורטט") { previewAlertStyle() }
+    ouiRow(style, "סוג תצוגת התרעה", sub = styleSummary()) { showCustomStyles() }
     ouiDivider(style)
     ouiRow(style, "מפה במסך ההתרעה", on = Prefs.alertMap(this)) {
         Prefs.setAlertMap(this, !Prefs.alertMap(this)); rebuild() }
@@ -229,7 +213,7 @@ internal fun MainActivity.chooseTest() = ouiPage("בדיקת התרעה") { body
  * תצוגה מקדימה של סוג התצוגה שנבחר: רק במסך - בלי צליל, רטט, התראה, היסטוריה או ווידג'ט.
  * נסגרת לבד אחרי 20 שניות. כשיש התרעה אמיתית פעילה - לא מציגים (שלא תידרס)
  */
-internal fun MainActivity.previewAlertStyle(level: Int = AlertService.LEVEL_ALERT) {
+internal fun MainActivity.previewAlertStyle(level: Int = AlertService.LEVEL_ALERT, style: Int? = null) {
     val real = Prefs.activeAlert(this)
     if (real != null && !AlertUi.expired(real.optInt("level"), real.optLong("firedAt"))) {
         android.widget.Toast.makeText(this, "יש התרעה פעילה – אפשר לנסות אחרי שתסתיים", android.widget.Toast.LENGTH_SHORT).show()
@@ -245,7 +229,7 @@ internal fun MainActivity.previewAlertStyle(level: Int = AlertService.LEVEL_ALER
     val shelter = if (level == AlertService.LEVEL_ALERT) AreaData.shelterSeconds(this, listOf(body)) ?: 90 else -1
     val now = System.currentTimeMillis()
     val src = "תצוגה מקדימה"
-    val st = Prefs.alertStyleFor(this, level)
+    val st = style ?: Prefs.alertStyleFor(this, level)
     val full = Intent(this, if (st == 1) AlertPopupActivity::class.java else AlertActivity::class.java)
         .putExtra("title", title).putExtra("body", body).putExtra("level", level)
         .putExtra("shelter", shelter).putExtra("firedAt", now).putExtra("source", src)
@@ -280,16 +264,35 @@ internal fun MainActivity.endCardPreview() {
 private val STYLE_NAMES = listOf("מסך מלא", "פופ-אפ", "כרטיס", "ממוזער")
 private val TOPICS = listOf(AlertService.LEVEL_ALERT to "התרעות", AlertService.LEVEL_PRE to "מבזקים והנחיות", AlertService.LEVEL_END to "עדכונים")
 
-/** שורת ההתאמה האישית: אילו נושאים שונים מהבחירה הכללית */
-internal fun MainActivity.customStyleSub(): String {
+/** השורה בהגדרות: הבחירה הכללית, ואילו נושאים שונים ממנה */
+internal fun MainActivity.styleSummary(): String {
     val diff = TOPICS.filter { (l, _) -> Prefs.topicStyle(this, l) in 0..3 }
         .map { (l, n) -> "$n: ${STYLE_NAMES[Prefs.topicStyle(this, l)]}" }
-    return if (diff.isEmpty()) "כל הנושאים לפי הבחירה למעלה" else diff.joinToString(" · ")
+    return (listOf(STYLE_NAMES[Prefs.alertStyle(this)]) + diff).joinToString(" · ")
 }
 
-/** התאמה אישית: סוג תצוגה נפרד לכל נושא - כל נושא בשורה */
-internal fun MainActivity.showCustomStyles() = ouiPage("התאמה אישית") { body, rebuild ->
+/** סוג תצוגת התרעה: למעלה הבחירה לכל הנושאים (הדמיות אפורות), ומתחת התאמה אישית - כל נושא בשורה */
+internal fun MainActivity.showCustomStyles() = ouiPage("סוג תצוגת התרעה") { body, rebuild ->
+    val all = ouiCard()
+    all.addView(text("כל הנושאים", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+    val opts = LinearLayout(this).apply { setPadding(dp(6), dp(10), dp(6), dp(16)) }
+    STYLE_NAMES.forEachIndexed { i, label ->
+        opts.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            addView(alertStylePreview(i), LinearLayout.LayoutParams(dp(58), dp(116)))
+            addLabelRadio(this, label, Prefs.alertStyle(this@showCustomStyles) == i)
+            setOnClickListener { Prefs.setAlertStyle(this@showCustomStyles, i); rebuild() }
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+    }
+    all.addView(opts)
+    ouiDivider(all)
+    ouiRow(all, "תצוגה מקדימה", sub = "רק איך זה נראה – בלי צליל ורטט") {
+        previewAlertStyle(AlertService.LEVEL_ALERT, Prefs.alertStyle(this)) }
+    ouiAdd(body, all)
+
     val c = ouiCard()
+    c.addView(text("התאמה אישית", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
     TOPICS.forEachIndexed { i, (level, name) ->
         if (i > 0) ouiDivider(c)
         val t = Prefs.topicStyle(this, level)
