@@ -643,9 +643,12 @@ class AlertService : Service() {
         if (last != null && last.first == level && !newBarrage && (level == LEVEL_END || sameRegion(fresh)) &&
             (now - last.second < MERGE_MS || (level == LEVEL_END && now - last.second < DEDUP_MS))) {
             lastFiredAreas += fresh
-            addActiveAreas(level, fresh)   // "האירוע הסתיים" לאזור שהצטרף יסגור את מסך הירי
-            main.post { showJoined(level, fresh) }   // היישובים שהצטרפו מוצגים גם במסך, בכרטיס, בממוזער ובהתראה
             later { try { Prefs.mergeFirstHistory(this, fresh); AlertWidget.updateAll(this) } catch (_: Exception) { } }
+            if (level == LEVEL_END) {
+                // סיום: מצטרף בשקט (פיקוד העורף שולח סיום ארצי בכמה חלקים) - "האירוע הסתיים" לאזור שהצטרף יסגור את מסך הירי
+                addActiveAreas(level, fresh)
+                main.post { showJoined(level, fresh) }
+            } else fire(title, fresh, source = source, join = true)   // מצלצל ומתריע, אבל מעדכן את המסך הקיים
             return
         }
         // ירי פעיל (עד סוף השהייה במרחב המוגן): מקדימה, או סיום שלא כולל את אזורי הירי -
@@ -678,7 +681,8 @@ class AlertService : Service() {
      */
     internal var lastGps: android.location.Location? = null
     internal fun fire(title: String, areas: List<String>, forceScreen: Boolean = false, shelter: Int? = null,
-                     test: Boolean = false, source: String = "", mapAreas: List<String>? = null) {
+                     test: Boolean = false, source: String = "", mapAreas: List<String>? = null,
+                     join: Boolean = false) {
         val srcName = if (test) "בדיקה" else if (source.isEmpty()) "" else SourceHealth.name(source)
         val body = areas.joinToString(", ")
         val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
@@ -694,8 +698,9 @@ class AlertService : Service() {
         // סוג התצוגה מההגדרות (במצב שבת - תמיד מסך מלא)
         val style = if (shabbat) 0 else Prefs.alertStyleFor(this, level)
         val now0 = System.currentTimeMillis()
-        // לכרטיס מעל השעון במסך הראשי (מוצג עד סוף האירוע, גם אחרי סגירת המסך)
-        Prefs.setActiveAlert(this, org.json.JSONObject().put("title", title).put("body", body).put("level", level)
+        // לכרטיס מעל השעון במסך הראשי (מוצג עד סוף האירוע, גם אחרי סגירת המסך).
+        // יישוב שמצטרף לאירוע (join) - מתווסף לקיים, באותו זמן התחלה
+        if (join) addActiveAreas(level, areas) else Prefs.setActiveAlert(this, org.json.JSONObject().put("title", title).put("body", body).put("level", level)
             .put("shelter", shelterSec ?: -1).put("firedAt", now0).put("source", srcName)
             .put("mapAreas", (mapAreas ?: areas).joinToString(", ")))   // למפה כשפותחים מהכרטיס
         val full = Intent(this, if (style == 1) AlertPopupActivity::class.java else AlertActivity::class.java)
@@ -722,8 +727,10 @@ class AlertService : Service() {
             level == LEVEL_END -> CH_INFO
             else -> CH_ALERT
         }
+        // בהצטרפות - בהתראה כל היישובים של האירוע
+        val shown = if (join) Prefs.activeAlert(this)?.optString("body")?.takeIf { it.isNotEmpty() } ?: body else body
         val text = if (shelterSec != null && level == LEVEL_ALERT)
-            "$body · זמן למרחב מוגן: ${AreaData.shelterText(shelterSec)}" else body
+            "$shown · זמן למרחב מוגן: ${AreaData.shelterText(shelterSec)}" else shown
         val nb = Notification.Builder(this, channel)
             .setSmallIcon(R.drawable.ic_stat_siren)
             .setLargeIcon(android.graphics.drawable.Icon.createWithResource(this, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
@@ -754,7 +761,8 @@ class AlertService : Service() {
         val screenOff = !(getSystemService(POWER_SERVICE) as PowerManager).isInteractive
         val locked = (getSystemService(KEYGUARD_SERVICE) as android.app.KeyguardManager).isKeyguardLocked
         val canShow = forceScreen || shabbat || screenOff || locked || overlayOk()
-        if (toMini) main.post { MiniOverlay.showEnd(body) }
+        if (join) main.post { showJoined(level, areas) }   // המסך הקיים מתעדכן - לא נפתח מסך חדש
+        else if (toMini) main.post { MiniOverlay.showEnd(body) }
         else if (!quiet && canShow) {
             when {
                 // מסך כבוי / נעול בכרטיס / ממוזער: רק הרצועה / הכרטיס בראש מסך הנעילה
@@ -771,28 +779,30 @@ class AlertService : Service() {
 
         // ספירה לאחור בווידג'ט הגדול
         // אחרי שנגמר הזמן להגעה - ההתראה עוברת לספירת השהייה (10 דקות)
-        if (level == LEVEL_ALERT && !test) {
+        if (join) { /* הספירות והטיימרים - של האירוע הקיים */ }
+        else if (level == LEVEL_ALERT && !test) {
             main.removeCallbacks(stayNotif)
             stayNotifPi = fullPi; stayTitle = title; stayBody = body; stayEnd = System.currentTimeMillis() + (shelterSec ?: 0).coerceAtLeast(0) * 1000L + Prefs.STAY_MS
             main.postDelayed(stayNotif, ((shelterSec ?: 0).coerceAtLeast(0) * 1000L) + 500)
         } else if (level == LEVEL_END) main.removeCallbacks(stayNotif)
         // התראה נוספת עם ספירה לאחור: זמן התגוננות -> נשארים במרחב המוגן -> ממתינים לסיום
-        if (level == LEVEL_ALERT) {
+        if (join) { }
+        else if (level == LEVEL_ALERT) {
             countTitle = title; countBody = body; countPi = fullPi; countTest = test
             countEnter = System.currentTimeMillis() + (shelterSec ?: 0).coerceAtLeast(0) * 1000L
             countStayEnd = countEnter + Prefs.STAY_MS
             main.removeCallbacks(countNotif); main.post(countNotif)
         } else if (level == LEVEL_END) cancelCount()
 
-        if (test) { /* בלי ספירה וטיימר בווידג'ט */ }
+        if (test || join) { /* בלי ספירה וטיימר בווידג'ט (בהצטרפות - של האירוע הקיים) */ }
         else if (level == LEVEL_ALERT && shelterSec != null && shelterSec > 0) {
             Prefs.setCountdown(this, System.currentTimeMillis() + shelterSec * 1000L, title)
             main.postDelayed({ AlertWidget.updateAll(this) }, shelterSec * 1000L + 500)
         } else if (level == LEVEL_END) Prefs.setCountdown(this, 0, "")
 
         // טיימר שהייה במרחב המוגן: 10 דקות מהירי, "הסתיים" מבטל אותו
-        if (!test) main.removeCallbacks(stayDone)
-        if (test) { }
+        if (!test && !join) main.removeCallbacks(stayDone)
+        if (test || join) { }
         else if (level == LEVEL_ALERT) {
             // 10 הדקות מתחילות אחרי שנגמר הזמן להגעה למרחב המוגן
             val enterMs = (shelterSec ?: 0).coerceAtLeast(0) * 1000L
@@ -873,7 +883,7 @@ class AlertService : Service() {
         }
 
         later {
-            try { if (!test) Prefs.addHistory(this, entry); AlertWidget.updateAll(this) } catch (_: Exception) { }
+            try { if (!test && !join) Prefs.addHistory(this, entry); AlertWidget.updateAll(this) } catch (_: Exception) { }
         }
     }
 
