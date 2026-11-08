@@ -369,7 +369,11 @@ class AlertService : Service() {
                 .putExtra("autoCloseMs", AlertUi.keepMs(level)?.let { k -> (a.optLong("firedAt") + k - System.currentTimeMillis()).coerceAtLeast(1000L) } ?: 0L)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))
         } catch (_: Exception) { }
-        MiniOverlay.updateArea(body)
+        // החלון הממוזער נבנה מחדש - כל היישובים, והזמנים לפי העדכון האחרון
+        if (MiniOverlay.isShowing()) MiniOverlay.show(this, Intent()
+            .putExtra("title", a.optString("title")).putExtra("body", body).putExtra("level", level)
+            .putExtra("shelter", a.optInt("shelter", -1)).putExtra("firedAt", a.optLong("firedAt"))
+            .putExtra("source", a.optString("source")).putExtra("mapAreas", a.optString("mapAreas")))
         // ההתראה: אותה התראה עם כל היישובים, בלי צליל נוסף
         try {
             val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
@@ -700,7 +704,11 @@ class AlertService : Service() {
         val now0 = System.currentTimeMillis()
         // לכרטיס מעל השעון במסך הראשי (מוצג עד סוף האירוע, גם אחרי סגירת המסך).
         // יישוב שמצטרף לאירוע (join) - מתווסף לקיים, באותו זמן התחלה
-        if (join) addActiveAreas(level, areas) else Prefs.setActiveAlert(this, org.json.JSONObject().put("title", title).put("body", body).put("level", level)
+        // הזמנים - לפי העדכון האחרון (היישוב שהצטרף)
+        if (join) {
+            addActiveAreas(level, areas)
+            Prefs.activeAlert(this)?.let { Prefs.setActiveAlert(this, it.put("firedAt", now0).put("shelter", shelterSec ?: -1)) }
+        } else Prefs.setActiveAlert(this, org.json.JSONObject().put("title", title).put("body", body).put("level", level)
             .put("shelter", shelterSec ?: -1).put("firedAt", now0).put("source", srcName)
             .put("mapAreas", (mapAreas ?: areas).joinToString(", ")))   // למפה כשפותחים מהכרטיס
         val full = Intent(this, if (style == 1) AlertPopupActivity::class.java else AlertActivity::class.java)
@@ -779,30 +787,28 @@ class AlertService : Service() {
 
         // ספירה לאחור בווידג'ט הגדול
         // אחרי שנגמר הזמן להגעה - ההתראה עוברת לספירת השהייה (10 דקות)
-        if (join) { /* הספירות והטיימרים - של האירוע הקיים */ }
-        else if (level == LEVEL_ALERT && !test) {
+        if (level == LEVEL_ALERT && !test) {
             main.removeCallbacks(stayNotif)
-            stayNotifPi = fullPi; stayTitle = title; stayBody = body; stayEnd = System.currentTimeMillis() + (shelterSec ?: 0).coerceAtLeast(0) * 1000L + Prefs.STAY_MS
+            stayNotifPi = fullPi; stayTitle = title; stayBody = shown; stayEnd = System.currentTimeMillis() + (shelterSec ?: 0).coerceAtLeast(0) * 1000L + Prefs.STAY_MS
             main.postDelayed(stayNotif, ((shelterSec ?: 0).coerceAtLeast(0) * 1000L) + 500)
         } else if (level == LEVEL_END) main.removeCallbacks(stayNotif)
         // התראה נוספת עם ספירה לאחור: זמן התגוננות -> נשארים במרחב המוגן -> ממתינים לסיום
-        if (join) { }
-        else if (level == LEVEL_ALERT) {
-            countTitle = title; countBody = body; countPi = fullPi; countTest = test
+        if (level == LEVEL_ALERT) {
+            countTitle = title; countBody = shown; countPi = fullPi; countTest = test
             countEnter = System.currentTimeMillis() + (shelterSec ?: 0).coerceAtLeast(0) * 1000L
             countStayEnd = countEnter + Prefs.STAY_MS
             main.removeCallbacks(countNotif); main.post(countNotif)
         } else if (level == LEVEL_END) cancelCount()
 
-        if (test || join) { /* בלי ספירה וטיימר בווידג'ט (בהצטרפות - של האירוע הקיים) */ }
+        if (test) { /* בלי ספירה וטיימר בווידג'ט */ }
         else if (level == LEVEL_ALERT && shelterSec != null && shelterSec > 0) {
             Prefs.setCountdown(this, System.currentTimeMillis() + shelterSec * 1000L, title)
             main.postDelayed({ AlertWidget.updateAll(this) }, shelterSec * 1000L + 500)
         } else if (level == LEVEL_END) Prefs.setCountdown(this, 0, "")
 
         // טיימר שהייה במרחב המוגן: 10 דקות מהירי, "הסתיים" מבטל אותו
-        if (!test && !join) main.removeCallbacks(stayDone)
-        if (test || join) { }
+        if (!test) main.removeCallbacks(stayDone)
+        if (test) { }
         else if (level == LEVEL_ALERT) {
             // 10 הדקות מתחילות אחרי שנגמר הזמן להגעה למרחב המוגן
             val enterMs = (shelterSec ?: 0).coerceAtLeast(0) * 1000L
