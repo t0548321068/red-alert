@@ -342,10 +342,44 @@ class AlertService : Service() {
     /** אזורים שהצטרפו להתרעה הפעילה (בלי צליל) נכנסים גם לרשימה שלה */
     internal fun addActiveAreas(level: Int, add: List<String>) {
         val a = Prefs.activeAlert(this)?.takeIf { it.optInt("level") == level } ?: return
-        val cur = a.optString("mapAreas").split(", ").map { it.trim() }.filter { it.isNotEmpty() }
-        val all = (cur + add).distinct()
-        if (all.size == cur.size) return
-        Prefs.setActiveAlert(this, org.json.JSONObject(a.toString()).put("mapAreas", all.joinToString(", ")))
+        fun list(k: String) = a.optString(k).split(", ").map { it.trim() }.filter { it.isNotEmpty() }
+        val map = (list("mapAreas") + add).distinct()
+        val body = (list("body") + add).distinct()
+        Prefs.setActiveAlert(this, org.json.JSONObject(a.toString())
+            .put("mapAreas", map.joinToString(", ")).put("body", body.joinToString(", ")))
+    }
+
+    /**
+     * יישובים שהצטרפו לאותו אירוע (שניות אחרי - "זרעית" ואז "שומרה"): בלי צליל ומסך חדשים,
+     * אבל מוצגים בכל מקום שההתרעה מוצגת - מסך ההתרעה (תגיות + מפה), החלון הממוזער, הכרטיס וההתראה
+     */
+    internal fun showJoined(level: Int, add: List<String>) {
+        val a = Prefs.activeAlert(this)?.takeIf { it.optInt("level") == level } ?: return
+        val body = a.optString("body")
+        // מסך ההתרעה פתוח - מעדכנים אותו (התגיות והסיכות של היישובים החדשים מתווספות)
+        if (AlertActivity.open > 0) try {
+            val st = if (Shabbat.active(this)) 0 else Prefs.alertStyleFor(this, level)
+            startActivity(Intent(this, if (st == 1) AlertPopupActivity::class.java else AlertActivity::class.java)
+                .putExtra("title", a.optString("title")).putExtra("level", level)
+                // ירי: המסך מוסיף את החדשים לקיימים (נופלות סיכות). שאר הסוגים נבנים מחדש - עם כל היישובים
+                .putExtra("body", if (level == LEVEL_ALERT) add.joinToString(", ") else body)
+                .putExtra("mapAreas", if (level == LEVEL_ALERT) add.joinToString(", ") else a.optString("mapAreas"))
+                .putExtra("shelter", a.optInt("shelter", -1)).putExtra("firedAt", a.optLong("firedAt"))
+                .putExtra("source", a.optString("source"))
+                .putExtra("autoCloseMs", AlertUi.keepMs(level)?.let { k -> (a.optLong("firedAt") + k - System.currentTimeMillis()).coerceAtLeast(1000L) } ?: 0L)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+        } catch (_: Exception) { }
+        MiniOverlay.updateArea(body)
+        // ההתראה: אותה התראה עם כל היישובים, בלי צליל נוסף
+        try {
+            val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            val old = nm.activeNotifications.firstOrNull { it.id == ID_ALERT }?.notification ?: return
+            val sh = a.optInt("shelter", -1)
+            val text = if (sh >= 0 && level == LEVEL_ALERT) "$body · זמן למרחב מוגן: ${AreaData.shelterText(sh)}" else body
+            val nb = Notification.Builder.recoverBuilder(this, old)
+                .setContentText(text).setStyle(Notification.BigTextStyle().bigText(text)).setOnlyAlertOnce(true)
+            nm.notify(ID_ALERT, nb.build())
+        } catch (_: Exception) { }
     }
     /** דור הצליל - ראו fire() */
     @Volatile internal var soundGen = 0
@@ -610,6 +644,7 @@ class AlertService : Service() {
             (now - last.second < MERGE_MS || (level == LEVEL_END && now - last.second < DEDUP_MS))) {
             lastFiredAreas += fresh
             addActiveAreas(level, fresh)   // "האירוע הסתיים" לאזור שהצטרף יסגור את מסך הירי
+            main.post { showJoined(level, fresh) }   // היישובים שהצטרפו מוצגים גם במסך, בכרטיס, בממוזער ובהתראה
             later { try { Prefs.mergeFirstHistory(this, fresh); AlertWidget.updateAll(this) } catch (_: Exception) { } }
             return
         }

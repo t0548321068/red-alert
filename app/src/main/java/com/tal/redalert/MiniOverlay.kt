@@ -194,6 +194,9 @@ object MiniOverlay {
         view?.context?.let { scheduleHide(it.applicationContext, System.currentTimeMillis() + (AlertUi.keepMs(AlertService.LEVEL_END) ?: 60_000L)) }
     }
 
+    /** יישובים שהצטרפו לאותו אירוע - שורת היישובים מתעדכנת */
+    fun updateArea(text: String) { if (text.isNotEmpty()) areaV?.text = text }
+
     /** סוגר רק את הרצועה שבתוך מסך הנעילה (לא את החלון שמעל אפליקציות) */
     fun hideHosted(c: Context) { if (host != null) hide(c) }
 
