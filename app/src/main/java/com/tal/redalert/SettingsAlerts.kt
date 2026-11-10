@@ -258,7 +258,11 @@ internal fun MainActivity.previewAlertStyle(level: Int = AlertService.LEVEL_ALER
                 MiniOverlay.show(this, full, into = miniHost, inline = true) { back() }
                 miniHost.visibility = View.VISIBLE
             }
-            ui.postDelayed({ if (MiniOverlay.hostedIn(miniHost) && MiniOverlay.lastFull?.getLongExtra("firedAt", 0L) == now) back() }, 20_000L)
+            // אחרי 20 שניות חוזרים להגדרות בכל מקרה (גם אם בינתיים החלון הוחלף / נסגר)
+            ui.postDelayed({
+                if (MiniOverlay.lastFull?.getStringExtra("source") == "תצוגה מקדימה") MiniOverlay.hide(this)
+                miniHost.visibility = View.GONE; pages.forEach { it.show() }; updateAlertCard()
+            }, 20_000L)
         }
     }
 }
