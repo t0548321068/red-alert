@@ -518,6 +518,8 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         if (::statusRow.isInitialized) { applyStatusRow(); applyTestFab() }
+        // הכרטיס והצבע - לפני שהמסך מצויר (בחזרה ממסך ההתרעה הם כבר שם, לא קופצים אחרי רגע)
+        if (::alertWrap.isInitialized) updateAlertCard()
         refreshAccuracy()   // "לפי זמן": מוצגים בכל פתיחה
         scheduleThemeSwitch()   // ערכת צבעים "לפי זמן": מחליפים כשמגיע הזמן
         try { Shabbat.refresh(this) } catch (_: Exception) { }   // זמני שבת וחג מהשרת
