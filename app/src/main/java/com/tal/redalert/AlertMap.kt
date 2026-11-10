@@ -53,8 +53,6 @@ class AlertMap(private val a: Activity, savedState: Bundle?, names: List<String>
     private val me: LatLng? = if (meLat != null && meLon != null) LatLng(meLat, meLon) else null
     private var pending: List<String> = names
     private var drop: ValueAnimator? = null
-    /** מעל זה - בלי סיכות (רק אזורים צבועים) */
-    private val MAX_PINS = 40
     private var dropGen = 0
     private val ui = android.os.Handler(android.os.Looper.getMainLooper())
 
@@ -127,9 +125,7 @@ class AlertMap(private val a: Activity, savedState: Bundle?, names: List<String>
                 if (p != null) for (i in 0 until p.length()) { val q = p.getJSONArray(i); newPts += LatLng(q.getDouble(0), q.getDouble(1)) }
                 o.optJSONArray("c")?.let { c ->
                     if (p == null) newPts += LatLng(c.getDouble(0), c.getDouble(1))
-                    // הרבה יישובים (למשל כל הארץ) - בלי סיכות: מאות סיכות מכסות את כל המפה. האזורים הצבועים מספיקים
-                    if (level == AlertService.LEVEL_ALERT && shown.size <= MAX_PINS)
-                        newPins += MapKit.feature(MapKit.point(c.getDouble(0), c.getDouble(1)))
+                    if (level == AlertService.LEVEL_ALERT) newPins += MapKit.feature(MapKit.point(c.getDouble(0), c.getDouble(1)))
                 }
             }
             ui.post { showAreas(newAreas, newPins, newPts, initial) }
