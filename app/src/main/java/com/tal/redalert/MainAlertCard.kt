@@ -48,16 +48,24 @@ internal fun MainActivity.updateAlertCard() {
     val j = previewAlert ?: Prefs.activeAlert(this)
     val level = j?.optInt("level") ?: 0
     val firedAt = j?.optLong("firedAt") ?: 0L
-    // החלון הממוזער פתוח: כשהמסך הראשי מוצג הוא עובר לתוכו - במקום הכרטיס, וזז עם המסך כמו כרטיס.
-    // יוצאים מהאפליקציה - חוזר להיות חלון מעל אפליקציות (onPause)
-    if (!Shabbat.active(this) && hasWindowFocus()) {
-        val f = MiniOverlay.pendingMain ?: (if (MiniOverlay.isShowing()) MiniOverlay.lastFull else null)
-        MiniOverlay.pendingMain = null
-        f?.let { MiniOverlay.show(this, it, into = miniHost, inline = true) { miniHost.visibility = View.GONE; updateAlertCard() } }
-    }
+    // ממוזער: במסך הראשי ההתרעה מוצגת כחלון הקטן (בתוך המסך, במקום הכרטיס) - לפי מצב ההתרעה עצמה,
+    // ולא לפי מה שנשלח למסך: כך תמיד ממוזער ולעולם לא כרטיס (גם אחרי חזרה לאפליקציה)
+    MiniOverlay.pendingMain = null
+    val shab = Shabbat.active(this)
+    val st = if (j == null || shab) -1 else Prefs.alertStyleFor(this, level)
+    val wantMini = j != null && previewAlert == null && !shab &&
+        !AlertUi.expired(level, firedAt) && Prefs.alertDismissed(this) != firedAt && AlertActivity.open == 0 &&
+        (st == 3 || (st in 0..1 && Prefs.afterClose(this) == 1 && AlertActivity.shownFiredAt == firedAt))
+    if (wantMini && !MiniOverlay.hostedIn(miniHost) && j != null) {
+        val f = Intent().putExtra("title", j.optString("title")).putExtra("body", j.optString("body"))
+            .putExtra("level", level).putExtra("shelter", j.optInt("shelter", -1)).putExtra("firedAt", firedAt)
+            .putExtra("source", j.optString("source")).putExtra("mapAreas", j.optString("mapAreas"))
+        MiniOverlay.show(this, f, into = miniHost, inline = true) { miniHost.visibility = View.GONE; updateAlertCard() }
+    } else if (!wantMini && previewAlert == null && MiniOverlay.hostedIn(miniHost) &&
+        MiniOverlay.lastFull?.getStringExtra("source") != "תצוגה מקדימה") MiniOverlay.hide(this)   // תצוגה מקדימה - נסגרת בעצמה
     val inMain = MiniOverlay.hostedIn(miniHost)
     miniHost.visibility = if (inMain) View.VISIBLE else View.GONE
-    val mini = inMain || (!Shabbat.active(this) && MiniOverlay.isShowing())
+    val mini = inMain || wantMini || (!shab && MiniOverlay.isShowing())
     val v = AlertUi.cardView(
         hasAlert = j != null, active = j != null && !AlertUi.expired(level, firedAt) && Prefs.alertDismissed(this) != firedAt,
         mini = mini, screensOpen = AlertActivity.open, shownBefore = AlertActivity.shownFiredAt == firedAt,
