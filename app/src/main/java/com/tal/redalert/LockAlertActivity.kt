@@ -32,13 +32,9 @@ class LockAlertActivity : Activity() {
     /** הנעילה נפתחה */
     private val unlocked = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
-            // ממוזער: ממשיך כחלון קטן מעל אפליקציות (אם יש הרשאה). כרטיס: יופיע במסך הראשי
-            if (intent.getIntExtra("style", 2) == 3 && MiniOverlay.canShow(this@LockAlertActivity) &&
-                !AlertUi.expired(intent.getIntExtra("level", 0), intent.getLongExtra("firedAt", 0L))) {
-                MiniOverlay.hide(this@LockAlertActivity)
-                MiniOverlay.show(this@LockAlertActivity, Intent(intent))
-            }
-            finish()
+            // ממשיכים כמו בטלפון פתוח (אם ההתרעה עוד בתוקף)
+            MiniOverlay.hideHosted(this@LockAlertActivity)
+            if (AlertUi.expired(intent.getIntExtra("level", 0), intent.getLongExtra("firedAt", 0L))) finish() else asUnlocked()
         }
     }
 
@@ -51,8 +47,20 @@ class LockAlertActivity : Activity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+        // טלפון בלי נעילת מסך (או שהנעילה כבר נפתחה): אין מסך נעילה להציג מעליו - ממשיכים כמו בטלפון פתוח
+        if (!(getSystemService(KEYGUARD_SERVICE) as android.app.KeyguardManager).isKeyguardLocked) { asUnlocked(); return }
         registerReceiver(unlocked, IntentFilter(Intent.ACTION_USER_PRESENT))
         show()
+    }
+
+    /** כמו בטלפון פתוח: ממוזער - החלון הקטן מעל אפליקציות; כרטיס - המסך הראשי עם הכרטיס */
+    private fun asUnlocked() {
+        if (intent.getIntExtra("style", 2) == 3 && MiniOverlay.canShow(this)) MiniOverlay.show(this, Intent(intent))
+        else try {
+            startActivity(Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+        } catch (_: Exception) { }
+        finish()
     }
 
     override fun onNewIntent(i: Intent) { super.onNewIntent(i); setIntent(i); show() }
