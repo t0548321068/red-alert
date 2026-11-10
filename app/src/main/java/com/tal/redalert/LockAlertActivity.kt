@@ -71,7 +71,7 @@ class LockAlertActivity : Activity() {
         tick?.let { ui.removeCallbacks(it) }; tick = null
         ui.removeCallbacksAndMessages(null)
         MiniOverlay.hide(this)
-        if (intent.getIntExtra("style", 2) == 3) MiniOverlay.show(this, Intent(intent), into = root) { finish() }
+        if (intent.getIntExtra("style", 2) == 3) MiniOverlay.show(this, Intent(intent), into = root, closed = { finish() })
         else root.addView(card(), FrameLayout.LayoutParams(-1, -2).apply { setMargins(dp(14), top(), dp(14), dp(8)) })
         // נסגר לבד כשההתרעה כבר לא בתוקף (מקדימה 2 דק', סיום דקה)
         AlertUi.keepMs(intent.getIntExtra("level", 0))?.let { k ->

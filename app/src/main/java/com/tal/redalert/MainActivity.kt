@@ -89,7 +89,7 @@ class MainActivity : Activity() {
     internal var weatherShown = false   // יש כבר מזג אוויר על המסך
     internal var previewAlert: org.json.JSONObject? = null   // תצוגה מקדימה של כרטיס ההתרעה (רק במסך, בלי לשמור)
     internal var locTapAt = 0L
-    internal lateinit var miniSpace: View
+    internal lateinit var miniHost: FrameLayout
     internal var weatherManualAt = 0L   // לחיצה על חיווי המיקום: "מאתר מיקום מדויק…" מוצג לפחות 2 שניות          // לחיצה אחרונה על חיווי המיקום
     internal var lastHistoryKey = ""
 
@@ -417,9 +417,9 @@ class MainActivity : Activity() {
             }, FrameLayout.LayoutParams(dp(32), dp(32), Gravity.TOP or Gravity.END).apply { setMargins(dp(12), dp(12), dp(12), 0) })
         }
         col.addView(alertWrap, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
-        // מקום לחלון הממוזער (מוצג מעל המסך הראשי) - שלא יכסה את הכרטיס שמתחתיו
-        miniSpace = View(this).apply { visibility = View.GONE }
-        col.addView(miniSpace, col.indexOfChild(alertWrap), LinearLayout.LayoutParams(-1, 0))
+        // החלון הממוזער בתוך המסך הראשי - במקום הכרטיס, וזז עם המסך כמו כרטיס
+        miniHost = FrameLayout(this).apply { visibility = View.GONE }
+        col.addView(miniHost, col.indexOfChild(alertWrap), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
         // כרטיס השעה ומזג האוויר (וגם מצב ההגנה)
         col.addView(circle, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
 
@@ -521,6 +521,7 @@ class MainActivity : Activity() {
     }
 
     override fun onResume() {
+        shown = this
         if (::statusRow.isInitialized) { applyStatusRow(); applyTestFab() }
         // הכרטיס והצבע - לפני שהמסך מצויר (בחזרה ממסך ההתרעה הם כבר שם, לא קופצים אחרי רגע)
         if (::alertWrap.isInitialized) updateAlertCard()
@@ -572,6 +573,13 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
+        if (shown === this) shown = null
+        // יוצאים מהאפליקציה: החלון הממוזער חוזר להיות חלון מעל אפליקציות
+        if (::miniHost.isInitialized && MiniOverlay.hostedIn(miniHost)) {
+            val f = MiniOverlay.lastFull
+            MiniOverlay.hide(this); miniHost.visibility = View.GONE
+            if (f != null && MiniOverlay.canShow(this)) MiniOverlay.show(this, f)
+        }
         ui.removeCallbacks(tick); ui.removeCallbacks(slowTick); ui.removeCallbacks(themeSwitch)
         pulseAnims.forEach { it.pause() }   // האנימציה לא רצה כשהאפליקציה ברקע
         verBlink?.pause(); srvBlink?.pause()
@@ -640,6 +648,8 @@ class MainActivity : Activity() {
         internal var updateCheckedAt = 0L
         /** סטטי - בקשת "מסך נעילה" לא חוזרת אחרי סיבוב */
         internal var lockAsked = false
+        /** המסך הראשי כשהוא מוצג (בין onResume ל-onPause) - החלון הממוזער נכנס אליו ישר, בלי לקפוץ */
+        @Volatile internal var shown: MainActivity? = null
     }
 
     /** ערכת הצבעים נשמרת מיד, ומוחלת (טעינה מחדש) רק ביציאה מעמוד התצוגה - בלי קפיצות בזמן הבחירה */

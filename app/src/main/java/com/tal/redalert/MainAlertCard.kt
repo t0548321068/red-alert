@@ -48,20 +48,19 @@ internal fun MainActivity.updateAlertCard() {
     val j = previewAlert ?: Prefs.activeAlert(this)
     val level = j?.optInt("level") ?: 0
     val firedAt = j?.optLong("firedAt") ?: 0L
-    // בתצוגה "ממוזער" אין כרטיס במסך הראשי כל עוד החלון הקטן פתוח (כפילות); אחרי שנסגר - הכרטיס מופיע
-    val mini = !Shabbat.active(this) && MiniOverlay.isShowing()   // גם "אחרי סגירה: ממוזער"
-    // בסגנון מסך מלא / פופ-אפ / ממוזער הכרטיס מופיע רק אחרי שהמסך שלהם נסגר: לא כשהוא פתוח,
-    // ולא ב-4 השניות הראשונות (עד שהוא עולה) - אחרת הכרטיס קופץ לשנייה לפני ההתרעה
-    // מחכים למסך ההתרעה רק אם עוד לא הוצג להתרעה הזו (אחרי שנסגר - הכרטיס והצבע מיד)
+    // החלון הממוזער פתוח: כשהמסך הראשי מוצג הוא עובר לתוכו - במקום הכרטיס, וזז עם המסך כמו כרטיס.
+    // יוצאים מהאפליקציה - חוזר להיות חלון מעל אפליקציות (onPause)
+    if (MiniOverlay.isShowing() && !Shabbat.active(this) && hasWindowFocus()) MiniOverlay.lastFull?.let { f ->
+        MiniOverlay.show(this, f, into = miniHost, inline = true) { miniHost.visibility = View.GONE; updateAlertCard() }
+    }
+    val inMain = MiniOverlay.hostedIn(miniHost)
+    miniHost.visibility = if (inMain) View.VISIBLE else View.GONE
+    val mini = inMain || (!Shabbat.active(this) && MiniOverlay.isShowing())
     val v = AlertUi.cardView(
         hasAlert = j != null, active = j != null && !AlertUi.expired(level, firedAt) && Prefs.alertDismissed(this) != firedAt,
         mini = mini, screensOpen = AlertActivity.open, shownBefore = AlertActivity.shownFiredAt == firedAt,
         cardStyle = !Shabbat.active(this) && Prefs.alertStyleFor(this, level) == 2, preview = previewAlert != null,
         ageMs = System.currentTimeMillis() - firedAt)
-    // החלון הממוזער פתוח מעל המסך הראשי - שומרים לו מקום מתחת לשורת החיוויים, כדי שלא יכסה את הכרטיס הירוק
-    val space = if (mini && v.second) (Prefs.miniH(this).takeIf { it > 0 } ?: dp(56)) + dp(GAP) else 0   // רווח מעל = רווח מתחת (GAP)
-    if (space > 0) { miniSpace.layoutParams = miniSpace.layoutParams.apply { height = space }; miniSpace.visibility = View.VISIBLE }
-    else if (miniSpace.visibility != View.GONE) miniSpace.visibility = View.GONE
     if (!v.first) {
         applyMainTint(if (v.second) level else null)
         if (alertWrap.visibility != View.GONE) alertWrap.visibility = View.GONE
