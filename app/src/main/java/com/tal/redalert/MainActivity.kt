@@ -574,11 +574,9 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         if (shown === this) shown = null
-        // יוצאים מהאפליקציה: החלון הממוזער חוזר להיות חלון מעל אפליקציות
+        // יוצאים מהאפליקציה אחרי שההתרעה כבר נראתה בה: החלון הממוזער לא ממשיך לצוף מעל שאר הטלפון
         if (::miniHost.isInitialized && MiniOverlay.hostedIn(miniHost)) {
-            val f = MiniOverlay.lastFull
             MiniOverlay.hide(this); miniHost.visibility = View.GONE
-            if (f != null && MiniOverlay.canShow(this)) MiniOverlay.show(this, f)
         }
         ui.removeCallbacks(tick); ui.removeCallbacks(slowTick); ui.removeCallbacks(themeSwitch)
         pulseAnims.forEach { it.pause() }   // האנימציה לא רצה כשהאפליקציה ברקע
