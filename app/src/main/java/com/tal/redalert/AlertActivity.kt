@@ -235,8 +235,8 @@ open class AlertActivity : Activity() {
         MiniOverlay.hide(this)
         // "אחרי סגירה: ממוזער" - החלון הקטן למעלה, וחוזרים למה שהיה פתוח (לא בתצוגה מקדימה, ולא כשההתרעה כבר נגמרה)
         val firedAt = intent.getLongExtra("firedAt", 0L)
-        if (Prefs.afterClose(this) == 1 && MiniOverlay.canShow(this) &&
-            intent.getStringExtra("source") != "תצוגה מקדימה" && !AlertUi.expired(level, firedAt)) {
+        if (AlertUi.closeToMini(Prefs.afterClose(this), MiniOverlay.canShow(this),
+                intent.getStringExtra("source") == "תצוגה מקדימה", AlertUi.expired(level, firedAt))) {
             MiniOverlay.show(this, Intent(intent))
             finish(); return
         }
