@@ -131,7 +131,8 @@ object MiniOverlay {
         // ומתחת לשורת החיוויים של המסך הראשי אם ידוע איפה היא
         val sb = app.resources.getIdentifier("status_bar_height", "dimen", "android")
             .takeIf { it > 0 }?.let { app.resources.getDimensionPixelSize(it) } ?: dp(28)
-        val top = (Prefs.miniY(app).takeIf { it > sb } ?: sb) + dp(6)
+        // מתחת לשורת החיוויים: אותו רווח כמו בין הכרטיסים במסך הראשי (12), מתחת לשורת המצב - 6
+        val top = Prefs.miniY(app).takeIf { it > sb }?.let { it + dp(12) } ?: (sb + dp(6))
         // ברוחב שורת החיוויים בדיוק (אם ידוע), אחרת כמעט כל רוחב המסך
         val boxX = Prefs.miniX(app); val boxW = Prefs.miniW(app)
         val lp = WindowManager.LayoutParams(
