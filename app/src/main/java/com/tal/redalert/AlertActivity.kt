@@ -341,6 +341,7 @@ open class AlertActivity : Activity() {
                 listOf(oldMap, i.getStringExtra("mapAreas") ?: "").filter { it.isNotEmpty() }.joinToString(", ")))
             shelterSec = i.getIntExtra("shelter", -1)
             firedAt = i.getLongExtra("firedAt", System.currentTimeMillis())
+            shownFiredAt = firedAt   // יישוב שהצטרף - גם הוא כבר הוצג במסך
             ui.removeCallbacks(tick); ui.post(tick)
             // מצב שבת: דקה מההתרעה החדשה
             i.getLongExtra("autoCloseMs", 0L).takeIf { it > 0 }?.let { ui.removeCallbacks(autoCloseRun); ui.postDelayed(autoCloseRun, it) }
