@@ -21,6 +21,8 @@ open class AlertActivity : Activity() {
     companion object {
         /** כמה מסכי התרעה (מסך מלא / פופ-אפ) פתוחים עכשיו */
         @Volatile var open = 0
+        /** זמן ההתרעה האחרונה שמסך ההתרעה כבר הוצג לה (אחרי שנסגר - הכרטיס מופיע מיד) */
+        @Volatile var shownFiredAt = 0L
     }
 
 
@@ -67,6 +69,7 @@ open class AlertActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         open++   // כל עוד מסך ההתרעה פתוח - בלי כרטיס במסך הראשי (רק הצבע)
+        shownFiredAt = intent.getLongExtra("firedAt", 0L)
         Prefs.markAlertScreen(this)   // המסך הראשי שמאחור מתעדכן (צבע מאחורי הפופ-אפ)
         MiniOverlay.hide(this)   // המסך חזר - בלי החלון הקטן
         // מופיע מעל מסך הנעילה ומדליק את המסך

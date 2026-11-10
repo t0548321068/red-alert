@@ -52,7 +52,8 @@ internal fun MainActivity.updateAlertCard() {
     val mini = !Shabbat.active(this) && MiniOverlay.isShowing()   // גם "אחרי סגירה: ממוזער"
     // בסגנון מסך מלא / פופ-אפ / ממוזער הכרטיס מופיע רק אחרי שהמסך שלהם נסגר: לא כשהוא פתוח,
     // ולא ב-4 השניות הראשונות (עד שהוא עולה) - אחרת הכרטיס קופץ לשנייה לפני ההתרעה
-    val opening = AlertActivity.open == 0 && !mini && j != null && previewAlert == null &&
+    // מחכים למסך ההתרעה רק אם עוד לא הוצג להתרעה הזו (אחרי שנסגר - הכרטיס והצבע מיד)
+    val opening = AlertActivity.open == 0 && !mini && j != null && previewAlert == null && AlertActivity.shownFiredAt != firedAt &&
         (Shabbat.active(this) || Prefs.alertStyleFor(this, level) != 2) && System.currentTimeMillis() - firedAt < 4000
     val otherScreen = AlertActivity.open > 0 || opening
     val active = j != null && !AlertUi.expired(level, firedAt) && Prefs.alertDismissed(this) != firedAt
