@@ -218,7 +218,9 @@ internal fun MainActivity.chooseTest() = ouiPage("בדיקת התרעה") { body
  */
 internal fun MainActivity.previewAlertStyle(level: Int = AlertService.LEVEL_ALERT, style: Int? = null) {
     val real = Prefs.activeAlert(this)
-    if (real != null && !AlertUi.expired(real.optInt("level"), real.optLong("firedAt"))) {
+    // חוסמים רק התרעה אמיתית שעוד מוצגת - לא בדיקה, ולא התרעה שנסגרה ב-✕
+    if (real != null && !AlertUi.expired(real.optInt("level"), real.optLong("firedAt")) &&
+        real.optString("source") != "בדיקה" && Prefs.alertDismissed(this) != real.optLong("firedAt")) {
         android.widget.Toast.makeText(this, "יש התרעה פעילה – אפשר לנסות אחרי שתסתיים", android.widget.Toast.LENGTH_SHORT).show()
         return
     }
