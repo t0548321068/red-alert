@@ -53,13 +53,13 @@ class LockAlertActivity : Activity() {
         show()
     }
 
-    /** כמו בטלפון פתוח: ממוזער - החלון הקטן מעל אפליקציות; כרטיס - המסך הראשי עם הכרטיס */
+    /** בלי נעילה / אחרי פתיחת הנעילה: נפתחת האפליקציה (המסך הראשי). בממוזער - גם החלון הקטן מעליה */
     private fun asUnlocked() {
-        if (intent.getIntExtra("style", 2) == 3 && MiniOverlay.canShow(this)) MiniOverlay.show(this, Intent(intent))
-        else try {
+        try {
             startActivity(Intent(this, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
         } catch (_: Exception) { }
+        if (intent.getIntExtra("style", 2) == 3 && MiniOverlay.canShow(this)) MiniOverlay.show(this, Intent(intent))
         finish()
     }
 
