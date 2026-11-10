@@ -89,6 +89,7 @@ class MainActivity : Activity() {
     internal var weatherShown = false   // יש כבר מזג אוויר על המסך
     internal var previewAlert: org.json.JSONObject? = null   // תצוגה מקדימה של כרטיס ההתרעה (רק במסך, בלי לשמור)
     internal var locTapAt = 0L
+    internal lateinit var miniSpace: View
     internal var weatherManualAt = 0L   // לחיצה על חיווי המיקום: "מאתר מיקום מדויק…" מוצג לפחות 2 שניות          // לחיצה אחרונה על חיווי המיקום
     internal var lastHistoryKey = ""
 
@@ -306,7 +307,7 @@ class MainActivity : Activity() {
         statusRow = status
         // החלון הממוזער מוצג מתחת לשורת החיוויים - שומרים איפה היא נגמרת על המסך
         status.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
-            if (v.isShown) { val xy = IntArray(2); v.getLocationOnScreen(xy); Prefs.setMiniY(this, xy[1] + v.height) }
+            if (v.isShown) { val xy = IntArray(2); v.getLocationOnScreen(xy); Prefs.setMiniY(this, xy[1] + v.height); Prefs.setMiniBox(this, xy[0], v.width) }
         }
         applyStatusRow()
         weatherLine = text("", 19f, C.TEXT).apply {
@@ -416,6 +417,9 @@ class MainActivity : Activity() {
             }, FrameLayout.LayoutParams(dp(32), dp(32), Gravity.TOP or Gravity.END).apply { setMargins(dp(12), dp(12), dp(12), 0) })
         }
         col.addView(alertWrap, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
+        // מקום לחלון הממוזער (מוצג מעל המסך הראשי) - שלא יכסה את הכרטיס שמתחתיו
+        miniSpace = View(this).apply { visibility = View.GONE }
+        col.addView(miniSpace, col.indexOfChild(alertWrap), LinearLayout.LayoutParams(-1, 0))
         // כרטיס השעה ומזג האוויר (וגם מצב ההגנה)
         col.addView(circle, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
 

@@ -359,6 +359,12 @@ object Prefs {
     /** איפה נגמרת שורת החיוויים במסך הראשי (פיקסלים מראש המסך) - החלון הממוזער מתחתיה. 0 = לא ידוע */
     fun miniY(c: Context) = sp(c).getInt("miniY", 0)
     fun setMiniY(c: Context, v: Int) { if (v > 0 && v != miniY(c)) sp(c).edit().putInt("miniY", v).apply() }
+    /** רוחב שורת החיוויים ומיקומה מהצד (פיקסלים) - החלון הממוזער באותו רוחב בדיוק */
+    fun miniH(c: Context) = sp(c).getInt("miniH", 0)
+    fun setMiniH(c: Context, v: Int) { if (v > 0 && v != miniH(c)) sp(c).edit().putInt("miniH", v).apply() }
+    fun miniX(c: Context) = sp(c).getInt("miniX", -1)
+    fun miniW(c: Context) = sp(c).getInt("miniW", 0)
+    fun setMiniBox(c: Context, x: Int, w: Int) { if (w > 0 && (x != miniX(c) || w != miniW(c))) sp(c).edit().putInt("miniX", x).putInt("miniW", w).apply() }
     fun setAfterClose(c: Context, v: Int) = sp(c).edit().putInt("afterClose", v).apply()
     /** מפה במסך ההתרעה (מסך מלא ופופ-אפ) */
     fun alertMap(c: Context) = sp(c).getBoolean("alertMap", true)
