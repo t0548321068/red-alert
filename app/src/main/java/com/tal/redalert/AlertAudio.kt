@@ -33,22 +33,12 @@ internal fun AlertService.restorePending() {
     val sp = restoreSp()
     // רק אם השירות נסגר באמצע התרעה ממש עכשיו - אחרי זמן רב המשתמש כבר שינה בעצמו
     if (System.currentTimeMillis() - sp.getLong("at", 0) > 10 * 60_000L) { sp.edit().clear().apply(); return }
-    if (sp.contains("dnd")) { dndSaved = sp.getInt("dnd", -1); dndRestore.run() }
+    // (גרסאות קודמות שמרו כאן גם את מצב "נא לא להפריע" - כבר לא משנים אותו, ולכן גם לא מחזירים)
+    if (sp.contains("dnd")) sp.edit().remove("dnd").apply()
     if (sp.contains("ringer")) { ringerSaved = sp.getInt("ringer", -1); restoreRinger.run() }
     if (sp.contains("alarmVol")) { savedAlarmVol = sp.getInt("alarmVol", -1); restoreAlarmVol.run() }
 }
 
-internal fun AlertService.overrideDnd(force: Boolean = false): Unit = synchronized(audioLock) {
-    if (!force && !Prefs.dndOverride(this)) return
-    val nm = getSystemService(android.content.Context.NOTIFICATION_SERVICE) as NotificationManager
-    if (!nm.isNotificationPolicyAccessGranted) return
-    val cur = nm.currentInterruptionFilter
-    if (cur == NotificationManager.INTERRUPTION_FILTER_ALL) return
-    if (dndSaved == -1) { dndSaved = cur; restoreSp().edit().putLong("at", System.currentTimeMillis()).putInt("dnd", cur).apply() }
-    try { nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL) } catch (_: Exception) { return }
-    main.removeCallbacks(dndRestore)
-    main.postDelayed(dndRestore, 60_000)
-}
 
 internal fun AlertService.boostAlarmVolume(ms: Long): Unit = synchronized(audioLock) {
     try {

@@ -784,7 +784,6 @@ class AlertService : Service() {
         // ספירה לאחור גדולה בתוך ההתראה הקופצת
         // (בלי תצוגת טיימר מיוחדת - נראית כמו שאר ההתראות)
         val n = nb.build()
-        if (!quiet && !muted && level != LEVEL_END) overrideDnd(force = shabbat)
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n)
 
         // מסך מלא גם כשהטלפון פתוח ובשימוש:
@@ -850,7 +849,11 @@ class AlertService : Service() {
         val ringerNow = am0.ringerMode
         val bypass = PHONE_DEFAULTS && (shabbat || Prefs.bypassSilent(this)) && !quiet && !muted &&
             ringerNow != android.media.AudioManager.RINGER_MODE_NORMAL
-        val viaNotif = !inCall && bypass && !Prefs.loudSound(this) && (snd || speakNow) &&
+        // "נא לא להפריע" פעיל: לא נוגעים בו ולא במצב הצלצול - עוקפים אותו בהשמעה בערוץ השעון המעורר
+        // (נשמע גם כש"נא לא להפריע" פעיל), בלי להדליק או לכבות שום דבר בטלפון
+        val dndOn = try { (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).currentInterruptionFilter !=
+            NotificationManager.INTERRUPTION_FILTER_ALL } catch (_: Exception) { false }
+        val viaNotif = !inCall && bypass && !dndOn && !Prefs.loudSound(this) && (snd || speakNow) &&
             ringerToNormal(if (level == LEVEL_ALERT) 30_000L else 15_000L)
         speaker?.usage = if (viaNotif) AudioAttributes.USAGE_NOTIFICATION else AudioAttributes.USAGE_ALARM
 
@@ -968,21 +971,8 @@ class AlertService : Service() {
         AlertWidget.updateAll(this)
     }
 
-    /**
-     * "נא לא להפריע" פעיל - מכבים אותו לדקה בזמן ההתראה ומחזירים את המצב הקודם.
-     * דורש הרשאת "גישה לנא לא להפריע" (⚙ ← נא לא להפריע).
-     */
-    internal var dndSaved = -1
-    /** ההתרעה רצה ברקע וההחזרה בתהליך הראשי - נעילה אחת, כדי שהערך השמור לא ילך לאיבוד באמצע */
+    /** נעילה אחת לשינויים בצליל (מצב צלצול / עוצמה) - ההתרעה רצה ברקע וההחזרה בתהליך הראשי */
     internal val audioLock = Any()
-    internal val dndRestore = Runnable { synchronized(audioLock) {
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        // מחזירים רק אם המשתמש לא שינה בינתיים בעצמו
-        if (dndSaved != -1 && nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_ALL)
-            try { nm.setInterruptionFilter(dndSaved) } catch (_: Exception) { }
-        dndSaved = -1
-        restoreSp().edit().remove("dnd").apply()
-    } }
 
     /** מדליק את המסך כשהוא כבוי - שההתראה תופיע מיד גם על מסך הנעילה */
     @Suppress("DEPRECATION")
