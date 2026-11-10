@@ -83,15 +83,14 @@ object AlertUi {
 
     /**
      * כרטיס ההתרעה במסך הראשי: (להציג כרטיס, לצבוע את המסך). בלי טלפון - נבדק בבדיקות.
-     * - ממוזער פתוח: בלי כרטיס (כפילות), אבל צבוע. מסך התרעה פתוח: הכרטיס מוכן מתחתיו
+     * - ממוזער פתוח / מסך התרעה פתוח: בלי כרטיס (כפילות), אבל צבוע
      * - מסך מלא / פופ-אפ / ממוזער שעוד לא עלה (4 השניות הראשונות): גם בלי צבע - שלא ייראה המסך הראשי לפני ההתרעה
      * - אחרי שמסך ההתרעה כבר הוצג ונסגר: כרטיס וצבע מיד
      */
     fun cardView(hasAlert: Boolean, active: Boolean, mini: Boolean, screensOpen: Int, shownBefore: Boolean,
                  cardStyle: Boolean, preview: Boolean, ageMs: Long): Pair<Boolean, Boolean> {
         val opening = screensOpen == 0 && !mini && hasAlert && !preview && !shownBefore && !cardStyle && ageMs < 4000
-        // מסך התרעה פתוח: הכרטיס כבר מוכן מתחתיו - בסגירה הוא שם מהרגע הראשון (לא נבנה אחרי שהמסך הראשי חוזר)
-        val hide = !active || mini || opening
+        val hide = !active || mini || screensOpen > 0 || opening
         return if (hide) false to (active && !opening) else true to true
     }
 
