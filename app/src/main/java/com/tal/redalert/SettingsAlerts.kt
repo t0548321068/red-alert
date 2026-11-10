@@ -250,12 +250,16 @@ internal fun MainActivity.previewAlertStyle(level: Int = AlertService.LEVEL_ALER
             updateAlertCard()
             ui.postDelayed({ if (previewAlert?.optLong("firedAt") == now) endCardPreview() }, 20_000L)
         }
-        else -> if (MiniOverlay.canShow(this)) {
-            MiniOverlay.show(this, full)
-            ui.postDelayed({
-                // לא סוגרים חלון של התרעה אמיתית שהגיעה בינתיים
-                if ((Prefs.activeAlert(this)?.optLong("firedAt") ?: 0L) < now) MiniOverlay.hide(this) }, 20_000L)
-        } else android.widget.Toast.makeText(this, "התצוגה הממוזערת צריכה הרשאת \"הצגה מעל אפליקציות\"", android.widget.Toast.LENGTH_LONG).show()
+        else -> {
+            // ממוזער - בתוך המסך הראשי (במקום הכרטיס), כמו בהתרעה אמיתית: מסתירים את ההגדרות ומחזירים בסיום
+            pages.forEach { it.hide() }
+            fun back() { if (MiniOverlay.hostedIn(miniHost)) MiniOverlay.hide(this); miniHost.visibility = View.GONE; pages.forEach { it.show() }; updateAlertCard() }
+            ui.post {
+                MiniOverlay.show(this, full, into = miniHost, inline = true) { back() }
+                miniHost.visibility = View.VISIBLE
+            }
+            ui.postDelayed({ if (MiniOverlay.hostedIn(miniHost) && MiniOverlay.lastFull?.getLongExtra("firedAt", 0L) == now) back() }, 20_000L)
+        }
     }
 }
 

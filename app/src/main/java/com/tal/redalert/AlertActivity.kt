@@ -237,7 +237,10 @@ open class AlertActivity : Activity() {
         val firedAt = intent.getLongExtra("firedAt", 0L)
         if (AlertUi.closeToMini(Prefs.afterClose(this), MiniOverlay.canShow(this),
                 intent.getStringExtra("source") == "תצוגה מקדימה", AlertUi.expired(level, firedAt))) {
-            MiniOverlay.show(this, Intent(intent))
+            // החלון הקטן - בתוך המסך הראשי (לא חלון צף)
+            MiniOverlay.pendingMain = Intent(intent)
+            try { startActivity(Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)) } catch (_: Exception) { }
             finish(); return
         }
         try {

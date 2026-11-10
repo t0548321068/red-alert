@@ -572,6 +572,12 @@ class MainActivity : Activity() {
         }
     }
 
+    // ממוזער שמחכה למסך הראשי - מוצג ברגע שהמסך באמת לפניך
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && MiniOverlay.pendingMain != null && ::alertWrap.isInitialized) updateAlertCard()
+    }
+
     override fun onPause() {
         if (shown === this) shown = null
         // יוצאים מהאפליקציה אחרי שההתרעה כבר נראתה בה: החלון הממוזער לא ממשיך לצוף מעל שאר הטלפון
