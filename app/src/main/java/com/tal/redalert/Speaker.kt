@@ -158,6 +158,8 @@ class Speaker(private val c: Context) {
         val first = "voice/phrases/$t.mp3"
         val out = mutableListOf(first)
         val files = areas.mapNotNull { raw -> index[raw] ?: AreaData.match(c, raw).firstNotNullOfOrNull { index[it] } }.distinct()
+        // הקלטה של יישוב שעוד לא ירדה מהשרת - הכל בקול המובנה של הטלפון (שלא יוקרא סוג ההתרעה בלי היישוב)
+        if (files.any { !has(it) }) return emptyList()
         val shown = if (files.size <= 5) files else files.take(4)
         out += shown
         if (files.size > shown.size) out += "voice/phrases/more_areas.mp3"
