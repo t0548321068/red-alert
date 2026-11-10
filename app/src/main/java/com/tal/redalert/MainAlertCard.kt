@@ -53,18 +53,18 @@ internal fun MainActivity.updateAlertCard() {
     // בסגנון מסך מלא / פופ-אפ / ממוזער הכרטיס מופיע רק אחרי שהמסך שלהם נסגר: לא כשהוא פתוח,
     // ולא ב-4 השניות הראשונות (עד שהוא עולה) - אחרת הכרטיס קופץ לשנייה לפני ההתרעה
     // מחכים למסך ההתרעה רק אם עוד לא הוצג להתרעה הזו (אחרי שנסגר - הכרטיס והצבע מיד)
-    val opening = AlertActivity.open == 0 && !mini && j != null && previewAlert == null && AlertActivity.shownFiredAt != firedAt &&
-        (Shabbat.active(this) || Prefs.alertStyleFor(this, level) != 2) && System.currentTimeMillis() - firedAt < 4000
-    val otherScreen = AlertActivity.open > 0 || opening
-    val active = j != null && !AlertUi.expired(level, firedAt) && Prefs.alertDismissed(this) != firedAt
-    if (!active || mini || otherScreen) {
-        // המסך הראשי נצבע בצבע ההתרעה כל עוד היא פעילה - גם כשהיא מוצגת בממוזער או בפופ-אפ (בלי כרטיס)
-        // עד שמסך ההתרעה עולה (opening) - גם בלי צבע, שלא ייראה המסך הראשי לפני ההתרעה
-        applyMainTint(if (active && !opening) level else null)
+    val v = AlertUi.cardView(
+        hasAlert = j != null, active = j != null && !AlertUi.expired(level, firedAt) && Prefs.alertDismissed(this) != firedAt,
+        mini = mini, screensOpen = AlertActivity.open, shownBefore = AlertActivity.shownFiredAt == firedAt,
+        cardStyle = !Shabbat.active(this) && Prefs.alertStyleFor(this, level) == 2, preview = previewAlert != null,
+        ageMs = System.currentTimeMillis() - firedAt)
+    if (!v.first) {
+        applyMainTint(if (v.second) level else null)
         if (alertWrap.visibility != View.GONE) alertWrap.visibility = View.GONE
         setScrollMode(false)
         alertCardKey = ""; return
     }
+    j ?: return
     applyMainTint(level)
     val key = j.toString()
     if (key != alertCardKey) {

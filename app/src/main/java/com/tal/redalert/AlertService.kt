@@ -23,6 +23,16 @@ import java.net.URL
 class AlertService : Service() {
 
     companion object {
+        /** חלון ההצטרפות לאירוע קיים: ירי / מקדימה - דקה וחצי; סיום - 5 דקות */
+        const val JOIN_MS = 90 * 1000L
+        /**
+         * האם יישוב חדש מצטרף לאירוע הקודם (מעדכן את המסך הקיים) או אירוע חדש (מסך חדש).
+         * אותו סוג, לא מטח חדש, אותו אזור בארץ, ובתוך החלון. בלי טלפון - נבדק בבדיקות
+         */
+        fun joins(lastLevel: Int, lastAt: Long, level: Int, newBarrage: Boolean, sameRegion: Boolean, now: Long): Boolean =
+            lastLevel == level && !newBarrage && sameRegion &&
+                (now - lastAt < JOIN_MS || (level == LEVEL_END && now - lastAt < Prefs.DUP_MS))
+
         internal const val URL_ALERTS = "https://www.oref.org.il/warningMessages/alert/Alerts.json"   // הכתובת החדשה (נובמבר 2026) - הישנה מחזירה 404
         internal const val URL_HISTORY = "https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json"
         internal const val URL_ARCHIVE = OrefArchive.BASE + "lastDay"   // הארכיון החדש (נובמבר 2026)
@@ -317,7 +327,7 @@ class AlertService : Service() {
     internal val dedup = AlertDedup()
     internal val DEDUP_MS = Prefs.DUP_MS
     /** התראות מאותו סוג בתוך דקה וחצי = אותו אירוע -> שורה אחת ברשימה */
-    internal val MERGE_MS = 90 * 1000L
+    internal val MERGE_MS = JOIN_MS
     /** מזהה האירוע של פיקוד העורף של ההתרעה האחרונה שצלצלה - להבחין בין כפילות למטח חדש */
     internal var lastFiredEid = ""
     /** האזורים של ההתרעה האחרונה שצלצלה (כולל מה שהצטרף אליה) */
@@ -644,8 +654,7 @@ class AlertService : Service() {
         // ההתרעה האחרונה נשמרת בזיכרון - בלי לקרוא את כל ההיסטוריה לפני הצלצול
         val last = lastFired ?: Prefs.history(this).firstOrNull()?.let { it.level to it.ts }
         val newBarrage = eid.isNotEmpty() && lastFiredEid.isNotEmpty() && eid != lastFiredEid   // מטח חדש - לא מצרפים לקודם
-        if (last != null && last.first == level && !newBarrage && (level == LEVEL_END || sameRegion(fresh)) &&
-            (now - last.second < MERGE_MS || (level == LEVEL_END && now - last.second < DEDUP_MS))) {
+        if (last != null && joins(last.first, last.second, level, newBarrage, level == LEVEL_END || sameRegion(fresh), now)) {
             lastFiredAreas += fresh
             later { try { Prefs.mergeFirstHistory(this, fresh); AlertWidget.updateAll(this) } catch (_: Exception) { } }
             if (level == LEVEL_END) {

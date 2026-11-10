@@ -80,4 +80,21 @@ object AlertUi {
     /** הכרטיס מעל השעון נעלם לפי keepMs. ירי - עד הסיום (רשת ביטחון: שעה, אם הודעת הסיום לא הגיעה בכלל) */
     fun expired(level: Int, firedAt: Long, now: Long = System.currentTimeMillis()): Boolean =
         now - firedAt > (keepMs(level) ?: 60 * 60_000L)
+
+    /**
+     * כרטיס ההתרעה במסך הראשי: (להציג כרטיס, לצבוע את המסך). בלי טלפון - נבדק בבדיקות.
+     * - ממוזער פתוח / מסך התרעה פתוח: בלי כרטיס (כפילות), אבל צבוע
+     * - מסך מלא / פופ-אפ / ממוזער שעוד לא עלה (4 השניות הראשונות): גם בלי צבע - שלא ייראה המסך הראשי לפני ההתרעה
+     * - אחרי שמסך ההתרעה כבר הוצג ונסגר: כרטיס וצבע מיד
+     */
+    fun cardView(hasAlert: Boolean, active: Boolean, mini: Boolean, screensOpen: Int, shownBefore: Boolean,
+                 cardStyle: Boolean, preview: Boolean, ageMs: Long): Pair<Boolean, Boolean> {
+        val opening = screensOpen == 0 && !mini && hasAlert && !preview && !shownBefore && !cardStyle && ageMs < 4000
+        val hide = !active || mini || screensOpen > 0 || opening
+        return if (hide) false to (active && !opening) else true to true
+    }
+
+    /** סגירת מסך מלא / פופ-אפ: לחלון הממוזער (אם נבחר "אחרי סגירה: ממוזער", יש הרשאה, לא תצוגה מקדימה ולא נגמרה) */
+    fun closeToMini(afterClose: Int, canShow: Boolean, preview: Boolean, expired: Boolean) =
+        afterClose == 1 && canShow && !preview && !expired
 }

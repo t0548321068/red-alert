@@ -346,8 +346,9 @@ object Prefs {
     fun topicStyle(c: Context, level: Int) = sp(c).getInt("alertStyle_$level", -1)
     fun setTopicStyle(c: Context, level: Int, v: Int) = sp(c).edit().putInt("alertStyle_$level", v).apply()
     /** סוג התצוגה בפועל לנושא: ההתאמה האישית, ואם אין - הכללי */
-    fun alertStyleFor(c: Context, level: Int) =
-        (if (customStyles(c)) topicStyle(c, level).takeIf { it in 0..3 } else null) ?: alertStyle(c)
+    fun alertStyleFor(c: Context, level: Int) = resolveStyle(customStyles(c), topicStyle(c, level), alertStyle(c))
+    /** ההחלטה עצמה (בלי טלפון - נבדק בבדיקות): התאמה אישית פעילה ונבחר סגנון לנושא - הוא; אחרת הכללי */
+    fun resolveStyle(custom: Boolean, topic: Int, general: Int) = if (custom && topic in 0..3) topic else general
     /** מתג ההתאמה האישית (כבוי = כל הנושאים לפי הבחירה הכללית). ברירת מחדל: פעיל אם כבר נבחר משהו לנושא */
     fun customStyles(c: Context) = sp(c).getBoolean("customStyles", (0..2).any { topicStyle(c, it) in 0..3 })
     fun setCustomStyles(c: Context, v: Boolean) = sp(c).edit().putBoolean("customStyles", v).apply()
