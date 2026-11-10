@@ -59,7 +59,7 @@ internal fun MainActivity.updateAlertCard() {
         cardStyle = !Shabbat.active(this) && Prefs.alertStyleFor(this, level) == 2, preview = previewAlert != null,
         ageMs = System.currentTimeMillis() - firedAt)
     // החלון הממוזער פתוח מעל המסך הראשי - שומרים לו מקום מתחת לשורת החיוויים, כדי שלא יכסה את הכרטיס הירוק
-    val space = if (mini && v.second) (Prefs.miniH(this).takeIf { it > 0 } ?: dp(56)) + dp(6) else 0
+    val space = if (mini && v.second) (Prefs.miniH(this).takeIf { it > 0 } ?: dp(56)) + dp(GAP) else 0   // רווח מעל = רווח מתחת (GAP)
     if (space > 0) { miniSpace.layoutParams = miniSpace.layoutParams.apply { height = space }; miniSpace.visibility = View.VISIBLE }
     else if (miniSpace.visibility != View.GONE) miniSpace.visibility = View.GONE
     if (!v.first) {
