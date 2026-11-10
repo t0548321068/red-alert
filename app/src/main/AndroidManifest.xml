@@ -78,8 +78,8 @@
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:excludeFromRecents="true"
-            android:launchMode="singleTop"
-            android:taskAffinity=".lock"
+            android:launchMode="singleInstance"
+            android:taskAffinity="com.tal.redalert.lock"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <!-- התראות מיידיות מהשרת (Firebase) -->
