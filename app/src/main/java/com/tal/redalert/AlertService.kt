@@ -762,8 +762,22 @@ class AlertService : Service() {
         val toMini = level == LEVEL_END && MiniOverlay.isShowing()
         // כרטיס / ממוזער: גם כשהמערכת פותחת את ההתראה על מסך נעול - רק הרצועה / הכרטיס, לא מסך מלא
         val lockIntent = Intent(full).setClass(this, LockAlertActivity::class.java).putExtra("style", style)
-        val screenPi = if (style >= 2) PendingIntent.getActivity(this, 2, lockIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE) else fullPi
+        // מצב הטלפון לפני שמדליקים את המסך: כבוי? נעול (עם נעילת מסך)?
+        val wasOff = !(getSystemService(POWER_SERVICE) as PowerManager).isInteractive
+        val locked = (getSystemService(KEYGUARD_SERVICE) as android.app.KeyguardManager).isKeyguardLocked
+        // המסך הראשי (בלי מסכים מעליו): כרטיס - בתוכו; ממוזער - החלון בתוכו, במקום הכרטיס
+        val mainIntent = Intent(this, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+        fun openMain() {
+            AlertActivity.shownFiredAt = now0   // אין מסך התרעה לחכות לו - הכרטיס / הצבע מיד
+            if (style == 3) MiniOverlay.pendingMain = full
+            launchOver(mainIntent)
+        }
+        val screenPi = when {
+            locked -> if (style >= 2) PendingIntent.getActivity(this, 2, lockIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE) else fullPi
+            wasOff || style >= 2 -> PendingIntent.getActivity(this, 3, mainIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            else -> fullPi
+        }
         if (!quiet && !toMini) nb.setFullScreenIntent(screenPi, true)
         // ספירה לאחור ישר בשורת ההתראות
         // ספירה לאחור גדולה בתוך ההתראה הקופצת
@@ -775,22 +789,18 @@ class AlertService : Service() {
         // מסך מלא גם כשהטלפון פתוח ובשימוש:
         // בבדיקה (האפליקציה בחזית) או עם הרשאת "הצגה מעל אפליקציות אחרות"
         if (!quiet) wakeScreen()
-        val screenOff = !(getSystemService(POWER_SERVICE) as PowerManager).isInteractive
-        val locked = (getSystemService(KEYGUARD_SERVICE) as android.app.KeyguardManager).isKeyguardLocked
-        val canShow = forceScreen || shabbat || screenOff || locked || overlayOk()
+        val canShow = forceScreen || shabbat || wasOff || locked || overlayOk()
         if (join) main.post { showJoined(level, areas) }   // המסך הקיים מתעדכן - לא נפתח מסך חדש
         else if (toMini) main.post { MiniOverlay.showEnd(body) }
         else if (!quiet && canShow) {
             when {
-                // מסך כבוי / נעול בכרטיס / ממוזער: רק הרצועה / הכרטיס בראש מסך הנעילה
-                (screenOff || locked) && style >= 2 -> launchOver(lockIntent)
-                screenOff || style <= 1 -> launchOver(full)
-                // כרטיס מעל השעון: פותחים את המסך הראשי מעל האפליקציה הפתוחה
-                style == 2 -> launchOver(Intent(this, MainActivity::class.java)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
-                // ממוזער: החלון הקטן למעלה (בלי הרשאה - מסך מלא)
-                else -> if (overlayOk()) main.post { MiniOverlay.show(this, full) }
-                        else launchOver(full)
+                // נעול (עם נעילת מסך): כרטיס / ממוזער - בראש מסך הנעילה; מסך מלא / פופ-אפ - מעל מסך הנעילה
+                locked -> launchOver(if (style >= 2) lockIntent else full)
+                // טלפון בלי נעילה שהמסך שלו היה כבוי: רק האפליקציה, בלי מסכים מעליה
+                wasOff -> openMain()
+                // הטלפון פתוח ובשימוש: לפי הסגנון - מסך מלא / פופ-אפ, או האפליקציה עם הכרטיס / הממוזער (בלי חלון צף)
+                style <= 1 -> launchOver(full)
+                else -> openMain()
             }
         }
 

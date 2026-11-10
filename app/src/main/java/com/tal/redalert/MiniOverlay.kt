@@ -50,6 +50,8 @@ object MiniOverlay {
 
     /** ההתרעה שמוצגת עכשיו בחלון (כדי להעביר אותה בין החלון שמעל אפליקציות לבין המסך הראשי) */
     var lastFull: Intent? = null; private set
+    /** התרעה בממוזער שמחכה שהמסך הראשי ייפתח - מוצגת בתוכו (במקום הכרטיס) */
+    @Volatile var pendingMain: Intent? = null
     /** מוצג בתוך המסך הזה (המסך הראשי / מסך הנעילה) ולא כחלון מעל אפליקציות */
     fun hostedIn(g: android.view.ViewGroup) = view != null && host === g
 

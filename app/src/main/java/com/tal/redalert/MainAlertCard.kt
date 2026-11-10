@@ -50,8 +50,10 @@ internal fun MainActivity.updateAlertCard() {
     val firedAt = j?.optLong("firedAt") ?: 0L
     // החלון הממוזער פתוח: כשהמסך הראשי מוצג הוא עובר לתוכו - במקום הכרטיס, וזז עם המסך כמו כרטיס.
     // יוצאים מהאפליקציה - חוזר להיות חלון מעל אפליקציות (onPause)
-    if (MiniOverlay.isShowing() && !Shabbat.active(this) && hasWindowFocus()) MiniOverlay.lastFull?.let { f ->
-        MiniOverlay.show(this, f, into = miniHost, inline = true) { miniHost.visibility = View.GONE; updateAlertCard() }
+    if (!Shabbat.active(this) && hasWindowFocus()) {
+        val f = MiniOverlay.pendingMain ?: (if (MiniOverlay.isShowing()) MiniOverlay.lastFull else null)
+        MiniOverlay.pendingMain = null
+        f?.let { MiniOverlay.show(this, it, into = miniHost, inline = true) { miniHost.visibility = View.GONE; updateAlertCard() } }
     }
     val inMain = MiniOverlay.hostedIn(miniHost)
     miniHost.visibility = if (inMain) View.VISIBLE else View.GONE
