@@ -146,8 +146,9 @@ object MiniOverlay {
         }
         if (into != null) {
             // על מסך נעול: בתוך המסך הקטן, בראשו
+            // בדיוק כמו הכרטיס במסך הנעילה: בראש המסך, מתחת לשורת המצב, באותם שוליים
             into.addView(bar, android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.TOP).apply {
-                setMargins(dp(10), top, dp(10), 0) })
+                setMargins(dp(14), sb + dp(8), dp(14), 0) })
             host = into; onClosed = closed
         } else try { wm.addView(bar, lp) } catch (_: Exception) { return }
         view = bar
