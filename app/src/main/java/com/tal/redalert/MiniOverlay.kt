@@ -132,15 +132,16 @@ object MiniOverlay {
         val sb = app.resources.getIdentifier("status_bar_height", "dimen", "android")
             .takeIf { it > 0 }?.let { app.resources.getDimensionPixelSize(it) } ?: dp(28)
         val top = (Prefs.miniY(app).takeIf { it > sb } ?: sb) + dp(6)
+        // ברוחב שורת החיוויים בדיוק (אם ידוע), אחרת כמעט כל רוחב המסך
+        val boxX = Prefs.miniX(app); val boxW = Prefs.miniW(app)
         val lp = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT,
+            if (boxW > 0) boxW else WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.TOP
-            x = 0; y = top
-            horizontalMargin = 0.03f
+            if (boxW > 0) { gravity = Gravity.TOP or Gravity.LEFT; x = boxX } else { gravity = Gravity.TOP; x = 0; horizontalMargin = 0.03f }
+            y = top
         }
         if (into != null) {
             // על מסך נעול: בתוך המסך הקטן, בראשו
@@ -149,6 +150,7 @@ object MiniOverlay {
             host = into; onClosed = closed
         } else try { wm.addView(bar, lp) } catch (_: Exception) { return }
         view = bar
+        bar.post { if (bar.height > 0) Prefs.setMiniH(app, bar.height) }   // המסך הראשי שומר לו מקום בגובה הזה
         labelV = label; areaV = areaLine; timerV = timer; timerLabelV = timerLabel; iconV = icon
 
         val t = object : Runnable {
