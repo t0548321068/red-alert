@@ -48,8 +48,19 @@ object MiniOverlay {
 
     fun canShow(c: Context) = Settings.canDrawOverlays(c)
 
-    fun show(c: Context, full: Intent, into: android.view.ViewGroup? = null, closed: (() -> Unit)? = null) {
+    /** ההתרעה שמוצגת עכשיו בחלון (כדי להעביר אותה בין החלון שמעל אפליקציות לבין המסך הראשי) */
+    var lastFull: Intent? = null; private set
+    /** מוצג בתוך המסך הזה (המסך הראשי / מסך הנעילה) ולא כחלון מעל אפליקציות */
+    fun hostedIn(g: android.view.ViewGroup) = view != null && host === g
+
+    fun show(c: Context, full: Intent, into0: android.view.ViewGroup? = null, inline0: Boolean = false, closed0: (() -> Unit)? = null) {
+        // המסך הראשי מוצג עכשיו - נכנסים ישר לתוכו (במקום הכרטיס), בלי להופיע קודם כחלון ולקפוץ
+        val m = if (into0 == null) MainActivity.shown?.takeIf { it.hasWindowFocus() && !Shabbat.active(it) } else null
+        val into = into0 ?: m?.miniHost
+        val inline = inline0 || m != null
+        val closed = closed0 ?: m?.let { a -> { a.miniHost.visibility = View.GONE; a.updateAlertCard() } }
         hide(c)
+        lastFull = full
         val app = c.applicationContext
         val wm = app.getSystemService(Context.WINDOW_SERVICE) as WindowManager
         val d = app.resources.displayMetrics.density
@@ -146,10 +157,12 @@ object MiniOverlay {
         }
         if (into != null) {
             // על מסך נעול: בתוך המסך הקטן, בראשו
-            // בדיוק כמו הכרטיס במסך הנעילה: בראש המסך, מתחת לשורת המצב, באותם שוליים
+            // במסך הראשי: חלק מהמסך, במקום הכרטיס (בלי שוליים - המקום כבר בשורה של הכרטיסים).
+            // במסך הנעילה: בדיוק כמו הכרטיס - בראש המסך, מתחת לשורת המצב, באותם שוליים
             into.addView(bar, android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.TOP).apply {
-                setMargins(dp(14), sb + dp(8), dp(14), 0) })
+                if (!inline) setMargins(dp(14), sb + dp(8), dp(14), 0) })
             host = into; onClosed = closed
+            m?.let { a -> a.miniHost.visibility = View.VISIBLE; a.updateAlertCard() }
         } else try { wm.addView(bar, lp) } catch (_: Exception) { return }
         view = bar
         bar.post { if (bar.height > 0) Prefs.setMiniH(app, bar.height) }   // המסך הראשי שומר לו מקום בגובה הזה
