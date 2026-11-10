@@ -63,8 +63,9 @@ class AlertDisplayTest {
         assertEquals(false to false, card(age = 1 * sec))
     }
 
-    @Test fun fullScreenOpenTintsOnly() {
-        assertEquals(false to true, card(open = 1, age = 1 * sec))   // מאחורי פופ-אפ - צבוע, בלי כרטיס
+    @Test fun fullScreenOpenCardReadyBehind() {
+        // מסך ההתרעה פתוח - הכרטיס והצבע כבר מוכנים מתחתיו, כך שבסגירה הם שם מיד
+        assertEquals(true to true, card(open = 1, age = 1 * sec))
     }
 
     @Test fun afterCloseCardAtOnce() {
