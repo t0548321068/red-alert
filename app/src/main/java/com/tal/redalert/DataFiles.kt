@@ -38,7 +38,9 @@ object DataFiles {
     fun sync(c: Context, force: Boolean = false) {
         val app = c.applicationContext
         val now = System.currentTimeMillis()
-        if (syncing || (!force && now - sp(app).getLong("at", 0) < 60 * 60_000L)) return
+        // הקלטות היישובים עוד לא ירדו (התקנה חדשה / עדכון) - לא מחכים שעה
+        val needVoice = sp(app).getString("voiceV", "").isNullOrEmpty()
+        if (syncing || (!force && !needVoice && now - sp(app).getLong("at", 0) < 60 * 60_000L)) return
         syncing = true
         sp(app).edit().putLong("at", now).apply()
         Thread {
@@ -50,7 +52,7 @@ object DataFiles {
     private fun run(c: Context): Boolean {
         val idx = JSONObject(get("")?.toString(Charsets.UTF_8) ?: return false)
         val v = idx.optString("v")
-        if (v.isEmpty() || v == version(c)) return false
+        if (v.isEmpty() || (v == version(c) && voiceDone(c, idx))) return false
         val files = idx.getJSONObject("files")
         val have = JSONObject(sp(c).getString("files", "{}") ?: "{}")
         var changed = false
@@ -74,8 +76,37 @@ object DataFiles {
             File(dir(c), path).delete(); have.remove(path); changed = true
         }
         sp(c).edit().putString("files", have.toString()).apply()
+        if (!syncVoice(c, idx)) complete = false
         if (complete) sp(c).edit().putString("v", v).apply()
         return changed
+    }
+
+    // ---- הקלטות היישובים: נמצאות בשרת (לא בתוך האפליקציה), יורדות פעם אחת ונשמרות בטלפון ----
+    private fun voiceDone(c: Context, idx: JSONObject) = idx.optString("voice").let { it.isEmpty() || it == sp(c).getString("voiceV", "") }
+
+    /** מוריד את ההקלטות שחסרות או השתנו. מחזיר true כשהכל אצלנו */
+    private fun syncVoice(c: Context, idx: JSONObject): Boolean {
+        val vv = idx.optString("voice")
+        if (vv.isEmpty() || vv == sp(c).getString("voiceV", "")) return true
+        val list = JSONObject(get("voice.json")?.toString(Charsets.UTF_8) ?: return false)
+        val have = JSONObject(sp(c).getString("vfiles", "{}") ?: "{}")
+        var n = 0
+        for (path in list.keys()) {
+            val hash = list.getString(path)
+            if (have.optString(path) == hash && file(c, path) != null) continue
+            val bytes = get(path) ?: run { sp(c).edit().putString("vfiles", have.toString()).apply(); return false }
+            val f = File(dir(c), path)
+            f.parentFile?.mkdirs()
+            val tmp = File(f.path + ".tmp")
+            tmp.writeBytes(bytes)
+            if (!tmp.renameTo(f)) { f.delete(); tmp.renameTo(f) }
+            have.put(path, hash)
+            if (++n % 50 == 0) sp(c).edit().putString("vfiles", have.toString()).apply()
+        }
+        // הקלטה שהוסרה מהשרת
+        for (path in have.keys().asSequence().toList()) if (!list.has(path)) { File(dir(c), path).delete(); have.remove(path) }
+        sp(c).edit().putString("vfiles", have.toString()).putString("voiceV", vv).apply()
+        return true
     }
 
     private fun get(path: String): ByteArray? {
