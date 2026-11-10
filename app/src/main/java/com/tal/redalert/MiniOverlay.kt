@@ -53,12 +53,13 @@ object MiniOverlay {
     /** מוצג בתוך המסך הזה (המסך הראשי / מסך הנעילה) ולא כחלון מעל אפליקציות */
     fun hostedIn(g: android.view.ViewGroup) = view != null && host === g
 
-    fun show(c: Context, full: Intent, into0: android.view.ViewGroup? = null, inline0: Boolean = false, closed0: (() -> Unit)? = null) {
+    @Suppress("NAME_SHADOWING")
+    fun show(c: Context, full: Intent, into: android.view.ViewGroup? = null, inline: Boolean = false, closed: (() -> Unit)? = null) {
         // המסך הראשי מוצג עכשיו - נכנסים ישר לתוכו (במקום הכרטיס), בלי להופיע קודם כחלון ולקפוץ
-        val m = if (into0 == null) MainActivity.shown?.takeIf { it.hasWindowFocus() && !Shabbat.active(it) } else null
-        val into = into0 ?: m?.miniHost
-        val inline = inline0 || m != null
-        val closed = closed0 ?: m?.let { a -> { a.miniHost.visibility = View.GONE; a.updateAlertCard() } }
+        val m = if (into == null) MainActivity.shown?.takeIf { it.hasWindowFocus() && !Shabbat.active(it) } else null
+        val into = into ?: m?.miniHost
+        val inline = inline || m != null
+        val closed = closed ?: m?.let { a -> { a.miniHost.visibility = View.GONE; a.updateAlertCard() } }
         hide(c)
         lastFull = full
         val app = c.applicationContext
