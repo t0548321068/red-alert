@@ -380,7 +380,8 @@ class AlertService : Service() {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))
         } catch (_: Exception) { }
         // החלון הממוזער נבנה מחדש - כל היישובים, והזמנים לפי העדכון האחרון
-        if (MiniOverlay.isShowing()) MiniOverlay.show(this, Intent()
+        val miniInMain = MainActivity.shown?.let { MiniOverlay.hostedIn(it.miniHost) } == true
+        if (MiniOverlay.isShowing() || miniInMain) MiniOverlay.show(this, Intent()
             .putExtra("title", a.optString("title")).putExtra("body", body).putExtra("level", level)
             .putExtra("shelter", a.optInt("shelter", -1)).putExtra("firedAt", a.optLong("firedAt"))
             .putExtra("source", a.optString("source")).putExtra("mapAreas", a.optString("mapAreas")))
