@@ -7,7 +7,11 @@ const path = require('path');
 const crypto = require('crypto');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
-const dataIndex = { v: '', files: {} };
+// הקלטות היישובים (voice/areas - כ-1,450 קבצים): ברשימה נפרדת, כדי שהרשימה שהטלפונים בודקים כל שעה תישאר קטנה.
+// ברשימה הראשית רק "voice" - גרסת ההקלטות; הטלפון מוריד את /data/voice.json רק כשהיא משתנה
+const VOICE_PREFIX = 'voice/areas/';
+const dataIndex = { v: '', voice: '', files: {} };
+const voiceIndex = {};
 (function scan() {   // השרת עולה מחדש בכל עדכון עצמי - מספיק לסרוק בהפעלה
   const files = {};
   const walk = (dir, rel) => {
@@ -19,14 +23,17 @@ const dataIndex = { v: '', files: {} };
     }
   };
   try { walk(DATA_DIR, ''); } catch (_) {}
+  for (const k of Object.keys(files)) if (k.startsWith(VOICE_PREFIX)) { voiceIndex[k] = files[k]; delete files[k]; }
   dataIndex.files = files;
-  dataIndex.v = crypto.createHash('sha1').update(JSON.stringify(files)).digest('hex').slice(0, 12);
+  dataIndex.voice = crypto.createHash('sha1').update(JSON.stringify(voiceIndex)).digest('hex').slice(0, 12);
+  dataIndex.v = crypto.createHash('sha1').update(JSON.stringify(files) + dataIndex.voice).digest('hex').slice(0, 12);
 })();
 
 function serveData(res, rel) {
   if (!rel) { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify(dataIndex)); }
-  // רק קבצים מהרשימה - בלי גישה לשאר השרת
-  if (!Object.hasOwn(dataIndex.files, rel)) { res.writeHead(404); return res.end(); }
+  if (rel === 'voice.json') { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify(voiceIndex)); }
+  // רק קבצים מהרשימות - בלי גישה לשאר השרת
+  if (!Object.hasOwn(dataIndex.files, rel) && !Object.hasOwn(voiceIndex, rel)) { res.writeHead(404); return res.end(); }
   res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
   fs.createReadStream(path.join(DATA_DIR, rel)).on('error', () => res.end()).pipe(res);
 }
@@ -39,4 +46,4 @@ function serveBeta(res, code) {
   res.end(JSON.stringify({ allowed: /^[0-9A-F]{8}$/.test(code) && list.includes(code) }));
 }
 
-module.exports = { dataIndex, serveData, serveBeta };
+module.exports = { dataIndex, voiceIndex, serveData, serveBeta };
