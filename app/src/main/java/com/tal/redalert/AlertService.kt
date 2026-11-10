@@ -986,8 +986,21 @@ class AlertService : Service() {
     internal val restoreRinger = Runnable { synchronized(audioLock) {
         val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
         // מחזירים רק אם המשתמש לא שינה בינתיים בעצמו
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val dndBefore = try { nm.currentInterruptionFilter } catch (_: Exception) { -1 }
         if (ringerSaved != -1 && am.ringerMode == android.media.AudioManager.RINGER_MODE_NORMAL)
             try { am.ringerMode = ringerSaved } catch (_: Exception) { }
+        // בחלק מהטלפונים (סמסונג) החזרת מצב הצלצול מדליקה "נא לא להפריע" - אם הוא היה כבוי, מכבים אותו מיד
+        // (המערכת משנה את זה אחרי רגע - בודקים מיד ושוב אחרי שנייה וחצי)
+        if (dndBefore == NotificationManager.INTERRUPTION_FILTER_ALL && nm.isNotificationPolicyAccessGranted) {
+            val fix = Runnable {
+                try {
+                    if (nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL)
+                        nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
+                } catch (_: Exception) { }
+            }
+            fix.run(); main.postDelayed(fix, 1500)
+        }
         ringerSaved = -1
         restoreSp().edit().remove("ringer").apply()
     } }
