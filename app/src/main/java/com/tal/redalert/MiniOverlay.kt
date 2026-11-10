@@ -198,7 +198,8 @@ object MiniOverlay {
         t.run()
     }
 
-    private fun mmss(ms: Long): String { val s = (ms / 1000).toInt(); return "%d:%02d".format(s / 60, s % 60) }
+    // מעגלים למעלה - כמו במסך המלא ובכרטיס (1:30 ולא 1:29 בשנייה הראשונה)
+    private fun mmss(ms: Long): String { val s = ((ms + 999) / 1000).toInt(); return "%d:%02d".format(s / 60, s % 60) }
 
     /** "האירוע הסתיים" בזמן שהחלון הקטן פתוח - הוא נהיה ירוק (במקום מסך מלא) */
     fun showEnd(area: String) {
