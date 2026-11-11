@@ -129,7 +129,7 @@ class MapActivity : Activity() {
             }
         }
 
-        // מעל "המיקום שלי": חזרה לכל ההתרעות של 24 השעות האחרונות (רק כשנפתח מהרשימה על התרעה אחת)
+        // מעל "המיקום שלי": כל ההתרעות של 24 השעות האחרונות - המפה חוזרת להציג את כולן
         val allBtn = FrameLayout(this).apply {
             background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(panel) }
             elevation = dp(4).toFloat()
@@ -138,11 +138,8 @@ class MapActivity : Activity() {
                 setImageResource(R.drawable.ic_map_all)
                 imageTintList = android.content.res.ColorStateList.valueOf(0xFF4C7DFF.toInt())
             }, FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER))
-            visibility = if (sheetMode) View.VISIBLE else View.GONE
             setOnClickListener {
                 showAll = true
-                visibility = View.GONE
-                sheetView?.visibility = View.GONE
                 infoCard.visibility = View.GONE
                 drawAlerts()
             }
