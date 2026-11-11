@@ -183,4 +183,13 @@ class AlertDisplayTest {
         // בלי שורה בשרת - כמו שנשמר בטלפון
         assertEquals(mine[0], Prefs.mineFromServer(mine, emptyList()) { true }[0])
     }
+
+    // ---- השעה בשורה: של היישוב הראשון שהגיע (לא "בחלק מהאזורים בארץ") ----
+    @Test fun rowTimeIsFirstTown() {
+        val t = 1_794_389_133_000L
+        val e = Prefs.Entry("", "רעידת אדמה", "אילת, אילות, בחלק מהאזורים בארץ", 0, t,
+            times = mapOf("אילת" to t + 4000, "אילות" to t + 4000, "בחלק מהאזורים בארץ" to t + 2000))
+        assertEquals(t + 4000, Prefs.rowTime(e) { it != "בחלק מהאזורים בארץ" })
+        assertEquals(t, Prefs.rowTime(Prefs.Entry("", "x", "בחלק מהאזורים בארץ", 0, t)) { false })   // אין יישובים - השעה של השורה
+    }
 }

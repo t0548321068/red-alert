@@ -500,6 +500,10 @@ object Prefs {
     /** הזמן של כל יישוב בשורה */
     fun areaTimes(e: Entry): Map<String, Long> =
         e.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }.associateWith { e.times[it] ?: e.ts }
+    /** השעה שמוצגת בשורה ברשימה: של היישוב הראשון שהגיע מבין היישובים האמיתיים (isTown); אין כאלה - השעה של השורה */
+    fun rowTime(e: Entry, isTown: (String) -> Boolean): Long =
+        areaTimes(e).filterKeys(isTown).values.minOrNull() ?: e.ts
+
     /** איחוד זמנים של שתי שורות - לכל יישוב הזמן המוקדם */
     fun mergeTimes(a: Entry, b: Entry): Map<String, Long> {
         val m = HashMap(areaTimes(b))
