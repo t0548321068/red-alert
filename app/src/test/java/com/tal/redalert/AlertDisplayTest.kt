@@ -170,4 +170,19 @@ class AlertDisplayTest {
         assertFalse(AlertService.feedNotifies(true, listOf("ירושלים - צפון"), AlertService.LEVEL_ALERT))
         assertFalse(AlertService.feedNotifies(false, emptyList(), AlertService.LEVEL_ALERT))
     }
+
+    // ---- "שלי" לפי השרת: אותם יישובים, סדר ושעות - רק היישובים שלי ----
+    @Test fun mineFollowsServer() {
+        val t = 1_794_389_133_000L
+        val srvAreas = listOf("אילת", "אזור תעשייה שחורת", "אילות", "אליפז ומכרות תמנע", "באר אורה", "בחלק מהאזורים בארץ")
+        val all = listOf(Prefs.Entry("", "רעידת אדמה", srvAreas.joinToString(", "), 0, t,
+            times = srvAreas.associateWith { if (it == "בחלק מהאזורים בארץ") t + 2000 else t + 4000 }))
+        val mine = listOf(Prefs.Entry("", "רעידת אדמה", "באר אורה, אליפז ומכרות תמנע, אילת, אזור תעשייה שחורת", 0, t + 5000))
+        val r = Prefs.mineFromServer(mine, all) { it != "בחלק מהאזורים בארץ" }[0]
+        assertEquals("אילת, אזור תעשייה שחורת, אילות, אליפז ומכרות תמנע, באר אורה", r.body)
+        assertEquals(1, AlertSheet.groups(r.body.split(", "), r.times, r.ts, { null }).size)   // כרטיס אחד: 11:25:37
+        assertEquals(t + 4000, r.times["אילות"])
+        // בלי שורה בשרת - כמו שנשמר בטלפון
+        assertEquals(mine[0], Prefs.mineFromServer(mine, emptyList()) { true }[0])
+    }
 }

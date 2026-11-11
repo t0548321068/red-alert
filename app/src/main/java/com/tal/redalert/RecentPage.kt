@@ -69,17 +69,20 @@ internal fun MainActivity.showRecent() = onePage("התרעות אחרונות",
         h.addView(seg, LinearLayout.LayoutParams(-2, -2))
     }) { c ->
     recentList = c
+    // מה שכבר נטען מוצג מיד, ובכל פתיחה - רענון מהשרת (כדי שתיקונים בשרת יופיעו בלי להפעיל מחדש את האפליקציה)
     val cached = archiveCache
-    if (cached != null) { fillRecent(c, cached); return@onePage }
-    val loading = text("טוען את כל ההתרעות…", 14f, C.MUTED2).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) }
-    c.addView(loading)
+    if (cached != null) fillRecent(c, cached)
+    else c.addView(text("טוען את כל ההתרעות…", 14f, C.MUTED2).apply { setPadding(dp(28), dp(12), dp(28), dp(12)) })
     Thread {
         // הארכיון + מה שנשמר בטלפון מפעמים קודמות (נשמר עד שנה אחורה)
         val list = try { OrefArchive.fetchAndKeep(this) } catch (_: Exception) { emptyList() }
-            .ifEmpty { Prefs.feed(this) }   // אין כלום - מה שהאפליקציה קלטה בעצמה
+            .ifEmpty { cached ?: Prefs.feed(this) }   // אין כלום - מה שהאפליקציה קלטה בעצמה
         runOnUiThread {
             archiveCache = list
-            fillRecent(c, list)
+            if (recentList !== c) return@runOnUiThread
+            val sv = generateSequence(c.parent) { it.parent }.filterIsInstance<ScrollView>().firstOrNull()
+            val y = sv?.scrollY ?: 0
+            fillRecent(c, list, recentShown); sv?.post { sv.scrollTo(0, y) }
         }
         // פעם אחת: השלמה מהארכיון שנה אחורה, ואז מרעננים את הרשימה
         if (try { OrefArchive.backfill(this) } catch (_: Exception) { false }) {
@@ -97,7 +100,9 @@ internal fun MainActivity.showRecent() = onePage("התרעות אחרונות",
 internal fun MainActivity.fillRecent(c: LinearLayout, all: List<Prefs.Entry>, minShown: Int = 0) {
     c.removeAllViews()
     recentSegView?.let { buildRecentSeg(it) }   // מספרים מעודכנים
-    val items = if (!recentMine) Prefs.withMine(all, mineOf()) else mineOf()
+    // "שלי" - השורות כמו בשרת (אותם יישובים ואותו סדר ושעות), רק היישובים שלי
+    val items = if (!recentMine) Prefs.withMine(all, mineOf())
+        else Prefs.mineFromServer(mineOf(), all) { a -> AreaData.isKnown(this, a) && AlertService.mine(this, listOf(a)).isNotEmpty() }
     val muted = C.MUTED2
     recentItems = items; recentShown = 0; recentDay = null; recentCard = null
     if (items.isEmpty()) {

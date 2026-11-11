@@ -184,6 +184,9 @@ class MapActivity : Activity() {
         root.setOnApplyWindowInsetsListener { v, insets ->
             @Suppress("DEPRECATION")
             v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, if (sheet) 0 else insets.systemWindowInsetBottom)
+            // המסך התחתון נמשך מתחת לשורת הניווט (באותו צבע), והתוכן שלו מעליה
+            @Suppress("DEPRECATION")
+            if (sheet) sheetView?.let { it.setPadding(0, 0, 0, insets.systemWindowInsetBottom); it.requestLayout() }
             insets
         }
         @Suppress("DEPRECATION")
