@@ -246,7 +246,8 @@ internal fun AlertService.nearLoop() {
                             AreaData.areasAt(this, prev.latitude, prev.longitude, 0.0).firstOrNull()
                     } catch (_: Exception) { false }
                     val needGps = net == null || prev == null || net.accuracy > 150f || net.distanceTo(prev) > 300f || nearBorder
-                    if (needGps) Weather.freshLocation(this) { loc ->
+                    // לאזור ההתרעה מספיק דיוק של 30 מטר - ה-GPS נכבה מיד כשמגיעים אליו (חוסך סוללה בנסיעה)
+                    if (needGps) Weather.freshLocation(this, target = 30f) { loc ->
                         if (loc != null) { val use = Weather.chooseLocation(loc); lastGps = use; useLocation(use) }
                     }
                     else useLocation(prev!!)   // לא זזנו - המיקום המדויק הקודם עדיין נכון
