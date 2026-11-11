@@ -35,6 +35,7 @@ class BootReceiver : BroadcastReceiver() {
             try { c.startActivity(open); return } catch (_: Exception) { }
         }
         val nm = c.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.cancel(AlertService.ID_UPDATE)   // "גרסה חדשה זמינה" - כבר הותקנה
         if (nm.getNotificationChannel("updated") == null) nm.createNotificationChannel(
             android.app.NotificationChannel("updated", "עדכון הותקן", NotificationManager.IMPORTANCE_HIGH))
         nm.notify(4242, Notification.Builder(c, "updated")
