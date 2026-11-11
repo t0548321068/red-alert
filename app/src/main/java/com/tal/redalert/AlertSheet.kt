@@ -8,7 +8,6 @@ import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
-import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -93,9 +92,9 @@ object AlertSheet {
         val scroll = ScrollView(a).apply { isVerticalScrollBarEnabled = false; addView(list) }
         sheet.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
-        // גרירה: למטה - חלק מהמסך (המפה למעלה גלויה); למעלה - מכסה את המפה
+        // גרירה: למטה - רק הכותרת והשעה (המפה גלויה); למעלה - מכסה את המפה
         var down = 0f; var start = 0f; var moved = false
-        fun collapsedY() = (sheet.height * 0.55f)
+        fun collapsedY() = (sheet.height - head.height).toFloat().coerceAtLeast(0f)
         fun snap(up: Boolean) = sheet.animate().translationY(if (up) 0f else collapsedY()).setDuration(200).start()
         head.setOnTouchListener { _, ev ->
             when (ev.actionMasked) {
@@ -121,30 +120,19 @@ object AlertSheet {
         return sheet
     }
 
-    /** שורת הכותרת: בצבע של סוג ההתרעה, עם חץ חזרה ואייקון */
+    /** שורת הכותרת: בצבע של סוג ההתרעה */
     fun bar(a: Activity, title: String, level: Int): View {
         fun dp(v: Int) = (v * a.resources.displayMetrics.density).toInt()
         return LinearLayout(a).apply {
             layoutDirection = View.LAYOUT_DIRECTION_RTL
             gravity = Gravity.CENTER_VERTICAL
             setBackgroundColor(Color.parseColor(AlertUi.color(level)))
-            setPadding(dp(8), 0, dp(16), 0)
-            addView(FrameLayout(a).apply {
-                isClickable = true
-                background = android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x33FFFFFF), null,
-                    GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) })
-                contentDescription = "חזרה"
-                setOnClickListener { a.finish() }
-                addView(android.widget.ImageView(a).apply { setImageResource(R.drawable.ic_back); imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE) },
-                    FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER))
-            }, LinearLayout.LayoutParams(dp(44), dp(44)))
+            setPadding(dp(12), 0, dp(12), 0)
             addView(TextView(a).apply {
                 text = title; textSize = 19f; setTextColor(Color.WHITE); typeface = Typeface.DEFAULT_BOLD
                 textDirection = View.TEXT_DIRECTION_RTL; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
                 setPadding(dp(8), 0, dp(8), 0)
             }, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(android.widget.ImageView(a).apply { AlertUi.setIcon(this, AlertUi.icon(title, level)); imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE) },
-                LinearLayout.LayoutParams(dp(24), dp(24)))
         }
     }
 }
