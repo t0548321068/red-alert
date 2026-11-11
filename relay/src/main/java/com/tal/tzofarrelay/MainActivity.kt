@@ -555,7 +555,7 @@ class MainActivity : Activity() {
         else -> "מוצגת קבוע"
     }
     /** ערכת צבעים חדשה - מתחלפת מיד */
-    private fun setTheme(mode: Int) {
+    private fun setColors(mode: Int) {
         Display.setThemeMode(this, mode)
         applyTheme(Display.dark(this)); show()
     }
@@ -585,14 +585,14 @@ class MainActivity : Activity() {
             }, LinearLayout.LayoutParams(dp(76), dp(150)))
             addView(text(label, 13f, if (sel) BLUE else MUTED2, sel).apply { gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(8)) }, LinearLayout.LayoutParams(-1, -2))
             addView(radio(sel), LinearLayout.LayoutParams(dp(20), dp(20)))
-            setOnClickListener { if (Display.themeMode(this@MainActivity) != value) setTheme(value) }
+            setOnClickListener { if (Display.themeMode(this@MainActivity) != value) setColors(value) }
         }
         pick.addView(preview(false, "חשוך", mode == 0, 0), LinearLayout.LayoutParams(0, -2, 1f))
         pick.addView(preview(true, "בהיר", mode == 1, 1), LinearLayout.LayoutParams(0, -2, 1f))
         theme.addView(pick)
         divider(theme)
-        orow(theme, "לפי המערכת", on = mode == 2, onToggle = { setTheme(if (mode == 2) 0 else 2) }) { setTheme(if (mode == 2) 0 else 2) }
-        orow(theme, "לפי זמן", themeTimeLabel(), on = mode == 3, onToggle = { setTheme(if (mode == 3) 0 else 3) }) { go(4) }
+        orow(theme, "לפי המערכת", on = mode == 2, onToggle = { setColors(if (mode == 2) 0 else 2) }) { setColors(if (mode == 2) 0 else 2) }
+        orow(theme, "לפי זמן", themeTimeLabel(), on = mode == 3, onToggle = { setColors(if (mode == 3) 0 else 3) }) { go(4) }
         add(theme)
         note("לפי המערכת – בהיר או חשוך לפי הגדרת הטלפון\nלפי זמן – חשוך בלילה ובהיר ביום")
         // שורת החיוויים במסך הראשי
