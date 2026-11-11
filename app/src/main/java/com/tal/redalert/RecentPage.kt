@@ -104,8 +104,15 @@ internal fun MainActivity.fillRecent(c: LinearLayout, all: List<Prefs.Entry>, mi
     c.removeAllViews()
     recentSegView?.let { buildRecentSeg(it) }   // מספרים מעודכנים
     // "שלי" - השורות כמו בשרת (אותם יישובים ואותו סדר ושעות), רק היישובים שלי
-    val items = if (!recentMine) Prefs.withMine(all, mineOf())
-        else Prefs.mineFromServer(mineOf(), all) { a -> AreaData.isKnown(this, a) && AlertService.mine(this, listOf(a)).isNotEmpty() }
+    val items = if (!recentMine) Prefs.withMine(all, mineOf()) else {
+        // הבחירות שלי נקראות פעם אחת, וכל יישוב נבדק פעם אחת (מטח גדול = מאות יישובים בשורה)
+        val picks = Prefs.cities(this)
+        val near = if (Prefs.nearMe(this)) Prefs.nearbyAreas(this) else emptyList()
+        val memo = HashMap<String, Boolean>()
+        Prefs.mineFromServer(mineOf(), all) { a -> memo.getOrPut(a) {
+            AreaData.isKnown(this, a) && AlertService.mineOf(listOf(a), picks, near) { x, f -> AreaData.matches(this, x, f) }.isNotEmpty()
+        } }
+    }
     val muted = C.MUTED2
     recentItems = items; recentShown = 0; recentDay = null; recentCard = null
     if (items.isEmpty()) {
