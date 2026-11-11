@@ -110,25 +110,51 @@ class MainActivity : Activity() {
             background = GradientDrawable().apply { setColor(PILL); cornerRadius = dp(23).toFloat() }
             addView(pillLabel, android.widget.FrameLayout.LayoutParams(-1, -1))
             addView(pillSpin, android.widget.FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER))
-            setOnClickListener {
-                if (checking) return@setOnClickListener
-                checking = true; pillBusy(true)
-                val started = System.currentTimeMillis()
-                Thread {
-                    Relay.checkNow(this@MainActivity)
-                    // לפחות חצי שנייה של טעינה - שלא יהבהב
-                    ui.postDelayed({ checking = false; pillBusy(false); build() },
-                        (500 - (System.currentTimeMillis() - started)).coerceAtLeast(0))
-                }.start()
-            }
+            setOnClickListener { pillAction() }
+        }
+        later = text("מאוחר יותר", 16f, TEXT, true).apply {
+            gravity = Gravity.CENTER; includeFontPadding = false; visibility = View.GONE
+            background = GradientDrawable().apply { setColor(Color.parseColor("#3A3A3C")); cornerRadius = dp(23).toFloat() }
+            setOnClickListener { go(updFrom) }
         }
         setContentView(android.widget.FrameLayout(this).apply {
             setBackgroundColor(Color.BLACK)
             addView(scroll, android.widget.FrameLayout.LayoutParams(-1, -1))
             addView(pill, android.widget.FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.5f).toInt(), dp(46),
                 Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(20) })
+            addView(later, android.widget.FrameLayout.LayoutParams(0, dp(46), Gravity.BOTTOM or Gravity.RIGHT).apply { bottomMargin = dp(20) })
         })
         if (Build_SDK >= 33) requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"), 1)
+    }
+    private lateinit var later: TextView
+    private var pillAction: () -> Unit = {}
+    /** "בדיקה" בהגדרות: שני השרתים, המקורות ו-Firebase */
+    private val checkNow: () -> Unit = {
+        if (!checking) {
+            checking = true; pillBusy(true)
+            val started = System.currentTimeMillis()
+            Thread {
+                Relay.checkNow(this@MainActivity)
+                // לפחות חצי שנייה של טעינה - שלא יהבהב
+                ui.postDelayed({ checking = false; pillBusy(false); build() },
+                    (500 - (System.currentTimeMillis() - started)).coerceAtLeast(0))
+            }.start()
+        }
+    }
+    /** הכפתור הכחול: לבד באמצע (חצי רוחב), או "התקן עכשיו" משמאל ו"מאוחר יותר" מימין - כמו בצופר חירום */
+    private fun pills(label: String?, two: Boolean = false, action: () -> Unit = {}) {
+        pillLabel.text = label ?: ""; pillAction = action
+        pill.visibility = if (label == null) View.GONE else View.VISIBLE
+        later.visibility = if (two && label != null) View.VISIBLE else View.GONE
+        val w = resources.displayMetrics.widthPixels
+        val lp = pill.layoutParams as android.widget.FrameLayout.LayoutParams
+        if (two) {
+            val each = (w * 0.42f).toInt(); val side = (w * 0.06f).toInt()
+            lp.width = each; lp.gravity = Gravity.BOTTOM or Gravity.LEFT; lp.leftMargin = side
+            (later.layoutParams as android.widget.FrameLayout.LayoutParams).apply { width = each; rightMargin = side }
+            later.requestLayout()
+        } else { lp.width = (w * 0.5f).toInt(); lp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL; lp.leftMargin = 0 }
+        pill.layoutParams = lp
     }
     private fun pillBusy(b: Boolean) { pillLabel.visibility = if (b) View.INVISIBLE else View.VISIBLE; pillSpin.visibility = if (b) View.VISIBLE else View.GONE }
     private val Build_SDK get() = android.os.Build.VERSION.SDK_INT
@@ -152,13 +178,19 @@ class MainActivity : Activity() {
             }, LinearLayout.LayoutParams(dp(46), dp(46)))
         })
     }
-    private var settings = false
-    @Deprecated("") override fun onBackPressed() { if (settings) { settings = false; build() } else @Suppress("DEPRECATION") super.onBackPressed() }
+    // עמודים: 0 = ראשי, 1 = הגדרות, 2 = בדיקת עדכונים (חוזר לעמוד שממנו נפתח)
+    private var page = 0
+    private var updFrom = 0
+    private fun go(p: Int) { if (p == 2) updFrom = page; page = p; if (p == 2) updatePage() else build() }
+    @Deprecated("") override fun onBackPressed() {
+        when (page) { 2 -> go(updFrom); 1 -> go(0); else -> @Suppress("DEPRECATION") super.onBackPressed() }
+    }
 
     @Volatile private var checking = false
     private var keyField: EditText? = null
     private var setupMsg = ""
     private fun build() {
+        if (page == 2) return   // עמוד העדכונים לא נבנה מחדש כל שנייה (הטבעת מסתובבת)
         if (Relay.key(this).isEmpty()) { state = null; circleViews = null; if (keyField == null) setup(); return }
         keyField = null
         root.removeAllViews()
@@ -183,13 +215,13 @@ class MainActivity : Activity() {
             else -> St(ORANGE, null, true, "פעיל – שולח לטלפונים", "השרתים לא עונים · " + uptime(now - Relay.activeSince))
         }
         state = st
-        if (settings) settingsPage(now, on, charging, wifi, hasKey, primary, secondary) else mainPage(st, now, on, charging, wifi, primary, secondary)
+        if (page == 1) settingsPage(now, on, charging, wifi, hasKey, primary, secondary) else mainPage(st, now, on, charging, wifi, primary, secondary)
     }
 
     /** מסך ראשי כמו בצופר חירום: כותרת עם גלגל שיניים, שורת חיוויים, וכרטיס המצב */
     private fun mainPage(st: St, now: Long, on: Boolean, charging: Boolean, wifi: Boolean, primary: Boolean, secondary: Boolean) {
-        pill.visibility = View.GONE
-        header("ממסר צופר") { settings = true; build() }
+        pills(null)
+        header("ממסר צופר") { go(1) }
         // שורת חיוויים: אייקון בצבע המצב, מתחתיו מלל קטן, קווים דקים ביניהם (כמו בצופר חירום)
         val row = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
@@ -201,11 +233,10 @@ class MainActivity : Activity() {
         val srv = when { !on -> "כבוי" to MUTED; primary -> "ראשי" to GREEN; secondary -> "משני" to ORANGE; else -> "לא עונים" to RED }
         val inds = listOf(
             ind(if (enabled) R.drawable.ic_shield_ind else R.drawable.ic_shield_ind_off, if (enabled) "פועל" else "כבוי", if (enabled) GREEN else MUTED) { toggleRelay() },
-            ind(R.drawable.ic_antenna, srv.first, srv.second) { settings = true; build() },
-            ind(R.drawable.ic_globe, if (wifi) "Wi‑Fi" else "לא Wi‑Fi", if (wifi) GREEN else ORANGE) { settings = true; build() },
-            ind(R.drawable.ic_power, if (charging) "בטעינה" else "${battery()}%", if (charging) GREEN else ORANGE) { settings = true; build() },
-            ind(R.drawable.ic_info, "1.${Update.current(this)}", TEXT) {
-                if (!Update.busy) Update.checkAndInstall(this@MainActivity) { runOnUiThread { build() } } })
+            ind(R.drawable.ic_antenna, srv.first, srv.second, null),
+            ind(R.drawable.ic_globe, if (wifi) "Wi‑Fi" else "לא Wi‑Fi", if (wifi) GREEN else ORANGE, null),
+            ind(R.drawable.ic_power, if (charging) "בטעינה" else "${battery()}%", if (charging) GREEN else ORANGE, null),
+            ind(R.drawable.ic_info, "1.${Update.current(this)}", TEXT) { go(2) })   // גרסה: עמוד בדיקת העדכונים
         inds.forEachIndexed { i, v ->
             if (i > 0) row.addView(View(this).apply { setBackgroundColor(LINE2) }, LinearLayout.LayoutParams(dp(1), dp(26)))
             row.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
@@ -248,7 +279,7 @@ class MainActivity : Activity() {
         }
     }
     /** חיווי אחד בשורה - כמו בצופר חירום: אייקון מוגדל ב-45%, מלל 12 מתחתיו */
-    private fun ind(icon: Int, label: String, color: Int, click: () -> Unit) = text(label, 12f, TEXT).apply {
+    private fun ind(icon: Int, label: String, color: Int, click: (() -> Unit)?) = text(label, 12f, TEXT).apply {
         getDrawable(icon)?.mutate()?.let { d ->
             d.setBounds(0, 0, (d.intrinsicWidth * 1.45f).toInt(), (d.intrinsicHeight * 1.45f).toInt())
             setCompoundDrawablesRelative(null, d, null, null)
@@ -257,7 +288,7 @@ class MainActivity : Activity() {
         compoundDrawablePadding = (dp(4) - (dp(18) * 0.15f).toInt()).coerceAtLeast(0)
         maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
         gravity = Gravity.CENTER
-        setOnClickListener { click() }
+        if (click != null) setOnClickListener { click() }   // רשת / חשמל / שרתים - חיווי בלבד, לא כפתור
     }
     private fun toggleRelay() {
         val enabled = Relay.enabled(this)
@@ -268,7 +299,7 @@ class MainActivity : Activity() {
 
     /** הגדרות: הפעלה, שרשרת הגיבוי, מצב הטלפון, עדכונים והחלפת מפתח - עם כפתור "בדיקה" צף */
     private fun settingsPage(now: Long, on: Boolean, charging: Boolean, wifi: Boolean, hasKey: Boolean, primary: Boolean, secondary: Boolean) {
-        pill.visibility = View.VISIBLE; circleViews = null
+        pills("בדיקה", action = checkNow); circleViews = null
         header("הגדרות", null)
         val enabled = Relay.enabled(this)
         val top = card()
@@ -317,10 +348,8 @@ class MainActivity : Activity() {
         // עדכונים: גרסה נוכחית, ובדיקה + הורדה + התקנה מתוך הממסר
         val upd = card()
         row(upd, "גרסה", "", "1.${Update.current(this)}", TEXT)
-        // בדיקת עדכונים - שורה רגילה כמו "עדכונים" בהגדרות של צופר חירום; המצב מוצג מתחת לשם
-        row(upd, "בדיקת עדכונים", if (Update.busy) "בודק…" else Update.status, "", TEXT) {
-            if (!Update.busy) Update.checkAndInstall(this@MainActivity) { runOnUiThread { build() } }
-        }
+        // בדיקת עדכונים - פותח את עמוד בדיקת העדכונים, כמו בצופר חירום
+        row(upd, "בדיקת עדכונים", "", "", TEXT) { go(2) }
         add(upd)
         val key = card()
         row(key, "החלפת מפתח", "מנתק את הממסר ומבקש מפתח חדש", "", TEXT) {
@@ -329,10 +358,106 @@ class MainActivity : Activity() {
         add(key)
     }
 
+    /**
+     * עמוד "בדיקת עדכונים" - בדיוק כמו בצופר חירום: עיגול עם טבעת מסתובבת בזמן הבדיקה,
+     * ואז אחד משלושה: גרסה חדשה (פרטים + "התקן עכשיו" / "מאוחר יותר") / מעודכן / לא ניתן לבדוק
+     */
+    private fun updatePage() {
+        root.removeAllViews(); circleViews = null; state = null
+        header("בדיקת עדכונים", null)
+        val blue = PILL
+        val circleBg = GradientDrawable().apply { shape = GradientDrawable.OVAL }
+        val ring = UpdateRing(this)
+        val icon = ImageView(this)
+        val circle = android.widget.FrameLayout(this).apply {
+            background = circleBg
+            addView(ring, android.widget.FrameLayout.LayoutParams(-1, -1))
+            addView(icon, android.widget.FrameLayout.LayoutParams(dp(50), dp(50), Gravity.CENTER))
+        }
+        val headline = text("", 20f, TEXT, true).apply { gravity = Gravity.CENTER }
+        val sub = text("", 14f, MUTED).apply { gravity = Gravity.CENTER }
+        root.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(24), dp(22), dp(24), dp(18))
+            addView(circle, LinearLayout.LayoutParams(dp(110), dp(110)))
+            addView(headline, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
+            addView(sub, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+        })
+        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(content)
+        fun head(bg: String, sym: Int, symColor: Int, title: String, subText: String) {
+            circleBg.setColor(Color.parseColor(bg))
+            icon.setImageResource(sym); icon.imageTintList = android.content.res.ColorStateList.valueOf(symColor)
+            ring.color = symColor
+            headline.text = title
+            sub.text = subText; sub.visibility = if (subText.isEmpty()) View.GONE else View.VISIBLE
+        }
+        val mine = "1.${Update.current(this)}"
+        val dateFmt = java.text.SimpleDateFormat("HH:mm dd/MM/yyyy", java.util.Locale.US)
+        /** כרטיס הגרסאות - נבנה מחדש כשמצב ההורדה משתנה */
+        fun cardInto(vararg rows: Pair<String, String>) {
+            val c = card(); rows.forEach { (t, e) -> row(c, t, "", e, MUTED) }
+            content.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(16), 0, dp(16), dp(12)) })
+        }
+        fun check() {
+            // ---- בודק ----
+            content.removeAllViews()
+            head("#162038", R.drawable.ic_upd_checking, blue, "בודק אם יש גרסה חדשה…", "מתחבר לשרת העדכונים")
+            pills(null)   // בזמן הבדיקה - בלי כפתור למטה
+            ring.spin()
+            cardInto("גרסה מותקנת" to mine)
+            val started = System.currentTimeMillis()
+            Thread {
+                var failed = false
+                val l = try { Update.lookup() } catch (_: Exception) { null }
+                if (l == null) failed = true
+                // האנימציה מוצגת לפחות שנייה וחצי - שלא "יקפוץ" ישר לתוצאה
+                val wait = 1500 - (System.currentTimeMillis() - started)
+                if (wait > 0) Thread.sleep(wait)
+                runOnUiThread {
+                    if (isDestroyed || page != 2) return@runOnUiThread
+                    ring.stop(); content.removeAllViews()
+                    when {
+                        l != null && l.n > Update.current(this) -> {
+                            // ---- יש גרסה חדשה ----
+                            head("#162038", R.drawable.ic_upd_new, blue, "גרסה חדשה זמינה – 1.${l.n}",
+                                if (l.date > 0) "פורסמה " + dateFmt.format(java.util.Date(l.date)) else "")
+                            cardInto("הגרסה שלך" to mine, "גרסה חדשה" to "1.${l.n}",
+                                *(if (l.size > 0) arrayOf("גודל" to "%.1f MB".format(java.util.Locale.US, l.size / 1048576.0)) else arrayOf<Pair<String, String>>()))
+                            // מצב ההורדה וההתקנה מתחת לכרטיס
+                            val st = text("", 11f, MUTED2).apply { setPadding(dp(32), 0, dp(32), dp(14)) }
+                            content.addView(st)
+                            fun refresh() = runOnUiThread {
+                                st.text = Update.status; st.visibility = if (Update.status.isEmpty()) View.GONE else View.VISIBLE
+                                pillBusy(Update.busy)
+                            }
+                            Update.status = ""; refresh()
+                            pills("התקן עכשיו", two = true) { Update.download(this, l) { refresh() } }
+                        }
+                        failed -> {
+                            // ---- אין חיבור ----
+                            head("#2C2C2E", R.drawable.ic_upd_offline, MUTED, "לא ניתן לבדוק כרגע", "בדוק את החיבור לאינטרנט ונסה שוב")
+                            cardInto("גרסה מותקנת" to mine)
+                            pills("בדוק אם יש עדכונים") { check() }
+                        }
+                        else -> {
+                            // ---- מעודכן ----
+                            head("#162038", R.drawable.ic_upd_ok, blue, "הגרסה שלך מעודכנת", "")
+                            val at = try { dateFmt.format(java.util.Date(packageManager.getPackageInfo(packageName, 0).lastUpdateTime)) } catch (_: Exception) { "" }
+                            cardInto("גרסה מותקנת" to mine, "עודכנה בטלפון" to at)
+                            pills("בדוק אם יש עדכונים") { check() }
+                        }
+                    }
+                }
+            }.start()
+        }
+        check()
+    }
+
     /** הפעלה ראשונה: הקלדת המפתח מהאתר ובדיקה מול השרת */
     private fun setup() {
         root.removeAllViews()
-        pill.visibility = View.GONE
+        pills(null)
         header("ממסר צופר", null)
         val c = card()
         c.addView(text("מפתח ממסר", 16f).apply { setPadding(dp(18), dp(14), dp(18), 0) })
