@@ -115,7 +115,7 @@ internal fun MainActivity.updateAlertCard() {
     // האייקון לפי השלב (היכנסו → נשארים במרחב המוגן → ממתינים לסיום)
     AlertUi.stageIcon(j.optString("title"), level, j.optInt("shelter", -1), firedAt).let { r ->
         if (r != alertCardIconRes) { alertCardIconRes = r; AlertUi.setIcon(alertCardIcon, r, big = false) } }
-    AlertUi.timer(level, j.optInt("shelter", -1), firedAt)?.let { (lbl, t) ->
+    AlertUi.timer(level, j.optInt("shelter", -1), firedAt, title = j.optString("title"))?.let { (lbl, t) ->
         alertCardLabel?.text = lbl
         alertCardLabel?.visibility = if (lbl.isEmpty()) View.GONE else View.VISIBLE
         alertCardTimer?.textSize = if (lbl.isEmpty()) 20f else 38f

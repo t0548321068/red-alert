@@ -175,7 +175,7 @@ object MiniOverlay {
             override fun run() {
                 val now = System.currentTimeMillis()
                 val enterEnd = firedAt + shelter.coerceAtLeast(0) * 1000L
-                val stayEnd = enterEnd + Prefs.STAY_MS
+                val stayEnd = enterEnd + AlertUi.stayMs(title)
                 // ספירה לכניסה -> שהייה במרחב המוגן -> ממתינים לסיום: הכל באדום. ירוק רק בהודעת סיום
                 when {
                     // מקדימה / סיום: כיתוב קצר וקבוע במקום הנוסח המלא

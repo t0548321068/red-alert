@@ -48,7 +48,7 @@ open class AlertActivity : Activity() {
             AlertUi.stageIcon(alertTitle, level, shelterSec, firedAt).let { r ->
                 if (r != stageRes) { stageRes = r; AlertUi.setIcon(stageIconV, r, big = false) } }
             val cd = countdown ?: return
-            val t = AlertUi.timer(level, shelterSec, firedAt) ?: return
+            val t = AlertUi.timer(level, shelterSec, firedAt, title = alertTitle) ?: return
             cdLabel?.text = t.first
             cdLabel?.visibility = if (t.first.isEmpty()) View.GONE else View.VISIBLE
             cd.textSize = if (t.first.isEmpty()) 20f else 38f

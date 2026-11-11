@@ -124,7 +124,7 @@ class LockAlertActivity : Activity() {
         }
         val t = object : Runnable { override fun run() {
             AlertUi.setIcon(icon, AlertUi.stageIcon(title, level, shelter, firedAt), big = false)
-            AlertUi.timer(level, shelter, firedAt)?.let { (l, v) ->
+            AlertUi.timer(level, shelter, firedAt, title = title)?.let { (l, v) ->
                 label.text = l; label.visibility = if (l.isEmpty()) View.GONE else View.VISIBLE
                 timer.textSize = if (l.isEmpty()) 20f else 36f; timer.text = v
             }
