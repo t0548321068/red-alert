@@ -171,7 +171,9 @@ internal fun MainActivity.appendRecent(c: LinearLayout, count: Int) {
         texts.addView(text(if (e.level == AlertService.LEVEL_PRE) "התרעה מקדימה" else e.title, 15f, C.TEXT))
         texts.addView(text(e.body.replace("ברחבי הארץ", AreaData.ALL_COUNTRY), 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
         row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
-        row.addView(text(if (e.ts > 0) recentTimeFmt.format(java.util.Date(e.ts)) else e.time.take(5), 12f, muted),
+        // השעה בשורה - של היישוב הראשון שהגיע (לא "בחלק מהאזורים בארץ" וכדומה)
+        val rowTs = Prefs.rowTime(e) { AreaData.isKnown(this, it) }
+        row.addView(text(if (rowTs > 0) recentTimeFmt.format(java.util.Date(rowTs)) else e.time.take(5), 12f, muted),
             LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
         card.addView(row)
     }
