@@ -76,7 +76,12 @@ function joinLive() {
     let best = null;
     for (const e of arch.values()) if (e.t === l.t && Math.abs(e.ts - l.at) <= LIVE_NEAR && (!best || Math.abs(e.ts - l.at) < Math.abs(best.ts - l.at))) best = e;
     if (!best) return now - l.at < LIVE_WAIT;
-    for (const a of l.areas) if (!best.b.has(a)) { best.b.add(a); added++; }
+    // הסדר - כמו שהגיעו בזמן אמת (קודם היישובים שהגיעו בזמן אמת, אחריהם מה שיש רק בארכיון)
+    const arr = [...best.b], nl = best.nl || 0, head = arr.slice(0, nl);
+    const add = l.areas.filter(a => !head.includes(a));
+    const order = [...head, ...add, ...arr.slice(nl).filter(a => !add.includes(a))];
+    if (order.join('|') !== arr.join('|')) { best.b = new Set(order); added++; }
+    best.nl = head.length + add.length;
     return false;
   });
   if (added) cache = null;
