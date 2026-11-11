@@ -543,7 +543,7 @@ object Prefs {
 
     /**
      * "שלי" לפי השרת: לכל התרעה שהגיעה אליי - השורה התואמת מהשרת (אותו סוג וכותרת, עד 5 דקות):
-     * היישובים והסדר והשעות של השרת, רק אלה שלי (keep), ואחריהם יישובים שהגיעו אליי ואין בשרת.
+     * היישובים והסדר והשעות (גם של השורה) של השרת, רק אלה שלי (keep), ואחריהם יישובים שהגיעו אליי ואין בשרת.
      * כך תקלה בטלפון ברגע הקבלה לא משבשת את הרשימה
      */
     fun mineFromServer(mine: List<Entry>, all: List<Entry>, keep: (String) -> Boolean): List<Entry> {
@@ -557,7 +557,8 @@ object Prefs {
             val areas = srv + extra
             if (areas.isEmpty()) return@map m
             val t = areaTimes(m) + areaTimes(e)   // השעות של השרת קובעות
-            m.copy(body = areas.joinToString(", "), times = areas.associateWith { t[it] ?: m.ts })
+            // גם השעה של השורה - של פיקוד העורף (מהשרת), כמו ב"הכול"
+            m.copy(body = areas.joinToString(", "), times = areas.associateWith { t[it] ?: m.ts }, ts = e.ts)
         }
     }
 
