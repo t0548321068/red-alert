@@ -142,6 +142,7 @@ class Speaker(private val c: Context) {
     /** סוג → אזורים (עד 4, ואם יש עוד "ואזורים נוספים") → זמן להגעה */
     private fun clipsFor(title: String, areas: List<String>, shelter: Int?): List<String> {
         val level = AlertService.levelOf(title)
+        if (AlertUi.flash(title)) return emptyList()   // מבזק עם נוסח משלו - אין הקלטה, מוקרא בקול המובנה כמו שהגיע
         val t = when {
             level == AlertService.LEVEL_END -> "event_ended"
             level == AlertService.LEVEL_PRE -> "early_warning"

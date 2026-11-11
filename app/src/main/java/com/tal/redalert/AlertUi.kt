@@ -10,7 +10,7 @@ object AlertUi {
 
     /** כותרת + שורה מתחתיה */
     fun head(title: String, level: Int): Pair<String, String> = when (level) {
-        AlertService.LEVEL_PRE -> "מבזק פיקוד העורף" to (if (title.startsWith("התרעה מקדימה - ")) title else "התרעה מקדימה")
+        AlertService.LEVEL_PRE -> "מבזק פיקוד העורף" to (if (title.startsWith("התרעה מקדימה - ") || flash(title)) title else "התרעה מקדימה")
         AlertService.LEVEL_END -> "עדכון פיקוד העורף" to "האירוע הסתיים"
         else -> title to when {
             title.contains("רעידת אדמה") -> "צאו לשטח פתוח"
@@ -18,6 +18,12 @@ object AlertUi {
             else -> "היכנסו למרחב המוגן"
         }
     }
+
+    /** מבזק עם נוסח משלו - מוצג כמו שהגיע */
+    fun flash(title: String) = Config.flashWords.any { title.contains(it) }
+
+    /** כותרת קצרה ברשימות: מקדימה רגילה = "התרעה מקדימה", מבזק = הנוסח שלו */
+    fun listTitle(title: String, level: Int) = if (level == AlertService.LEVEL_PRE && !flash(title)) "התרעה מקדימה" else title
 
     /** רעידת אדמה / צונאמי: בלי זמן התגוננות ובלי "נשארים במרחב המוגן" - ישר "ממתינים להודעת סיום" */
     fun noShelter(title: String) = title.contains("רעידת אדמה") || title.contains("צונאמי")
