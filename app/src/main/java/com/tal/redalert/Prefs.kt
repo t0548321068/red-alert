@@ -541,6 +541,26 @@ object Prefs {
         }
     }
 
+    /**
+     * "שלי" לפי השרת: לכל התרעה שהגיעה אליי - השורה התואמת מהשרת (אותו סוג וכותרת, עד 5 דקות):
+     * היישובים והסדר והשעות של השרת, רק אלה שלי (keep), ואחריהם יישובים שהגיעו אליי ואין בשרת.
+     * כך תקלה בטלפון ברגע הקבלה לא משבשת את הרשימה
+     */
+    fun mineFromServer(mine: List<Entry>, all: List<Entry>, keep: (String) -> Boolean): List<Entry> {
+        if (all.isEmpty()) return mine
+        return mine.map { m ->
+            val e = all.firstOrNull { it.level == m.level && it.title == m.title && it.ts > 0 && m.ts > 0 && Math.abs(it.ts - m.ts) < DUP_MS }
+                ?: return@map m
+            fun split(b: String) = b.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            val srv = split(e.body).filter(keep)
+            val extra = split(m.body).filter { a -> a !in srv && keep(a) }
+            val areas = srv + extra
+            if (areas.isEmpty()) return@map m
+            val t = areaTimes(m) + areaTimes(e)   // השעות של השרת קובעות
+            m.copy(body = areas.joinToString(", "), times = areas.associateWith { t[it] ?: m.ts })
+        }
+    }
+
     internal fun mergeBody(body: String, add: List<String>): String {
         fun k(a: String) = nameKey(a)
         val keys = mutableSetOf<String>()

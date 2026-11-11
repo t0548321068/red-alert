@@ -94,7 +94,7 @@ object AlertSheet {
 
         // גרירה: למטה - רק הכותרת והשעה (המפה גלויה); למעלה - מכסה את המפה
         var down = 0f; var start = 0f; var moved = false
-        fun collapsedY() = (sheet.height - head.height).toFloat().coerceAtLeast(0f)
+        fun collapsedY() = (sheet.height - head.height - sheet.paddingBottom).toFloat().coerceAtLeast(0f)
         fun snap(up: Boolean) = sheet.animate().translationY(if (up) 0f else collapsedY()).setDuration(200).start()
         head.setOnTouchListener { _, ev ->
             when (ev.actionMasked) {
@@ -111,8 +111,10 @@ object AlertSheet {
             }
             true
         }
+        var lastPad = -1
         sheet.addOnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
-            if (bottom - top != oldBottom - oldTop) {
+            if (bottom - top != oldBottom - oldTop || sheet.paddingBottom != lastPad) {   // גודל חדש או שורת ניווט
+                lastPad = sheet.paddingBottom
                 sheet.translationY = collapsedY()
                 onPeek((sheet.height - collapsedY()).toInt())
             }
