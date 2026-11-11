@@ -130,8 +130,11 @@ object Prefs {
         return if (real.isNotEmpty() && real.size < parts.size) x.copy(body = real.joinToString(", ")) else x
     }
 
-    /** מפתח ליישוב - זהה בכל המקורות: "קריית שמונה" = "קרית שמונה", "תל אביב - מרכז" = "תל-אביב" */
-    fun areaKey(a: String) = a.split(" - ")[0].filter { it.isLetterOrDigit() && it != 'י' && it != 'ו' }
+    /** מפתח ליישוב - זהה בכל המקורות: "קריית שמונה" = "קרית שמונה", "תל אביב - מרכז" = "תל-אביב".
+     *  רק י/ו כפולות מאוחדות - "אילת" ו"אילות" הם שני יישובים */
+    fun areaKey(a: String) = nameKey(a.split(" - ")[0])
+    /** השם המלא (עם האזור): "ירושלים - צפון" ו"ירושלים - מרכז" נשארים שניים */
+    fun nameKey(a: String) = a.filter { it.isLetterOrDigit() }.replace("יי", "י").replace("וו", "ו")
 
     /** חלון זמן שבו אותה התראה מכמה מקורות נחשבת כפילות */
     const val DUP_MS = 5 * 60 * 1000L
@@ -509,7 +512,7 @@ object Prefs {
 
     /** מוסיף יישובים לשורת ההתראה האחרונה (בלי כפילויות) */
     private fun mergeBody(body: String, add: List<String>): String {
-        fun k(a: String) = areaKey(a)
+        fun k(a: String) = nameKey(a)
         val keys = mutableSetOf<String>()
         // גם בתוך אותה שורה - כל יישוב פעם אחת
         val cur = body.split(",").map { it.trim() }.filter { it.isNotEmpty() && keys.add(k(it)) }

@@ -118,4 +118,12 @@ class AlertDisplayTest {
             assertEquals("עדכון פיקוד העורף" to "האירוע הסתיים", AlertUi.head("האירוע הסתיים", AlertService.LEVEL_END))
         } finally { Config.reset() }
     }
+
+    // ---- שמות יישובים: וריאציות כתיב הן אותו יישוב, אבל "אילת" ו"אילות" שניים ----
+    @Test fun areaKeysKeepDistinctTowns() {
+        assertEquals(Prefs.areaKey("קרית שמונה"), Prefs.areaKey("קריית שמונה"))
+        assertEquals(Prefs.areaKey("תל-אביב"), Prefs.areaKey("תל אביב - מרכז"))
+        assertTrue(Prefs.areaKey("אילת") != Prefs.areaKey("אילות"))
+        assertTrue(Prefs.nameKey("ירושלים - צפון") != Prefs.nameKey("ירושלים - מרכז"))
+    }
 }
