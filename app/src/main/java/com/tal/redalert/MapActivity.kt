@@ -60,6 +60,12 @@ class MapActivity : Activity() {
     private val ui = android.os.Handler(android.os.Looper.getMainLooper())
 
     private val colors = MapKit.COLORS
+    /** נפתח מההתרעות האחרונות: שורת כותרת בצבע ההתרעה ומסך תחתון עם הפירוט */
+    private val sheetMode get() = intent.getStringExtra("focus") != null && intent.getIntExtra("focusLevel", -1) >= 0
+    /** כמה מהמפה מכוסה מלמטה על ידי המסך התחתון - המצלמה מתמרכזת מעליו */
+    private var sheetPeek = 0
+    private var lastPts: List<LatLng> = emptyList()
+    private var sheetView: View? = null
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -132,38 +138,62 @@ class MapActivity : Activity() {
                 setImageResource(R.drawable.ic_map_all)
                 imageTintList = android.content.res.ColorStateList.valueOf(0xFF4C7DFF.toInt())
             }, FrameLayout.LayoutParams(dp(24), dp(24), Gravity.CENTER))
-            visibility = if (intent.getStringExtra("focus") != null && intent.getIntExtra("focusLevel", -1) >= 0) View.VISIBLE else View.GONE
+            visibility = if (sheetMode) View.VISIBLE else View.GONE
             setOnClickListener {
                 showAll = true
                 visibility = View.GONE
+                sheetView?.visibility = View.GONE
                 infoCard.visibility = View.GONE
                 drawAlerts()
             }
         }
 
+        val sheet = sheetMode
         val frame = FrameLayout(this).apply {
             setBackgroundColor(bg)
             addView(mv, FrameLayout.LayoutParams(-1, -1))
-            addView(legend, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.RIGHT).apply { setMargins(dp(12), 0, dp(12), dp(18)) })
-            addView(meBtn, FrameLayout.LayoutParams(dp(50), dp(50), Gravity.BOTTOM or Gravity.LEFT).apply { setMargins(dp(12), 0, dp(12), dp(18)) })
-            addView(allBtn, FrameLayout.LayoutParams(dp(50), dp(50), Gravity.BOTTOM or Gravity.LEFT).apply { setMargins(dp(12), 0, dp(12), dp(18 + 50 + 12)) })
+            if (!sheet) addView(legend, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.RIGHT).apply { setMargins(dp(12), 0, dp(12), dp(18)) })
+            // עם המסך התחתון - הכפתורים למעלה
+            val v = if (sheet) Gravity.TOP else Gravity.BOTTOM
+            addView(meBtn, FrameLayout.LayoutParams(dp(50), dp(50), v or Gravity.LEFT).apply { if (sheet) setMargins(dp(12), dp(12), dp(12), 0) else setMargins(dp(12), 0, dp(12), dp(18)) })
+            addView(allBtn, FrameLayout.LayoutParams(dp(50), dp(50), v or Gravity.LEFT).apply { if (sheet) setMargins(dp(12), dp(12 + 50 + 12), dp(12), 0) else setMargins(dp(12), 0, dp(12), dp(18 + 50 + 12)) })
             addView(emptyCard, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = dp(12) })
             addView(infoCard, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { setMargins(dp(16), dp(12), dp(16), 0) })
-            // המפה לא נכנסת מתחת לשורת המצב ולשורת הניווט של הטלפון
-            setOnApplyWindowInsetsListener { v, insets ->
-                @Suppress("DEPRECATION")
-                v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
-                insets
+        }
+        val level = intent.getIntExtra("focusLevel", -1)
+        val rawTitle = intent.getStringExtra("focusTitle") ?: ""
+        val barTitle = if (level == AlertService.LEVEL_PRE && !rawTitle.startsWith("התרעה מקדימה")) "התרעה מקדימה" else rawTitle
+        if (sheet) {
+            val areas = (intent.getStringExtra("focus") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            val tArr = intent.getLongArrayExtra("focusTimes")
+            val times = if (tArr != null && tArr.size == areas.size) areas.indices.associate { areas[it] to tArr[it] } else emptyMap()
+            val shownAreas = areas.map { it.replace("ברחבי הארץ", AreaData.ALL_COUNTRY) }
+            val shownTimes = times.mapKeys { it.key.replace("ברחבי הארץ", AreaData.ALL_COUNTRY) }
+            sheetView = AlertSheet.build(this, barTitle, level, intent.getLongExtra("focusTs", 0L), shownAreas, shownTimes, dark) { peek ->
+                sheetPeek = peek; if (lastPts.isNotEmpty() && !showAll) fit(lastPts, 60, 14.0)
             }
+            frame.addView(sheetView, FrameLayout.LayoutParams(-1, -1))
+        }
+        // המפה לא נכנסת מתחת לשורת המצב ולשורת הניווט של הטלפון
+        val root: View = if (sheet) LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.parseColor(AlertUi.color(level)))
+            addView(AlertSheet.bar(this@MapActivity, barTitle, level), LinearLayout.LayoutParams(-1, dp(60)))
+            addView(frame, LinearLayout.LayoutParams(-1, 0, 1f))
+        } else frame
+        root.setOnApplyWindowInsetsListener { v, insets ->
+            @Suppress("DEPRECATION")
+            v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, if (sheet) 0 else insets.systemWindowInsetBottom)
+            insets
         }
         @Suppress("DEPRECATION")
-        window.statusBarColor = bg
+        window.statusBarColor = if (sheet) Color.parseColor(AlertUi.color(level)) else bg
         @Suppress("DEPRECATION")
         window.navigationBarColor = bg
         if (!dark && android.os.Build.VERSION.SDK_INT >= 30) window.insetsController?.setSystemBarsAppearance(
             android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
             android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS)
-        setContentView(frame)
+        setContentView(root)
 
         mv.getMapAsync { m ->
             map = m
@@ -266,8 +296,8 @@ class MapActivity : Activity() {
                 if (pts.isEmpty()) {
                     emptyCard.visibility = View.VISIBLE
                     ui.postDelayed({ emptyCard.visibility = View.GONE }, 3500)
-                } else fit(pts, if (focused) 60 else 50, if (focused) 14.0 else 12.0)
-                if (focused && list.isNotEmpty()) showInfo(list.first().name, list.first().title, list.first().ts,
+                } else { lastPts = pts; fit(pts, if (focused) 60 else 50, if (focused) 14.0 else 12.0) }
+                if (focused && list.isNotEmpty() && !sheetMode) showInfo(list.first().name, list.first().title, list.first().ts,
                     all?.optJSONObject(list.first().name)?.optInt("t", -1) ?: -1)
             }
         }.start()
@@ -275,11 +305,14 @@ class MapActivity : Activity() {
 
     private fun fit(pts: List<LatLng>, padDp: Int, maxZoom: Double) {
         val m = map ?: return
+        val bottom = if (showAll) 0 else sheetPeek   // המסך התחתון מכסה את חלק המפה למטה
         if (pts.size == 1 || pts.all { it.latitude == pts[0].latitude && it.longitude == pts[0].longitude }) {
-            m.moveCamera(CameraUpdateFactory.newLatLngZoom(pts[0], maxZoom)); return
+            if (bottom == 0) { m.moveCamera(CameraUpdateFactory.newLatLngZoom(pts[0], maxZoom)); return }
+            val p = pts[0]
+            fit(listOf(LatLng(p.latitude - 0.01, p.longitude - 0.01), LatLng(p.latitude + 0.01, p.longitude + 0.01)), padDp, maxZoom); return
         }
         val b = LatLngBounds.Builder().includes(pts).build()
-        m.moveCamera(CameraUpdateFactory.newLatLngBounds(b, dp(padDp)))
+        m.moveCamera(CameraUpdateFactory.newLatLngBounds(b, dp(padDp), dp(padDp), dp(padDp), dp(padDp) + bottom))
         if (m.cameraPosition.zoom > maxZoom) m.moveCamera(CameraUpdateFactory.zoomTo(maxZoom))
     }
 

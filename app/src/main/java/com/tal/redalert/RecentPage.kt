@@ -143,7 +143,9 @@ internal fun MainActivity.appendRecent(c: LinearLayout, count: Int) {
                 restoreScroll = { sv?.scrollTo(0, y) }
                 startActivity(Intent(this@appendRecent, MapActivity::class.java)
                     .putExtra("focus", e.body).putExtra("focusTs", e.ts).putExtra("focusAll", true)
-                    .putExtra("focusLevel", e.level).putExtra("focusTitle", e.title))   // ההתרעה שנלחצה - בצבע שלה
+                    .putExtra("focusLevel", e.level).putExtra("focusTitle", e.title)
+                    // מתי הגיע כל יישוב - לפירוט לפי שעות במסך התחתון
+                    .putExtra("focusTimes", e.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }.map { e.times[it] ?: e.ts }.toLongArray()))   // ההתרעה שנלחצה - בצבע שלה
             }
         }
         val col = when (e.level) {

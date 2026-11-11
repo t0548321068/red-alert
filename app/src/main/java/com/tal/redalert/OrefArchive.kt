@@ -21,8 +21,13 @@ object OrefArchive {
             if (conn.responseCode != 200) null else {
                 val arr = JSONArray(conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) })
                 (0 until arr.length()).map { i ->
-                    val o = arr.getJSONObject(i); val t = o.getString("t")
-                    Prefs.Entry("", AlertService.displayTitle(t), o.optString("b"), AlertService.levelOf(t), o.getLong("ts"))
+                    val o = arr.getJSONObject(i); val t = o.getString("t"); val ts = o.getLong("ts")
+                    // s: לכל יישוב - כמה שניות אחרי תחילת השורה הוא הגיע (באותו סדר כמו b)
+                    val areas = o.optString("b").split(",").map { it.trim() }
+                    val s = o.optJSONArray("s")
+                    val times = if (s == null || s.length() != areas.size) emptyMap()
+                        else areas.indices.associate { areas[it] to ts + s.optLong(it) * 1000 }
+                    Prefs.Entry("", AlertService.displayTitle(t), o.optString("b"), AlertService.levelOf(t), ts, times = times)
                 }
             }
         } finally { conn.disconnect() }
@@ -79,13 +84,16 @@ object OrefArchive {
             val o = arr.getJSONObject(i)
             // הסוג מחושב מחדש מהכותרת (לא מה שנשמר) - כך תיקוני סיווג חלים גם על התרעות ישנות
             val t = o.getString("t")
-            Prefs.Entry("", AlertService.displayTitle(t), o.optString("b"), AlertService.levelOf(t), o.getLong("ts"))
+            val a = o.optJSONObject("a")
+            Prefs.Entry("", AlertService.displayTitle(t), o.optString("b"), AlertService.levelOf(t), o.getLong("ts"),
+                times = a?.keys()?.asSequence()?.associateWith { a.optLong(it) } ?: emptyMap())
         }
     } catch (_: Exception) { emptyList() }
 
     private fun save(c: android.content.Context, list: List<Prefs.Entry>) = try {
         val arr = JSONArray()
-        list.forEach { arr.put(org.json.JSONObject().put("t", it.title).put("b", it.body).put("l", it.level).put("ts", it.ts)) }
+        list.forEach { e -> arr.put(org.json.JSONObject().put("t", e.title).put("b", e.body).put("l", e.level).put("ts", e.ts)
+            .apply { if (e.times.isNotEmpty()) put("a", org.json.JSONObject().also { o -> e.times.forEach { (k, v) -> o.put(k, v) } }) }) }
         val tmp = java.io.File(c.filesDir, "archive.json.tmp")
         tmp.writeText(arr.toString()); tmp.renameTo(file(c))
     } catch (_: Exception) { false }
@@ -113,6 +121,7 @@ object OrefArchive {
         val arr = JSONArray(rows)
         // אותה התראה (סוג + דקה) = שורה אחת עם כל האזורים
         val groups = LinkedHashMap<String, Triple<String, LongArray, MutableList<String>>>()
+        val times = HashMap<String, HashMap<String, Long>>()   // לכל שורה: מתי הגיע כל יישוב
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
             val title = o.optString("category_desc").ifEmpty { o.optString("title", "התרעה") }
@@ -127,11 +136,15 @@ object OrefArchive {
             if (ts < g.second[0]) g.second[0] = ts
             val area = o.optString("data")
             if (area.isNotBlank() && area !in g.third) g.third.add(area)
+            if (area.isNotBlank()) times.getOrPut("$title|$date") { HashMap() }.let { m -> m[area] = minOf(ts, m[area] ?: ts) }
         }
-        val list = groups.values.map { (title, ts, areas) ->
+        val list = groups.map { (key, g) ->
+            val (title, ts, areas) = g
             val level = AlertService.levelOf(title)
+            // הסדר - לפי מתי הגיע כל יישוב
+            val m = times[key] ?: emptyMap<String, Long>()
             Prefs.Entry("", AlertService.displayTitle(title),
-                areas.joinToString(", "), level, ts[0])
+                areas.sortedBy { m[it] ?: ts[0] }.joinToString(", "), level, ts[0], times = m)
         }.sortedByDescending { it.ts }
         return list
     }

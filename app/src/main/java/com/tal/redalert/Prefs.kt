@@ -161,7 +161,7 @@ object Prefs {
                     (tops[j] - e.ts < 90_000L || k.level == 2 || keys[j].any { it in ek })   // סיום אירוע - תמיד אחד
             }
             if (i == null) { out.add(e.copy(body = mergeBody(e.body, emptyList()))); keys.add(ek.toMutableSet()); tops.add(e.ts); continue }
-            out[i] = e.copy(body = mergeBody(e.body, out[i].body.split(", ")))
+            out[i] = e.copy(body = mergeBody(e.body, out[i].body.split(", ")), times = mergeTimes(e, out[i]))
             keys[i].addAll(ek)
         }
         return out.sortedByDescending { it.ts }   // תמיד מהחדשה לישנה
@@ -490,7 +490,21 @@ object Prefs {
     fun setNotifiedVersion(c: Context, v: String) = sp(c).edit().putString("notifVer", v).commit()
 
     data class Entry(val time: String, val title: String, val body: String, val level: Int, val ts: Long = 0,
-                     val src: String = "")
+                     val src: String = "",
+                     /** מתי הגיע כל יישוב (יישוב שלא כאן - בזמן של השורה) */
+                     val times: Map<String, Long> = emptyMap())
+
+    /** הזמן של כל יישוב בשורה */
+    fun areaTimes(e: Entry): Map<String, Long> =
+        e.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }.associateWith { e.times[it] ?: e.ts }
+    /** איחוד זמנים של שתי שורות - לכל יישוב הזמן המוקדם */
+    fun mergeTimes(a: Entry, b: Entry): Map<String, Long> {
+        val m = HashMap(areaTimes(b))
+        areaTimes(a).forEach { (k, v) -> m[k] = minOf(v, m[k] ?: v) }
+        return m
+    }
+    private fun timesJson(e: Entry) = JSONObject().also { o -> e.times.forEach { (k, v) -> o.put(k, v) } }
+    private fun timesOf(o: JSONObject?): Map<String, Long> = o?.keys()?.asSequence()?.associateWith { o.optLong(it) } ?: emptyMap()
 
     /** היסטוריית התראות, החדשה ראשונה */
     fun history(c: Context): List<Entry> {
@@ -503,7 +517,7 @@ object Prefs {
         return (0 until arr.length()).map {
             val o = arr.getJSONObject(it)
             Entry(o.optString("time"), AlertService.displayTitle(o.optString("title")), o.optString("body"),
-                AlertService.levelOf(o.optString("title")), o.optLong("ts"), o.optString("src"))
+                AlertService.levelOf(o.optString("title")), o.optLong("ts"), o.optString("src"), timesOf(o.optJSONObject("at")))
         }.filter { it.body != "התראת בדיקה" }   // בדיקות מגרסאות קודמות לא מוצגות
             .map { clean(c, it) }
             .sortedByDescending { it.ts }
@@ -519,7 +533,8 @@ object Prefs {
         if (mine.isEmpty()) return all
         return all.map { e ->
             val m = mine.firstOrNull { it.level == e.level && it.title == e.title && e.ts > 0 && it.ts > 0 && Math.abs(it.ts - e.ts) < DUP_MS }
-            if (m == null) e else e.copy(body = mergeBody(m.body, e.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }))
+            if (m == null) e else e.copy(body = mergeBody(m.body, e.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }),
+                times = HashMap(areaTimes(e)).apply { putAll(areaTimes(m)) })
         }
     }
 
@@ -537,6 +552,12 @@ object Prefs {
         val arr = try { JSONArray(sp(c).getString("history", "[]")) } catch (_: Exception) { return }
         if (arr.length() == 0) return
         val o = arr.getJSONObject(0)
+        // מתי הגיע כל יישוב שהצטרף - לפירוט לפי שעות במסך ההתרעה מההתרעות האחרונות
+        val now = System.currentTimeMillis()
+        val at = o.optJSONObject("at") ?: JSONObject()
+        val had = o.optString("body").split(",").map { it.trim() }.toSet()
+        add.filter { it !in had && !at.has(it) }.forEach { at.put(it, now) }
+        if (at.length() > 0) o.put("at", at)
         o.put("body", mergeBody(o.optString("body"), add))
         sp(c).edit().putString("history", arr.toString()).apply()
     }
@@ -547,7 +568,8 @@ object Prefs {
         val arr = JSONArray()
         list.forEach {
             arr.put(JSONObject().put("time", it.time).put("title", it.title)
-                .put("body", it.body).put("level", it.level).put("ts", it.ts).put("src", it.src))
+                .put("body", it.body).put("level", it.level).put("ts", it.ts).put("src", it.src)
+                .apply { if (it.times.isNotEmpty()) put("at", timesJson(it)) })
         }
         sp(c).edit().putString("history", arr.toString()).apply()
     }

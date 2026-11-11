@@ -137,4 +137,28 @@ class AlertDisplayTest {
         val mine2 = listOf(Prefs.Entry("", "עדכון", "אילת, באר אורה", 2, t))
         assertEquals("אילת, באר אורה, אילות", Prefs.withMine(all2, mine2)[0].body)
     }
+
+    // ---- מסך הפירוט: קבוצה לכל שעת הגעה, ובתוכה לפי אזור ----
+    @Test fun sheetGroupsByTimeAndDistrict() {
+        val t = 1_794_389_135_000L
+        val areas = listOf("בחלק מהאזורים בארץ", "באר אורה", "אליפז ומכרות תמנע", "אילת", "אילות", "אזור תעשייה שחורת")
+        val times = mapOf("בחלק מהאזורים בארץ" to t) + areas.drop(1).associateWith { t + 2000 }
+        val d = mapOf("באר אורה" to "ערבה", "אליפז ומכרות תמנע" to "ערבה", "אילת" to "אילת", "אילות" to "אילת", "אזור תעשייה שחורת" to "אילת")
+        val g = AlertSheet.groups(areas, times, t, { d[it] })
+        assertEquals(2, g.size)
+        assertEquals(listOf("בחלק מהאזורים בארץ" to emptyList<String>()), g[0].districts)
+        assertEquals(listOf("ערבה" to listOf("באר אורה", "אליפז ומכרות תמנע"), "אילת" to listOf("אילת", "אילות", "אזור תעשייה שחורת")), g[1].districts)
+        assertEquals("בחלק מהאזורים בארץ, ערבה, אילת", AlertSheet.summary(g))
+        assertEquals(1, AlertSheet.groups(listOf("אילת", "אילות"), emptyMap(), t, { d[it] }).size)   // בלי זמנים - כרטיס אחד
+    }
+
+    @Test fun collapseKeepsAreaTimes() {
+        val t = 1_000_000_000L
+        val a = Prefs.Entry("", "רעידת אדמה", "אילת", 0, t + 2000)
+        val b = Prefs.Entry("", "רעידת אדמה", "בחלק מהאזורים בארץ", 0, t)
+        val m = Prefs.collapse(listOf(a, b))
+        assertEquals(1, m.size)
+        assertEquals(t + 2000, Prefs.areaTimes(m[0])["אילת"])
+        assertEquals(t, Prefs.areaTimes(m[0])["בחלק מהאזורים בארץ"])
+    }
 }
