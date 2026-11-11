@@ -105,18 +105,17 @@ class AlertDisplayTest {
         assertEquals("נשארים במרחב המוגן", AlertUi.timer(AlertService.LEVEL_ALERT, 0, 1000L, 1000L, "ירי רקטות וטילים")?.first)
     }
 
-    // ---- מבזק "הנחיות חזרה למבנים": כתום, עם הנוסח המלא (לפי ההגדרות שבאפליקציה) ----
-    @Test fun returnToBuildingsIsFlash() {
+    // ---- עדכון "הנחיות חזרה למבנים": ירוק, עם הנוסח המלא (לפי ההגדרות שבאפליקציה) ----
+    @Test fun returnToBuildingsIsUpdate() {
         Config.load(org.json.JSONObject(java.io.File("src/main/assets/config.json").readText()))
         try {
             val t = "רעידת אדמה - הנחיות חזרה למבנים"
-            assertEquals(AlertService.LEVEL_PRE, AlertService.levelOf(t))
-            assertEquals("מבזק פיקוד העורף" to t, AlertUi.head(t, AlertService.LEVEL_PRE))
-            assertEquals(t, AlertUi.listTitle(t, AlertService.LEVEL_PRE))
+            assertEquals(AlertService.LEVEL_END, AlertService.levelOf(t))
+            assertEquals(t, AlertService.displayTitle(t))
+            assertEquals("עדכון פיקוד העורף" to t, AlertUi.head(t, AlertService.LEVEL_END))
             assertEquals("ניתן לחזור למבנים", Config.guidance(t).first())
-            val pre = "בדקות הקרובות צפויות להתקבל התרעות באזורך"
-            assertEquals("התרעה מקדימה", AlertUi.head(pre, AlertService.LEVEL_PRE).second)
-            assertEquals("התרעה מקדימה", AlertUi.listTitle(pre, AlertService.LEVEL_PRE))
+            assertEquals("האירוע הסתיים", AlertService.displayTitle("החשש הוסר"))
+            assertEquals("עדכון פיקוד העורף" to "האירוע הסתיים", AlertUi.head("האירוע הסתיים", AlertService.LEVEL_END))
         } finally { Config.reset() }
     }
 }

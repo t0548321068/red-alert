@@ -158,7 +158,7 @@ internal fun MainActivity.appendRecent(c: LinearLayout, count: Int) {
                 FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))
         }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(12) })
         val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        texts.addView(text(AlertUi.listTitle(e.title, e.level), 15f, C.TEXT))
+        texts.addView(text(if (e.level == AlertService.LEVEL_PRE) "התרעה מקדימה" else e.title, 15f, C.TEXT))
         texts.addView(text(e.body.replace("ברחבי הארץ", AreaData.ALL_COUNTRY), 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
         row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
         row.addView(text(if (e.ts > 0) recentTimeFmt.format(java.util.Date(e.ts)) else e.time.take(5), 12f, muted),

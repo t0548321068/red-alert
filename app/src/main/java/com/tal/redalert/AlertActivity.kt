@@ -149,7 +149,7 @@ open class AlertActivity : Activity() {
             root.addView(areaCard, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(10), dpx(10), dpx(10), 0) })
         }
 
-        if (end) root.addView(tv("ניתן לצאת מהמרחב המוגן", 19f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
+        if (end && !AlertUi.update(title)) root.addView(tv("ניתן לצאת מהמרחב המוגן", 19f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
         if (pre) {
             // מתחת למפה: נוסח ההתרעה ומה לעשות
             if (title.isNotBlank() && title != "התרעה מקדימה")
