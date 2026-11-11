@@ -257,8 +257,8 @@ class AlertService : Service() {
         internal const val ID_COUNT = 9                 // ספירה לאחור למרחב המוגן - התראה נוספת
         internal const val ID_FEED = 10                 // התרעה בפיד הארצי (לא באזורים שלי)
         internal const val CH_FEED = "feed_alerts"
-        /** מתי מציגים התראה על התרעה בפיד הארצי: ההגדרה מופעלת ולא נבחרו אזורים נוספים - כל מה שנכנס לפיד (גם סיום). נבדק בבדיקות */
-        fun feedNotifies(on: Boolean, picks: List<String>, @Suppress("UNUSED_PARAMETER") level: Int) = on && picks.isEmpty()
+        /** מתי מציגים התראה על התרעה בפיד הארצי: רק לפי ההגדרה - על כל מה שנכנס לפיד (גם סיום), בלי תלות באזורים או בשעות שקט. נבדק בבדיקות */
+        fun feedNotifies(on: Boolean) = on
         internal const val CH_COUNT = "countdown"       // בלי צליל ורטט
 
         /** התראה קבועה כשההאזנה כבויה: "לא מוגן" + כפתור הפעלה */
@@ -651,7 +651,10 @@ class AlertService : Service() {
 
         // רק היישובים שלי, ובלי כפילות בין מקורות (מטח חדש - כן)
         val fresh = dedup.fresh(mine(this, areas), level, eventTime, eid)
-        if (fresh.isEmpty()) { if (feedNew.isNotEmpty()) feedNotify(title, feedNew, level); return }
+        // התראה מהפיד הארצי - על מה שנכנס לפיד ולא הקפיץ התרעה בטלפון (מה שבאזורים שלי כבר מתריע במלואו)
+        val feedOnly = feedNew.filter { it !in fresh }
+        if (feedOnly.isNotEmpty()) feedNotify(title, feedOnly, level)
+        if (fresh.isEmpty()) return
         awake(60_000)   // התרעה באזור שלי - הטלפון נשאר ער לזמן הטיפול בה
 
         // המקור הכי מהיר כבר התריע על האירוע הזה (לפני פחות מדקה וחצי) -
@@ -942,7 +945,7 @@ class AlertService : Service() {
 
     /** התראה רגילה על התרעה בפיד הארצי - בלי מסך ובלי צליל של התרעה; הצליל לפי ערוץ ההתראות "התרעות בפיד הארצי" */
     private fun feedNotify(title: String, areas: List<String>, level: Int) {
-        if (!feedNotifies(Prefs.feedNotify(this), Prefs.cities(this), level) || Prefs.isQuietNow(this)) return
+        if (!feedNotifies(Prefs.feedNotify(this))) return
         try {
             val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             if (nm.getNotificationChannel(CH_FEED) == null) nm.createNotificationChannel(
