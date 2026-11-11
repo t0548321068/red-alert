@@ -165,31 +165,37 @@ internal fun AlertService.updateLoop() {
 }
 
 internal fun AlertService.notifyIfNewVersion(): Boolean {
+    val v = Updater.pendingVersion(this) ?: return false
+    val auto = Prefs.autoUpdate(this) && packageManager.canRequestPackageInstalls()
+    // התראה כשהגרסה מתפרסמת - תמיד (גם בעדכון אוטומטי), פעם אחת לכל גרסה
+    val first = synchronized(updLock) {
+        (Prefs.notifiedVersion(this) != v).also { if (it) Prefs.setNotifiedVersion(this, v) }
+    }
+    if (first) postUpdateNotice(v, auto)
     // עדכון אוטומטי ברקע - אבל לא באמצע אירוע (ההתקנה סוגרת את האפליקציה לכמה שניות): מחכים שיסתיים
-    if (Prefs.autoUpdate(this)) {
+    if (auto) {
         if (inEvent() || Prefs.stayUntil(this) > System.currentTimeMillis()) {
             main.removeCallbacks(updateLater); main.postDelayed(updateLater, 10 * 60 * 1000L)
             return true
         }
-        if (Updater.autoInstall(this)) return true
+        Updater.autoInstall(this)
     }
-    val v = Updater.pendingVersion(this) ?: return false
-    synchronized(updLock) {
-        if (Prefs.notifiedVersion(this) == v) return true
-        Prefs.setNotifiedVersion(this, v)
-    }
+    return true
+}
+
+/** התראת "גרסה חדשה": בעדכון אוטומטי - שהיא מותקנת לבד; אחרת - לחיצה להתקנה */
+private fun AlertService.postUpdateNotice(v: String, auto: Boolean) {
     val n = Notification.Builder(this, CH_UPDATE)
         .setSmallIcon(R.drawable.ic_stat_siren)
         .setLargeIcon(android.graphics.drawable.Icon.createWithResource(this, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
         .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
         .setContentTitle("🆕 גרסה חדשה זמינה – $v")
-        .setContentText("לחץ כדי להתקין")
+        .setContentText(if (auto) "מותקנת אוטומטית" else "לחץ כדי להתקין")
         .setCategory(Notification.CATEGORY_RECOMMENDATION)
         .setContentIntent(openApp())
         .setAutoCancel(true)
         .build()
     (getSystemService(android.content.Context.NOTIFICATION_SERVICE) as NotificationManager).notify(ID_UPDATE, n)
-    return true
 }
 
 /**
