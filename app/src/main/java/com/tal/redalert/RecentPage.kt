@@ -39,13 +39,16 @@ internal fun MainActivity.mineOf(): List<Prefs.Entry> = Prefs.history(this)
 internal fun MainActivity.buildRecentSeg(seg: LinearLayout) {
     seg.removeAllViews()
     val data = archiveCache
-    listOf(false to "הכול", true to "שלי").forEach { (mine, name) ->
-        val sel = recentMine == mine
+    val tabs = listOf(false to "הכול", true to "שלי").map { (mine, name) ->
         val n = when { data == null -> null; mine -> mineOf().size; else -> data.size }
-        val label = if (n == null) name else "$name ($n)"
-        // רוחב קבוע לכל כפתור (לפי הנוסח המודגש) - בלי קפיצה כשמחליפים בחירה
-        val w = android.graphics.Paint().apply { textSize = 14f * resources.displayMetrics.scaledDensity
-            typeface = android.graphics.Typeface.DEFAULT_BOLD }.measureText(label).toInt() + dp(28)
+        Triple(mine, name, if (n == null) name else "$name ($n)")
+    }
+    // שני הכפתורים באותו רוחב - לפי הנוסח הארוך מביניהם (מודגש), בלי קפיצה כשמחליפים בחירה
+    val paint = android.graphics.Paint().apply { textSize = 14f * resources.displayMetrics.scaledDensity
+        typeface = android.graphics.Typeface.DEFAULT_BOLD }
+    val w = tabs.maxOf { paint.measureText(it.third).toInt() } + dp(28)
+    tabs.forEach { (mine, _, label) ->
+        val sel = recentMine == mine
         seg.addView(text(label, 14f, if (sel) Color.WHITE else C.MUTED, bold = sel).apply {
             gravity = Gravity.CENTER
             minWidth = w
