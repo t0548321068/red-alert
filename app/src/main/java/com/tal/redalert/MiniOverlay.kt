@@ -179,6 +179,7 @@ object MiniOverlay {
                 // ספירה לכניסה -> שהייה במרחב המוגן -> ממתינים לסיום: הכל באדום. ירוק רק בהודעת סיום
                 when {
                     // מקדימה / סיום: כיתוב קצר וקבוע במקום הנוסח המלא
+                    level == AlertService.LEVEL_PRE && AlertUi.flash(title) -> { label.text = "מבזק פיקוד העורף"; timerLabel.text = ""; timer.textSize = 12f; timer.text = title.replace(" - ", "\n") }
                     level == AlertService.LEVEL_PRE -> { label.text = "התרעה מקדימה"; timerLabel.text = ""; timer.textSize = 12f; timer.text = "בדקות הקרובות צפויות\nלהתקבל התרעות באזורך" }
                     level == AlertService.LEVEL_END -> { label.text = "האירוע הסתיים"; timerLabel.text = ""; timer.textSize = 12f; timer.text = "ניתן לצאת\nמהמרחב המוגן" }
                     level != AlertService.LEVEL_ALERT -> { label.text = title; timer.text = ""; timerLabel.text = "" }

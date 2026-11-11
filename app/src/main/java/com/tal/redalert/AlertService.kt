@@ -239,7 +239,7 @@ class AlertService : Service() {
         fun levelOf(title: String): Int = when {
             Config.endWords.any { title.contains(it) } -> LEVEL_END
             // התרעה מקדימה: "בדקות הקרובות...", "איום מלבנון" וכד', "התקרבו למרחב המוגן"
-            Config.preWords.any { title.contains(it) } -> LEVEL_PRE
+            Config.preWords.any { title.contains(it) } || AlertUi.flash(title) -> LEVEL_PRE
             else -> LEVEL_ALERT
         }
 

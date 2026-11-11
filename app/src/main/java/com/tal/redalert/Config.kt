@@ -25,6 +25,8 @@ object Config {
 
     val endWords get() = list(titles().optJSONArray("end"))
     val preWords get() = list(titles().optJSONArray("pre"))
+    /** מבזק עם נוסח משלו ("רעידת אדמה - הנחיות חזרה למבנים"): כתום, ומוצג הנוסח שהגיע ולא "התרעה מקדימה" */
+    val flashWords get() = list(titles().optJSONArray("flash"))
     val endDisplay: String get() = titles().optString("endDisplay", "האירוע הסתיים")
     /** כותרת שמכילה מילה מהרשימה ולא מתחילה כבר בקידומת - מקבלת אותה ("איום מלבנון" ← "התרעה מקדימה - איום מלבנון") */
     fun prePrefix(t: String): String? {
