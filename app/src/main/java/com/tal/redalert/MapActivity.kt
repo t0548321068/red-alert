@@ -153,10 +153,11 @@ class MapActivity : Activity() {
             setBackgroundColor(bg)
             addView(mv, FrameLayout.LayoutParams(-1, -1))
             if (!sheet) addView(legend, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.RIGHT).apply { setMargins(dp(12), 0, dp(12), dp(18)) })
-            // עם המסך התחתון - הכפתורים למעלה
-            val v = if (sheet) Gravity.TOP else Gravity.BOTTOM
-            addView(meBtn, FrameLayout.LayoutParams(dp(50), dp(50), v or Gravity.LEFT).apply { if (sheet) setMargins(dp(12), dp(12), dp(12), 0) else setMargins(dp(12), 0, dp(12), dp(18)) })
-            addView(allBtn, FrameLayout.LayoutParams(dp(50), dp(50), v or Gravity.LEFT).apply { if (sheet) setMargins(dp(12), dp(12 + 50 + 12), dp(12), 0) else setMargins(dp(12), 0, dp(12), dp(18 + 50 + 12)) })
+            // עם המסך התחתון (פירוט התרעה מההתרעות האחרונות) - בלי כפתורי "המיקום שלי" ו"כל ההתרעות"
+            if (!sheet) {
+                addView(meBtn, FrameLayout.LayoutParams(dp(50), dp(50), Gravity.BOTTOM or Gravity.LEFT).apply { setMargins(dp(12), 0, dp(12), dp(18)) })
+                addView(allBtn, FrameLayout.LayoutParams(dp(50), dp(50), Gravity.BOTTOM or Gravity.LEFT).apply { setMargins(dp(12), 0, dp(12), dp(18 + 50 + 12)) })
+            }
             addView(emptyCard, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = dp(12) })
             addView(infoCard, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { setMargins(dp(16), dp(12), dp(16), 0) })
         }
