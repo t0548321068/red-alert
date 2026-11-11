@@ -55,12 +55,10 @@ internal fun MainActivity.showAlertSettings() = ouiPage("התרעות") { body, 
         else -> chosen.take(3).joinToString(", ") + " ועוד ${chosen.size - 3}"
     }
     ouiRow(c, "אזורים נוספים", sub = extraSub) { showExtraAreas() }
-    // רק כשלא נבחרו אזורים נוספים: התראה רגילה על כל התרעה בפיד הארצי
-    if (chosen.isEmpty()) {
-        ouiDivider(c)
-        val fn = Prefs.feedNotify(this)
-        ouiRow(c, "התראה מהפיד הארצי", sub = onOff(fn), on = fn) { Prefs.setFeedNotify(this, !fn); rebuild() }
-    }
+    // התראה רגילה על כל התרעה בפיד הארצי - תמיד מופיע
+    ouiDivider(c)
+    val fn = Prefs.feedNotify(this)
+    ouiRow(c, "התראה מהפיד הארצי", sub = onOff(fn), on = fn) { Prefs.setFeedNotify(this, !fn); rebuild() }
     ouiAdd(body, c)
     // צלילים ורטט (ההקראה בתוכו)
     val snd = ouiCard()
