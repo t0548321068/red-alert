@@ -179,6 +179,7 @@ class AlertDisplayTest {
         assertEquals("אילת, אזור תעשייה שחורת, אילות, אליפז ומכרות תמנע, באר אורה", r.body)
         assertEquals(1, AlertSheet.groups(r.body.split(", "), r.times, r.ts, { null }).size)   // כרטיס אחד: 11:25:37
         assertEquals(t + 4000, r.times["אילות"])
+        assertEquals(t, r.ts)   // השעה של השורה - של השרת
         // בלי שורה בשרת - כמו שנשמר בטלפון
         assertEquals(mine[0], Prefs.mineFromServer(mine, emptyList()) { true }[0])
     }
