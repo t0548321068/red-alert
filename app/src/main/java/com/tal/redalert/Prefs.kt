@@ -124,7 +124,7 @@ object Prefs {
         // כל סוגי הסיום ("החשש הוסר", "ניתן לצאת"...) = "האירוע הסתיים"
         if (e.level == 2 || AlertService.levelOf(e.title) == 2 ||
             e.body.contains("הוסר החשש") || e.body.contains("החשש הוסר"))
-            x = x.copy(title = "האירוע הסתיים", level = 2)
+            x = x.copy(title = if (AlertUi.update(e.title)) e.title else "האירוע הסתיים", level = 2)   // עדכון עם נוסח משלו - נשאר כמו שהגיע
         val parts = x.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }
         val real = parts.filter { AreaData.isKnown(c, it) }
         return if (real.isNotEmpty() && real.size < parts.size) x.copy(body = real.joinToString(", ")) else x
