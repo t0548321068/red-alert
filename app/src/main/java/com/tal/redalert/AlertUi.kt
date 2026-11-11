@@ -19,6 +19,9 @@ object AlertUi {
         }
     }
 
+    /** כותרת קצרה ברשימות ובהתראות: מקדימה = "התרעה מקדימה" (אלא אם כבר עם הקידומת) */
+    fun listTitle(title: String, level: Int) = if (level == AlertService.LEVEL_PRE && !title.startsWith("התרעה מקדימה")) "התרעה מקדימה" else title
+
     /** עדכון עם נוסח משלו - מוצג כמו שהגיע */
     fun update(title: String) = Config.updateWords.any { title.contains(it) }
 

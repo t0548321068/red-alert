@@ -83,6 +83,9 @@ object Prefs {
     /** פיד ארצי מוצג תמיד - גם כשאין התראות בטווח הזמן */
     fun feedAlways(c: Context) = sp(c).getBoolean("feedAlways", false)
     fun setFeedAlways(c: Context, v: Boolean) = sp(c).edit().putBoolean("feedAlways", v).commit()
+    /** התראה כשנכנסת התרעה לפיד הארצי (רק כשלא נבחרו אזורים נוספים) */
+    fun feedNotify(c: Context) = sp(c).getBoolean("feedNotify", false)
+    fun setFeedNotify(c: Context, v: Boolean) = sp(c).edit().putBoolean("feedNotify", v).commit()
 
     /** הגרסה האחרונה שהמשתמש ראה עליה "מה חדש" */
     fun seenVersion(c: Context) = sp(c).getString("seenVer", "") ?: ""
