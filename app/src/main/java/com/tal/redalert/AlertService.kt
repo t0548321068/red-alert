@@ -237,16 +237,16 @@ class AlertService : Service() {
 
         /** סיווג לפי נוסח ההודעה של פיקוד העורף - המילים בהגדרות מהשרת (config.json) */
         fun levelOf(title: String): Int = when {
-            Config.endWords.any { title.contains(it) } -> LEVEL_END
+            Config.endWords.any { title.contains(it) } || AlertUi.update(title) -> LEVEL_END
             // התרעה מקדימה: "בדקות הקרובות...", "איום מלבנון" וכד', "התקרבו למרחב המוגן"
-            Config.preWords.any { title.contains(it) } || AlertUi.flash(title) -> LEVEL_PRE
+            Config.preWords.any { title.contains(it) } -> LEVEL_PRE
             else -> LEVEL_ALERT
         }
 
         /** הכותרת שמוצגת: כל סוגי הסיום = "האירוע הסתיים"; "איום מלבנון" = "התרעה מקדימה - איום מלבנון" */
         fun displayTitle(raw: String): String {
             val t = raw.trim()
-            return if (levelOf(t) == LEVEL_END) Config.endDisplay else Config.prePrefix(t) ?: t
+            return if (levelOf(t) == LEVEL_END && !AlertUi.update(t)) Config.endDisplay else Config.prePrefix(t) ?: t
         }
 
         /**
@@ -791,7 +791,7 @@ class AlertService : Service() {
         if (!quiet) wakeScreen()
         val canShow = forceScreen || shabbat || wasOff || locked || overlayOk()
         if (join) main.post { showJoined(level, areas) }   // המסך הקיים מתעדכן - לא נפתח מסך חדש
-        else if (toMini) main.post { MiniOverlay.showEnd(body) }
+        else if (toMini) main.post { MiniOverlay.showEnd(body, title) }
         else if (!quiet && canShow) {
             when {
                 // נעול (עם נעילת מסך): כרטיס / ממוזער - בראש מסך הנעילה; מסך מלא / פופ-אפ - מעל מסך הנעילה

@@ -179,7 +179,7 @@ object MiniOverlay {
                 // ספירה לכניסה -> שהייה במרחב המוגן -> ממתינים לסיום: הכל באדום. ירוק רק בהודעת סיום
                 when {
                     // מקדימה / סיום: כיתוב קצר וקבוע במקום הנוסח המלא
-                    level == AlertService.LEVEL_PRE && AlertUi.flash(title) -> { label.text = "מבזק פיקוד העורף"; timerLabel.text = ""; timer.textSize = 12f; timer.text = title.replace(" - ", "\n") }
+                    level == AlertService.LEVEL_END && AlertUi.update(title) -> { label.text = "עדכון פיקוד העורף"; timerLabel.text = ""; timer.textSize = 12f; timer.text = title.replace(" - ", "\n") }
                     level == AlertService.LEVEL_PRE -> { label.text = "התרעה מקדימה"; timerLabel.text = ""; timer.textSize = 12f; timer.text = "בדקות הקרובות צפויות\nלהתקבל התרעות באזורך" }
                     level == AlertService.LEVEL_END -> { label.text = "האירוע הסתיים"; timerLabel.text = ""; timer.textSize = 12f; timer.text = "ניתן לצאת\nמהמרחב המוגן" }
                     level != AlertService.LEVEL_ALERT -> { label.text = title; timer.text = ""; timerLabel.text = "" }
@@ -203,14 +203,15 @@ object MiniOverlay {
     private fun mmss(ms: Long): String { val s = ((ms + 999) / 1000).toInt(); return "%d:%02d".format(s / 60, s % 60) }
 
     /** "האירוע הסתיים" בזמן שהחלון הקטן פתוח - הוא נהיה ירוק (במקום מסך מלא) */
-    fun showEnd(area: String) {
+    fun showEnd(area: String, title: String = "") {
         if (view == null) return
         tick?.let { ui.removeCallbacks(it) }; tick = null
         bg?.setColor(Color.parseColor(GREEN))
-        labelV?.text = "האירוע הסתיים"
+        val upd = AlertUi.update(title)
+        labelV?.text = if (upd) "עדכון פיקוד העורף" else "האירוע הסתיים"
         AlertUi.setIcon(iconV, R.drawable.ic_list_end, big = false)
         timerLabelV?.text = ""; timerLabelV?.visibility = View.GONE
-        timerV?.textSize = 12f; timerV?.text = "ניתן לצאת\nמהמרחב המוגן"
+        timerV?.textSize = 12f; timerV?.text = if (upd) title.replace(" - ", "\n") else "ניתן לצאת\nמהמרחב המוגן"
         (timerV?.parent as? View)?.visibility = View.VISIBLE
         if (area.isNotEmpty()) { areaV?.text = area; areaV?.visibility = View.VISIBLE }
         view?.context?.let { scheduleHide(it.applicationContext, System.currentTimeMillis() + (AlertUi.keepMs(AlertService.LEVEL_END) ?: 60_000L)) }
