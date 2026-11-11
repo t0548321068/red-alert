@@ -12,11 +12,15 @@ object AlertUi {
     fun head(title: String, level: Int): Pair<String, String> = when (level) {
         AlertService.LEVEL_PRE -> "מבזק פיקוד העורף" to (if (title.startsWith("התרעה מקדימה - ")) title else "התרעה מקדימה")
         AlertService.LEVEL_END -> "עדכון פיקוד העורף" to "האירוע הסתיים"
-        else -> title to if (noShelter(title)) "צאו לשטח פתוח" else "היכנסו למרחב המוגן"
+        else -> title to when {
+            title.contains("רעידת אדמה") -> "צאו לשטח פתוח"
+            title.contains("צונאמי") -> "התרחקו מחוף הים"
+            else -> "היכנסו למרחב המוגן"
+        }
     }
 
-    /** רעידת אדמה: בלי זמן התגוננות ובלי "נשארים במרחב המוגן" - ישר "ממתינים להודעת סיום" */
-    fun noShelter(title: String) = title.contains("רעידת אדמה")
+    /** רעידת אדמה / צונאמי: בלי זמן התגוננות ובלי "נשארים במרחב המוגן" - ישר "ממתינים להודעת סיום" */
+    fun noShelter(title: String) = title.contains("רעידת אדמה") || title.contains("צונאמי")
     fun stayMs(title: String) = if (noShelter(title)) 0L else Prefs.STAY_MS
 
     /** אייקון לפי סוג ההתרעה: מקדימה / סיום, ובאדום - לפי סוג האיום. לא מזוהה: צופר */
