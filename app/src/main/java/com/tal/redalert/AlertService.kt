@@ -255,6 +255,10 @@ class AlertService : Service() {
          */
         internal const val ID_OFF = 8
         internal const val ID_COUNT = 9                 // ספירה לאחור למרחב המוגן - התראה נוספת
+        internal const val ID_FEED = 10                 // התרעה בפיד הארצי (לא באזורים שלי)
+        internal const val CH_FEED = "feed_alerts"
+        /** מתי מציגים התראה על התרעה בפיד הארצי: ההגדרה מופעלת, לא נבחרו אזורים נוספים, ולא סיום אירוע. נבדק בבדיקות */
+        fun feedNotifies(on: Boolean, picks: List<String>, level: Int) = on && picks.isEmpty() && level != LEVEL_END
         internal const val CH_COUNT = "countdown"       // בלי צליל ורטט
 
         /** התראה קבועה כשההאזנה כבויה: "לא מוגן" + כפתור הפעלה */
@@ -647,7 +651,7 @@ class AlertService : Service() {
 
         // רק היישובים שלי, ובלי כפילות בין מקורות (מטח חדש - כן)
         val fresh = dedup.fresh(mine(this, areas), level, eventTime, eid)
-        if (fresh.isEmpty()) return
+        if (fresh.isEmpty()) { if (feedNew.isNotEmpty()) feedNotify(title, feedNew, level); return }
         awake(60_000)   // התרעה באזור שלי - הטלפון נשאר ער לזמן הטיפול בה
 
         // המקור הכי מהיר כבר התריע על האירוע הזה (לפני פחות מדקה וחצי) -
@@ -934,6 +938,27 @@ class AlertService : Service() {
             .setAutoCancel(true)
             .setTimeoutAfter(stayEnd - System.currentTimeMillis())
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(ID_ALERT, n.build())
+    }
+
+    /** התראה רגילה על התרעה בפיד הארצי - בלי מסך ובלי צליל של התרעה; הצליל לפי ערוץ ההתראות "התרעות בפיד הארצי" */
+    private fun feedNotify(title: String, areas: List<String>, level: Int) {
+        if (!feedNotifies(Prefs.feedNotify(this), Prefs.cities(this), level) || Prefs.isQuietNow(this)) return
+        try {
+            val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            if (nm.getNotificationChannel(CH_FEED) == null) nm.createNotificationChannel(
+                NotificationChannel(CH_FEED, "התרעות בפיד הארצי", NotificationManager.IMPORTANCE_DEFAULT))
+            val open = PendingIntent.getActivity(this, 22, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+            val shown = AlertUi.listTitle(title, level)
+            nm.notify(ID_FEED, Notification.Builder(this, CH_FEED)
+                .setSmallIcon(R.drawable.ic_stat_siren)
+                .setColor(android.graphics.Color.parseColor(AlertUi.color(level)))
+                .setContentTitle(shown)
+                .setContentText(areas.joinToString(", ").replace("ברחבי הארץ", AreaData.ALL_COUNTRY))
+                .setStyle(Notification.BigTextStyle().bigText(areas.joinToString(", ").replace("ברחבי הארץ", AreaData.ALL_COUNTRY)))
+                .setContentIntent(open).setAutoCancel(true)
+                .setTimeoutAfter(30 * 60_000L)
+                .build())
+        } catch (_: Exception) { }
     }
 
     /** התראת הספירה לאחור (נוספת, בלי צליל): מתעדכנת בכל מעבר שלב, נעלמת בסיום האירוע */
