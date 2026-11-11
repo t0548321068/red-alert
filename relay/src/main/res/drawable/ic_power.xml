@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- חשמל: סוללה בקו עם ברק - באותו סגנון קו כמו שאר החיוויים -->
+<!-- הדלקה וכיבוי: קשת פתוחה וקו מלמעלה - חיווי פועל / כבוי -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="18dp" android:height="18dp"
     android:viewportWidth="24" android:viewportHeight="24">
-    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2" android:strokeLineJoin="round"
-        android:pathData="M8,4h8v17h-8z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M10,2h4v2h-4z"/>
-    <path android:fillColor="#FFFFFFFF" android:pathData="M12.8,7.5l-3,5.2h2.2l-0.8,4.3l3,-5.4h-2.2z"/>
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2" android:strokeLineCap="round"
+        android:pathData="M12,3v8"/>
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2" android:strokeLineCap="round"
+        android:pathData="M7.05,6.05a7.5,7.5 0 1,0 9.9,0"/>
 </vector>

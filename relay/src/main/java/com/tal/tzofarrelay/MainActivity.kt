@@ -27,14 +27,33 @@ import android.widget.TextView
 /** מסך אחד: הקלדת המפתח בפעם הראשונה, ואחר כך מצב הממסר (מתעדכן כל שנייה) */
 class MainActivity : Activity() {
     private val ui = Handler(Looper.getMainLooper())
-    // אותם צבעים כמו בצופר חירום 4.0 (עיצוב כהה)
-    private val GREEN = Color.parseColor("#30D158"); private val ORANGE = Color.parseColor("#FF9F0A")
-    private val RED = Color.parseColor("#FF3B30"); private val MUTED = Color.parseColor("#8E8E93")
-    private val TEXT = Color.parseColor("#F2F2F2"); private val MUTED2 = Color.parseColor("#AAAAAA")
-    private val CARD = Color.parseColor("#1B1B1D"); private val DIV = Color.parseColor("#2A2A2C")
-    private val SEPV = Color.parseColor("#5C5C5E"); private val BLUE = Color.parseColor("#5AA9FF")
-    private val PILL = Color.parseColor("#4C7DFF"); private val LINE2 = Color.parseColor("#22FFFFFF")
-    private val SOFT = Color.parseColor("#E6FFFFFF")
+    // אותם צבעים כמו בצופר חירום 4.0 - חשוך / בהיר לפי הגדרת התצוגה
+    private var GREEN = 0; private var ORANGE = 0; private var RED = 0; private var MUTED = 0
+    private var TEXT = 0; private var MUTED2 = 0; private var CARD = 0; private var DIV = 0
+    private var SEPV = 0; private var LINE2 = 0; private var SOFT = 0; private var BG = 0
+    private var LIGHT = false
+    private val BLUE = Color.parseColor("#5AA9FF"); private val PILL = Color.parseColor("#4C7DFF")
+    private fun applyTheme(dark: Boolean) {
+        fun c(d: String, l: String) = Color.parseColor(if (dark) d else l)
+        BG = c("#000000", "#F2F2F7"); TEXT = c("#F2F2F2", "#1C1C1E"); MUTED = c("#8E8E93", "#6E6E73")
+        GREEN = c("#30D158", "#248A3D"); RED = c("#FF3B30", "#E0352B"); ORANGE = c("#FF9F0A", "#E08600")
+        CARD = c("#1B1B1D", "#FFFFFF"); DIV = c("#2A2A2C", "#E0E0E5"); SEPV = c("#5C5C5E", "#C7C7CC")
+        SOFT = c("#E6FFFFFF", "#CC1C1C1E"); MUTED2 = c("#AAAAAA", "#6E6E73"); LINE2 = c("#22FFFFFF", "#22000000")
+        LIGHT = !dark
+        if (::frame.isInitialized) {
+            frame.setBackgroundColor(BG); scroll.setBackgroundColor(BG)
+            later.setTextColor(TEXT)
+            (later.background as GradientDrawable).setColor(c("#3A3A3C", "#E5E5EA"))
+        }
+        @Suppress("DEPRECATION") window.statusBarColor = BG
+        @Suppress("DEPRECATION") window.navigationBarColor = BG
+        // אייקונים כהים בשורת המצב בבהיר
+        @Suppress("DEPRECATION")
+        window.decorView.systemUiVisibility = if (dark) 0 else View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or
+            (if (android.os.Build.VERSION.SDK_INT >= 26) View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR else 0)
+    }
+    private lateinit var frame: android.widget.FrameLayout
+    private lateinit var scroll: ScrollView
     private lateinit var root: LinearLayout
     private lateinit var pill: android.widget.FrameLayout
     private lateinit var pillLabel: TextView
@@ -46,7 +65,14 @@ class MainActivity : Activity() {
     private var titleView: TextView? = null
     /** העיגול מתעדכן כל 50ms (החלפת צבע / הבהוב), בלי לבנות את המסך מחדש */
     private val anim = object : Runnable { override fun run() { paint(); ui.postDelayed(this, 50) } }
+    private var clockView: TextView? = null
     private fun paint() {
+        // השעון מתעדכן רק כשמשהו בו משתנה (שנייה חדשה / הנקודתיים מהבהבות)
+        clockView?.let { v ->
+            val ms = System.currentTimeMillis()
+            val k = TimeFormat.time(this, ms) + (Display.blinkColon(this) && ms % 1000 >= 500)
+            if (v.tag != k) { v.tag = k; v.text = TimeFormat.clock(this, ms) }
+        }
         val st = state ?: return
         val (circle, bg, icon) = circleViews ?: return
         val now = System.currentTimeMillis()
@@ -96,10 +122,9 @@ class MainActivity : Activity() {
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_RTL
-        @Suppress("DEPRECATION") window.statusBarColor = Color.BLACK
-        @Suppress("DEPRECATION") window.navigationBarColor = Color.BLACK
+        applyTheme(Display.dark(this))
         root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(100)) }
-        val scroll = ScrollView(this).apply { setBackgroundColor(Color.BLACK); isVerticalScrollBarEnabled = false; addView(root) }   // בלי פס גלילה
+        scroll = ScrollView(this).apply { setBackgroundColor(BG); isVerticalScrollBarEnabled = false; addView(root) }   // בלי פס גלילה
         // הכפתור הכחול הצף למטה - בדיוק כמו "בדיקה" בעמוד הרשת של צופר חירום: חצי רוחב, גובה 46, טקסט 16 מודגש
         pillLabel = text("בדיקה", 16f, Color.WHITE, true).apply { gravity = Gravity.CENTER; includeFontPadding = false }
         pillSpin = android.widget.ProgressBar(this).apply {
@@ -115,10 +140,11 @@ class MainActivity : Activity() {
         later = text("מאוחר יותר", 16f, TEXT, true).apply {
             gravity = Gravity.CENTER; includeFontPadding = false; visibility = View.GONE
             background = GradientDrawable().apply { setColor(Color.parseColor("#3A3A3C")); cornerRadius = dp(23).toFloat() }
-            setOnClickListener { go(updFrom) }
+            setOnClickListener { back() }
         }
-        setContentView(android.widget.FrameLayout(this).apply {
-            setBackgroundColor(Color.BLACK)
+        frame = android.widget.FrameLayout(this)
+        applyTheme(Display.dark(this))
+        setContentView(frame.apply {
             addView(scroll, android.widget.FrameLayout.LayoutParams(-1, -1))
             addView(pill, android.widget.FrameLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.5f).toInt(), dp(46),
                 Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = dp(20) })
@@ -159,7 +185,7 @@ class MainActivity : Activity() {
     private fun pillBusy(b: Boolean) { pillLabel.visibility = if (b) View.INVISIBLE else View.VISIBLE; pillSpin.visibility = if (b) View.VISIBLE else View.GONE }
     private val Build_SDK get() = android.os.Build.VERSION.SDK_INT
 
-    override fun onResume() { super.onResume(); RelayService.start(this); ui.post(tick); ui.post(anim) }
+    override fun onResume() { super.onResume(); touchedAt = System.currentTimeMillis(); RelayService.start(this); ui.post(tick); ui.post(anim) }
     override fun onPause() { ui.removeCallbacks(tick); ui.removeCallbacks(anim); super.onPause() }
 
     /** כותרת עמוד כמו "צופר חירום" במסך הראשי: 24 מודגש, ובמסך הראשי גלגל שיניים בשמאל (46, הבהוב בלחיצה) */
@@ -178,19 +204,40 @@ class MainActivity : Activity() {
             }, LinearLayout.LayoutParams(dp(46), dp(46)))
         })
     }
-    // עמודים: 0 = ראשי, 1 = הגדרות, 2 = בדיקת עדכונים (חוזר לעמוד שממנו נפתח)
-    private var page = 0
-    private var updFrom = 0
-    private fun go(p: Int) { if (p == 2) updFrom = page; page = p; if (p == 2) updatePage() else build() }
-    @Deprecated("") override fun onBackPressed() {
-        when (page) { 2 -> go(updFrom); 1 -> go(0); else -> @Suppress("DEPRECATION") super.onBackPressed() }
+    // עמודים: 0 ראשי, 1 הגדרות, 2 בדיקת עדכונים, 3 תצוגה, 4 לפי זמן, 5 שורת חיוויים, 6 שעון, 7 תאריך.
+    // מחסנית - "חזרה" חוזרת לעמוד הקודם
+    private val stack = mutableListOf(0)
+    private val page get() = stack.last()
+    private fun go(p: Int) { stack.add(p); show() }
+    private fun back() { if (stack.size > 1) { stack.removeAt(stack.size - 1); show() } }
+    /** בונה את העמוד הנוכחי. ראשי והגדרות מתעדכנים כל שנייה; שאר העמודים - רק כשמשהו בהם משתנה */
+    private fun show() {
+        scroll.scrollTo(0, 0)
+        when (page) { 2 -> updatePage(); 3 -> displayPage(); 4 -> themeTimePage(); 5 -> statusModePage(); 6 -> clockPage(); 7 -> datePage(); else -> build() }
+    }
+    @Deprecated("") override fun onBackPressed() { if (stack.size > 1) back() else @Suppress("DEPRECATION") super.onBackPressed() }
+    /** שורת החיוויים "לפי זמן": מוצגת כשפותחים או נוגעים במסך, ונעלמת אחרי הזמן שנבחר */
+    private var touchedAt = 0L
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        if (ev.action == android.view.MotionEvent.ACTION_DOWN) {
+            val was = statusShown(); touchedAt = System.currentTimeMillis()
+            if (!was && page == 0) build()
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+    private fun statusShown() = when (Display.statusMode(this)) {
+        Display.STATUS_HIDDEN -> false
+        Display.STATUS_TIMED -> System.currentTimeMillis() - touchedAt < Display.statusSeconds(this) * 1000L
+        else -> true
     }
 
     @Volatile private var checking = false
     private var keyField: EditText? = null
     private var setupMsg = ""
     private fun build() {
-        if (page == 2) return   // עמוד העדכונים לא נבנה מחדש כל שנייה (הטבעת מסתובבת)
+        // ערכת הצבעים מתחלפת לבד ("לפי המערכת" / "לפי זמן")
+        if (Display.dark(this) == LIGHT) { applyTheme(!LIGHT); if (page > 1) { show(); return } }
+        if (page > 1) return   // שאר העמודים לא נבנים מחדש כל שנייה
         if (Relay.key(this).isEmpty()) { state = null; circleViews = null; if (keyField == null) setup(); return }
         keyField = null
         root.removeAllViews()
@@ -232,16 +279,16 @@ class MainActivity : Activity() {
         val enabled = Relay.enabled(this)
         val srv = when { !on -> "כבוי" to MUTED; primary -> "ראשי" to GREEN; secondary -> "משני" to ORANGE; else -> "לא עונים" to RED }
         val inds = listOf(
-            ind(if (enabled) R.drawable.ic_shield_ind else R.drawable.ic_shield_ind_off, if (enabled) "פועל" else "כבוי", if (enabled) GREEN else MUTED) { toggleRelay() },
+            ind(R.drawable.ic_power, if (enabled) "פועל" else "כבוי", if (enabled) GREEN else MUTED) { toggleRelay() },
             ind(R.drawable.ic_antenna, srv.first, srv.second, null),
             ind(R.drawable.ic_globe, if (wifi) "Wi‑Fi" else "לא Wi‑Fi", if (wifi) GREEN else ORANGE, null),
-            ind(R.drawable.ic_power, if (charging) "בטעינה" else "${battery()}%", if (charging) GREEN else ORANGE, null),
+            ind(R.drawable.ic_battery, if (charging) "בטעינה" else "${battery()}%", if (charging) GREEN else ORANGE, null),
             ind(R.drawable.ic_info, "1.${Update.current(this)}", TEXT) { go(2) })   // גרסה: עמוד בדיקת העדכונים
         inds.forEachIndexed { i, v ->
             if (i > 0) row.addView(View(this).apply { setBackgroundColor(LINE2) }, LinearLayout.LayoutParams(dp(1), dp(26)))
             row.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
         }
-        add(row)
+        if (statusShown()) add(row)
         // כרטיס המצב - כמו כרטיס השעון בצופר חירום: אנטנה בעיגול, מצב, שעה ותאריך
         val c = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
@@ -258,9 +305,11 @@ class MainActivity : Activity() {
         c.addView(circle, LinearLayout.LayoutParams(dp(56), dp(56)))
         c.addView(text(st.title, 22f, TEXT, true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
         c.addView(text(st.sub, 14f, SOFT).apply { gravity = Gravity.CENTER })
-        c.addView(text(java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(java.util.Date(now)), 46f, TEXT).apply {
-            gravity = Gravity.CENTER; typeface = Typeface.create("sans-serif", Typeface.BOLD) }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
-        c.addView(text(java.text.SimpleDateFormat("EEEE, d בMMMM", java.util.Locale("iw")).format(java.util.Date(now)), 19f, SOFT).apply { gravity = Gravity.CENTER })
+        // שעון ותאריך - כמו בצופר חירום, לפי הגדרות התצוגה (שניות, נקודתיים מהבהבות, סוג תאריך וסגנון יום)
+        val clock = text("", 46f, TEXT).apply { gravity = Gravity.CENTER; typeface = Typeface.create("sans-serif", Typeface.BOLD); text = TimeFormat.clock(this@MainActivity, now) }
+        c.addView(clock, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        clockView = clock
+        c.addView(text(TimeFormat.dayLine(this, now), 19f, SOFT).apply { gravity = Gravity.CENTER })
         c.addView(text("התרעות שנשלחו היום: ${Relay.forwardedToday(this)}", 14f, SOFT).apply { gravity = Gravity.CENTER },
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         circleViews = Triple(circle, bg, icon); titleView = null
@@ -299,7 +348,7 @@ class MainActivity : Activity() {
 
     /** הגדרות: הפעלה, שרשרת הגיבוי, מצב הטלפון, עדכונים והחלפת מפתח - עם כפתור "בדיקה" צף */
     private fun settingsPage(now: Long, on: Boolean, charging: Boolean, wifi: Boolean, hasKey: Boolean, primary: Boolean, secondary: Boolean) {
-        pills("בדיקה", action = checkNow); circleViews = null
+        pills("בדיקה", action = checkNow); circleViews = null; clockView = null
         header("הגדרות", null)
         val enabled = Relay.enabled(this)
         val top = card()
@@ -309,11 +358,14 @@ class MainActivity : Activity() {
             // קו דק לפני המתג, כמו בצופר חירום
             addView(View(this@MainActivity).apply { setBackgroundColor(SEPV) },
                 LinearLayout.LayoutParams(dp(1), dp(20)).apply { marginEnd = dp(12) })
-            addView(OuiSwitch(this@MainActivity, enabled, false))
+            addView(OuiSwitch(this@MainActivity, enabled, LIGHT))
             setOnClickListener { toggleRelay() }
         }, LinearLayout.LayoutParams(-1, dp(58)))
         add(top)
         note("גיבוי שלישי: שולח לטלפונים רק כששני השרתים לא עונים")
+        val disp = card()
+        row(disp, "תצוגה", "", "", TEXT) { go(3) }
+        add(disp)
 
         // בדיקה עכשיו: שני השרתים, המקורות ו-Firebase, ומתי בוצעה הבדיקה האחרונה
         val chk = card()
@@ -363,7 +415,7 @@ class MainActivity : Activity() {
      * ואז אחד משלושה: גרסה חדשה (פרטים + "התקן עכשיו" / "מאוחר יותר") / מעודכן / לא ניתן לבדוק
      */
     private fun updatePage() {
-        root.removeAllViews(); circleViews = null; state = null
+        root.removeAllViews(); circleViews = null; state = null; clockView = null
         header("בדיקת עדכונים", null)
         val blue = PILL
         val circleBg = GradientDrawable().apply { shape = GradientDrawable.OVAL }
@@ -386,7 +438,7 @@ class MainActivity : Activity() {
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         root.addView(content)
         fun head(bg: String, sym: Int, symColor: Int, title: String, subText: String) {
-            circleBg.setColor(Color.parseColor(bg))
+            circleBg.setColor(Color.parseColor(if (!LIGHT) bg else if (bg == "#2C2C2E") "#E5E5EA" else "#E3EBFF"))
             icon.setImageResource(sym); icon.imageTintList = android.content.res.ColorStateList.valueOf(symColor)
             ring.color = symColor
             headline.text = title
@@ -454,6 +506,227 @@ class MainActivity : Activity() {
         check()
     }
 
+    // ---- הגדרות תצוגה - בדיוק כמו עמוד "תצוגה" בצופר חירום ----
+
+    /** כפתור בחירה כמו בסמסונג: טבעת, ובנבחר נקודה כחולה */
+    private fun radio(sel: Boolean) = android.widget.FrameLayout(this).apply {
+        background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setStroke(dp(2), Color.parseColor(if (sel) "#3E82F7" else "#6E6E73")) }
+        if (sel) addView(View(this@MainActivity).apply {
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#3E82F7")) }
+        }, android.widget.FrameLayout.LayoutParams(dp(10), dp(10), Gravity.CENTER))
+    }
+    /**
+     * שורה כמו ouiRow באפליקציה: שם, מצב בכחול מתחת, ובצד כפתור בחירה או מתג.
+     * onToggle: לחיצה על השורה פותחת עמוד, והמתג לבד (מהקו ועד הקצה) מדליק/מכבה
+     */
+    private fun orow(c: LinearLayout, title: String, sub: String = "", radio: Boolean? = null, on: Boolean? = null,
+                     onToggle: (() -> Unit)? = null, click: () -> Unit) {
+        if (c.childCount > 0 && c.getChildAt(c.childCount - 1).tag == "row") divider(c)
+        val r = LinearLayout(this).apply {
+            tag = "row"; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), 0, dp(18), 0)
+            setOnClickListener { click() }
+        }
+        val t = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        t.addView(text(title, 16f).apply { includeFontPadding = false })
+        if (sub.isNotEmpty()) t.addView(text(sub, 12f, BLUE).apply { includeFontPadding = false; setPadding(0, dp(4), 0, 0) })
+        r.addView(t, LinearLayout.LayoutParams(0, -2, 1f))
+        if (radio != null) r.addView(radio(radio), LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginStart = dp(10) })
+        if (on != null) {
+            val z = LinearLayout(this).apply {
+                gravity = Gravity.CENTER_VERTICAL; setPaddingRelative(dp(12), 0, dp(18), 0)
+                if (onToggle != null) { isClickable = true; setOnClickListener { onToggle() } }
+                addView(View(this@MainActivity).apply { setBackgroundColor(SEPV) }, LinearLayout.LayoutParams(dp(1), dp(20)).apply { marginEnd = dp(12) })
+                addView(OuiSwitch(this@MainActivity, on, LIGHT).apply { isClickable = false })
+            }
+            r.addView(z, LinearLayout.LayoutParams(-2, -1).apply { marginEnd = -dp(18) })
+        }
+        c.addView(r, LinearLayout.LayoutParams(-1, dp(58)))
+    }
+    private fun cardTitle(c: LinearLayout, t: String) = c.addView(text(t, 16f).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+    private fun hm(m: Int) = "%02d:%02d".format(m / 60, m % 60)
+    private fun secLabel(sec: Int) = when {
+        sec < 60 -> "$sec שניות"; sec == 60 -> "דקה"; sec % 60 == 0 -> "${sec / 60} דקות"
+        else -> "%d:%02d דקות".format(sec / 60, sec % 60)
+    }
+    private fun themeTimeLabel() = if (Display.themeTimeMode(this) == 0) "משקיעה עד זריחה" else "${hm(Display.darkFrom(this))} – ${hm(Display.darkTo(this))}"
+    private fun statusModeLabel() = when (Display.statusMode(this)) {
+        Display.STATUS_HIDDEN -> "לא מוצגת"
+        Display.STATUS_TIMED -> "${secLabel(Display.statusSeconds(this))} אחרי פתיחה"
+        else -> "מוצגת קבוע"
+    }
+    /** ערכת צבעים חדשה - מתחלפת מיד */
+    private fun setTheme(mode: Int) {
+        Display.setThemeMode(this, mode)
+        applyTheme(Display.dark(this)); show()
+    }
+    private fun pageStart(title: String) {
+        root.removeAllViews(); circleViews = null; state = null; clockView = null
+        pills(null)
+        header(title, null)
+    }
+
+    /** עמוד "תצוגה" */
+    private fun displayPage() {
+        pageStart("תצוגה")
+        val mode = Display.themeMode(this)
+        // ערכת צבעים: תצוגה מקדימה חשוך / בהיר + "לפי המערכת" + "לפי זמן"
+        val theme = card()
+        val pick = LinearLayout(this).apply { gravity = Gravity.CENTER; setPadding(dp(10), dp(20), dp(10), dp(16)) }
+        fun preview(light: Boolean, label: String, sel: Boolean, value: Int) = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL; setPadding(dp(6), dp(6), dp(6), dp(6))
+                background = GradientDrawable().apply { setColor(Color.parseColor(if (light) "#D9D9DC" else "#2B2B2E")); cornerRadius = dp(12).toFloat() }
+                listOf(12, 26, 40, 26).forEach { h ->
+                    addView(View(this@MainActivity).apply {
+                        background = GradientDrawable().apply { setColor(Color.parseColor(if (light) "#BDBDC2" else "#3E3E42")); cornerRadius = dp(6).toFloat() }
+                    }, LinearLayout.LayoutParams(-1, dp(h)).apply { bottomMargin = dp(5) })
+                }
+            }, LinearLayout.LayoutParams(dp(76), dp(150)))
+            addView(text(label, 13f, if (sel) BLUE else MUTED2, sel).apply { gravity = Gravity.CENTER; setPadding(0, dp(8), 0, dp(8)) }, LinearLayout.LayoutParams(-1, -2))
+            addView(radio(sel), LinearLayout.LayoutParams(dp(20), dp(20)))
+            setOnClickListener { if (Display.themeMode(this@MainActivity) != value) setTheme(value) }
+        }
+        pick.addView(preview(false, "חשוך", mode == 0, 0), LinearLayout.LayoutParams(0, -2, 1f))
+        pick.addView(preview(true, "בהיר", mode == 1, 1), LinearLayout.LayoutParams(0, -2, 1f))
+        theme.addView(pick)
+        divider(theme)
+        orow(theme, "לפי המערכת", on = mode == 2, onToggle = { setTheme(if (mode == 2) 0 else 2) }) { setTheme(if (mode == 2) 0 else 2) }
+        orow(theme, "לפי זמן", themeTimeLabel(), on = mode == 3, onToggle = { setTheme(if (mode == 3) 0 else 3) }) { go(4) }
+        add(theme)
+        note("לפי המערכת – בהיר או חשוך לפי הגדרת הטלפון\nלפי זמן – חשוך בלילה ובהיר ביום")
+        // שורת החיוויים במסך הראשי
+        val ind = card()
+        val sm = Display.statusMode(this)
+        orow(ind, "שורת חיוויים", statusModeLabel(), on = sm != Display.STATUS_HIDDEN, onToggle = {
+            Display.setStatusMode(this, if (sm == Display.STATUS_HIDDEN) Display.STATUS_ALWAYS else Display.STATUS_HIDDEN); show() }) { go(5) }
+        add(ind)
+        note("פועל · שרתים · רשת · חשמל · גרסה – מעל כרטיס המצב במסך הראשי")
+        // שעון ותאריך
+        val more = card()
+        orow(more, "שעון", listOf(if (Display.showSeconds(this)) "שניות" else "", if (Display.blinkColon(this)) "נקודתיים מהבהבות" else "")
+            .filter { it.isNotEmpty() }.joinToString(" · ")) { go(6) }
+        orow(more, "תאריך", TimeFormat.dayOptions()[Display.dayStyle(this)], on = Display.showDate(this), onToggle = {
+            Display.setShowDate(this, !Display.showDate(this)); show() }) { go(7) }
+        add(more)
+        note("שעון ותאריך בכרטיס המצב במסך הראשי")
+    }
+
+    /** "לפי זמן": משקיעה עד זריחה, או לוח זמנים מותאם */
+    private fun themeTimePage() {
+        pageStart("לפי זמן")
+        val c = card()
+        val tm = Display.themeTimeMode(this)
+        fun set(v: Int) { Display.setThemeTimeMode(this, v); applyTheme(Display.dark(this)); show() }
+        orow(c, "משקיעה עד זריחה", radio = tm == 0) { set(0) }
+        orow(c, "לוח זמנים מותאם", radio = tm == 1) { set(1) }
+        if (tm == 1) {
+            orow(c, "שעת התחלה", hm(Display.darkFrom(this))) {
+                pickTime("שעת התחלה", Display.darkFrom(this)) { Display.setDarkFrom(this, it); applyTheme(Display.dark(this)); show() } }
+            orow(c, "שעת סיום", hm(Display.darkTo(this))) {
+                pickTime("שעת סיום", Display.darkTo(this)) { Display.setDarkTo(this, it); applyTheme(Display.dark(this)); show() } }
+        }
+        add(c)
+        note(if (tm == 0) "חשוך מהשקיעה ועד הזריחה, לפי ירושלים" else "חשוך משעת ההתחלה ועד שעת הסיום")
+    }
+
+    /** שורת חיוויים: מוצגת קבוע / לא מוצגת / מוצגת לפי זמן (וכמה זמן) */
+    private fun statusModePage() {
+        pageStart("שורת חיוויים")
+        val c = card()
+        val mode = Display.statusMode(this)
+        listOf(Display.STATUS_ALWAYS to "מוצגת קבוע", Display.STATUS_HIDDEN to "לא מוצגת", Display.STATUS_TIMED to "מוצגת לפי זמן").forEach { (m, label) ->
+            orow(c, label, radio = mode == m) { Display.setStatusMode(this, m); touchedAt = System.currentTimeMillis(); show() }
+        }
+        add(c)
+        note("\"לפי זמן\" – השורה מוצגת כשפותחים את הממסר או נוגעים במסך, ונעלמת אחרי הזמן שבוחרים")
+        if (mode == Display.STATUS_TIMED) {
+            val t = card()
+            cardTitle(t, "כמה זמן להציג")
+            val fixed = intArrayOf(5, 10, 15, 30, 60)
+            val cur = Display.statusSeconds(this)
+            fixed.forEach { sec -> orow(t, secLabel(sec), radio = cur == sec) { Display.setStatusSeconds(this, sec); show() } }
+            val custom = cur !in fixed
+            orow(t, "מותאם", if (custom) secLabel(cur) else "", radio = custom) {
+                pickTime("זמן מותאם (דקות : שניות)", if (custom) cur else 20, hourCount = 11) { v ->
+                    Display.setStatusSeconds(this, v.coerceIn(3, 600)); show() }
+            }
+            add(t)
+        }
+    }
+
+    /** שעון: שניות ונקודתיים מהבהבות */
+    private fun clockPage() {
+        pageStart("שעון")
+        val c = card()
+        orow(c, "הצגת שניות", on = Display.showSeconds(this)) { Display.setShowSeconds(this, !Display.showSeconds(this)); show() }
+        orow(c, "נקודתיים מהבהבות", on = Display.blinkColon(this)) { Display.setBlinkColon(this, !Display.blinkColon(this)); show() }
+        add(c)
+        note("השינוי נראה מיד בשעון במסך הראשי")
+    }
+
+    /** תאריך: הצגה, סוג תאריך וסגנון יום */
+    private fun datePage() {
+        pageStart("תאריך")
+        val sc = card()
+        orow(sc, "הצגת תאריך", on = Display.showDate(this)) { Display.setShowDate(this, !Display.showDate(this)); show() }
+        add(sc)
+        note("התאריך מוצג מתחת לשעון במסך הראשי")
+        val kinds = card()
+        cardTitle(kinds, "סוג תאריך")
+        val now = System.currentTimeMillis()
+        listOf("לועזי" to TimeFormat.date(now), "עברי" to TimeFormat.hebrewDate(now),
+            "לועזי ועברי" to TimeFormat.date(now) + " · " + TimeFormat.hebrewDate(now)).forEachIndexed { i, (label, ex) ->
+            orow(kinds, label, ex, radio = Display.dateKind(this) == i) { Display.setDateKind(this, i); show() }
+        }
+        add(kinds)
+        val styles = card()
+        cardTitle(styles, "סגנון יום")
+        TimeFormat.dayOptions().forEachIndexed { i, label ->
+            orow(styles, label, radio = Display.dayStyle(this) == i) { Display.setDayStyle(this, i); show() }
+        }
+        add(styles)
+    }
+
+    /**
+     * בחירת שעה בדיוק כמו "הגדר שעה" של סמסונג (כמו באפליקציה): חלון מעוגל בתחתית המסך,
+     * גלגל שעות וגלגל דקות, ולמטה ביטול | סיום. hourCount = כמה ערכים בגלגל השמאלי
+     */
+    private fun pickTime(title: String, cur: Int, hourCount: Int = 24, done: (Int) -> Unit) {
+        val white = if (LIGHT) Color.parseColor("#1C1C1E") else Color.WHITE
+        val hours = TimeWheel(this, hourCount, cur / 60, white)
+        val mins = TimeWheel(this, 60, cur % 60, white)
+        val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; layoutDirection = View.LAYOUT_DIRECTION_RTL; isClickable = true
+            background = GradientDrawable().apply { setColor(if (LIGHT) Color.WHITE else Color.parseColor("#393939")); cornerRadius = dp(26).toFloat() }
+        }
+        card.addView(text(title, 17f, white, true).apply { setPadding(dp(30), dp(24), dp(30), 0) })
+        card.addView(LinearLayout(this).apply {
+            layoutDirection = View.LAYOUT_DIRECTION_LTR; gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(44), 0, dp(44), 0)
+            addView(hours, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(text(":", 32f, white, true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(dp(40), -2))
+            addView(mins, LinearLayout.LayoutParams(0, -2, 1f))
+        }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(22) })
+        val btns = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        fun button(t: String, run: () -> Unit) = text(t, 17f, white, true).apply { gravity = Gravity.CENTER; setOnClickListener { d.dismiss(); run() } }
+        btns.addView(button("ביטול") {}, LinearLayout.LayoutParams(0, -1, 1f))
+        btns.addView(View(this).apply { setBackgroundColor(Color.parseColor(if (LIGHT) "#D1D1D6" else "#535353")) }, LinearLayout.LayoutParams(dp(1), dp(16)))
+        btns.addView(button("סיום") { done(hours.value * 60 + mins.value) }, LinearLayout.LayoutParams(0, -1, 1f))
+        card.addView(btns, LinearLayout.LayoutParams(-1, dp(64)).apply { topMargin = dp(8) })
+        val f = android.widget.FrameLayout(this).apply { setOnClickListener { d.dismiss() } }   // לחיצה מחוץ לחלון סוגרת
+        f.addView(card, android.widget.FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM).apply { setMargins(dp(10), 0, dp(10), dp(10)) })
+        d.setContentView(f)
+        d.window?.apply {
+            setLayout(-1, -1)
+            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+            addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND); setDimAmount(0.6f)
+            setWindowAnimations(0)
+        }
+        d.show()
+    }
+
     /** הפעלה ראשונה: הקלדת המפתח מהאתר ובדיקה מול השרת */
     private fun setup() {
         root.removeAllViews()
@@ -466,7 +739,7 @@ class MainActivity : Activity() {
             hint = "XXXX-XXXX-XXXX"; setHintTextColor(MUTED); setTextColor(TEXT); textSize = 17f
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             textDirection = View.TEXT_DIRECTION_LTR; gravity = Gravity.CENTER
-            background = GradientDrawable().apply { setColor(Color.parseColor("#2C2C2E")); cornerRadius = dp(14).toFloat() }
+            background = GradientDrawable().apply { setColor(Color.parseColor(if (LIGHT) "#E3E3E8" else "#2C2C2E")); cornerRadius = dp(14).toFloat() }
             setPadding(dp(14), dp(12), dp(14), dp(12))
         }
         keyField = f
