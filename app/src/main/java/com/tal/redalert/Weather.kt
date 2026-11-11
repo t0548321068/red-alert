@@ -73,7 +73,7 @@ object Weather {
      * - מזהה אם למכשיר יש GPS כפול־תדר (L5) - אז מחכה יותר, כי אפשר להגיע ל-1-3 מטר
      */
     @SuppressLint("MissingPermission")
-    fun freshLocation(c: Context, done: (Location?) -> Unit) {
+    fun freshLocation(c: Context, target: Float = 1f, done: (Location?) -> Unit) {
         val lm = c.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val main = Handler(Looper.getMainLooper())
         var finished = false
@@ -90,8 +90,7 @@ object Weather {
             done(l ?: lastLocation(c))
         }
 
-        // היעד: מטר אחד בכל המכשירים. מכשיר שלא מגיע לזה - נעצר כשהדיוק לא משתפר (6/10 שניות) או אחרי חצי דקה
-        val target = 1f
+        // היעד: מטר אחד בכל המכשירים (ברקע, לאזור ההתרעה - 30 מטר מספיקים). מכשיר שלא מגיע ליעד - נעצר כשהדיוק לא משתפר (6/10 שניות) או אחרי חצי דקה
 
         // מיקום מהדקה האחרונה שכבר בדיוק המרבי - אין צורך לחכות
         lastLocation(c)?.let {
