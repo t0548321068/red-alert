@@ -12,14 +12,19 @@ const ARCH_BASE = 'https://www.oref.org.il/api/v1/AlertHistory/heb?period=';
 // התשובה החדשה (מקובצת לפי תאריך) -> שורות בפורמט הישן: data, category_desc, alertDate עם שניות, date, time
 const convert = require('./parse').archiveRows;   // נבדק בבדיקות
 const YEAR = 366 * 24 * 3600 * 1000;
-const arch = new Map();   // "כותרת|דקה" -> { t, ts, b: Set }
-try { for (const e of JSON.parse(fs.readFileSync(ARCH_FILE, 'utf8'))) arch.set(e.k, { t: e.t, ts: e.ts, b: new Set(e.b) }); } catch (_) {}
+const arch = new Map();   // "כותרת|דקה" -> { t, ts, b: Set, a: { יישוב: מתי הגיע } }
+try { for (const e of JSON.parse(fs.readFileSync(ARCH_FILE, 'utf8'))) arch.set(e.k, { t: e.t, ts: e.ts, b: new Set(e.b), a: e.a || {} }); } catch (_) {}
+const setTime = (e, area, ts) => { if (!e.a) e.a = {}; if (!(e.a[area] <= ts)) { e.a[area] = ts; return 1; } return 0; };
 
 // הרשימה המוכנה לשליחה - נבנית מחדש רק כשהארכיון השתנה (לא בכל בקשה)
 let cache = null;
 function sorted() {
   if (!cache) {
-    const list = [...arch.values()].sort((a, b) => b.ts - a.ts).map(e => ({ t: e.t, b: [...e.b].join(', '), ts: e.ts }));
+    // s: לכל יישוב (באותו סדר כמו b) - כמה שניות אחרי תחילת השורה הוא הגיע
+    const list = [...arch.values()].sort((a, b) => b.ts - a.ts).map(e => {
+      const b = [...e.b];
+      return { t: e.t, b: b.join(', '), ts: e.ts, s: b.map(x => e.a && e.a[x] ? Math.max(0, Math.round((e.a[x] - e.ts) / 1000)) : 0) };
+    });
     const body = Buffer.from(JSON.stringify(list));
     cache = { list, body, gz: zlib.gzipSync(body) };
   }
@@ -39,9 +44,10 @@ function addRows(rows) {
     const minute = String(o.alertDate || '').replace('T', ' ').slice(0, 16);
     const ts = rowTime(o); if (!ts || !minute) continue;
     const k = title + '|' + minute;
-    let e = arch.get(k); if (!e) { e = { t: title, ts, b: new Set() }; arch.set(k, e); added++; }
+    let e = arch.get(k); if (!e) { e = { t: title, ts, b: new Set(), a: {} }; arch.set(k, e); added++; }
     if (ts < e.ts) { e.ts = ts; added++; }
     if (o.data && !e.b.has(o.data)) { e.b.add(o.data); added++; }
+    if (o.data) added += setTime(e, o.data, ts);
   }
   if (added) cache = null;
   return added;
@@ -53,7 +59,7 @@ function save() {
   saving = true;
   const cut = Date.now() - YEAR;
   for (const [k, e] of arch) if (e.ts < cut) { arch.delete(k); cache = null; }
-  const data = JSON.stringify([...arch].map(([k, e]) => ({ k, t: e.t, ts: e.ts, b: [...e.b] })));
+  const data = JSON.stringify([...arch].map(([k, e]) => ({ k, t: e.t, ts: e.ts, b: [...e.b], a: e.a || {} })));
   const done = () => { saving = false; if (pending) { pending = false; save(); } };
   fs.writeFile(ARCH_FILE + '.tmp', data, err => { if (err) return done(); fs.rename(ARCH_FILE + '.tmp', ARCH_FILE, done); });
 }
@@ -81,6 +87,7 @@ function joinLive() {
     const add = l.areas.filter(a => !head.includes(a));
     const order = [...head, ...add, ...arr.slice(nl).filter(a => !add.includes(a))];
     if (order.join('|') !== arr.join('|')) { best.b = new Set(order); added++; }
+    for (const a of l.areas) added += setTime(best, a, l.at);
     best.nl = head.length + add.length;
     return false;
   });
