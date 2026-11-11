@@ -162,11 +162,11 @@ class AlertDisplayTest {
         assertEquals(t, Prefs.areaTimes(m[0])["בחלק מהאזורים בארץ"])
     }
 
-    // ---- התראה מהפיד הארצי: רק כשמופעל, בלי אזורים נוספים, ולא על סיום ----
+    // ---- התראה מהפיד הארצי: רק כשמופעל ובלי אזורים נוספים - על כל מה שנכנס לפיד ----
     @Test fun feedNotifyOnlyWithoutExtraAreas() {
         assertTrue(AlertService.feedNotifies(true, emptyList(), AlertService.LEVEL_ALERT))
         assertTrue(AlertService.feedNotifies(true, emptyList(), AlertService.LEVEL_PRE))
-        assertFalse(AlertService.feedNotifies(true, emptyList(), AlertService.LEVEL_END))
+        assertTrue(AlertService.feedNotifies(true, emptyList(), AlertService.LEVEL_END))
         assertFalse(AlertService.feedNotifies(true, listOf("ירושלים - צפון"), AlertService.LEVEL_ALERT))
         assertFalse(AlertService.feedNotifies(false, emptyList(), AlertService.LEVEL_ALERT))
     }
