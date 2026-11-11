@@ -526,15 +526,15 @@ object Prefs {
 
     /** מוסיף יישובים לשורת ההתראה האחרונה (בלי כפילויות) */
     /**
-     * "הכול" לפי מה שהטלפון קיבל: שורה מהארכיון שיש לה שורה תואמת ב"שלי" (אותו סוג וכותרת, עד 5 דקות) -
-     * היישובים בסדר שבו הגיעו בהתרעה, ואחריהם מה שיש רק בארכיון. כך גם יישובים שהגיעו בזמן אמת ולא נכנסו לארכיון מופיעים
+     * "הכול" משלים ממה שהטלפון קיבל: שורה מהארכיון שיש לה שורה תואמת ב"שלי" (אותו סוג וכותרת, עד 5 דקות) -
+     * הסדר של השרת (סדר ההגעה בזמן אמת, לכל הטלפונים), ואחריו יישובים שהגיעו לטלפון ואין בשרת
      */
     fun withMine(all: List<Entry>, mine: List<Entry>): List<Entry> {
         if (mine.isEmpty()) return all
         return all.map { e ->
             val m = mine.firstOrNull { it.level == e.level && it.title == e.title && e.ts > 0 && it.ts > 0 && Math.abs(it.ts - e.ts) < DUP_MS }
-            if (m == null) e else e.copy(body = mergeBody(m.body, e.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }),
-                times = HashMap(areaTimes(e)).apply { putAll(areaTimes(m)) })
+            if (m == null) e else e.copy(body = mergeBody(e.body, m.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }),
+                times = HashMap(areaTimes(m)).apply { putAll(areaTimes(e)) })
         }
     }
 

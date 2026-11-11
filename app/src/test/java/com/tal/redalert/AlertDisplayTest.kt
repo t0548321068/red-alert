@@ -132,10 +132,10 @@ class AlertDisplayTest {
         val t = 1_000_000_000L
         val all = listOf(Prefs.Entry("", "רעידת אדמה", "בחלק מהאזורים בארץ", 0, t))
         val mine = listOf(Prefs.Entry("", "רעידת אדמה", "בחלק מהאזורים בארץ, באר אורה, אילת, אילות", 0, t + 4000))
-        assertEquals("בחלק מהאזורים בארץ, באר אורה, אילת, אילות", Prefs.withMine(all, mine)[0].body)
+        assertEquals("בחלק מהאזורים בארץ, באר אורה, אילת, אילות", Prefs.withMine(all, mine)[0].body)   // מה שחסר בשרת - נוסף
         val all2 = listOf(Prefs.Entry("", "עדכון", "אילות, אילת, באר אורה", 2, t))
         val mine2 = listOf(Prefs.Entry("", "עדכון", "אילת, באר אורה", 2, t))
-        assertEquals("אילת, באר אורה, אילות", Prefs.withMine(all2, mine2)[0].body)
+        assertEquals("אילות, אילת, באר אורה", Prefs.withMine(all2, mine2)[0].body)   // הסדר - של השרת
     }
 
     // ---- מסך הפירוט: קבוצה לכל שעת הגעה, ובתוכה לפי אזור ----
