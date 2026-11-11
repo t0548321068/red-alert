@@ -97,7 +97,7 @@ internal fun MainActivity.showRecent() = onePage("התרעות אחרונות",
 internal fun MainActivity.fillRecent(c: LinearLayout, all: List<Prefs.Entry>, minShown: Int = 0) {
     c.removeAllViews()
     recentSegView?.let { buildRecentSeg(it) }   // מספרים מעודכנים
-    val items = if (!recentMine) all else mineOf()
+    val items = if (!recentMine) Prefs.withMine(all, mineOf()) else mineOf()
     val muted = C.MUTED2
     recentItems = items; recentShown = 0; recentDay = null; recentCard = null
     if (items.isEmpty()) {
