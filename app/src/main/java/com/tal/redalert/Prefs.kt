@@ -511,7 +511,19 @@ object Prefs {
     }
 
     /** מוסיף יישובים לשורת ההתראה האחרונה (בלי כפילויות) */
-    private fun mergeBody(body: String, add: List<String>): String {
+    /**
+     * "הכול" לפי מה שהטלפון קיבל: שורה מהארכיון שיש לה שורה תואמת ב"שלי" (אותו סוג וכותרת, עד 5 דקות) -
+     * היישובים בסדר שבו הגיעו בהתרעה, ואחריהם מה שיש רק בארכיון. כך גם יישובים שהגיעו בזמן אמת ולא נכנסו לארכיון מופיעים
+     */
+    fun withMine(all: List<Entry>, mine: List<Entry>): List<Entry> {
+        if (mine.isEmpty()) return all
+        return all.map { e ->
+            val m = mine.firstOrNull { it.level == e.level && it.title == e.title && e.ts > 0 && it.ts > 0 && Math.abs(it.ts - e.ts) < DUP_MS }
+            if (m == null) e else e.copy(body = mergeBody(m.body, e.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }))
+        }
+    }
+
+    internal fun mergeBody(body: String, add: List<String>): String {
         fun k(a: String) = nameKey(a)
         val keys = mutableSetOf<String>()
         // גם בתוך אותה שורה - כל יישוב פעם אחת

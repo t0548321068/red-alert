@@ -126,4 +126,15 @@ class AlertDisplayTest {
         assertTrue(Prefs.areaKey("אילת") != Prefs.areaKey("אילות"))
         assertTrue(Prefs.nameKey("ירושלים - צפון") != Prefs.nameKey("ירושלים - מרכז"))
     }
+
+    // ---- "הכול": סדר היישובים כמו בהתרעה שהגיעה, ויישובים שהגיעו רק בזמן אמת מצטרפים ----
+    @Test fun allListFollowsArrivalOrder() {
+        val t = 1_000_000_000L
+        val all = listOf(Prefs.Entry("", "רעידת אדמה", "בחלק מהאזורים בארץ", 0, t))
+        val mine = listOf(Prefs.Entry("", "רעידת אדמה", "בחלק מהאזורים בארץ, באר אורה, אילת, אילות", 0, t + 4000))
+        assertEquals("בחלק מהאזורים בארץ, באר אורה, אילת, אילות", Prefs.withMine(all, mine)[0].body)
+        val all2 = listOf(Prefs.Entry("", "עדכון", "אילות, אילת, באר אורה", 2, t))
+        val mine2 = listOf(Prefs.Entry("", "עדכון", "אילת, באר אורה", 2, t))
+        assertEquals("אילת, באר אורה, אילות", Prefs.withMine(all2, mine2)[0].body)
+    }
 }
