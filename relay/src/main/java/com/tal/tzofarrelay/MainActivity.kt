@@ -33,7 +33,8 @@ class MainActivity : Activity() {
     private val TEXT = Color.parseColor("#F2F2F2"); private val MUTED2 = Color.parseColor("#AAAAAA")
     private val CARD = Color.parseColor("#1B1B1D"); private val DIV = Color.parseColor("#2A2A2C")
     private val SEPV = Color.parseColor("#5C5C5E"); private val BLUE = Color.parseColor("#5AA9FF")
-    private val PILL = Color.parseColor("#4C7DFF")
+    private val PILL = Color.parseColor("#4C7DFF"); private val LINE2 = Color.parseColor("#22FFFFFF")
+    private val SOFT = Color.parseColor("#E6FFFFFF")
     private lateinit var root: LinearLayout
     private lateinit var pill: android.widget.FrameLayout
     private lateinit var pillLabel: TextView
@@ -135,14 +136,24 @@ class MainActivity : Activity() {
     override fun onResume() { super.onResume(); RelayService.start(this); ui.post(tick); ui.post(anim) }
     override fun onPause() { ui.removeCallbacks(tick); ui.removeCallbacks(anim); super.onPause() }
 
-    /** כותרת עמוד כמו "צופר חירום" במסך הראשי: 24 מודגש, אותו מרחק מהקצה ומלמעלה */
-    private fun header() {
+    /** כותרת עמוד כמו "צופר חירום" במסך הראשי: 24 מודגש, ובמסך הראשי גלגל שיניים בשמאל (46, הבהוב בלחיצה) */
+    private fun header(title: String, gear: (() -> Unit)?) {
         root.addView(LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL; minimumHeight = dp(10 + 46 + 12)
             setPadding(dp(16), dp(10), dp(16), dp(12))
-            addView(text("ממסר צופר", 24f, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) })
+            addView(text(title, 24f, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) }, LinearLayout.LayoutParams(0, -2, 1f))
+            if (gear != null) addView(ImageView(this@MainActivity).apply {
+                setImageResource(R.drawable.ic_gear)
+                imageTintList = android.content.res.ColorStateList.valueOf(TEXT)
+                setPadding(dp(11), dp(11), dp(11), dp(11))
+                background = android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(LINE2), null,
+                    GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.WHITE) })
+                setOnClickListener { gear() }
+            }, LinearLayout.LayoutParams(dp(46), dp(46)))
         })
     }
+    private var settings = false
+    @Deprecated("") override fun onBackPressed() { if (settings) { settings = false; build() } else @Suppress("DEPRECATION") super.onBackPressed() }
 
     @Volatile private var checking = false
     private var keyField: EditText? = null
@@ -151,8 +162,6 @@ class MainActivity : Activity() {
         if (Relay.key(this).isEmpty()) { state = null; circleViews = null; if (keyField == null) setup(); return }
         keyField = null
         root.removeAllViews()
-        pill.visibility = View.VISIBLE
-        header()
         val now = System.currentTimeMillis()
         val on = Relay.enabled(this) && RelayService.isRunning
         val charging = charging(); val wifi = onWifi()
@@ -174,26 +183,95 @@ class MainActivity : Activity() {
             else -> St(ORANGE, null, true, "פעיל – שולח לטלפונים", "השרתים לא עונים · " + uptime(now - Relay.activeSince))
         }
         state = st
-        val color = st.c1; val title = st.title; val sub = st.sub
-        val top = card()
-        top.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(24), dp(22), dp(24), dp(18))
-            val bg = GradientDrawable().apply { shape = GradientDrawable.OVAL }
-            val icon = ImageView(this@MainActivity).apply { setImageResource(R.drawable.ic_antenna) }
-            val circle = android.widget.FrameLayout(this@MainActivity).apply {
-                background = bg
-                addView(icon, android.widget.FrameLayout.LayoutParams(dp(50), dp(50), Gravity.CENTER))
-            }
-            addView(circle, LinearLayout.LayoutParams(dp(110), dp(110)))
-            val tv = text(title, 20f, color, true).apply { gravity = Gravity.CENTER }
-            addView(tv, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
-            circleViews = Triple(circle, bg, icon); titleView = tv
-            paint()
-            addView(text(sub, 14f, MUTED).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
-        })
-        divider(top)
-        // מתג כמו בצופר חירום: נגיעה בשורה מדליקה / מכבה
+        if (settings) settingsPage(now, on, charging, wifi, hasKey, primary, secondary) else mainPage(st, now, on, charging, wifi, primary, secondary)
+    }
+
+    /** מסך ראשי כמו בצופר חירום: כותרת עם גלגל שיניים, שורת חיוויים, וכרטיס המצב */
+    private fun mainPage(st: St, now: Long, on: Boolean, charging: Boolean, wifi: Boolean, primary: Boolean, secondary: Boolean) {
+        pill.visibility = View.GONE
+        header("ממסר צופר") { settings = true; build() }
+        // שורת חיוויים: אייקון בצבע המצב, מתחתיו מלל קטן, קווים דקים ביניהם (כמו בצופר חירום)
+        val row = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            val padV = ((7f - 22f * (1.3f - 1.15f) / 2f) * resources.displayMetrics.density).toInt()
+            setPadding(dp(6), padV, dp(6), padV)
+            background = GradientDrawable().apply { setColor(CARD); cornerRadius = dp(28).toFloat() }
+        }
         val enabled = Relay.enabled(this)
+        val srv = when { !on -> "כבוי" to MUTED; primary -> "ראשי" to GREEN; secondary -> "משני" to ORANGE; else -> "לא עונים" to RED }
+        val inds = listOf(
+            ind(if (enabled) R.drawable.ic_shield_ind else R.drawable.ic_shield_ind_off, if (enabled) "פועל" else "כבוי", if (enabled) GREEN else MUTED) { toggleRelay() },
+            ind(R.drawable.ic_antenna, srv.first, srv.second) { settings = true; build() },
+            ind(R.drawable.ic_globe, if (wifi) "Wi‑Fi" else "לא Wi‑Fi", if (wifi) GREEN else ORANGE) { settings = true; build() },
+            ind(R.drawable.ic_power, if (charging) "בטעינה" else "${battery()}%", if (charging) GREEN else ORANGE) { settings = true; build() },
+            ind(R.drawable.ic_info, "1.${Update.current(this)}", TEXT) {
+                if (!Update.busy) Update.checkAndInstall(this@MainActivity) { runOnUiThread { build() } } })
+        inds.forEachIndexed { i, v ->
+            if (i > 0) row.addView(View(this).apply { setBackgroundColor(LINE2) }, LinearLayout.LayoutParams(dp(1), dp(26)))
+            row.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        add(row)
+        // כרטיס המצב - כמו כרטיס השעון בצופר חירום: אנטנה בעיגול, מצב, שעה ותאריך
+        val c = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(16), dp(16), dp(16), dp(16))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.parseColor("#232526"), Color.parseColor("#414345"))).apply { cornerRadius = dp(24).toFloat() }
+        }
+        val bg = GradientDrawable().apply { shape = GradientDrawable.OVAL }
+        val icon = ImageView(this).apply { setImageResource(R.drawable.ic_antenna) }
+        val circle = android.widget.FrameLayout(this).apply {
+            background = bg
+            addView(icon, android.widget.FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER))
+        }
+        c.addView(circle, LinearLayout.LayoutParams(dp(56), dp(56)))
+        c.addView(text(st.title, 22f, TEXT, true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+        c.addView(text(st.sub, 14f, SOFT).apply { gravity = Gravity.CENTER })
+        c.addView(text(java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(java.util.Date(now)), 46f, TEXT).apply {
+            gravity = Gravity.CENTER; typeface = Typeface.create("sans-serif", Typeface.BOLD) }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        c.addView(text(java.text.SimpleDateFormat("EEEE, d בMMMM", java.util.Locale("iw")).format(java.util.Date(now)), 19f, SOFT).apply { gravity = Gravity.CENTER })
+        c.addView(text("התרעות שנשלחו היום: ${Relay.forwardedToday(this)}", 14f, SOFT).apply { gravity = Gravity.CENTER },
+            LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        circleViews = Triple(circle, bg, icon); titleView = null
+        paint()
+        add(c)
+        // המקורות - רק כשהממסר פעיל
+        if (on && Relay.active) {
+            val src = card()
+            src.addView(text("מקורות", 16f).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
+            Relay.sources.forEach { s ->
+                val ok = now - s.lastOk < s.everyMs * 3 + 10_000
+                row(src, s.name, "בדיקה אחרונה ${ago(s.lastOk)}", if (ok) "מחובר" else s.error.ifEmpty { "מתחבר…" }, if (ok) GREEN else RED)
+            }
+            if (Relay.fcmError.isNotEmpty()) row(src, "Firebase", "", Relay.fcmError, RED)
+            add(src)
+        }
+    }
+    /** חיווי אחד בשורה - כמו בצופר חירום: אייקון מוגדל ב-45%, מלל 12 מתחתיו */
+    private fun ind(icon: Int, label: String, color: Int, click: () -> Unit) = text(label, 12f, TEXT).apply {
+        getDrawable(icon)?.mutate()?.let { d ->
+            d.setBounds(0, 0, (d.intrinsicWidth * 1.45f).toInt(), (d.intrinsicHeight * 1.45f).toInt())
+            setCompoundDrawablesRelative(null, d, null, null)
+        }
+        compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color)
+        compoundDrawablePadding = (dp(4) - (dp(18) * 0.15f).toInt()).coerceAtLeast(0)
+        maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
+        gravity = Gravity.CENTER
+        setOnClickListener { click() }
+    }
+    private fun toggleRelay() {
+        val enabled = Relay.enabled(this)
+        Relay.setEnabled(this, !enabled)
+        if (!enabled) RelayService.start(this) else RelayService.stop(this)
+        build()
+    }
+
+    /** הגדרות: הפעלה, שרשרת הגיבוי, מצב הטלפון, עדכונים והחלפת מפתח - עם כפתור "בדיקה" צף */
+    private fun settingsPage(now: Long, on: Boolean, charging: Boolean, wifi: Boolean, hasKey: Boolean, primary: Boolean, secondary: Boolean) {
+        pill.visibility = View.VISIBLE; circleViews = null
+        header("הגדרות", null)
+        val enabled = Relay.enabled(this)
+        val top = card()
         top.addView(LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), 0, dp(18), 0)
             addView(text("ממסר", 16f).apply { includeFontPadding = false }, LinearLayout.LayoutParams(0, -2, 1f))
@@ -201,11 +279,7 @@ class MainActivity : Activity() {
             addView(View(this@MainActivity).apply { setBackgroundColor(SEPV) },
                 LinearLayout.LayoutParams(dp(1), dp(20)).apply { marginEnd = dp(12) })
             addView(OuiSwitch(this@MainActivity, enabled, false))
-            setOnClickListener {
-                Relay.setEnabled(this@MainActivity, !enabled)
-                if (!enabled) RelayService.start(this@MainActivity) else RelayService.stop(this@MainActivity)
-                build()
-            }
+            setOnClickListener { toggleRelay() }
         }, LinearLayout.LayoutParams(-1, dp(58)))
         add(top)
         note("גיבוי שלישי: שולח לטלפונים רק כששני השרתים לא עונים")
@@ -228,17 +302,6 @@ class MainActivity : Activity() {
         row(chain, "3. ממסר (הטלפון הזה)", "", if (!on) "כבוי" else if (Relay.active) "פעיל" else "בהמתנה", if (!on) MUTED else if (Relay.active) ORANGE else GREEN)
         row(chain, "מפתח Firebase", "לשליחה לטלפונים", if (hasKey) "קיים ✓" else "חסר", if (hasKey) GREEN else ORANGE)
         add(chain)
-
-        // המקורות - רק כשהממסר פעיל
-        if (on && Relay.active) {
-            val src = card()
-            Relay.sources.forEach { s ->
-                val ok = now - s.lastOk < s.everyMs * 3 + 10_000
-                row(src, s.name, "בדיקה אחרונה ${ago(s.lastOk)}", if (ok) "מחובר" else s.error.ifEmpty { "מתחבר…" }, if (ok) GREEN else RED)
-            }
-            if (Relay.fcmError.isNotEmpty()) row(src, "Firebase", "", Relay.fcmError, RED)
-            add(src)
-        }
 
         val info = card()
         row(info, "התרעות שנשלחו היום", "", Relay.forwardedToday(this).toString(), TEXT)
@@ -270,7 +333,7 @@ class MainActivity : Activity() {
     private fun setup() {
         root.removeAllViews()
         pill.visibility = View.GONE
-        header()
+        header("ממסר צופר", null)
         val c = card()
         c.addView(text("מפתח ממסר", 16f).apply { setPadding(dp(18), dp(14), dp(18), 0) })
         c.addView(text("מופיע באתר, בכרטיס \"ממסר בבית\"", 12f, MUTED).apply { setPadding(dp(18), dp(4), dp(18), 0) })
