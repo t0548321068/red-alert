@@ -257,8 +257,8 @@ class AlertService : Service() {
         internal const val ID_COUNT = 9                 // ספירה לאחור למרחב המוגן - התראה נוספת
         internal const val ID_FEED = 10                 // התרעה בפיד הארצי (לא באזורים שלי)
         internal const val CH_FEED = "feed_alerts"
-        /** מתי מציגים התראה על התרעה בפיד הארצי: ההגדרה מופעלת, לא נבחרו אזורים נוספים, ולא סיום אירוע. נבדק בבדיקות */
-        fun feedNotifies(on: Boolean, picks: List<String>, level: Int) = on && picks.isEmpty() && level != LEVEL_END
+        /** מתי מציגים התראה על התרעה בפיד הארצי: ההגדרה מופעלת ולא נבחרו אזורים נוספים - כל מה שנכנס לפיד (גם סיום). נבדק בבדיקות */
+        fun feedNotifies(on: Boolean, picks: List<String>, @Suppress("UNUSED_PARAMETER") level: Int) = on && picks.isEmpty()
         internal const val CH_COUNT = "countdown"       // בלי צליל ורטט
 
         /** התראה קבועה כשההאזנה כבויה: "לא מוגן" + כפתור הפעלה */
