@@ -708,7 +708,7 @@ class AlertService : Service() {
         // מצב שבת: כל התראה במסך מלא לדקה אחת, עם הקראה (גם אם כבויה), בלי שעות שקט
         val shabbat = Shabbat.active(this, cached = false)   // בהתרעה - תמיד בדיקה עדכנית
         val quiet = !shabbat && level != LEVEL_ALERT && Prefs.isQuietNow(this)
-        val shelterSec = shelter ?: if (level == LEVEL_ALERT) AreaData.shelterSeconds(this, areas) else null
+        val shelterSec = if (AlertUi.noShelter(title)) null else shelter ?: if (level == LEVEL_ALERT) AreaData.shelterSeconds(this, areas) else null
         // סוג התצוגה מההגדרות (במצב שבת - תמיד מסך מלא)
         val style = if (shabbat) 0 else Prefs.alertStyleFor(this, level)
         val now0 = System.currentTimeMillis()
@@ -808,14 +808,16 @@ class AlertService : Service() {
         // אחרי שנגמר הזמן להגעה - ההתראה עוברת לספירת השהייה (10 דקות)
         if (level == LEVEL_ALERT && !test) {
             main.removeCallbacks(stayNotif)
+            if (!AlertUi.noShelter(title)) {
             stayNotifPi = fullPi; stayTitle = title; stayBody = shown; stayEnd = System.currentTimeMillis() + (shelterSec ?: 0).coerceAtLeast(0) * 1000L + Prefs.STAY_MS
             main.postDelayed(stayNotif, ((shelterSec ?: 0).coerceAtLeast(0) * 1000L) + 500)
+            }
         } else if (level == LEVEL_END) main.removeCallbacks(stayNotif)
         // התראה נוספת עם ספירה לאחור: זמן התגוננות -> נשארים במרחב המוגן -> ממתינים לסיום
         if (level == LEVEL_ALERT) {
             countTitle = title; countBody = shown; countPi = fullPi; countTest = test
             countEnter = System.currentTimeMillis() + (shelterSec ?: 0).coerceAtLeast(0) * 1000L
-            countStayEnd = countEnter + Prefs.STAY_MS
+            countStayEnd = countEnter + AlertUi.stayMs(title)
             main.removeCallbacks(countNotif); main.post(countNotif)
         } else if (level == LEVEL_END) cancelCount()
 
@@ -831,8 +833,8 @@ class AlertService : Service() {
         else if (level == LEVEL_ALERT) {
             // 10 הדקות מתחילות אחרי שנגמר הזמן להגעה למרחב המוגן
             val enterMs = (shelterSec ?: 0).coerceAtLeast(0) * 1000L
-            Prefs.setStayUntil(this, System.currentTimeMillis() + enterMs + Prefs.STAY_MS)
-            main.postDelayed(stayDone, enterMs + Prefs.STAY_MS)
+            Prefs.setStayUntil(this, System.currentTimeMillis() + enterMs + AlertUi.stayMs(title))
+            main.postDelayed(stayDone, enterMs + AlertUi.stayMs(title))
         } else if (level == LEVEL_END) {
             Prefs.setStayUntil(this, 0)
         }

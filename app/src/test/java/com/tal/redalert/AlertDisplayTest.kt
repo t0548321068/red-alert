@@ -93,4 +93,13 @@ class AlertDisplayTest {
         assertFalse(AlertUi.closeToMini(1, true, true, false))     // תצוגה מקדימה - חוזרים להגדרות
         assertFalse(AlertUi.closeToMini(1, true, false, true))     // ההתרעה כבר נגמרה
     }
+
+    // ---- רעידת אדמה: בלי זמן התגוננות ובלי "נשארים במרחב המוגן" ----
+    @Test fun quakeHasNoShelterStages() {
+        val q = "רעידת אדמה"
+        assertEquals("צאו לשטח פתוח", AlertUi.head(q, AlertService.LEVEL_ALERT).second)
+        assertEquals("" to "ממתינים להודעת סיום אירוע", AlertUi.timer(AlertService.LEVEL_ALERT, -1, 1000L, 1000L, q))
+        assertEquals("היכנסו למרחב המוגן", AlertUi.head("ירי רקטות וטילים", AlertService.LEVEL_ALERT).second)
+        assertEquals("נשארים במרחב המוגן", AlertUi.timer(AlertService.LEVEL_ALERT, 0, 1000L, 1000L, "ירי רקטות וטילים")?.first)
+    }
 }

@@ -229,7 +229,7 @@ internal class ShabbatScreen(private val a: MainActivity) {
         }
         AlertUi.stageIcon(j.optString("title"), level, j.optInt("shelter", -1), firedAt).let { r ->
             if (r != aIconRes) { aIconRes = r; AlertUi.setIcon(aIcon, r) } }
-        val t = AlertUi.timer(level, j.optInt("shelter", -1), firedAt)
+        val t = AlertUi.timer(level, j.optInt("shelter", -1), firedAt, title = j.optString("title"))
         aLabel.visibility = if (t == null || t.first.isEmpty()) View.GONE else View.VISIBLE
         aTimer.visibility = if (t == null) View.GONE else View.VISIBLE
         if (t != null) {

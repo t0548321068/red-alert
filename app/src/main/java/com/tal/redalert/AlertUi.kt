@@ -12,8 +12,12 @@ object AlertUi {
     fun head(title: String, level: Int): Pair<String, String> = when (level) {
         AlertService.LEVEL_PRE -> "מבזק פיקוד העורף" to (if (title.startsWith("התרעה מקדימה - ")) title else "התרעה מקדימה")
         AlertService.LEVEL_END -> "עדכון פיקוד העורף" to "האירוע הסתיים"
-        else -> title to "היכנסו למרחב המוגן"
+        else -> title to if (noShelter(title)) "צאו לשטח פתוח" else "היכנסו למרחב המוגן"
     }
+
+    /** רעידת אדמה: בלי זמן התגוננות ובלי "נשארים במרחב המוגן" - ישר "ממתינים להודעת סיום" */
+    fun noShelter(title: String) = title.contains("רעידת אדמה")
+    fun stayMs(title: String) = if (noShelter(title)) 0L else Prefs.STAY_MS
 
     /** אייקון לפי סוג ההתרעה: מקדימה / סיום, ובאדום - לפי סוג האיום. לא מזוהה: צופר */
     fun icon(title: String, level: Int): Int = when {
@@ -47,7 +51,7 @@ object AlertUi {
      * שעון חול ב"ממתינים להודעת סיום". בשאר הרמות - כמו icon()
      */
     fun stageIcon(title: String, level: Int, shelter: Int, firedAt: Long, now: Long = System.currentTimeMillis()): Int {
-        if (level != AlertService.LEVEL_ALERT) return icon(title, level)
+        if (level != AlertService.LEVEL_ALERT || noShelter(title)) return icon(title, level)
         val enterEnd = firedAt + shelter.coerceAtLeast(0) * 1000L
         return when {
             now < enterEnd -> icon(title, level)
@@ -59,11 +63,11 @@ object AlertUi {
     private fun mmss(s: Int) = "%d:%02d".format(s / 60, s % 60)
 
     /** (כיתוב, טיימר) לרמת "ירי": זמן התגוננות -> נשארים במרחב המוגן -> ממתינים לסיום. null לשאר הרמות */
-    fun timer(level: Int, shelter: Int, firedAt: Long, now: Long = System.currentTimeMillis()): Pair<String, String>? {
+    fun timer(level: Int, shelter: Int, firedAt: Long, now: Long = System.currentTimeMillis(), title: String = ""): Pair<String, String>? {
         if (level != AlertService.LEVEL_ALERT) return null
         val enterEnd = firedAt + shelter.coerceAtLeast(0) * 1000L
         if (now < enterEnd) return "זמן התגוננות" to mmss(((enterEnd - now + 999) / 1000).toInt())
-        val left = ((enterEnd + Prefs.STAY_MS - now + 999) / 1000).toInt()
+        val left = ((enterEnd + stayMs(title) - now + 999) / 1000).toInt()
         return if (left > 0) "נשארים במרחב המוגן" to mmss(left) else "" to "ממתינים להודעת סיום אירוע"
     }
 
