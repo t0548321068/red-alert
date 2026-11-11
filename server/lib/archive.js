@@ -63,9 +63,31 @@ async function backfill() {
   try { addRows(await fetchRows('lastMonth')); } catch (_) {}
   save(); log('archive backfill', arch.size + ' events');
 }
+// התרעות שנשלחו בזמן אמת: יישובים שהגיעו בזמן אמת ולא נכנסו לארכיון של פיקוד העורף (למשל רעידת אדמה:
+// "בחלק מהאזורים בארץ" בארכיון, ואילת והערבה רק בזמן אמת) מצטרפים לשורה של אותו סוג באותו זמן (עד דקה וחצי).
+// אין שורה כזו בארכיון (עדיין) - מחכים לה עד 10 דקות; כותרת אחרת (כמו "האירוע הסתיים" במקום הנוסח המלא) לא יוצרת שורה
+const LIVE_WAIT = 10 * 60 * 1000, LIVE_NEAR = 90 * 1000;
+let live = [];
+function joinLive() {
+  if (!live.length) return 0;
+  const now = Date.now();
+  let added = 0;
+  live = live.filter(l => {
+    let best = null;
+    for (const e of arch.values()) if (e.t === l.t && Math.abs(e.ts - l.at) <= LIVE_NEAR && (!best || Math.abs(e.ts - l.at) < Math.abs(best.ts - l.at))) best = e;
+    if (!best) return now - l.at < LIVE_WAIT;
+    for (const a of l.areas) if (!best.b.has(a)) { best.b.add(a); added++; }
+    return false;
+  });
+  if (added) cache = null;
+  return added;
+}
+function addLive(title, areas, at) {
+  try { live.push({ t: title, areas, at: at || Date.now() }); if (joinLive()) save(); } catch (_) {}
+}
 /** שורות שהגיעו ממקור אחר (הממסר בבית) */
-function ingest(rows) { try { if (addRows(rows)) save(); } catch (_) {} }
-async function poll() { try { if (addRows(await fetchRows('lastDay'))) save(); } catch (_) {} }
+function ingest(rows) { try { if (addRows(rows) + joinLive()) save(); } catch (_) {} }
+async function poll() { try { if (addRows(await fetchRows('lastDay')) + joinLive()) save(); } catch (_) {} }
 
 function serve(req, res, since) {
   const c = sorted();
@@ -84,4 +106,4 @@ function start() {
   setInterval(poll, 60 * 1000);
 }
 
-module.exports = { start, serve, convert, ARCH_BASE, ingest };
+module.exports = { start, serve, convert, ARCH_BASE, ingest, addLive };
