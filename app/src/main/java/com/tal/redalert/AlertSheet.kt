@@ -92,7 +92,7 @@ object AlertSheet {
         val scroll = ScrollView(a).apply { isVerticalScrollBarEnabled = false; addView(list) }
         sheet.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
-        // גרירה: למטה - רק הכותרת והשעה (המפה גלויה); למעלה - מכסה את המפה
+        // גרירה: נעצר איפה שעוזבים - בין רק הכותרת והשעה (המפה גלויה) לבין מכסה את המפה
         var down = 0f; var start = 0f; var moved = false
         fun collapsedY() = (sheet.height - head.height - sheet.paddingBottom).toFloat().coerceAtLeast(0f)
         fun snap(up: Boolean) = sheet.animate().translationY(if (up) 0f else collapsedY()).setDuration(200).start()
@@ -106,7 +106,7 @@ object AlertSheet {
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     if (!moved) snap(sheet.translationY > collapsedY() / 2)   // לחיצה - פותח / סוגר
-                    else snap(sheet.translationY < collapsedY() / 2)
+                    // גרירה - נעצר בדיוק איפה שעזבו
                 }
             }
             true
