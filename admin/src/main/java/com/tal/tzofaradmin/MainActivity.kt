@@ -40,7 +40,7 @@ class MainActivity : Activity() {
     private val CARD = Color.parseColor("#1C1C1E"); private val LINE = Color.parseColor("#2C2C2E")
     private val BLUE = Color.parseColor("#0A84FF")
 
-    private enum class Page { MAIN, AREAS, DISTRICTS, PHRASES, SOUNDS, ORPHANS, HISTORY, ALERT, ITEM, EDITS, SEND }
+    private enum class Page { MAIN, AREAS, DISTRICTS, PHRASES, SOUNDS, ORPHANS, HISTORY, ALERT, ITEM, EDITS, SEND, ADD }
     private var page = Page.MAIN
     private val stack = ArrayDeque<Page>()
     private var filter = 0          // יישובים: 0 הכל · 1 חסרים · 2 לא נבדקו · 3 תקינים · 4 לתיקון
@@ -98,7 +98,7 @@ class MainActivity : Activity() {
             }
         }.start()
     }
-    private fun refresh() { if (page == Page.MAIN || page == Page.ITEM) show() else refreshList() }
+    private fun refresh() { if (page == Page.MAIN || page == Page.ITEM) show() else if (page != Page.ADD) refreshList() }
 
     // ---- השמעה ----
     private var player: MediaPlayer? = null
@@ -261,7 +261,7 @@ class MainActivity : Activity() {
             else -> listView?.setSelectionFromTop(pos.first, pos.second)
         }
     }
-    private fun show() { when (page) { Page.MAIN -> main(); Page.ITEM -> item(); else -> list() } }
+    private fun show() { when (page) { Page.MAIN -> main(); Page.ITEM -> item(); Page.ADD -> addPage(); else -> list() } }
 
     // ---- כותרת ----
     private fun header(root: LinearLayout, title: String, back: Boolean) {
@@ -550,7 +550,7 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER; setPadding(dp(16), dp(8), dp(16), dp(18))
                 addView(text("הוספה", 16f, Color.WHITE, true).apply {
                     gravity = Gravity.CENTER; includeFontPadding = false; background = round(LINE, 23)
-                    setOnClickListener { askText("מה להוסיף לטיפול?", "") { t -> if (t.isNotBlank()) sendOp(JSONObject().put("op", "task").put("text", t), "נוסף") } }
+                    setOnClickListener { go(Page.ADD) }
                 }, LinearLayout.LayoutParams(0, dp(46), 1f))
                 addView(text("שליחה לטיפול", 16f, Color.WHITE, true).apply {
                     gravity = Gravity.CENTER; includeFontPadding = false
@@ -954,6 +954,44 @@ class MainActivity : Activity() {
             }, lp())
         }
     }
+    // ---- הוספה ידנית לטיפול: כרטיס עם סוג, על מה, ומה לעשות ----
+    private var addKind = "יישוב"
+    private fun addPage() {
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(24)) }
+        setContentView(ScrollView(this).apply { setBackgroundColor(Color.BLACK); addView(root) })
+        header(root, "הוספה לטיפול", true)
+        root.addView(label("סוג"))
+        val chips = LinearLayout(this).apply { setPadding(dp(12), 0, dp(12), dp(10)) }
+        listOf("יישוב", "אזור", "הקראה", "צליל", "אחר").forEach { k ->
+            chips.addView(text(k, 14f).apply {
+                background = round(if (k == addKind) BLUE else LINE, 16); setPadding(dp(16), dp(8), dp(16), dp(8))
+                setOnClickListener { addKind = k; addPage() }
+            }, LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(6) })
+        }
+        root.addView(HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; addView(chips) })
+        fun field(hint: String, lines: Int) = EditText(this).apply {
+            this.hint = hint; setHintTextColor(MUTED); setTextColor(Color.WHITE); textSize = 16f; background = null
+            minLines = lines; if (lines == 1) setSingleLine(); setPadding(dp(18), dp(14), dp(18), dp(14))
+        }
+        root.addView(label("על מה"))
+        val subject = field(when (addKind) { "יישוב" -> "שם היישוב"; "אזור" -> "שם האזור"; "הקראה" -> "איזה משפט / הקלטה"; "צליל" -> "איזה צליל"; else -> "נושא" }, 1)
+        root.addView(card().apply { addView(subject) }, lp())
+        root.addView(label("מה לעשות"))
+        val desc = field("למשל: להוסיף יישוב חדש, לתקן את השם, ההגייה לא נכונה…", 4)
+        root.addView(card().apply { addView(desc) }, lp())
+        val err = text("", 13f, RED).apply { setPadding(dp(24), 0, dp(24), 0) }
+        root.addView(err)
+        root.addView(text("הוספה", 16f, Color.WHITE, true).apply {
+            gravity = Gravity.CENTER; includeFontPadding = false; background = round(Color.parseColor("#4C7DFF"), 23)
+            setOnClickListener {
+                val s = subject.text.toString().trim(); val d = desc.text.toString().trim()
+                if (d.isEmpty()) { err.text = "כתוב מה לעשות"; return@setOnClickListener }
+                val t = "$addKind" + (if (s.isNotEmpty()) " · $s" else "") + " – $d"
+                sendOp(JSONObject().put("op", "task").put("text", t), "נוסף") { if (page == Page.ADD) onBackPressed() }
+            }
+        }, LinearLayout.LayoutParams(-1, dp(46)).apply { setMargins(dp(40), dp(16), dp(40), 0) })
+    }
+
     private fun label(t: String) = text(t, 13f, MUTED).apply { setPadding(dp(24), dp(6), dp(24), dp(6)) }
     private fun infoRow(c: LinearLayout, k: String, v: String) {
         if (c.childCount > 0) divider(c)
