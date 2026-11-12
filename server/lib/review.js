@@ -25,8 +25,9 @@ function withState() {
     if ((st === 'pending' || st === 'rejected') && (vars > 0 || fresh(candFile(r), r)) && !(r.rejectedAt && !newerThan(r, r.rejectedAt))) st = 'ready';
     r.state = st;
     // בשליחה לטיפול: מה קורה עם ההקלטה עכשיו
+    const pr = r.prog && Date.now() - r.prog.at < 10 * 60 * 1000 ? r.prog : null;
     const msg = st === 'ready' ? `${vars || 1} גרסאות בקול אבר מוכנות – תבחר אחת בדף ההקלטה`
-      : st === 'pending' ? 'יוצר גרסאות בקול אבר (אוטומטי, עד כחצי שעה)' : null;
+      : st === 'pending' ? (pr ? `${pr.p}% · ${pr.step}` : 'בתור להכנת גרסאות בקול אבר') : null;
     if (msg) for (const b of data.batches || []) for (const i of (b.items || []))
       if ((i.t === 'rec' || i.t === 'fix') && i.k === key && i.state !== 'done') { if (i.state === 'sent' || i.state === 'skipped') i.state = 'working'; i.msg = msg; }
   }
@@ -273,6 +274,14 @@ function jobs(res) {
   }
   res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(out));
 }
+/** התקדמות חיה מהבנייה בגיטהאב: אחוז ושלב לכל הקלטה */
+function progress(res, u) {
+  const tok = String(u.searchParams.get('t') || '');
+  const e = Object.entries(data.recs).find(([, r]) => r.upTok && r.upTok === tok);
+  if (!e) { res.writeHead(404); return res.end(); }
+  e[1].prog = { p: Math.max(0, Math.min(100, +u.searchParams.get('p') || 0)), step: str(u.searchParams.get('s'), 100), at: Date.now() };
+  save(); res.writeHead(200); res.end('ok');
+}
 function upload(req, res, u) {
   const tok = String(u.searchParams.get('t') || ''), v = Math.max(1, Math.min(5, +u.searchParams.get('v') || 1));
   const e = Object.entries(data.recs).find(([, r]) => r.upTok && r.upTok === tok);
@@ -306,4 +315,4 @@ function handle(req, res, u) {
   });
 }
 
-module.exports = { handle, pub, jobs, upload };
+module.exports = { handle, pub, jobs, upload, progress };
