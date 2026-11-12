@@ -65,9 +65,10 @@ function applyRec(key) {
       i.state = 'done'; i.at = Date.now(); i.msg = 'נכנס – גרסה ' + (r.chosen || 1) + ' בקול אבר, הטלפונים מורידים אותה';
       b.state = b.items.every(x => x.state === 'done' || x.state === 'skipped') ? 'done' : 'working';
     }
+    // אישור = נכנס לשרת והכרטיס חוזר לרגיל, בלי עקבות: בלי לתיקון, בלי הערה, בלי ההקלטה הפתוחה
     if (data.status[key] === 'fix') delete data.status[key];
-    delete data.notes[key];
-    data.done[key] = Date.now();
+    delete data.notes[key]; delete data.done[key];
+    setTimeout(() => { const x = data.recs[key]; if (x && x.state === 'approved') { try { fs.unlinkSync(path.join(REC_DIR, x.f)); } catch (_) {} delete data.recs[key]; save(); } }, 0);
   }
   catch (e) { log('review apply failed', e.message); }
 }
@@ -98,7 +99,7 @@ function applyEditsIn(b) {
     if (applyEdit({ key: i.key, field: i.field, to: i.to })) {
       i.state = 'done'; i.at = Date.now(); i.msg = 'נכנס – הטלפונים מקבלים את השינוי מהשרת';
       if (data.status[i.key] === 'fix') delete data.status[i.key];
-      delete data.notes[i.key]; data.done[i.key] = Date.now();
+      delete data.notes[i.key]; delete data.done[i.key];
       for (const x of b.items) if (x.t === 'fix' && x.k === i.key && x.state !== 'done') { x.state = 'done'; x.at = Date.now(); x.msg = i.msg; }
     }
   }
@@ -110,7 +111,7 @@ function markDone(key, msg) {
   if (data.status[key] === 'fix') delete data.status[key];
   delete data.notes[key];   // ההערה היא בקשת השינוי - כשבוצע, נמחקת
   data.edits = data.edits.filter(e => e.key !== key);
-  data.done[key] = Date.now();
+  delete data.done[key];
   for (const b of data.batches) for (const i of (b.items || [])) {
     const ik = i.t === 'edit' ? i.key : i.k;
     if (ik === key && i.state !== 'done') { i.state = 'done'; i.at = Date.now(); if (msg) i.msg = msg; }
@@ -121,11 +122,10 @@ function markDone(key, msg) {
 function settle() {
   for (const b of data.batches) for (const i of (b.items || [])) if (i.state === 'done') {
     const key = i.t === 'edit' ? i.key : i.k;
-    if (i.t === 'edit') { data.edits = data.edits.filter(e => e.id !== i.k); data.done[key] = data.done[key] || i.at || Date.now(); }
-    if ((i.t === 'fix' || i.t === 'rec') && !data.done[key]) { if (data.status[key] === 'fix') delete data.status[key]; delete data.notes[key]; data.done[key] = i.at || Date.now(); }
+    if (i.t === 'edit') data.edits = data.edits.filter(e => e.id !== i.k);
   }
 }
-setTimeout(() => { for (const b of data.batches) applyEditsIn(b); settle(); save(); }, 4000);
+setTimeout(() => { data.done = {}; for (const b of data.batches) applyEditsIn(b); settle(); save(); }, 4000);
 
 /** פעולה אחת מהאפליקציה. מחזיר את המצב המלא, או null אם הבקשה לא תקינה */
 function apply(op) {
