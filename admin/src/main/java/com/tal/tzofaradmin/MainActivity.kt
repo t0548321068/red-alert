@@ -318,7 +318,7 @@ class MainActivity : Activity() {
 
     // ---- רשימות ----
     private class Item(val title: String, val sub: String, val path: String?, val key: String?, val bad: Boolean,
-        val seq: List<String>? = null, val tap: (() -> Unit)? = null, val chevron: Boolean = false)
+        val seq: List<String>? = null, val tap: (() -> Unit)? = null, val chevron: Boolean = false, val header: Boolean = false)
     private var items: List<Item> = emptyList()
     private var adapter: BaseAdapter? = null
     private var countView: TextView? = null
@@ -365,7 +365,9 @@ class MainActivity : Activity() {
             override fun getCount() = items.size
             override fun getItem(p: Int) = items[p]
             override fun getItemId(p: Int) = p.toLong()
-            override fun getView(p: Int, v: View?, parent: ViewGroup) = row(items[p], p == 0, p == items.size - 1)
+            override fun getView(p: Int, v: View?, parent: ViewGroup) =
+                if (items[p].header) text(items[p].title, 13f, MUTED).apply { setPadding(dp(24), dp(if (p == 0) 2 else 14), dp(24), dp(6)) }
+                else row(items[p], p == 0 || items[p - 1].header, p == items.size - 1 || items[p + 1].header)
         }
         root.addView(ListView(this).apply {
             divider = null; selector = android.graphics.drawable.ColorDrawable(Color.TRANSPARENT)
@@ -399,8 +401,10 @@ class MainActivity : Activity() {
                     (if (fix > 0) " · לתיקון $fix" else "") + (if (miss > 0) " · חסרים $miss" else ""),
                     null, null, miss > 0, tap = { district = d; filter = 0; query = ""; go(Page.AREAS) }, chevron = true)
             }
-            Page.PHRASES -> Data.phrases.map {
-                Item(it.title, it.path.removePrefix("voice/") + note(it.path), it.path, it.path, false, tap = { openItem(it.path, it.path, null) })
+            Page.PHRASES -> Data.phrases.groupBy { it.group }.flatMap { (g, list) ->
+                listOf(Item(g, "", null, null, false, header = true)) + list.map {
+                    Item(it.title, it.path.removePrefix("voice/") + note(it.path), it.path, it.path, false, tap = { openItem(it.path, it.path, null) })
+                }
             }
             Page.SOUNDS -> Data.sounds.map {
                 Item(it.title, it.path.substringAfterLast('/') + note(it.path), it.path, it.path, false, tap = { openItem(it.path, it.path, null) })
@@ -439,6 +443,7 @@ class MainActivity : Activity() {
             page == Page.EDITS -> if (items.isEmpty()) "אין שינויים ממתינים" else "לא נכנסים לטלפונים עד שמאשרים ומכניסים אותם"
             page == Page.ALERT -> ""
             page == Page.DISTRICTS -> "${items.size} אזורים"
+            page == Page.PHRASES -> "${items.count { !it.header }} הקלטות"
             else -> "${items.size} פריטים"
         }
         adapter?.notifyDataSetChanged()

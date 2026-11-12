@@ -16,7 +16,7 @@ object Data {
     class Area(val name: String, val district: String?, val shelter: Int?, val voice: String?, val voiceOk: Boolean) {
         val missing get() = !voiceOk || district == null || shelter == null
     }
-    class Clip(val title: String, val path: String)
+    class Clip(val title: String, val path: String, val group: String = "")
 
     @Volatile var areas: List<Area> = emptyList(); private set
     /** אזור (מחוז) → היישובים שבו, לפי הא"ב */
@@ -80,8 +80,12 @@ object Data {
         orphans = vIdx.keys().asSequence().filter { !all.has(it) }.map { Clip(it, "voice/" + vIdx.getString(it)) }.toList()
 
         phrases = listOf("phrases", "extra").flatMap { d ->
-            (c.assets.list("voice/$d") ?: emptyArray()).sorted().map { Clip(PHRASES[it.removeSuffix(".mp3")] ?: it, "voice/$d/$it") }
-        }
+            (c.assets.list("voice/$d") ?: emptyArray()).sorted().map {
+                val k = it.removeSuffix(".mp3")
+                Clip(PHRASES[k] ?: it, "voice/$d/$it", GROUPS.firstOrNull { g -> k in g.second }?.first ?: "אחר")
+            }
+        }.sortedWith(compareBy({ c -> GROUPS.indexOfFirst { it.first == c.group }.let { if (it < 0) GROUPS.size else it } },
+            { c -> GROUPS.flatMap { it.second }.indexOf(c.path.substringAfterLast('/').removeSuffix(".mp3")) }))
         sounds = (c.assets.list("sounds") ?: emptyArray()).sorted().map {
             Clip(SOUNDS[it.substringBeforeLast('.')] ?: it, "sounds/$it")
         }
@@ -157,6 +161,14 @@ object Data {
         }
         return out
     }
+
+    /** קטגוריות במשפטי ההקראה, לפי הסדר */
+    val GROUPS = listOf(
+        "סוג ההתרעה" to listOf("red_alert", "early_warning", "event_ended", "event_end", "launches_detected", "mivzak_pikud_haoref", "update_pikud_haoref"),
+        "סוג האירוע" to listOf("rockets", "hostile_aircraft", "terrorist_infiltration", "earthquake", "tsunami", "hazardous_materials", "radiological", "nonconventional"),
+        "זמן התגוננות" to listOf("time_immediate", "time_15s", "time_30s", "time_45s", "time_1min", "time_1_5min"),
+        "אחר" to listOf("in_areas", "more_areas", "siren"),
+    )
 
     private val SOUNDS = mapOf("app_siren" to "צופר", "app_beep" to "צפצוף")
     private val PHRASES = mapOf(
