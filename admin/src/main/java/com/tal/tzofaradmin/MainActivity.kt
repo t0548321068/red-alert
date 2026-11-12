@@ -99,7 +99,16 @@ class MainActivity : Activity() {
     private var player: MediaPlayer? = null
     private var playing: String? = null
     private var queue: List<String> = emptyList()
+    private val tts by lazy { Tts(this) }
+    /** עדכון בלי הקלטה - בקול של הטלפון, כמו בצופר חירום */
+    private fun say(key: String, text: String) {
+        if (playing == key) { stop(); return }
+        stop()
+        playing = key; refreshList()
+        tts.speak(text) { if (playing == key) stop() }
+    }
     private fun stop() {
+        if (playing != null) tts.stop()
         player?.let { try { it.stop() } catch (_: Exception) { }; it.release() }
         val was = playing != null
         player = null; playing = null; queue = emptyList()
@@ -324,7 +333,7 @@ class MainActivity : Activity() {
     // ---- רשימות ----
     private class Item(val title: String, val sub: String, val path: String?, val key: String?, val bad: Boolean,
         val seq: List<String>? = null, val tap: (() -> Unit)? = null, val chevron: Boolean = false, val header: Boolean = false,
-        val ok: Boolean = false)
+        val ok: Boolean = false, val say: String? = null)
     private var items: List<Item> = emptyList()
     private var adapter: BaseAdapter? = null
     private var countView: TextView? = null
@@ -440,8 +449,9 @@ class MainActivity : Activity() {
             }.map { a ->
                 val names = a.areas.take(3).joinToString(", ") + if (a.areas.size > 3) " ועוד ${a.areas.size - 3}" else ""
                 val missing = a.areas.any { r -> Data.match(r).none { it.voiceOk } }
+                val c = Data.clips(a)
                 Item(a.title, when_(a.ts) + " · " + names, "alert:${a.ts}:${a.raw}", null, missing,
-                    seq = Data.clips(a) ?: emptyList(), tap = { alert = a; go(Page.ALERT) })
+                    seq = c ?: emptyList(), say = if (c == null) Tts.textFor(a.raw, a.areas) else null, tap = { alert = a; go(Page.ALERT) })
             }
             Page.ALERT -> alert?.let { a ->
                 val c = Data.clips(a)
@@ -450,8 +460,8 @@ class MainActivity : Activity() {
                     if (notFound.isEmpty()) Item("כל ${a.areas.size} היישובים מופיעים ברשימה", "נבדק מול רשימת היישובים של צופר חירום", null, null, false, chevron = false, header = false, ok = true)
                     else Item("${notFound.size} מתוך ${a.areas.size} לא מופיעים ברשימה", notFound.joinToString(", "), null, null, true))
                 check + listOf(Item("הקראה מלאה", when_(a.ts) + " · " + a.areas.size + " יישובים" +
-                    (if (c == null) "\nעדכון - באפליקציה מוקרא בקול של הטלפון" else ""),
-                    if (c == null) null else "alert:${a.ts}:${a.raw}", null, false, seq = c ?: emptyList())) +
+                    (if (c == null) "\nעדכון - מוקרא בקול של הטלפון, כמו באפליקציה" else ""),
+                    "alert:${a.ts}:${a.raw}", null, false, seq = c ?: emptyList(), say = if (c == null) Tts.textFor(a.raw, a.areas) else null)) +
                 a.areas.map { r ->
                     val m = Data.match(r); val v = m.firstOrNull { it.voiceOk }
                     val sub = if (m.isEmpty()) "לא נמצא ברשימת היישובים" else if (v == null) "אין הקראה"
@@ -510,14 +520,14 @@ class MainActivity : Activity() {
             else if (it.ok) addView(icon(R.drawable.ic_ok, GREEN, 24))
             else if (page == Page.ALERT && it.path == null && it.key == null && it.seq == null) addView(icon(R.drawable.ic_warn, RED, 24))
             else {
-                val path = it.path; val seq = it.seq
+                val path = it.path; val seq = it.seq; val sayText = it.say
                 addView(FrameLayout(this@MainActivity).apply {
                     background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(LINE) }
                     addView(ImageView(this@MainActivity).apply {
                         setImageResource(if (path != null && playing == path) R.drawable.ic_stop else R.drawable.ic_play)
                         setColorFilter(if (path == null) MUTED else Color.WHITE)
                     }, FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))
-                    if (path != null) setOnClickListener { if (seq != null) play(path, seq) else play(path) }
+                    if (path != null) setOnClickListener { if (sayText != null) say(path, sayText) else if (seq != null) play(path, seq) else play(path) }
                 }, LinearLayout.LayoutParams(dp(38), dp(38)))
             }
         }

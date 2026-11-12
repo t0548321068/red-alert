@@ -141,9 +141,10 @@ class SimActivity : Activity() {
         root.addView(buttons)
         setContentView(root)
 
-        // רק ההקראה, כמו באפליקציה (בלי צליל)
-        queue = Data.clips(a) ?: emptyList()
-        next()
+        // רק ההקראה, כמו באפליקציה (בלי צליל). עדכון בלי הקלטה - בקול של הטלפון
+        val clips = Data.clips(a)
+        if (clips != null) { queue = clips; next() }
+        else { tts = Tts(this); tts?.speak(Tts.textFor(a.raw, a.areas)) { } }
     }
 
     private fun next() {
@@ -161,9 +162,11 @@ class SimActivity : Activity() {
             player = mp; mp.prepareAsync()
         } catch (_: Exception) { mp.release(); player = null; next() }
     }
-    private fun stopSound() { player?.let { try { it.stop() } catch (_: Exception) { }; it.release() }; player = null; queue = emptyList() }
+    private var tts: Tts? = null
+    private fun stopSound() {
+        tts?.stop() player?.let { try { it.stop() } catch (_: Exception) { }; it.release() }; player = null; queue = emptyList() }
 
-    override fun onDestroy() { ui.removeCallbacksAndMessages(null); stopSound(); super.onDestroy() }
+    override fun onDestroy() { ui.removeCallbacksAndMessages(null); stopSound(); tts?.shutdown(); super.onDestroy() }
 }
 
 /** שורות של תגיות שנשברות לשורה הבאה כשאין מקום (מימין לשמאל), ממורכזות */
