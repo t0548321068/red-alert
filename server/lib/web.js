@@ -140,7 +140,7 @@ function handle(req, res, u, state) {
   if (p === '/api/message' && req.method === 'POST') { devices.sendMessage(req, res); return true; }
   if (p === '/api/relay') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(require('./relay').status())); return true; }
   // אפליקציית "ניהול צופר": סימונים, הערות והצעות שינוי ליישובים
-  if (p === '/api/review') { require('./review').handle(req, res); return true; }
+  if (p === '/api/review' || p === '/api/review/rec') { require('./review').handle(req, res, u); return true; }
   if (p === '/api/devices') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(devices.list())); return true; }
   if (p === '/api/logout') {
     res.writeHead(302, { Location: u.searchParams.get('to') === 'app' ? '/app/' : '/', 'Set-Cookie': 'tz=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict' }); res.end(); return true;
