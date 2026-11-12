@@ -208,15 +208,15 @@ class MainActivity : Activity() {
         super.onRequestPermissionsResult(code, perms, res)
         if (code == 7) { if (res.firstOrNull() == android.content.pm.PackageManager.PERMISSION_GRANTED) startRec() else toast("בלי הרשאת מיקרופון אי אפשר להקליט") }
     }
-    /** השמעת ההקלטה שלך מהשרת */
-    private fun playMine(key: String) {
-        val k = "mine:$key"
+    /** השמעת ההקלטה שלך (או הגרסה בקול אבר - cand) מהשרת */
+    private fun playMine(key: String, cand: Boolean = false) {
+        val k = (if (cand) "cand:" else "mine:") + key
         if (playing == k) { stop(); return }
         stop()
         val mp = MediaPlayer()
         mp.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).build())
         try {
-            mp.setDataSource(this, Uri.parse(Review.recUrl(key)), Review.cookie(this))
+            mp.setDataSource(this, Uri.parse(if (cand) Review.candUrl(key) else Review.recUrl(key)), Review.cookie(this))
             mp.setOnPreparedListener { it.start() }
             mp.setOnCompletionListener { if (player === it) stop() }
             mp.setOnErrorListener { p, _, _ -> if (player === p) { stop(); toast("ההקלטה לא נפתחה") }; true }
@@ -339,7 +339,9 @@ class MainActivity : Activity() {
                 val dList = Data.districts.keys.count { listChecked(districtListKey(it)) }
                 nav(this, R.drawable.ic_listcheck, "יישובים שנבדקו ברשימה", "${n.format(inList)}/${n.format(a.size)}", if (inList == a.size) BLUE else Color.WHITE) { areasWith(6) }
                 nav(this, R.drawable.ic_listcheck, "אזורים שנבדקו ברשימה", "$dList/${Data.districts.size}", if (dList == Data.districts.size) BLUE else Color.WHITE) { go(Page.DISTRICTS) }
-                nav(this, R.drawable.ic_mic, "הקלטות הגייה שלך", Review.recs.size.toString(), if (Review.recs.isEmpty()) MUTED else Color.WHITE, false) { }
+                val ready = Review.recs.values.count { it.state == "ready" }
+                nav(this, R.drawable.ic_mic, "הקלטות הגייה שלך", Review.recs.size.toString() + (if (ready > 0) " · $ready מוכנות לאישור" else ""),
+                    if (ready > 0) GREEN else if (Review.recs.isEmpty()) MUTED else Color.WHITE, Review.recs.isNotEmpty()) { areasWith(7) }
                 nav(this, R.drawable.ic_edit, "שינויים ממתינים לאישור", Review.edits.size.toString(),
                     if (Review.edits.isEmpty()) MUTED else ORANGE, Review.edits.isNotEmpty()) { go(Page.EDITS) }
                 if (!Review.online) nav(this, R.drawable.ic_warn, "הסימונים לא נטענו מהשרת", "", ORANGE, false) { }
@@ -456,7 +458,7 @@ class MainActivity : Activity() {
         }
         if (page == Page.AREAS) {
             val chips = LinearLayout(this).apply { setPadding(dp(12), 0, dp(12), dp(10)) }
-            listOf("הכל", "חסרים", "לא נבדקו", "תקינים", "לתיקון", "נבדקו ברשימה", "לא נבדקו ברשימה").forEachIndexed { i, t ->
+            listOf("הכל", "חסרים", "לא נבדקו", "תקינים", "לתיקון", "נבדקו ברשימה", "לא נבדקו ברשימה", "הקלטות שלי").forEachIndexed { i, t ->
                 chips.addView(text(t, 13f).apply {
                     background = round(if (i == filter) BLUE else LINE, 16); setPadding(dp(14), dp(7), dp(14), dp(7))
                     setOnClickListener { filter = i; list() }
@@ -511,11 +513,11 @@ class MainActivity : Activity() {
                 (district == null || it.district == district) &&
                 (query.isEmpty() || it.name.contains(query)) &&
                     when (filter) { 1 -> it.missing; 2 -> statusOf(it.name) == ""; 3 -> statusOf(it.name) == "ok"; 4 -> statusOf(it.name) == "fix"
-                        5 -> listChecked(listKey(it.name)); 6 -> !listChecked(listKey(it.name)); else -> true }
+                        5 -> listChecked(listKey(it.name)); 6 -> !listChecked(listKey(it.name)); 7 -> Review.recs.containsKey(it.name); else -> true }
             }.map { a ->
                 val sub = listOf(a.district ?: "אין מחוז", shelter(a.shelter)).joinToString(" · ") +
                     (if (!a.voiceOk) " · אין הקראה" else "") + (a.voice?.let { "\n" + it.substringAfterLast('/') } ?: "") +
-                    (if (Review.recs.containsKey(a.name)) " · הקלטה שלך" else "") + note(a.name)
+                    (Review.recs[a.name]?.let { r -> " · הקלטה שלך: " + when (r.state) { "ready" -> "מוכן לאישור"; "approved" -> "אושר"; "rejected" -> "נדחה"; else -> "ממתין" } } ?: "") + note(a.name)
                 Item(a.name, sub, a.voice?.takeIf { a.voiceOk }, a.name, a.missing, tap = { openItem(a.name, a.voice?.takeIf { a.voiceOk }, a) },
                     listKey = listKey(a.name))
             }
@@ -710,7 +712,35 @@ class MainActivity : Activity() {
                 })
                 recBusy -> addView(text("שומר…", 15f, MUTED).apply { setPadding(dp(18), dp(14), dp(18), dp(14)) })
                 has != null -> {
-                    infoRow(this, "הוקלט", when_(has))
+                    infoRow(this, "הוקלט", when_(has.at))
+                    divider(this)
+                    val (st, stColor) = when (has.state) {
+                        "ready" -> "מוכן לאישור" to GREEN; "approved" -> "אושר – נכנס לטלפונים" to BLUE
+                        "rejected" -> "נדחה – אכין גרסה חדשה" to RED; else -> "ממתין – אכין גרסה בקול אבר" to ORANGE
+                    }
+                    addView(LinearLayout(this@MainActivity).apply {
+                        setPadding(dp(18), dp(13), dp(18), dp(13))
+                        addView(text("מצב", 15f), LinearLayout.LayoutParams(0, -2, 1f)); addView(text(st, 14f, stColor, true))
+                    })
+                    if (has.state != "pending") {
+                        divider(this)
+                        addView(text(if (playing == "cand:$itemKey") "עצירה" else "השמעת הגרסה בקול אבר", 15f, BLUE, true).apply {
+                            setPadding(dp(18), dp(14), dp(18), dp(14)); setOnClickListener { playMine(itemKey, true) } })
+                    }
+                    if (has.state == "ready") {
+                        divider(this)
+                        addView(LinearLayout(this@MainActivity).apply {
+                            setPadding(dp(12), dp(10), dp(12), dp(12))
+                            addView(text("אישור", 15f, Color.WHITE, true).apply {
+                                gravity = Gravity.CENTER; setPadding(0, dp(11), 0, dp(11)); background = round(Color.parseColor("#1E5631"), 18)
+                                setOnClickListener { sendOp(Review.op("approve", itemKey), "אושר – אכניס את הגרסה החדשה") }
+                            }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(8) })
+                            addView(text("לא טוב", 15f, Color.WHITE, true).apply {
+                                gravity = Gravity.CENTER; setPadding(0, dp(11), 0, dp(11)); background = round(Color.parseColor("#6B1D1A"), 18)
+                                setOnClickListener { sendOp(Review.op("reject", itemKey), "נדחה – אכין גרסה חדשה") }
+                            }, LinearLayout.LayoutParams(0, -2, 1f))
+                        })
+                    }
                     divider(this)
                     addView(text(if (playing == "mine:$itemKey") "עצירה" else "השמעת ההקלטה שלך", 15f, BLUE, true).apply {
                         setPadding(dp(18), dp(14), dp(18), dp(14)); setOnClickListener { playMine(itemKey) } })

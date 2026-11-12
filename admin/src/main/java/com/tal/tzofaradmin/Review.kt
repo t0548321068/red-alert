@@ -17,8 +17,9 @@ object Review {
     @Volatile var status: Map<String, String> = emptyMap(); private set
     @Volatile var notes: Map<String, String> = emptyMap(); private set
     @Volatile var edits: List<Edit> = emptyList(); private set
-    /** הקלטות ההגייה שלך: מפתח (שם יישוב / נתיב הקלטה) → מתי הוקלט */
-    @Volatile var recs: Map<String, Long> = emptyMap(); private set
+    /** הקלטת הגייה שלך: מתי הוקלטה, ומצב: pending ממתין · ready מוכן לאישור · approved אושר · rejected נדחה */
+    class Rec(val at: Long, val state: String)
+    @Volatile var recs: Map<String, Rec> = emptyMap(); private set
     @Volatile var online = false; private set
 
     private fun sp(c: Context) = c.getSharedPreferences("admin", Context.MODE_PRIVATE)
@@ -69,10 +70,12 @@ object Review {
         edits = (0 until a.length()).map { a.getJSONObject(it) }.filter { it.optString("state") == "pending" }.map {
             Edit(it.getString("id"), it.getString("key"), it.getString("field"), it.optString("from"), it.optString("to"), it.optLong("at"))
         }.sortedByDescending { it.at }
-        recs = o.optJSONObject("recs")?.let { j -> j.keys().asSequence().associateWith { j.getJSONObject(it).optLong("at") } } ?: emptyMap()
+        recs = o.optJSONObject("recs")?.let { j -> j.keys().asSequence().associateWith {
+            val r = j.getJSONObject(it); Rec(r.optLong("at"), r.optString("state", "pending")) } } ?: emptyMap()
         online = true
     }
 
+    fun candUrl(key: String) = "$SITE/api/review/cand?key=" + java.net.URLEncoder.encode(key, "UTF-8")
     fun recUrl(key: String) = "$SITE/api/review/rec?key=" + java.net.URLEncoder.encode(key, "UTF-8")
     fun cookie(c: Context) = mapOf("Cookie" to "tz=" + (sp(c).getString("token", "") ?: ""))
 
