@@ -109,7 +109,7 @@ function apply(op) {
       { const t = str(op.text, 1000); const changed = (data.notes[key] || '') !== t; if (t) data.notes[key] = t; else delete data.notes[key];
         // יש הקלטה שעוד לא נבחרה לה גרסה - מכינים מחדש לפי ההערה החדשה
         const r = data.recs[key];
-        if (changed && r && ['pending', 'ready', 'rejected'].includes(r.state)) { r.state = 'pending'; r.since = Date.now(); r.prog = null; r.retried = false; delete r.rejectedAt; } }
+        if (changed && r && ['pending', 'ready', 'rejected'].includes(r.state)) { r.state = 'pending'; r.since = Date.now(); r.prog = null; r.retried = false; delete r.rejectedAt; delete r.vtext; } }
       break;
     case 'edit':
       if (!key || !FIELDS.has(op.field)) return null;
@@ -297,7 +297,7 @@ function jobs(res) {
     if (r.state !== 'pending' && !(r.state === 'rejected' && !r.retried)) continue;
     const texts = textsFor(k); if (!texts) continue;
     if (!r.upTok) { r.upTok = crypto.randomBytes(12).toString('hex'); save(); }
-    out.push({ token: r.upTok, name: r.f.replace(/\.m4a$/, ''), texts });
+    out.push({ token: r.upTok, name: r.f.replace(/\.m4a$/, ''), texts, key: k, note: str(data.notes[k], 200), nik: texts[0].text, plain: texts[1].text });
   }
   res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(out));
 }
@@ -307,7 +307,16 @@ function progress(res, u) {
   const e = Object.entries(data.recs).find(([, r]) => r.upTok && r.upTok === tok);
   if (!e) { res.writeHead(404); return res.end(); }
   e[1].prog = { p: Math.max(0, Math.min(100, +u.searchParams.get('p') || 0)), step: str(u.searchParams.get('s'), 100), at: Date.now() };
+  if (u.searchParams.get('h')) e[1].heard = str(u.searchParams.get('h'), 200);   // מה פוענח מההקלטה שלך
   save(); res.writeHead(200); res.end('ok');
+}
+/** ההקלטה שלך - לפענוח בבנייה בגיטהאב (עם המפתח החד-פעמי של ההקלטה) */
+function recFor(res, u) {
+  const tok = String(u.searchParams.get('t') || '');
+  const e = Object.entries(data.recs).find(([, r]) => r.upTok && r.upTok === tok);
+  if (!e) { res.writeHead(404); return res.end(); }
+  res.writeHead(200, { 'Content-Type': 'audio/mp4' });
+  fs.createReadStream(path.join(REC_DIR, e[1].f)).on('error', () => res.end()).pipe(res);
 }
 function upload(req, res, u) {
   const tok = String(u.searchParams.get('t') || ''), v = Math.max(1, Math.min(5, +u.searchParams.get('v') || 1));
@@ -320,6 +329,7 @@ function upload(req, res, u) {
     if (big || n < 500 || !(b[0] === 0xff || b.slice(0, 3).toString() === 'ID3')) { res.writeHead(400); return res.end(); }
     fs.mkdirSync(CAND_DIR, { recursive: true });
     fs.writeFileSync(candFile(e[1], v), b);
+    e[1].vtext = e[1].vtext || {}; e[1].vtext[v] = str(u.searchParams.get('txt'), 200);   // מאיזה טקסט נוצרה הגרסה
     if (e[1].state === 'rejected') { e[1].state = 'pending'; e[1].retried = true; }
     save(); log('review: גרסה ' + v + ' בקול אבר נוצרה אוטומטית');
     res.writeHead(200); res.end('ok');
@@ -342,4 +352,4 @@ function handle(req, res, u) {
   });
 }
 
-module.exports = { handle, pub, jobs, upload, progress };
+module.exports = { handle, pub, jobs, upload, progress, recFor };
