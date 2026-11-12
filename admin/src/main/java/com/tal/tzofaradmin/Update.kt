@@ -19,6 +19,8 @@ object Update {
     @Volatile var status = ""
     @Volatile var busy = false
     @Volatile var needPermission = false
+    @Volatile var lastCheck = 0L
+    @Volatile var latestSeen = ""
 
     fun current(c: Context): String = try { c.packageManager.getPackageInfo(c.packageName, 0).versionName ?: "" } catch (_: Exception) { "" }
 
@@ -42,13 +44,13 @@ object Update {
 
     fun check(c: Context, refresh: () -> Unit) {
         if (busy) return
-        busy = true; status = "בודק עדכונים…"; refresh()
+        busy = true; lastCheck = System.currentTimeMillis(); status = "בודק עדכונים…"; refresh()
         Thread {
             try {
                 val l = latest()
                 when {
                     l == null -> status = "אין חיבור לגיטהאב"
-                    !newer(l.first, current(c)) -> status = ""
+                    !newer(l.first, current(c)) -> { latestSeen = l.first; status = "" }
                     !c.packageManager.canRequestPackageInstalls() -> { needPermission = true; status = "יש גרסה ${l.first} – צריך לאשר התקנת עדכונים" }
                     else -> {
                         needPermission = false

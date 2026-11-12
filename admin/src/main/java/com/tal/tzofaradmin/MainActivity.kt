@@ -139,12 +139,12 @@ class MainActivity : Activity() {
         @Suppress("DEPRECATION") window.statusBarColor = Color.BLACK
         @Suppress("DEPRECATION") window.navigationBarColor = Color.BLACK
         load()
-        Update.check(this) { ui.post { if (page == Page.MAIN) show() } }
     }
+    private fun checkUpdate() = Update.check(this) { ui.post { if (page == Page.MAIN) show() } }
     override fun onResume() {
         super.onResume()
-        // חזרה מאישור "התקנת עדכונים" בהגדרות
-        if (Update.needPermission && packageManager.canRequestPackageInstalls()) Update.check(this) { ui.post { if (page == Page.MAIN) show() } }
+        // בכל חזרה לאפליקציה (לא רק בפתיחה ראשונה) - לכל היותר פעם בדקה; מיד אחרי אישור "התקנת עדכונים" בהגדרות
+        if (System.currentTimeMillis() - Update.lastCheck > 60_000 || (Update.needPermission && packageManager.canRequestPackageInstalls())) checkUpdate()
     }
     override fun onPause() { stop(); super.onPause() }
 
@@ -252,8 +252,13 @@ class MainActivity : Activity() {
             nav(this, 0, "בלי מחוז", noDistrict.toString(), if (noDistrict == 0) GREEN else ORANGE, noDistrict > 0) { areasWith(1) }
             nav(this, 0, "הקלטה בלי יישוב", orphans.toString(), if (orphans == 0) GREEN else ORANGE, orphans > 0) { go(Page.ORPHANS) }
         }, lp())
-        root.addView(text("גרסה ${Update.current(this)}", 12f, MUTED).apply { gravity = Gravity.CENTER; setPadding(0, dp(6), 0, 0) },
-            LinearLayout.LayoutParams(-1, -2))
+        root.addView(text("גרסה ${Update.current(this)}" + when {
+                Update.busy -> " · בודק עדכונים…"
+                Update.latestSeen.isNotEmpty() -> " · מעודכן · בדיקה אחרונה ${ago(Update.lastCheck)}"
+                else -> " · בדיקת עדכונים"
+            }, 12f, MUTED).apply {
+                gravity = Gravity.CENTER; setPadding(0, dp(10), 0, dp(10)); setOnClickListener { checkUpdate() }
+            }, LinearLayout.LayoutParams(-1, -2))
     }
     private fun areasWith(f: Int) { district = null; filter = f; query = ""; go(Page.AREAS) }
 
