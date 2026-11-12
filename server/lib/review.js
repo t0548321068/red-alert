@@ -10,7 +10,8 @@ const { log } = require('./util');
 
 const FILE = path.join(__dirname, '..', 'review.json');   // לא נכנס לגיט
 const FIELDS = new Set(['name', 'district', 'shelter', 'other']);
-const empty = () => ({ status: {}, notes: {}, edits: [] });
+const REC_DIR = path.join(__dirname, '..', 'recordings');   // הקלטות ההגייה שלך (לא נכנס לגיט)
+const empty = () => ({ status: {}, notes: {}, edits: [], recs: {} });
 let data = empty();
 try { data = { ...empty(), ...JSON.parse(fs.readFileSync(FILE, 'utf8')) }; } catch (_) {}
 
@@ -41,6 +42,11 @@ function apply(op) {
     case 'cancel':
       { const n = data.edits.length; data.edits = data.edits.filter(e => e.id !== str(op.id, 20)); if (n === data.edits.length) return null; }
       break;
+    case 'delrec':
+      if (!key || !data.recs[key]) return null;
+      try { fs.unlinkSync(path.join(REC_DIR, data.recs[key].f)); } catch (_) {}
+      delete data.recs[key];
+      break;
     case 'import':   // מעבר מגרסה קודמת: הסימונים שהיו רק בטלפון
       for (const k of Array.isArray(op.fix) ? op.fix.slice(0, 3000) : []) { const s = str(k, 200); if (s && !data.status[s]) data.status[s] = 'fix'; }
       break;
@@ -50,7 +56,35 @@ function apply(op) {
   return data;
 }
 
-function handle(req, res) {
+const recName = key => crypto.createHash('sha1').update(key).digest('hex').slice(0, 16) + '.m4a';
+
+/** /api/review/rec?key=... - הקלטת הגייה: POST שומר (עד 3MB), GET משמיע */
+function rec(req, res, u) {
+  const key = str(u.searchParams.get('key'), 200);
+  if (!key) { res.writeHead(400); return res.end(); }
+  if (req.method === 'GET') {
+    const r = data.recs[key]; if (!r) { res.writeHead(404); return res.end(); }
+    res.writeHead(200, { 'Content-Type': 'audio/mp4' });
+    return fs.createReadStream(path.join(REC_DIR, r.f)).on('error', () => res.end()).pipe(res);
+  }
+  if (req.method !== 'POST') { res.writeHead(405); return res.end(); }
+  const bufs = []; let n = 0, big = false;
+  req.on('data', d => { n += d.length; if (n > 3 * 1024 * 1024) { big = true; req.destroy(); } else bufs.push(d); });
+  req.on('end', () => {
+    if (big || !n) { res.writeHead(400); return res.end(); }
+    try {
+      fs.mkdirSync(REC_DIR, { recursive: true });
+      const f = recName(key);
+      fs.writeFileSync(path.join(REC_DIR, f + '.tmp'), Buffer.concat(bufs)); fs.renameSync(path.join(REC_DIR, f + '.tmp'), path.join(REC_DIR, f));
+      data.recs[key] = { f, at: Date.now() }; save();
+      log('review: הקלטת הגייה נשמרה');
+      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(data));
+    } catch (e) { log('review rec save failed', e.message); res.writeHead(500); res.end(); }
+  });
+}
+
+function handle(req, res, u) {
+  if (u && u.pathname === '/api/review/rec') return rec(req, res, u);
   const send = (code, o) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); };
   if (req.method === 'GET') return send(200, data);
   if (req.method !== 'POST') return send(405, {});
