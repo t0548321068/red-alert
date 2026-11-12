@@ -19,7 +19,8 @@ object Review {
     @Volatile var edits: List<Edit> = emptyList(); private set
     /** הקלטת הגייה שלך: מתי הוקלטה, ומצב: pending ממתין · ready מוכן לאישור · approved אושר · rejected נדחה */
     /** prog/step: התקדמות חיה בהכנת הגרסאות בקול אבר (אחוז ושלב) */
-    class Rec(val at: Long, val state: String, val variants: Int = 0, val chosen: Int = 0, val prog: Int = -1, val step: String = "")
+    class Rec(val at: Long, val state: String, val variants: Int = 0, val chosen: Int = 0, val prog: Int = -1, val step: String = "",
+        val heard: String = "", val vtext: Map<Int, String> = emptyMap())
     @Volatile var recs: Map<String, Rec> = emptyMap(); private set
     /** מה שבוצע: מפתח → מתי */
     @Volatile var done: Map<String, Long> = emptyMap(); private set
@@ -99,7 +100,8 @@ object Review {
         recs = o.optJSONObject("recs")?.let { j -> j.keys().asSequence().associateWith {
             val r = j.getJSONObject(it); val p = r.optJSONObject("prog")
             Rec(r.optLong("at"), r.optString("state", "pending"), r.optInt("variants"), r.optInt("chosen"),
-                if (p != null && System.currentTimeMillis() - p.optLong("at") < 10 * 60_000) p.optInt("p") else -1, p?.optString("step") ?: "") } } ?: emptyMap()
+                if (p != null && System.currentTimeMillis() - p.optLong("at") < 10 * 60_000) p.optInt("p") else -1, p?.optString("step") ?: "",
+                r.optString("heard"), r.optJSONObject("vtext")?.let { vt -> vt.keys().asSequence().associate { k -> k.toInt() to vt.optString(k) } } ?: emptyMap()) } } ?: emptyMap()
         done = o.optJSONObject("done")?.let { j -> j.keys().asSequence().associateWith { j.optLong(it) } } ?: emptyMap()
         tasks = o.optJSONArray("tasks")?.let { a -> (0 until a.length()).map { a.getJSONObject(it) }.map { Task(it.getString("id"), it.optString("text"), it.optLong("at")) } } ?: emptyList()
         batches = o.optJSONArray("batches")?.let { a -> (0 until a.length()).map { a.getJSONObject(it) }.map { b ->

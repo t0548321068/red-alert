@@ -997,6 +997,13 @@ class MainActivity : Activity() {
                         setPadding(dp(18), dp(13), dp(18), dp(13))
                         addView(text("מצב", 15f), LinearLayout.LayoutParams(0, -2, 1f)); addView(text(st, 14f, stColor, true))
                     })
+                    if (has.heard.isNotEmpty()) {
+                        divider(this)
+                        addView(LinearLayout(this@MainActivity).apply {
+                            setPadding(dp(18), dp(13), dp(18), dp(13))
+                            addView(text("שמעתי בהקלטה", 15f), LinearLayout.LayoutParams(0, -2, 1f)); addView(text(has.heard, 16f, Color.WHITE, true))
+                        })
+                    }
                     if (has.state == "pending") {
                         divider(this)
                         addView(LinearLayout(this@MainActivity).apply {
@@ -1015,7 +1022,11 @@ class MainActivity : Activity() {
                             divider(this)
                             addView(LinearLayout(this@MainActivity).apply {
                                 gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(10), dp(14), dp(10))
-                                addView(text("גרסה $v", 15f), LinearLayout.LayoutParams(0, -2, 1f))
+                                addView(LinearLayout(this@MainActivity).apply {
+                                    orientation = LinearLayout.VERTICAL
+                                    addView(text("גרסה $v", 15f))
+                                    has.vtext[v]?.takeIf { it.isNotEmpty() }?.let { addView(text(it, 13f, MUTED)) }
+                                }, LinearLayout.LayoutParams(0, -2, 1f))
                                 addView(FrameLayout(this@MainActivity).apply {
                                     background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(LINE) }
                                     addView(ImageView(this@MainActivity).apply { setImageResource(if (playing == "cand$v:$itemKey") R.drawable.ic_stop else R.drawable.ic_play) },
