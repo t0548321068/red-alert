@@ -18,12 +18,17 @@ const CAND_DIR = path.join(__dirname, '..', 'candidates');
 const candFile = (r, v) => path.join(CAND_DIR, r.f.replace(/\.m4a$/, '') + (v ? '_' + v : '') + '.mp3');
 const fresh = (f, r) => { try { return fs.statSync(f).mtimeMs > r.at; } catch (_) { return false; } };
 function withState() {
-  for (const r of Object.values(data.recs)) {
+  for (const [key, r] of Object.entries(data.recs)) {
     let st = r.state || 'pending';
     const vars = [1, 2, 3, 4, 5].filter(v => fresh(candFile(r, v), r)).length;
     r.variants = vars;
     if ((st === 'pending' || st === 'rejected') && (vars > 0 || fresh(candFile(r), r)) && !(r.rejectedAt && !newerThan(r, r.rejectedAt))) st = 'ready';
     r.state = st;
+    // בשליחה לטיפול: מה קורה עם ההקלטה עכשיו
+    const msg = st === 'ready' ? `${vars || 1} גרסאות בקול אבר מוכנות – תבחר אחת בדף ההקלטה`
+      : st === 'pending' ? 'יוצר גרסאות בקול אבר (אוטומטי, עד כחצי שעה)' : null;
+    if (msg) for (const b of data.batches || []) for (const i of (b.items || []))
+      if ((i.t === 'rec' || i.t === 'fix') && i.k === key && i.state !== 'done') { if (i.state === 'sent' || i.state === 'skipped') i.state = 'working'; i.msg = msg; }
   }
   return data;
 }
@@ -232,6 +237,53 @@ function cand(res, u) {
   fs.createReadStream(candFile(r, v || undefined)).on('error', () => res.end()).pipe(res);
 }
 
+// ---- יצירת גרסאות בקול אבר אוטומטית: בנייה מתוזמנת בגיטהאב (voice-auto) לוקחת עבודות מכאן ומעלה את הקבצים ----
+const TOOLS = path.join(__dirname, '..', '..', 'tools');
+function textsFor(key) {
+  const read = f => { try { return fs.readFileSync(path.join(TOOLS, f), 'utf8'); } catch (_) { return ''; } };
+  let nik = null, plain = key;
+  const m = /^voice\/(phrases|extra)\/([\w]+)\.mp3$/.exec(key);
+  if (m) {
+    if (m[1] === 'extra') { try { nik = JSON.parse(read('extra_phrases.json'))[m[2]]; } catch (_) {} }
+    else { const t = /TEXT = \{([\s\S]*?)\n\}/.exec(read('gen_voice.py')); if (t) { const r = new RegExp('"' + m[2] + '":\\s*"([^"]+)"').exec(t[1]); if (r) nik = r[1]; } }
+    plain = nik ? nik.replace(/[\u0591-\u05C7]/g, '') : null;
+  } else {
+    try { nik = JSON.parse(read('pronounce.json'))[key] || null; } catch (_) {}
+    try { nik = JSON.parse(read('pronounce_manual.json'))[key] || nik; } catch (_) {}
+    plain = key.replace(/ - /g, ' ').replace(/-/g, ' ');
+  }
+  if (!plain && !nik) return null;
+  // 1: הניקוד של היום · 2: בלי ניקוד · 3: הניקוד, לאט יותר
+  return [{ text: nik || plain, rate: '+12%' }, { text: plain || nik, rate: '+12%' }, { text: nik || plain, rate: '+0%' }];
+}
+function jobs(res) {
+  withState();
+  const out = [];
+  for (const [k, r] of Object.entries(data.recs)) {
+    if (r.state !== 'pending' && !(r.state === 'rejected' && !r.retried)) continue;
+    const texts = textsFor(k); if (!texts) continue;
+    if (!r.upTok) { r.upTok = crypto.randomBytes(12).toString('hex'); save(); }
+    out.push({ token: r.upTok, name: r.f.replace(/\.m4a$/, ''), texts });
+  }
+  res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(out));
+}
+function upload(req, res, u) {
+  const tok = String(u.searchParams.get('t') || ''), v = Math.max(1, Math.min(5, +u.searchParams.get('v') || 1));
+  const e = Object.entries(data.recs).find(([, r]) => r.upTok && r.upTok === tok);
+  if (!e || req.method !== 'POST') { res.writeHead(404); return res.end(); }
+  const bufs = []; let n = 0, big = false;
+  req.on('data', d => { n += d.length; if (n > 400 * 1024) { big = true; req.destroy(); } else bufs.push(d); });
+  req.on('end', () => {
+    const b = Buffer.concat(bufs);
+    if (big || n < 500 || !(b[0] === 0xff || b.slice(0, 3).toString() === 'ID3')) { res.writeHead(400); return res.end(); }
+    fs.mkdirSync(CAND_DIR, { recursive: true });
+    fs.writeFileSync(candFile(e[1], v), b);
+    if (e[1].state === 'rejected') { e[1].state = 'pending'; e[1].retried = true; }
+    save(); log('review: גרסה ' + v + ' בקול אבר נוצרה אוטומטית');
+    res.writeHead(200); res.end('ok');
+  });
+}
+
 function handle(req, res, u) {
   if (u && u.pathname === '/api/review/rec') return rec(req, res, u);
   if (u && u.pathname === '/api/review/share') return share(res, u);
@@ -248,4 +300,4 @@ function handle(req, res, u) {
   });
 }
 
-module.exports = { handle, pub };
+module.exports = { handle, pub, jobs, upload };
