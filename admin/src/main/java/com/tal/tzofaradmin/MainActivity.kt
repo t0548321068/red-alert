@@ -209,14 +209,14 @@ class MainActivity : Activity() {
         if (code == 7) { if (res.firstOrNull() == android.content.pm.PackageManager.PERMISSION_GRANTED) startRec() else toast("בלי הרשאת מיקרופון אי אפשר להקליט") }
     }
     /** השמעת ההקלטה שלך (או הגרסה בקול אבר - cand) מהשרת */
-    private fun playMine(key: String, cand: Boolean = false) {
-        val k = (if (cand) "cand:" else "mine:") + key
+    private fun playMine(key: String, cand: Boolean = false, v: Int = 0) {
+        val k = (if (cand) "cand$v:" else "mine:") + key
         if (playing == k) { stop(); return }
         stop()
         val mp = MediaPlayer()
         mp.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).build())
         try {
-            mp.setDataSource(this, Uri.parse(if (cand) Review.candUrl(key) else Review.recUrl(key)), Review.cookie(this))
+            mp.setDataSource(this, Uri.parse(if (cand) Review.candUrl(key, v) else Review.recUrl(key)), Review.cookie(this))
             mp.setOnPreparedListener { it.start() }
             mp.setOnCompletionListener { if (player === it) stop() }
             mp.setOnErrorListener { p, _, _ -> if (player === p) { stop(); toast("ההקלטה לא נפתחה") }; true }
@@ -327,6 +327,7 @@ class MainActivity : Activity() {
             nav(this, R.drawable.ic_msg, "משפטי הקראה", Data.phrases.size.toString(), GREEN) { go(Page.PHRASES) }
             nav(this, R.drawable.ic_vol, "צלילי התרעה", Data.sounds.size.toString(), GREEN) { go(Page.SOUNDS) }
             nav(this, R.drawable.ic_clock, "היסטוריית התרעות", "30 יום", MUTED) { openHistory() }
+            if (Review.loggedIn(this@MainActivity)) nav(this, R.drawable.ic_edit, "הוספה", "יישוב / הקראה", MUTED) { go(Page.ADD) }
         }, lp())
 
         if (Review.loggedIn(this)) {
@@ -457,7 +458,7 @@ class MainActivity : Activity() {
     private class Item(val title: String, val sub: String, val path: String?, val key: String?, val bad: Boolean,
         val seq: List<String>? = null, val tap: (() -> Unit)? = null, val chevron: Boolean = false, val header: Boolean = false,
         val ok: Boolean = false, val say: String? = null, val found: Boolean? = null, val listKey: String? = null, val sel: String? = null,
-        val badge: Pair<String, Int>? = null)
+        val badge: Pair<String, Int>? = null, val rings: List<Triple<String, Int, Int>>? = null)
     /** בשליחה לטיפול: מה לא לשלוח (ברירת מחדל - הכל מסומן) */
     private val unselected = HashSet<String>()
     private fun submitSelected() {
@@ -536,8 +537,9 @@ class MainActivity : Activity() {
             override fun getItem(p: Int) = items[p]
             override fun getItemId(p: Int) = p.toLong()
             override fun getView(p: Int, v: View?, parent: ViewGroup) =
-                if (items[p].header) text(items[p].title, 13f, MUTED).apply { setPadding(dp(24), dp(if (p == 0) 2 else 14), dp(24), dp(6)) }
-                else row(items[p], p == 0 || items[p - 1].header, p == items.size - 1 || items[p + 1].header)
+                if (items[p].rings != null) ringsRow(items[p].rings!!)
+                else if (items[p].header) text(items[p].title, 13f, MUTED).apply { setPadding(dp(24), dp(if (p == 0) 2 else 14), dp(24), dp(6)) }
+                else row(items[p], p == 0 || items[p - 1].header || items[p - 1].rings != null, p == items.size - 1 || items[p + 1].header || items[p + 1].rings != null)
         }
         root.addView(ListView(this).apply {
             divider = null; selector = android.graphics.drawable.ColorDrawable(Color.TRANSPARENT)
@@ -545,6 +547,15 @@ class MainActivity : Activity() {
             adapter = this@MainActivity.adapter
         }.also { listView = it }, LinearLayout.LayoutParams(-1, 0, 1f))
         countView = count
+        if ((page == Page.AREAS || page == Page.PHRASES) && Review.loggedIn(this)) {
+            root.addView(LinearLayout(this).apply {
+                gravity = Gravity.CENTER; setPadding(dp(40), dp(8), dp(40), dp(18))
+                addView(text("הוספה", 16f, Color.WHITE, true).apply {
+                    gravity = Gravity.CENTER; includeFontPadding = false; background = round(Color.parseColor("#4C7DFF"), 23)
+                    setOnClickListener { addKind = if (page == Page.PHRASES) "הקראה חדשה" else "יישוב חדש"; go(Page.ADD) }
+                }, LinearLayout.LayoutParams(-1, dp(46)))
+            })
+        }
         if (page == Page.SEND) {
             root.addView(LinearLayout(this).apply {
                 gravity = Gravity.CENTER; setPadding(dp(16), dp(8), dp(16), dp(18))
@@ -631,6 +642,12 @@ class MainActivity : Activity() {
                 Review.batches.take(5).forEach { b ->
                     val done = b.items.count { it.state == "done" || it.state == "skipped" }
                     out += Item("נשלח ${when_(b.at)} · ${if (b.state == "done") "הסתיים" else "טופלו $done מתוך ${b.items.size}"}", "", null, null, false, header = true)
+                    // עיגול התקדמות לכל שלב: הקלטות · שינויים · לתיקון · ידני
+                    val stages = listOf("rec" to "הקלטות", "edit" to "שינויים", "fix" to "לתיקון", "task" to "ידני").mapNotNull { (t, n) ->
+                        val its = b.items.filter { it.t == t }
+                        if (its.isEmpty()) null else Triple(n, its.count { it.state == "done" || it.state == "skipped" }, its.size)
+                    }
+                    if (stages.isNotEmpty()) out += Item("", "", null, null, false, rings = stages)
                     b.items.forEach { i ->
                         val badge = when (i.state) { "working" -> "בטיפול" to BLUE; "done" -> "טופל" to GREEN; "skipped" -> "לא בוצע" to RED; else -> "נשלח" to ORANGE }
                         val key = if (i.t == "edit") i.title else i.k
@@ -868,12 +885,36 @@ class MainActivity : Activity() {
                         setPadding(dp(18), dp(13), dp(18), dp(13))
                         addView(text("מצב", 15f), LinearLayout.LayoutParams(0, -2, 1f)); addView(text(st, 14f, stColor, true))
                     })
-                    if (has.state != "pending") {
+                    if (has.state == "ready" && has.variants > 1) {
+                        // כמה גרסאות בקול אבר - שומעים ובוחרים אחת
+                        for (v in 1..has.variants) {
+                            divider(this)
+                            addView(LinearLayout(this@MainActivity).apply {
+                                gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(10), dp(14), dp(10))
+                                addView(text("גרסה $v", 15f), LinearLayout.LayoutParams(0, -2, 1f))
+                                addView(FrameLayout(this@MainActivity).apply {
+                                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(LINE) }
+                                    addView(ImageView(this@MainActivity).apply { setImageResource(if (playing == "cand$v:$itemKey") R.drawable.ic_stop else R.drawable.ic_play) },
+                                        FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))
+                                    setOnClickListener { playMine(itemKey, true, v) }
+                                }, LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginEnd = dp(10) })
+                                addView(text("בחירה", 14f, Color.WHITE, true).apply {
+                                    setPadding(dp(16), dp(8), dp(16), dp(8)); background = round(Color.parseColor("#1E5631"), 16)
+                                    setOnClickListener { sendOp(Review.op("approve", itemKey).put("v", v), "נבחרה גרסה $v – אכניס אותה") }
+                                })
+                            })
+                        }
                         divider(this)
-                        addView(text(if (playing == "cand:$itemKey") "עצירה" else "השמעת הגרסה בקול אבר", 15f, BLUE, true).apply {
+                        addView(text("אף אחת לא טובה", 15f, RED).apply {
+                            setPadding(dp(18), dp(14), dp(18), dp(14))
+                            setOnClickListener { sendOp(Review.op("reject", itemKey), "נדחה – אכין גרסאות אחרות") }
+                        })
+                    } else if (has.state != "pending") {
+                        divider(this)
+                        addView(text(if (playing == "cand0:$itemKey") "עצירה" else "השמעת הגרסה בקול אבר" + (if (has.chosen > 0) " (גרסה ${has.chosen})" else ""), 15f, BLUE, true).apply {
                             setPadding(dp(18), dp(14), dp(18), dp(14)); setOnClickListener { playMine(itemKey, true) } })
                     }
-                    if (has.state == "ready") {
+                    if (has.state == "ready" && has.variants <= 1) {
                         divider(this)
                         addView(LinearLayout(this@MainActivity).apply {
                             setPadding(dp(12), dp(10), dp(12), dp(12))
@@ -954,15 +995,16 @@ class MainActivity : Activity() {
             }, lp())
         }
     }
-    // ---- הוספה ידנית לטיפול: כרטיס עם סוג, על מה, ומה לעשות ----
-    private var addKind = "יישוב"
+    // ---- הוספה: יישוב חדש / הקראה חדשה / אחר - נכנס לשליחה לטיפול ----
+    private var addKind = "יישוב חדש"
+    private var addDistrict = ""; private var addShelter = -1; private var addGroup = ""
     private fun addPage() {
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(24)) }
         setContentView(ScrollView(this).apply { setBackgroundColor(Color.BLACK); addView(root) })
-        header(root, "הוספה לטיפול", true)
-        root.addView(label("סוג"))
+        header(root, "הוספה", true)
+        root.addView(label("מה להוסיף"))
         val chips = LinearLayout(this).apply { setPadding(dp(12), 0, dp(12), dp(10)) }
-        listOf("יישוב", "אזור", "הקראה", "צליל", "אחר").forEach { k ->
+        listOf("יישוב חדש", "הקראה חדשה", "אחר").forEach { k ->
             chips.addView(text(k, 14f).apply {
                 background = round(if (k == addKind) BLUE else LINE, 16); setPadding(dp(16), dp(8), dp(16), dp(8))
                 setOnClickListener { addKind = k; addPage() }
@@ -973,23 +1015,57 @@ class MainActivity : Activity() {
             this.hint = hint; setHintTextColor(MUTED); setTextColor(Color.WHITE); textSize = 16f; background = null
             minLines = lines; if (lines == 1) setSingleLine(); setPadding(dp(18), dp(14), dp(18), dp(14))
         }
-        root.addView(label("על מה"))
-        val subject = field(when (addKind) { "יישוב" -> "שם היישוב"; "אזור" -> "שם האזור"; "הקראה" -> "איזה משפט / הקלטה"; "צליל" -> "איזה צליל"; else -> "נושא" }, 1)
-        root.addView(card().apply { addView(subject) }, lp())
-        root.addView(label("מה לעשות"))
-        val desc = field("למשל: להוסיף יישוב חדש, לתקן את השם, ההגייה לא נכונה…", 4)
+        val main = field(when (addKind) { "יישוב חדש" -> "שם היישוב (כמו בפיקוד העורף)"; "הקראה חדשה" -> "מה להקריא"; else -> "נושא" }, 1)
+        root.addView(label(when (addKind) { "יישוב חדש" -> "שם"; "הקראה חדשה" -> "טקסט"; else -> "על מה" }))
+        root.addView(card().apply { addView(main) }, lp())
+        when (addKind) {
+            "יישוב חדש" -> root.addView(card().apply {
+                nav(this, R.drawable.ic_map, "אזור", addDistrict.ifEmpty { "בחירה" }, MUTED) {
+                    val ds = Data.districts.keys.toList(); choose("אזור", ds) { addDistrict = ds[it]; addPage() } }
+                nav(this, R.drawable.ic_clock, "זמן מיגון", if (addShelter < 0) "בחירה" else shelter(addShelter), MUTED) {
+                    val vals = listOf(0, 15, 30, 45, 60, 90); choose("זמן מיגון", vals.map { shelter(it) }) { addShelter = vals[it]; addPage() } }
+            }, lp())
+            "הקראה חדשה" -> root.addView(card().apply {
+                nav(this, R.drawable.ic_msg, "קטגוריה", addGroup.ifEmpty { "בחירה" }, MUTED) {
+                    val gs = Data.GROUPS.map { it.first }; choose("קטגוריה", gs) { addGroup = gs[it]; addPage() } }
+            }, lp())
+        }
+        root.addView(label(if (addKind == "אחר") "מה לעשות" else "הערה (לא חובה)"))
+        val desc = field(if (addKind == "אחר") "מה לעשות" else "למשל: איך מבטאים", 3)
         root.addView(card().apply { addView(desc) }, lp())
         val err = text("", 13f, RED).apply { setPadding(dp(24), 0, dp(24), 0) }
         root.addView(err)
         root.addView(text("הוספה", 16f, Color.WHITE, true).apply {
             gravity = Gravity.CENTER; includeFontPadding = false; background = round(Color.parseColor("#4C7DFF"), 23)
             setOnClickListener {
-                val s = subject.text.toString().trim(); val d = desc.text.toString().trim()
-                if (d.isEmpty()) { err.text = "כתוב מה לעשות"; return@setOnClickListener }
-                val t = "$addKind" + (if (s.isNotEmpty()) " · $s" else "") + " – $d"
-                sendOp(JSONObject().put("op", "task").put("text", t), "נוסף") { if (page == Page.ADD) onBackPressed() }
+                val m = main.text.toString().trim(); val d = desc.text.toString().trim()
+                val t = when (addKind) {
+                    "יישוב חדש" -> if (m.isEmpty()) null else "יישוב חדש: $m" + (if (addDistrict.isNotEmpty()) " · אזור $addDistrict" else "") +
+                        (if (addShelter >= 0) " · זמן מיגון ${shelter(addShelter)}" else "") + (if (d.isNotEmpty()) " · $d" else "")
+                    "הקראה חדשה" -> if (m.isEmpty()) null else "הקראה חדשה: \"$m\"" + (if (addGroup.isNotEmpty()) " · $addGroup" else "") + (if (d.isNotEmpty()) " · $d" else "")
+                    else -> if (d.isEmpty()) null else (if (m.isNotEmpty()) "$m – " else "") + d
+                }
+                if (t == null) { err.text = if (addKind == "אחר") "כתוב מה לעשות" else "חסר " + (if (addKind == "יישוב חדש") "שם" else "טקסט"); return@setOnClickListener }
+                sendOp(JSONObject().put("op", "task").put("text", t), "נוסף לשליחה לטיפול") {
+                    addDistrict = ""; addShelter = -1; addGroup = ""; if (page == Page.ADD) onBackPressed() }
             }
         }, LinearLayout.LayoutParams(-1, dp(46)).apply { setMargins(dp(40), dp(16), dp(40), 0) })
+        root.addView(text("נכנס ל\"שליחה לטיפול\". יישוב חדש צריך שם בדיוק כמו בפיקוד העורף, כדי שיקבל התרעות", 12f, MUTED).apply {
+            gravity = Gravity.CENTER; setPadding(dp(24), dp(10), dp(24), 0) })
+    }
+
+    /** שורת עיגולי התקדמות: לכל שלב - עיגול עם אחוז, שם השלב, וכמה מתוך כמה */
+    private fun ringsRow(stages: List<Triple<String, Int, Int>>): View = LinearLayout(this).apply {
+        setPadding(dp(12), 0, dp(12), dp(8))
+        stages.forEach { (name, done, total) ->
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
+                background = round(CARD, 18); setPadding(0, dp(10), 0, dp(10))
+                addView(ProgressRing(this@MainActivity, done, total, if (done == total) GREEN else BLUE), LinearLayout.LayoutParams(dp(52), dp(52)))
+                addView(text(name, 13f).apply { setPadding(0, dp(4), 0, 0) })
+                addView(text("$done/$total", 12f, MUTED))
+            }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(6) })
+        }
     }
 
     private fun label(t: String) = text(t, 13f, MUTED).apply { setPadding(dp(24), dp(6), dp(24), dp(6)) }

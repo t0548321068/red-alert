@@ -219,3 +219,25 @@ class CheckDot(context: android.content.Context, var on: Boolean) : View(context
         c.drawPath(p, tick)
     }
 }
+
+/** עיגול התקדמות: טבעת שמתמלאת לפי האחוז, והאחוז באמצע */
+class ProgressRing(context: android.content.Context, var done: Int, var total: Int, var color: Int) : View(context) {
+    private val d = resources.displayMetrics.density
+    private val track = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        style = android.graphics.Paint.Style.STROKE; strokeWidth = 4 * d; this.color = android.graphics.Color.parseColor("#2C2C2E") }
+    private val arc = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        style = android.graphics.Paint.Style.STROKE; strokeWidth = 4 * d; strokeCap = android.graphics.Paint.Cap.ROUND }
+    private val txt = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        this.color = android.graphics.Color.WHITE; textAlign = android.graphics.Paint.Align.CENTER; typeface = android.graphics.Typeface.DEFAULT_BOLD }
+    override fun onDraw(c: android.graphics.Canvas) {
+        val s = minOf(width, height).toFloat(); val r = s / 2 - 3 * d
+        val cx = width / 2f; val cy = height / 2f
+        val box = android.graphics.RectF(cx - r, cy - r, cx + r, cy + r)
+        c.drawArc(box, 0f, 360f, false, track)
+        val p = if (total > 0) done.toFloat() / total else 0f
+        arc.color = color
+        if (p > 0) c.drawArc(box, -90f, 360f * p, false, arc)
+        txt.textSize = s * 0.26f
+        c.drawText("${(p * 100).toInt()}%", cx, cy + txt.textSize * 0.36f, txt)
+    }
+}

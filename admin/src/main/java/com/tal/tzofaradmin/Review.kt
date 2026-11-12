@@ -18,7 +18,7 @@ object Review {
     @Volatile var notes: Map<String, String> = emptyMap(); private set
     @Volatile var edits: List<Edit> = emptyList(); private set
     /** הקלטת הגייה שלך: מתי הוקלטה, ומצב: pending ממתין · ready מוכן לאישור · approved אושר · rejected נדחה */
-    class Rec(val at: Long, val state: String)
+    class Rec(val at: Long, val state: String, val variants: Int = 0, val chosen: Int = 0)
     @Volatile var recs: Map<String, Rec> = emptyMap(); private set
     /** השליחה האחרונה לטיפול: sent (ממתין לטיפול) / done (טופל) */
     class Batch(val at: Long, val state: String, val count: Int, val doneAt: Long, val summary: String)
@@ -86,7 +86,7 @@ object Review {
             Edit(it.getString("id"), it.getString("key"), it.getString("field"), it.optString("from"), it.optString("to"), it.optLong("at"))
         }.sortedByDescending { it.at }
         recs = o.optJSONObject("recs")?.let { j -> j.keys().asSequence().associateWith {
-            val r = j.getJSONObject(it); Rec(r.optLong("at"), r.optString("state", "pending")) } } ?: emptyMap()
+            val r = j.getJSONObject(it); Rec(r.optLong("at"), r.optString("state", "pending"), r.optInt("variants"), r.optInt("chosen")) } } ?: emptyMap()
         tasks = o.optJSONArray("tasks")?.let { a -> (0 until a.length()).map { a.getJSONObject(it) }.map { Task(it.getString("id"), it.optString("text"), it.optLong("at")) } } ?: emptyList()
         batches = o.optJSONArray("batches")?.let { a -> (0 until a.length()).map { a.getJSONObject(it) }.map { b ->
             val its = b.optJSONArray("items")?.let { ia -> (0 until ia.length()).map { ia.getJSONObject(it) }.map { i ->
@@ -106,7 +106,7 @@ object Review {
         online = true
     }
 
-    fun candUrl(key: String) = "$SITE/api/review/cand?key=" + java.net.URLEncoder.encode(key, "UTF-8")
+    fun candUrl(key: String, v: Int = 0) = "$SITE/api/review/cand?key=" + java.net.URLEncoder.encode(key, "UTF-8") + (if (v > 0) "&v=$v" else "")
     fun recUrl(key: String) = "$SITE/api/review/rec?key=" + java.net.URLEncoder.encode(key, "UTF-8")
     fun cookie(c: Context) = mapOf("Cookie" to "tz=" + (sp(c).getString("token", "") ?: ""))
 
