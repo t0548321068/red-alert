@@ -128,9 +128,13 @@ jobs:
                       n = "facebook/wav2vec2-lv-60-espeak-cv-ft"; _m["p"] = AutoProcessor.from_pretrained(n); _m["m"] = AutoModelForCTC.from_pretrained(n)
                   a, sr = sf.read("/tmp/r.wav")
                   with torch.no_grad(): ids = _m["m"](_m["p"](a, sampling_rate=16000, return_tensors="pt").input_values).logits.argmax(-1)
-                  ipa = _m["p"].batch_decode(ids)[0]; print("IPA", key, ":", ipa)
+                  ipa = _m["p"].batch_decode(ids)[0]; print("IPA", key, ":", ipa, flush=True)
                   return heb(ipa, key) or None
-              except Exception as e: print("hear", e); return None
+              except Exception as e:
+                  print("hear", repr(e), flush=True)
+                  try: get(f"{S}/voice-progress?t={tok}&p=20&s=" + urllib.parse.quote("הפענוח נכשל: " + repr(e)[:80]))
+                  except Exception: pass
+                  return None
           end = time.time() + 5.4 * 3600
           while time.time() < end:
               try: jobs = json.loads(get(f"{S}/voice-jobs"))
