@@ -84,10 +84,26 @@ function apply(op) {
       const fix = pick(Object.entries(data.status).filter(([, v]) => v === 'fix').map(([k]) => k), op.fix);
       const tasks = pick(data.tasks.map(t => t.id), op.tasks);
       if (!recs.length && !edits.length && !fix.length && !tasks.length) return null;
-      data.batches.push({ id: crypto.randomBytes(4).toString('hex'), at: Date.now(), state: 'sent', recs, edits, fix, tasks,
-        taskText: data.tasks.filter(t => tasks.includes(t.id)).map(t => t.text) });
+      // סטטוס לכל פריט: sent נשלח · working בטיפול · done טופל · skipped לא בוצע (עם הסבר)
+      const items = [
+        ...recs.map(k => ({ t: 'rec', k })),
+        ...edits.map(id => { const e = data.edits.find(x => x.id === id); return { t: 'edit', k: id, key: e.key, field: e.field, from: e.from, to: e.to }; }),
+        ...fix.map(k => ({ t: 'fix', k, note: data.notes[k] || '' })),
+        ...tasks.map(id => ({ t: 'task', k: id, text: (data.tasks.find(x => x.id === id) || {}).text || '' })),
+      ].map(i => ({ ...i, state: 'sent', at: Date.now() }));
+      data.batches.push({ id: crypto.randomBytes(4).toString('hex'), at: Date.now(), state: 'sent', recs, edits, fix, tasks, items });
+      data.tasks = data.tasks.filter(t => !tasks.includes(t.id));   // מה שנוסף ידנית עובר לשליחה
       data.batches = data.batches.slice(-50);
       log(`review: נשלח לטיפול - ${recs.length} הקלטות, ${edits.length} שינויים, ${fix.length} לתיקון, ${tasks.length} ידני`);
+      break;
+    }
+    case 'itemstate': {   // עדכון התקדמות לפריט (ממני, כשאני מטפל)
+      const b = data.batches.find(x => x.id === str(op.id, 20)); if (!b || !b.items) return null;
+      const it = b.items.find(i => i.t === op.t && i.k === op.k); if (!it) return null;
+      if (!['sent', 'working', 'done', 'skipped'].includes(op.state)) return null;
+      it.state = op.state; it.at = Date.now(); if (op.msg != null) it.msg = str(op.msg, 500);
+      b.state = b.items.every(i => i.state === 'done' || i.state === 'skipped') ? 'done' : b.items.some(i => i.state !== 'sent') ? 'working' : 'sent';
+      if (b.state === 'done') b.doneAt = Date.now();
       break;
     }
     case 'batchdone': {
