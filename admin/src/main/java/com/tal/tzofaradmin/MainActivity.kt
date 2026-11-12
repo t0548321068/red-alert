@@ -159,7 +159,7 @@ class MainActivity : Activity() {
     }
 
     // ---- ניווט ----
-    private fun go(p: Page) { stop(); stack.addLast(page); page = p; show() }
+    private fun go(p: Page) { stop(); stack.addLast(page); page = p; checkAreas = false; show() }
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if (stack.isEmpty()) { @Suppress("DEPRECATION") super.onBackPressed(); return }
@@ -323,7 +323,8 @@ class MainActivity : Activity() {
 
     // ---- רשימות ----
     private class Item(val title: String, val sub: String, val path: String?, val key: String?, val bad: Boolean,
-        val seq: List<String>? = null, val tap: (() -> Unit)? = null, val chevron: Boolean = false, val header: Boolean = false)
+        val seq: List<String>? = null, val tap: (() -> Unit)? = null, val chevron: Boolean = false, val header: Boolean = false,
+        val ok: Boolean = false)
     private var items: List<Item> = emptyList()
     private var adapter: BaseAdapter? = null
     private var countView: TextView? = null
@@ -380,8 +381,24 @@ class MainActivity : Activity() {
             adapter = this@MainActivity.adapter
         }, LinearLayout.LayoutParams(-1, 0, 1f))
         countView = count
+        if (page == Page.ALERT) {
+            // כפתורים כחולים למטה (כמו "בדוק אם יש עדכונים" בצופר חירום)
+            fun pill(label: String, click: () -> Unit) = text(label, 16f, Color.WHITE, true).apply {
+                gravity = Gravity.CENTER; includeFontPadding = false
+                background = round(Color.parseColor("#4C7DFF"), 23); setOnClickListener { click() }
+            }
+            root.addView(LinearLayout(this).apply {
+                gravity = Gravity.CENTER; setPadding(dp(16), dp(8), dp(16), dp(18))
+                addView(pill("בדוק יישובים") { checkAreas = !checkAreas; refreshList() }, LinearLayout.LayoutParams(0, dp(46), 1f))
+                addView(pill("הצג התרעה") {
+                    alert?.let { Data.simAlert = it; stop(); startActivity(Intent(this@MainActivity, SimActivity::class.java)) }
+                }, LinearLayout.LayoutParams(0, dp(46), 1f).apply { marginStart = dp(10) })
+            })
+        }
         refreshList()
     }
+    /** בדף התרעה: בדיקה שכל היישובים שבה מופיעים ברשימת היישובים */
+    private var checkAreas = false
 
     private fun shelter(s: Int?) = when (s) { null -> "אין זמן מיגון"; 0 -> "מיידי"; 90 -> "דקה וחצי"; 60 -> "דקה"; else -> "$s שנ׳" }
     private val FIELD_NAMES = mapOf("name" to "שם", "district" to "אזור", "shelter" to "זמן מיגון", "other" to "אחר")
@@ -428,7 +445,11 @@ class MainActivity : Activity() {
             }
             Page.ALERT -> alert?.let { a ->
                 val c = Data.clips(a)
-                listOf(Item("הקראה מלאה", when_(a.ts) + " · " + a.areas.size + " יישובים" +
+                val notFound = a.areas.filter { Data.match(it).isEmpty() }
+                val check = if (!checkAreas) emptyList() else listOf(
+                    if (notFound.isEmpty()) Item("כל ${a.areas.size} היישובים מופיעים ברשימה", "נבדק מול רשימת היישובים של צופר חירום", null, null, false, chevron = false, header = false, ok = true)
+                    else Item("${notFound.size} מתוך ${a.areas.size} לא מופיעים ברשימה", notFound.joinToString(", "), null, null, true))
+                check + listOf(Item("הקראה מלאה", when_(a.ts) + " · " + a.areas.size + " יישובים" +
                     (if (c == null) "\nעדכון - באפליקציה מוקרא בקול של הטלפון" else ""),
                     if (c == null) null else "alert:${a.ts}:${a.raw}", null, false, seq = c ?: emptyList())) +
                 a.areas.map { r ->
@@ -474,7 +495,8 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL; background = bg; setPadding(dp(18), dp(12), dp(14), dp(12))
             addView(LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.VERTICAL
-                addView(text(it.title, 15f, if (it.title.startsWith("התרעה מקדימה")) ORANGE
+                addView(text(it.title, 15f, if (it.ok) GREEN else if (page == Page.ALERT && it.bad && it.path == null && it.key == null && it.seq == null) RED
+                    else if (it.title.startsWith("התרעה מקדימה")) ORANGE
                     else if (page == Page.HISTORY && it.title == "האירוע הסתיים") GREEN else Color.WHITE))
                 addView(text(it.sub, 12f, if (it.bad) ORANGE else MUTED))
             }, LinearLayout.LayoutParams(0, -2, 1f))
@@ -485,6 +507,8 @@ class MainActivity : Activity() {
                 })
             }
             if (it.chevron) addView(icon(R.drawable.ic_chev, MUTED, 18))
+            else if (it.ok) addView(icon(R.drawable.ic_ok, GREEN, 24))
+            else if (page == Page.ALERT && it.path == null && it.key == null && it.seq == null) addView(icon(R.drawable.ic_warn, RED, 24))
             else {
                 val path = it.path; val seq = it.seq
                 addView(FrameLayout(this@MainActivity).apply {

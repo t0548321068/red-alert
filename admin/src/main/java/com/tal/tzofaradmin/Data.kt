@@ -120,7 +120,13 @@ object Data {
         } catch (_: Exception) { null } finally { c.disconnect() }
     }
 
-    private fun isUpdate(t: String) = updateWords.any { t.contains(it) }
+    fun isUpdate(t: String) = updateWords.any { t.contains(it) }
+    /** 0 ירי · 1 מקדימה · 2 סיום */
+    fun level(a: Alert) = levelOf(a.raw)
+    /** זמן ההתגוננות הקצר ביותר מבין היישובים בהתרעה */
+    fun shelterOf(a: Alert): Int? = a.areas.flatMap { match(it) }.mapNotNull { it.shelter }.minOrNull()
+    /** ההתרעה שמוצגת עכשיו בהדמיה */
+    @Volatile var simAlert: Alert? = null
     private fun levelOf(t: String) = when {
         endWords.any { t.contains(it) } || isUpdate(t) -> LEVEL_END
         preWords.any { t.contains(it) } -> LEVEL_PRE

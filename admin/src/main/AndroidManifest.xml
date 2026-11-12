@@ -17,6 +17,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".SimActivity" android:exported="false" android:screenOrientation="portrait" />
         <receiver android:name=".InstallReceiver" android:exported="false" />
         <receiver android:name=".UpdatedReceiver" android:exported="true">
             <intent-filter>
