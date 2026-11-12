@@ -168,14 +168,30 @@ class MainActivity : Activity() {
     }
 
     // ---- ניווט ----
-    private fun go(p: Page) { stop(); stack.addLast(page); page = p; checkAreas = false; show() }
+    // מיקום הגלילה של כל רשימה במחסנית - כדי לחזור בדיוק לאותו מקום אחרי "חזרה"
+    private val scrolls = ArrayDeque<Pair<Int, Int>>()
+    private var listView: ListView? = null
+    private var mainScroll: ScrollView? = null
+    private var itemScroll: ScrollView? = null
+    private fun scrollPos(): Pair<Int, Int> = when (page) {
+        Page.MAIN -> (mainScroll?.scrollY ?: 0) to -1
+        Page.ITEM -> 0 to 0
+        else -> listView?.let { lv -> lv.firstVisiblePosition to (lv.getChildAt(0)?.top ?: 0) } ?: (0 to 0)
+    }
+    private fun go(p: Page) { stop(); stack.addLast(page); scrolls.addLast(scrollPos()); page = p; checkAreas = false; show() }
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if (stack.isEmpty()) { @Suppress("DEPRECATION") super.onBackPressed(); return }
         stop()
         page = stack.removeLast()
+        val pos = scrolls.removeLastOrNull() ?: (0 to 0)
         if (page == Page.MAIN) { query = ""; histQuery = ""; district = null }
         show()
+        when (page) {
+            Page.MAIN -> Unit   // main() שומר את הגלילה בעצמו
+            Page.ITEM -> Unit
+            else -> listView?.setSelectionFromTop(pos.first, pos.second)
+        }
     }
     private fun show() { when (page) { Page.MAIN -> main(); Page.ITEM -> item(); else -> list() } }
 
@@ -195,7 +211,9 @@ class MainActivity : Activity() {
     // ---- מסך ראשי ----
     private fun main() {
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(24)) }
-        setContentView(ScrollView(this).apply { setBackgroundColor(Color.BLACK); addView(root) })
+        // רענון המסך (עדכון, סימון) - נשארים באותו מקום בגלילה
+        val y = mainScroll?.scrollY ?: 0
+        setContentView(ScrollView(this).apply { setBackgroundColor(Color.BLACK); addView(root); post { scrollTo(0, y) } }.also { mainScroll = it })
         header(root, "ניהול צופר", false)
 
         val a = Data.areas
@@ -388,7 +406,7 @@ class MainActivity : Activity() {
             divider = null; selector = android.graphics.drawable.ColorDrawable(Color.TRANSPARENT)
             setPadding(0, 0, 0, dp(24)); clipToPadding = false
             adapter = this@MainActivity.adapter
-        }, LinearLayout.LayoutParams(-1, 0, 1f))
+        }.also { listView = it }, LinearLayout.LayoutParams(-1, 0, 1f))
         countView = count
         if (page == Page.ALERT) {
             // כפתורים כחולים למטה (כמו "בדוק אם יש עדכונים" בצופר חירום)
@@ -546,7 +564,8 @@ class MainActivity : Activity() {
     private fun item() {
         val a = itemArea
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(24)) }
-        setContentView(ScrollView(this).apply { setBackgroundColor(Color.BLACK); addView(root) })
+        val y = if (itemScroll?.tag == itemKey) itemScroll?.scrollY ?: 0 else 0   // רענון אחרי סימון / שמירה - באותו מקום
+        setContentView(ScrollView(this).apply { setBackgroundColor(Color.BLACK); addView(root); tag = itemKey; post { scrollTo(0, y) } }.also { itemScroll = it })
         header(root, a?.name ?: (Data.phrases + Data.sounds).firstOrNull { it.path == itemKey }?.title ?: itemKey, true)
 
         root.addView(card().apply {
