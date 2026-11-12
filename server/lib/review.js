@@ -177,6 +177,13 @@ function apply(op) {
       if (!key) return null;
       markDone(key, 'סומן כבוצע');
       break;
+    case 'reset':   // איפוס מלא של ניהול צופר: סימונים, הערות, שינויים, הקלטות, שליחות - הכל מההתחלה
+      if (op.confirm !== 'RESET') return null;
+      try { for (const f of fs.readdirSync(REC_DIR)) fs.unlinkSync(path.join(REC_DIR, f)); } catch (_) {}
+      try { for (const f of fs.readdirSync(CAND_DIR)) if (f.endsWith('.mp3')) fs.unlinkSync(path.join(CAND_DIR, f)); } catch (_) {}
+      data = empty(); shares.clear();
+      log('review: ניהול צופר אופס');
+      break;
     case 'import':   // מעבר מגרסה קודמת: הסימונים שהיו רק בטלפון
       for (const k of Array.isArray(op.fix) ? op.fix.slice(0, 3000) : []) { const s = str(k, 200); if (s && !data.status[s]) data.status[s] = 'fix'; }
       break;
