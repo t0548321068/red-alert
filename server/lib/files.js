@@ -62,4 +62,18 @@ function serveBeta(res, code) {
   res.end(JSON.stringify({ allowed: /^[0-9A-F]{8}$/.test(code) && list.includes(code) }));
 }
 
-module.exports = { dataIndex, voiceIndex, serveData, serveBeta, override };
+/** קובץ נתונים שמשתנה מניהול צופר (מחוזות / זמני מיגון) - נכנס מיד, בלי גיט */
+function overrideText(rel, text) {
+  if (!['districts.json', 'migun.txt'].includes(rel)) throw new Error('bad path');
+  const dst = path.join(OVERRIDE_DIR, rel);
+  fs.mkdirSync(path.dirname(dst), { recursive: true });
+  fs.writeFileSync(dst + '.tmp', text); fs.renameSync(dst + '.tmp', dst);
+  scan();
+}
+/** התוכן הנוכחי של קובץ נתונים: מה שהשרת מגיש, ואם אין - מתוך האפליקציה */
+function currentText(rel) {
+  if (src[rel]) return fs.readFileSync(src[rel], 'utf8');
+  return fs.readFileSync(path.join(__dirname, '..', '..', 'app', 'src', 'main', 'assets', rel), 'utf8');
+}
+
+module.exports = { dataIndex, voiceIndex, serveData, serveBeta, override, overrideText, currentText };
