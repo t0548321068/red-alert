@@ -14,23 +14,6 @@ const convert = require('./parse').archiveRows;   // נבדק בבדיקות
 const YEAR = 366 * 24 * 3600 * 1000;
 const arch = new Map();   // "כותרת|דקה" -> { t, ts, b: Set, a: { יישוב: מתי הגיע } }
 try { for (const e of JSON.parse(fs.readFileSync(ARCH_FILE, 'utf8'))) arch.set(e.k, { t: e.t, ts: e.ts, b: new Set(e.b), a: e.a || {} }); } catch (_) {}
-// תיקון חד-פעמי (11/11/2026): רעידת האדמה וההנחיות של היום נשמרו לפני ששמירת סדר ההגעה פעלה - הסדר והיישובים כמו שהגיעו.
-// אידמפוטנטי; אפשר למחוק אחרי שעבר יום
-function fixQuake() {
-  const fix = [
-    ['רעידת אדמה|2026-11-11 11:25', [['בחלק מהאזורים בארץ', 2], ['אילת', 4], ['אזור תעשייה שחורת', 4], ['אילות', 4], ['אליפז ומכרות תמנע', 4], ['באר אורה', 4]],
-      ['אילת', 'אזור תעשייה שחורת', 'אילות', 'אליפז ומכרות תמנע', 'באר אורה', 'בחלק מהאזורים בארץ']],
-    ['רעידת אדמה - הנחיות חזרה למבנים|2026-11-11 12:14', [['אליפז ומכרות תמנע', 0], ['באר אורה', 0], ['אילות', 0], ['אילת', 0], ['אזור תעשייה שחורת', 0]],
-      ['אליפז ומכרות תמנע', 'באר אורה', 'אילות', 'אילת', 'אזור תעשייה שחורת']],
-  ];
-  for (const [k, times, order] of fix) {
-    const e = arch.get(k); if (!e) continue;
-    e.b = new Set([...order, ...[...e.b].filter(x => !order.includes(x))]);
-    e.a = e.a || {}; for (const [n, sec] of times) e.a[n] = e.ts + sec * 1000;
-    e.nl = order.length;
-  }
-}
-fixQuake();
 const setTime = (e, area, ts) => { if (!e.a) e.a = {}; if (!(e.a[area] <= ts)) { e.a[area] = ts; return 1; } return 0; };
 
 // הרשימה המוכנה לשליחה - נבנית מחדש רק כשהארכיון השתנה (לא בכל בקשה)
@@ -115,9 +98,8 @@ function addLive(title, areas, at) {
   try { live.push({ t: title, areas, at: at || Date.now() }); if (joinLive()) save(); } catch (_) {}
 }
 /** שורות שהגיעו ממקור אחר (הממסר בבית) */
-// אחרי כל קליטה - התיקון החד-פעמי שוב (השעות מהארכיון של פיקוד העורף לא דורסות אותו)
-function ingest(rows) { try { if (addRows(rows) + joinLive()) { fixQuake(); cache = null; save(); } } catch (_) {} }
-async function poll() { try { if (addRows(await fetchRows('lastDay')) + joinLive()) { fixQuake(); cache = null; save(); } } catch (_) {} }
+function ingest(rows) { try { if (addRows(rows) + joinLive()) save(); } catch (_) {} }
+async function poll() { try { if (addRows(await fetchRows('lastDay')) + joinLive()) save(); } catch (_) {} }
 
 function serve(req, res, since) {
   const c = sorted();
