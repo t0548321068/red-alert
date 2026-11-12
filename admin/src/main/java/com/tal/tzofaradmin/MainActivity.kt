@@ -167,7 +167,8 @@ class MainActivity : Activity() {
     @Volatile private var polling = false
     private val live = object : Runnable {
         override fun run() {
-            ui.postDelayed(this, 5000)
+            // משהו בהכנה עכשיו - כל 2 שניות; אחרת כל 5
+            ui.postDelayed(this, if (Review.recs.values.any { it.state == "pending" }) 2000 else 5000)
             if (polling || !Review.loggedIn(this@MainActivity) || Data.loadedAt == 0L) return
             polling = true
             Thread {
@@ -422,6 +423,27 @@ class MainActivity : Activity() {
     }
     /** התקדמות במסך הראשי: עיגול לכל שלב של מה שנשלח ועוד לא הסתיים, ושורה מה בטיפול ומה טופל */
     private fun progressCard(root: LinearLayout) {
+        // הקלטות בהכנה עכשיו - עיגול עם אחוז לכל אחת, בלייב
+        val prep = Review.recs.filter { it.value.state == "pending" }
+        if (prep.isNotEmpty()) {
+            root.addView(label("בהכנה עכשיו · לייב"))
+            root.addView(card().apply {
+                prep.forEach { (k, r) ->
+                    if (childCount > 0) divider(this)
+                    addView(LinearLayout(this@MainActivity).apply {
+                        gravity = Gravity.CENTER_VERTICAL; setPadding(dp(14), dp(10), dp(18), dp(10))
+                        addView(ProgressRing(this@MainActivity, maxOf(0, r.prog), 100, BLUE), LinearLayout.LayoutParams(dp(44), dp(44)))
+                        addView(LinearLayout(this@MainActivity).apply {
+                            orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0)
+                            addView(text((Data.phrases + Data.sounds).firstOrNull { it.path == k }?.title ?: k, 15f))
+                            addView(text(if (r.prog < 0) "בתור" else r.step, 12f, MUTED))
+                        }, LinearLayout.LayoutParams(0, -2, 1f))
+                        setOnClickListener { val a = Data.areas.firstOrNull { it.name == k }
+                            if (a != null) openItem(k, a.voice?.takeIf { a.voiceOk }, a) else openItem(k, k, null) }
+                    })
+                }
+            }, lp())
+        }
         val open = Review.batches.filter { it.state != "done" }
         if (open.isEmpty()) return
         val all = open.flatMap { it.items }
@@ -975,6 +997,18 @@ class MainActivity : Activity() {
                         setPadding(dp(18), dp(13), dp(18), dp(13))
                         addView(text("מצב", 15f), LinearLayout.LayoutParams(0, -2, 1f)); addView(text(st, 14f, stColor, true))
                     })
+                    if (has.state == "pending") {
+                        divider(this)
+                        addView(LinearLayout(this@MainActivity).apply {
+                            gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(12), dp(18), dp(12))
+                            addView(ProgressRing(this@MainActivity, maxOf(0, has.prog), 100, BLUE), LinearLayout.LayoutParams(dp(52), dp(52)))
+                            addView(LinearLayout(this@MainActivity).apply {
+                                orientation = LinearLayout.VERTICAL; setPadding(dp(14), 0, 0, 0)
+                                addView(text(if (has.prog < 0) "בתור" else has.step.ifEmpty { "בהכנה" }, 15f, bold = true))
+                                addView(text(if (has.prog < 0) "מתחיל תוך כמה שניות" else "מכין 3 גרסאות בקול אבר · מתעדכן בלייב", 12f, MUTED))
+                            })
+                        })
+                    }
                     if (has.state == "ready" && has.variants > 1) {
                         // כמה גרסאות בקול אבר - שומעים ובוחרים אחת
                         for (v in 1..has.variants) {
