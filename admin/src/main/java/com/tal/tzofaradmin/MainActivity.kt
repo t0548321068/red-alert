@@ -160,7 +160,70 @@ class MainActivity : Activity() {
         // בכל חזרה לאפליקציה (לא רק בפתיחה ראשונה) - לכל היותר פעם בדקה; מיד אחרי אישור "התקנת עדכונים" בהגדרות
         if (System.currentTimeMillis() - Update.lastCheck > 60_000 || (Update.needPermission && packageManager.canRequestPackageInstalls())) checkUpdate()
     }
-    override fun onPause() { stop(); super.onPause() }
+    override fun onPause() { stop(); if (recorder != null) stopRec(false); super.onPause() }
+
+    // ---- הקלטת הגייה: אתה מקליט איך השם צריך להישמע, וזה נשמר בשרת (ממנו מכינים הקלטה חדשה בקול אבר) ----
+    private var recorder: android.media.MediaRecorder? = null
+    private var recStarted = 0L
+    private var recBusy = false
+    private fun recFile() = java.io.File(cacheDir, "my_rec.m4a")
+    private val recTick = object : Runnable {
+        override fun run() { if (recorder != null) { recView?.text = "עצירה ושמירה · " + ((System.currentTimeMillis() - recStarted) / 1000) + " שנ׳"; ui.postDelayed(this, 500) } }
+    }
+    private var recView: TextView? = null
+    private fun startRec() {
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), 7); return
+        }
+        stop()
+        try {
+            @Suppress("DEPRECATION")
+            val r = if (android.os.Build.VERSION.SDK_INT >= 31) android.media.MediaRecorder(this) else android.media.MediaRecorder()
+            r.setAudioSource(android.media.MediaRecorder.AudioSource.MIC)
+            r.setOutputFormat(android.media.MediaRecorder.OutputFormat.MPEG_4)
+            r.setAudioEncoder(android.media.MediaRecorder.AudioEncoder.AAC)
+            r.setAudioSamplingRate(44100); r.setAudioEncodingBitRate(96000); r.setAudioChannels(1)
+            r.setMaxDuration(30_000)
+            r.setOnInfoListener { _, what, _ -> if (what == android.media.MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED) ui.post { stopRec(true) } }
+            r.setOutputFile(recFile().path)
+            r.prepare(); r.start()
+            recorder = r; recStarted = System.currentTimeMillis()
+            item(); ui.post(recTick)
+        } catch (_: Exception) { recorder = null; toast("ההקלטה לא התחילה") }
+    }
+    private fun stopRec(save: Boolean) {
+        val r = recorder ?: return
+        recorder = null
+        val ok = try { r.stop(); true } catch (_: Exception) { false }
+        r.release()
+        if (!save || !ok || System.currentTimeMillis() - recStarted < 600) { if (save) toast("ההקלטה קצרה מדי"); if (page == Page.ITEM) item(); return }
+        val key = itemKey
+        recBusy = true; if (page == Page.ITEM) item()
+        Thread {
+            val done = Review.upload(this, key, recFile())
+            ui.post { recBusy = false; toast(if (done) "ההקלטה נשמרה" else "לא נשמר – אין חיבור לשרת"); if (page == Page.ITEM) item() }
+        }.start()
+    }
+    override fun onRequestPermissionsResult(code: Int, perms: Array<out String>, res: IntArray) {
+        super.onRequestPermissionsResult(code, perms, res)
+        if (code == 7) { if (res.firstOrNull() == android.content.pm.PackageManager.PERMISSION_GRANTED) startRec() else toast("בלי הרשאת מיקרופון אי אפשר להקליט") }
+    }
+    /** השמעת ההקלטה שלך מהשרת */
+    private fun playMine(key: String) {
+        val k = "mine:$key"
+        if (playing == k) { stop(); return }
+        stop()
+        val mp = MediaPlayer()
+        mp.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).build())
+        try {
+            mp.setDataSource(this, Uri.parse(Review.recUrl(key)), Review.cookie(this))
+            mp.setOnPreparedListener { it.start() }
+            mp.setOnCompletionListener { if (player === it) stop() }
+            mp.setOnErrorListener { p, _, _ -> if (player === p) { stop(); toast("ההקלטה לא נפתחה") }; true }
+            player = mp; playing = k; mp.prepareAsync()
+        } catch (_: Exception) { mp.release(); toast("ההקלטה לא נפתחה") }
+        if (page == Page.ITEM) item()
+    }
 
     private fun load() {
         if (loading) return
@@ -276,6 +339,7 @@ class MainActivity : Activity() {
                 val dList = Data.districts.keys.count { listChecked(districtListKey(it)) }
                 nav(this, R.drawable.ic_listcheck, "יישובים שנבדקו ברשימה", "${n.format(inList)}/${n.format(a.size)}", if (inList == a.size) BLUE else Color.WHITE) { areasWith(6) }
                 nav(this, R.drawable.ic_listcheck, "אזורים שנבדקו ברשימה", "$dList/${Data.districts.size}", if (dList == Data.districts.size) BLUE else Color.WHITE) { go(Page.DISTRICTS) }
+                nav(this, R.drawable.ic_mic, "הקלטות הגייה שלך", Review.recs.size.toString(), if (Review.recs.isEmpty()) MUTED else Color.WHITE, false) { }
                 nav(this, R.drawable.ic_edit, "שינויים ממתינים לאישור", Review.edits.size.toString(),
                     if (Review.edits.isEmpty()) MUTED else ORANGE, Review.edits.isNotEmpty()) { go(Page.EDITS) }
                 if (!Review.online) nav(this, R.drawable.ic_warn, "הסימונים לא נטענו מהשרת", "", ORANGE, false) { }
@@ -450,7 +514,8 @@ class MainActivity : Activity() {
                         5 -> listChecked(listKey(it.name)); 6 -> !listChecked(listKey(it.name)); else -> true }
             }.map { a ->
                 val sub = listOf(a.district ?: "אין מחוז", shelter(a.shelter)).joinToString(" · ") +
-                    (if (!a.voiceOk) " · אין הקראה" else "") + (a.voice?.let { "\n" + it.substringAfterLast('/') } ?: "") + note(a.name)
+                    (if (!a.voiceOk) " · אין הקראה" else "") + (a.voice?.let { "\n" + it.substringAfterLast('/') } ?: "") +
+                    (if (Review.recs.containsKey(a.name)) " · הקלטה שלך" else "") + note(a.name)
                 Item(a.name, sub, a.voice?.takeIf { a.voiceOk }, a.name, a.missing, tap = { openItem(a.name, a.voice?.takeIf { a.voiceOk }, a) },
                     listKey = listKey(a.name))
             }
@@ -634,6 +699,33 @@ class MainActivity : Activity() {
                 })
             }, lp())
         }
+        root.addView(label("ההגייה שלך · מקליטים איך השם צריך להישמע, ומכינים ממנו הקלטה בקול אבר"))
+        root.addView(card().apply {
+            val has = Review.recs[itemKey]
+            when {
+                recorder != null -> addView(text("", 15f, RED, true).apply {
+                    setPadding(dp(18), dp(14), dp(18), dp(14)); recView = this
+                    text = "עצירה ושמירה · " + ((System.currentTimeMillis() - recStarted) / 1000) + " שנ׳"
+                    setOnClickListener { stopRec(true) }
+                })
+                recBusy -> addView(text("שומר…", 15f, MUTED).apply { setPadding(dp(18), dp(14), dp(18), dp(14)) })
+                has != null -> {
+                    infoRow(this, "הוקלט", when_(has))
+                    divider(this)
+                    addView(text(if (playing == "mine:$itemKey") "עצירה" else "השמעת ההקלטה שלך", 15f, BLUE, true).apply {
+                        setPadding(dp(18), dp(14), dp(18), dp(14)); setOnClickListener { playMine(itemKey) } })
+                    divider(this)
+                    addView(text("הקלטה מחדש", 15f, BLUE, true).apply { setPadding(dp(18), dp(14), dp(18), dp(14)); setOnClickListener { startRec() } })
+                    divider(this)
+                    addView(text("מחיקת ההקלטה", 15f, RED).apply {
+                        setPadding(dp(18), dp(14), dp(18), dp(14))
+                        setOnClickListener { sendOp(Review.op("delrec", itemKey), "ההקלטה נמחקה") }
+                    })
+                }
+                else -> addView(text("הקלטה", 15f, BLUE, true).apply { setPadding(dp(18), dp(14), dp(18), dp(14)); setOnClickListener { startRec() } })
+            }
+        }, lp())
+
         root.addView(label("הערה"))
         root.addView(card().apply {
             val note = EditText(this@MainActivity).apply {

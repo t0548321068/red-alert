@@ -17,6 +17,8 @@ object Review {
     @Volatile var status: Map<String, String> = emptyMap(); private set
     @Volatile var notes: Map<String, String> = emptyMap(); private set
     @Volatile var edits: List<Edit> = emptyList(); private set
+    /** הקלטות ההגייה שלך: מפתח (שם יישוב / נתיב הקלטה) → מתי הוקלט */
+    @Volatile var recs: Map<String, Long> = emptyMap(); private set
     @Volatile var online = false; private set
 
     private fun sp(c: Context) = c.getSharedPreferences("admin", Context.MODE_PRIVATE)
@@ -67,7 +69,24 @@ object Review {
         edits = (0 until a.length()).map { a.getJSONObject(it) }.filter { it.optString("state") == "pending" }.map {
             Edit(it.getString("id"), it.getString("key"), it.getString("field"), it.optString("from"), it.optString("to"), it.optLong("at"))
         }.sortedByDescending { it.at }
+        recs = o.optJSONObject("recs")?.let { j -> j.keys().asSequence().associateWith { j.getJSONObject(it).optLong("at") } } ?: emptyMap()
         online = true
+    }
+
+    fun recUrl(key: String) = "$SITE/api/review/rec?key=" + java.net.URLEncoder.encode(key, "UTF-8")
+    fun cookie(c: Context) = mapOf("Cookie" to "tz=" + (sp(c).getString("token", "") ?: ""))
+
+    /** העלאת הקלטת הגייה (ברקע). מחזיר true אם נשמרה בשרת */
+    fun upload(c: Context, key: String, f: java.io.File): Boolean {
+        val tok = sp(c).getString("token", "") ?: return false
+        val conn = URL(recUrl(key)).openConnection() as HttpURLConnection
+        return try {
+            conn.connectTimeout = 8000; conn.readTimeout = 30000; conn.requestMethod = "POST"; conn.doOutput = true
+            conn.setRequestProperty("Cookie", "tz=$tok"); conn.setRequestProperty("Content-Type", "audio/mp4")
+            conn.setFixedLengthStreamingMode(f.length())
+            conn.outputStream.use { out -> f.inputStream().use { it.copyTo(out) } }
+            if (conn.responseCode == 200) { read(JSONObject(conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) })); true } else false
+        } catch (_: Exception) { false } finally { conn.disconnect() }
     }
 
     /** טעינה מהשרת (ברקע). בפעם הראשונה - מעלה את הדגלים שהיו רק בטלפון (גרסה 1.0.1) */
