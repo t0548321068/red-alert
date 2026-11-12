@@ -3,6 +3,8 @@ name: Build APK
 on:
   push:
     branches: [main, beta, 'pending-*']
+    # יצירת הגרסאות בקול אבר (voice-auto.yml) - לא בונה את האפליקציה
+    paths-ignore: ['.github/workflows/voice-auto.yml']
   workflow_dispatch:
 
 permissions:
