@@ -23,7 +23,7 @@ jobs:
           sudo apt-get -qq install -y ffmpeg >/dev/null
           pip -q install edge-tts soundfile transformers
           pip -q install torch --index-url https://download.pytorch.org/whl/cpu
-          python - <<'P'
+          python -u - <<'P'
           import asyncio, json, re, time, urllib.request, urllib.parse
           import edge_tts
           S = "https://tzofar-app.duckdns.org"
