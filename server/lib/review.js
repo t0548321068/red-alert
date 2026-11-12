@@ -14,15 +14,21 @@ const REC_DIR = path.join(__dirname, '..', 'recordings');   // הקלטות הה
 // הגרסה החדשה בקול אבר לכל הקלטה (נוצרת בגיטהאב ונכנסת לגיט): candidates/<אותו שם>.mp3
 const CAND_DIR = path.join(__dirname, '..', 'candidates');
 // מצב הקלטה: pending (ממתין) → ready (יש גרסה בקול אבר) → approved / rejected
-const candFile = r => path.join(CAND_DIR, r.f.replace(/\.m4a$/, '.mp3'));
+// כמה גרסאות: candidates/<שם>_1.mp3, _2, _3 (אתה בוחר אחת), או קובץ אחד <שם>.mp3
+const candFile = (r, v) => path.join(CAND_DIR, r.f.replace(/\.m4a$/, '') + (v ? '_' + v : '') + '.mp3');
+const fresh = (f, r) => { try { return fs.statSync(f).mtimeMs > r.at; } catch (_) { return false; } };
 function withState() {
   for (const r of Object.values(data.recs)) {
     let st = r.state || 'pending';
-    if (st === 'pending') try { if (fs.statSync(candFile(r)).mtimeMs > r.at) st = 'ready'; } catch (_) {}
+    const vars = [1, 2, 3, 4, 5].filter(v => fresh(candFile(r, v), r)).length;
+    r.variants = vars;
+    if ((st === 'pending' || st === 'rejected') && (vars > 0 || fresh(candFile(r), r)) && !(r.rejectedAt && !newerThan(r, r.rejectedAt))) st = 'ready';
     r.state = st;
   }
   return data;
 }
+// אחרי דחייה - "מוכן" רק כשיש גרסאות חדשות יותר מהדחייה
+const newerThan = (r, t) => [0, 1, 2, 3, 4, 5].some(v => { try { return fs.statSync(candFile(r, v || undefined)).mtimeMs > t; } catch (_) { return false; } });
 // batches: "שליחה לטיפול" מהאפליקציה - מה לטפל בו (הקלטות, הצעות שינוי, לתיקון). sent → done כשהוכנס
 // tasks: דברים שהוספת ידנית לטיפול (טקסט חופשי)
 const empty = () => ({ status: {}, notes: {}, edits: [], recs: {}, batches: [], tasks: [] });
@@ -61,6 +67,8 @@ function apply(op) {
       if (!key || !data.recs[key] || data.recs[key].state !== 'ready') return null;
       data.recs[key].state = op.op === 'approve' ? 'approved' : 'rejected';
       data.recs[key].decidedAt = Date.now();
+      if (op.op === 'reject') data.recs[key].rejectedAt = Date.now();
+      if (op.op === 'approve' && op.v) data.recs[key].chosen = Math.max(1, Math.min(5, op.v | 0));
       log('review: ' + (op.op === 'approve' ? 'אושרה' : 'נדחתה') + ' גרסה בקול אבר');
       break;
     case 'delrec':
@@ -166,8 +174,9 @@ function pub(res, t) {
 function cand(res, u) {
   const r = data.recs[str(u.searchParams.get('key'), 200)];
   if (!r) { res.writeHead(404); return res.end(); }
+  const v = Math.max(0, Math.min(5, +u.searchParams.get('v') || 0)) || r.chosen || 0;
   res.writeHead(200, { 'Content-Type': 'audio/mpeg' });
-  fs.createReadStream(candFile(r)).on('error', () => res.end()).pipe(res);
+  fs.createReadStream(candFile(r, v || undefined)).on('error', () => res.end()).pipe(res);
 }
 
 function handle(req, res, u) {
