@@ -164,7 +164,7 @@ class SimActivity : Activity() {
     }
     private var tts: Tts? = null
     private fun stopSound() {
-        tts?.stop() player?.let { try { it.stop() } catch (_: Exception) { }; it.release() }; player = null; queue = emptyList() }
+        tts?.stop(); player?.let { try { it.stop() } catch (_: Exception) { }; it.release() }; player = null; queue = emptyList() }
 
     override fun onDestroy() { ui.removeCallbacksAndMessages(null); stopSound(); tts?.shutdown(); super.onDestroy() }
 }
