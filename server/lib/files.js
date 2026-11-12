@@ -34,6 +34,23 @@ function scan() {   // בהפעלה, ושוב אחרי אישור הקלטה
   dataIndex.voice = crypto.createHash('sha1').update(JSON.stringify(voiceIndex)).digest('hex').slice(0, 12);
   dataIndex.v = crypto.createHash('sha1').update(JSON.stringify(files) + dataIndex.voice).digest('hex').slice(0, 12);
 }
+// החזרה חד-פעמית להקלטה שבחרת (voice-restore.json, בגיט): מוחק את ההחלפה מניהול צופר כדי שהקובץ ב-data ייכנס.
+// כל רשומה רצה פעם אחת (לפי המזהה שלה), ומה שנמחק נשמר קודם ב-voice-history
+function restoreList() {
+  const ROOT = path.join(__dirname, '..'), DONE = path.join(ROOT, 'voice-history', 'restored.json');
+  let list = {}, done = {};
+  try { list = JSON.parse(fs.readFileSync(path.join(ROOT, 'voice-restore.json'), 'utf8')); } catch (_) { return; }
+  try { done = JSON.parse(fs.readFileSync(DONE, 'utf8')); } catch (_) {}
+  let changed = false;
+  for (const [rel, id] of Object.entries(list)) {
+    if (done[rel] === id || !/^voice\/[\w/.-]+\.mp3$/.test(rel) || rel.includes('..')) continue;
+    const ov = path.join(OVERRIDE_DIR, rel);
+    try { if (fs.existsSync(ov)) { const h = path.join(ROOT, 'voice-history', rel + '.' + Date.now()); fs.mkdirSync(path.dirname(h), { recursive: true }); fs.copyFileSync(ov, h); fs.unlinkSync(ov); } } catch (_) {}
+    done[rel] = id; changed = true;
+  }
+  if (changed) { try { fs.mkdirSync(path.dirname(DONE), { recursive: true }); fs.writeFileSync(DONE, JSON.stringify(done)); } catch (_) {} }
+}
+restoreList();
 scan();
 
 /** הקלטה מאושרת: נכנסת במקום ההקלטה הקיימת (rel כמו בתוך האפליקציה, למשל voice/areas/avigdor.mp3) */
