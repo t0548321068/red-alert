@@ -51,7 +51,14 @@ function applyRec(key) {
   const r = data.recs[key], t = targetOf(key);
   if (!r || !t) { log('review: לא נמצא לאן להכניס את ההקלטה'); return; }
   const f = candFile(r, r.chosen || undefined);
-  try { require('./files').override(t, f); r.applied = t; r.appliedAt = Date.now(); log('review: הקלטה חדשה נכנסה - ' + t); }
+  try {
+    require('./files').override(t, f); r.applied = t; r.appliedAt = Date.now(); log('review: הקלטה חדשה נכנסה - ' + t);
+    // בשליחה לטיפול: ההקלטה וה"לתיקון" של אותו פריט - טופל
+    for (const b of data.batches) for (const i of (b.items || [])) if ((i.t === 'rec' || i.t === 'fix') && i.k === key && i.state !== 'done') {
+      i.state = 'done'; i.at = Date.now(); i.msg = 'נכנס – גרסה ' + (r.chosen || 1) + ' בקול אבר, הטלפונים מורידים אותה';
+      b.state = b.items.every(x => x.state === 'done' || x.state === 'skipped') ? 'done' : 'working';
+    }
+  }
   catch (e) { log('review apply failed', e.message); }
 }
 // פעם אחת בהפעלה: מה שאושר ועוד לא נכנס
