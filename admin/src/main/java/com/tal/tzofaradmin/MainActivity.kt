@@ -40,7 +40,7 @@ class MainActivity : Activity() {
     private val CARD = Color.parseColor("#1C1C1E"); private val LINE = Color.parseColor("#2C2C2E")
     private val BLUE = Color.parseColor("#0A84FF")
 
-    private enum class Page { MAIN, AREAS, DISTRICTS, PHRASES, SOUNDS, ORPHANS, HISTORY, ALERT, ITEM, EDITS }
+    private enum class Page { MAIN, AREAS, DISTRICTS, PHRASES, SOUNDS, ORPHANS, HISTORY, ALERT, ITEM, EDITS, SEND }
     private var page = Page.MAIN
     private val stack = ArrayDeque<Page>()
     private var filter = 0          // יישובים: 0 הכל · 1 חסרים · 2 לא נבדקו · 3 תקינים · 4 לתיקון
@@ -373,12 +373,14 @@ class MainActivity : Activity() {
                 else -> "עוד לא נשלח לטיפול" to MUTED
             }
             addView(LinearLayout(this@MainActivity).apply {
-                gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(12), dp(18), dp(10))
+                gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(12), dp(14), dp(10))
                 addView(LinearLayout(this@MainActivity).apply {
                     orientation = LinearLayout.VERTICAL
                     addView(text(if (n == 0) "אין שינויים שמחכים" else "$n שינויים מחכים לשליחה", 15f, bold = true))
                     addView(text(line, 12f, color))
                 }, LinearLayout.LayoutParams(0, -2, 1f))
+                addView(icon(R.drawable.ic_chev, MUTED, 18))
+                setOnClickListener { go(Page.SEND) }   // מה יש בשליחה
             })
             addView(text("שליחה לטיפול", 16f, Color.WHITE, true).apply {
                 gravity = Gravity.CENTER; includeFontPadding = false
@@ -464,7 +466,7 @@ class MainActivity : Activity() {
         setContentView(root)
         header(root, when (page) {
             Page.AREAS -> district ?: "יישובים"; Page.DISTRICTS -> "אזורים"; Page.PHRASES -> "משפטי הקראה"
-            Page.SOUNDS -> "צלילי התרעה"; Page.HISTORY -> "היסטוריית התרעות"; Page.EDITS -> "שינויים ממתינים"
+            Page.SOUNDS -> "צלילי התרעה"; Page.HISTORY -> "היסטוריית התרעות"; Page.EDITS -> "שינויים ממתינים"; Page.SEND -> "שליחה לטיפול"
             Page.ALERT -> alert?.title ?: ""; else -> "הקלטה בלי יישוב" }, true)
 
         if (page == Page.AREAS || page == Page.HISTORY) {
@@ -511,6 +513,18 @@ class MainActivity : Activity() {
             adapter = this@MainActivity.adapter
         }.also { listView = it }, LinearLayout.LayoutParams(-1, 0, 1f))
         countView = count
+        if (page == Page.SEND) {
+            root.addView(LinearLayout(this).apply {
+                gravity = Gravity.CENTER; setPadding(dp(40), dp(8), dp(40), dp(18))
+                addView(text("שליחה לטיפול", 16f, Color.WHITE, true).apply {
+                    gravity = Gravity.CENTER; includeFontPadding = false
+                    background = round(if (Review.waiting() > 0) Color.parseColor("#4C7DFF") else LINE, 23)
+                    setOnClickListener {
+                        if (Review.waiting() == 0) toast("אין מה לשלוח") else sendOp(JSONObject().put("op", "submit"), "נשלח לטיפול")
+                    }
+                }, LinearLayout.LayoutParams(-1, dp(46)))
+            })
+        }
         if (page == Page.ALERT) {
             // כפתורים כחולים למטה (כמו "בדוק אם יש עדכונים" בצופר חירום)
             fun pill(label: String, click: () -> Unit) = text(label, 16f, Color.WHITE, true).apply {
@@ -566,6 +580,35 @@ class MainActivity : Activity() {
             Page.SOUNDS -> Data.sounds.map {
                 Item(it.title, it.path.substringAfterLast('/') + note(it.path), it.path, it.path, false, tap = { openItem(it.path, it.path, null) })
             }
+            Page.SEND -> {
+                fun title(k: String) = when {
+                    k.startsWith("district:") -> "אזור " + k.removePrefix("district:")
+                    k.startsWith("voice/") || k.startsWith("sounds/") -> (Data.phrases + Data.sounds).firstOrNull { it.path == k }?.title ?: k
+                    else -> k
+                }
+                fun open(k: String) { val a = Data.areas.firstOrNull { it.name == k }
+                    if (a != null) openItem(k, a.voice?.takeIf { a.voiceOk }, a)
+                    else if (k.startsWith("voice/") || k.startsWith("sounds/")) openItem(k, k, null) }
+                val recs = Review.recs.filter { it.value.state == "pending" || it.value.state == "rejected" }
+                val fix = Review.status.filter { it.value == "fix" }.keys
+                val out = mutableListOf<Item>()
+                if (recs.isNotEmpty()) {
+                    out += Item("הקלטות הגייה · ${recs.size}", "", null, null, false, header = true)
+                    recs.forEach { (k, r) -> out += Item(title(k), (if (r.state == "rejected") "נדחה – גרסה חדשה בקול אבר" else "גרסה בקול אבר") + " · הוקלט ${when_(r.at)}",
+                        null, null, false, chevron = true, tap = { open(k) }) }
+                }
+                if (Review.edits.isNotEmpty()) {
+                    out += Item("הצעות שינוי · ${Review.edits.size}", "", null, null, false, header = true)
+                    Review.edits.forEach { e -> out += Item(title(e.key), "${FIELD_NAMES[e.field] ?: e.field}: ${e.from.ifEmpty { "—" }} ← ${e.to}",
+                        null, null, false, chevron = true, tap = { open(e.key) }) }
+                }
+                if (fix.isNotEmpty()) {
+                    out += Item("לתיקון · ${fix.size}", "", null, null, false, header = true)
+                    fix.forEach { k -> out += Item(title(k), Review.notes[k] ?: "בלי הערה", null, null, Review.notes[k] == null,
+                        chevron = true, tap = { open(k) }) }
+                }
+                out
+            }
             Page.EDITS -> Review.edits.map { e ->
                 Item(e.key, "${FIELD_NAMES[e.field] ?: e.field}: ${e.from.ifEmpty { "—" }} ← ${e.to}\n${when_(e.at)}", null, null, false, chevron = true,
                     tap = { val a = Data.areas.firstOrNull { it.name == e.key }; openItem(e.key, a?.voice?.takeIf { a.voiceOk }, a) })
@@ -609,6 +652,10 @@ class MainActivity : Activity() {
                 " · נבדקו מול הרשימה ${Data.districts.keys.count { listChecked(districtListKey(it)) }}/${Data.districts.size}" else "")
             page == Page.AREAS && Review.loggedIn(this) -> "${items.size} יישובים · נבדקו מול הרשימה ${items.count { it.listKey != null && listChecked(it.listKey) }}/${items.size}"
             page == Page.PHRASES -> "${items.count { !it.header }} הקלטות"
+            page == Page.SEND -> Review.lastBatch.let { b -> when {
+                items.isEmpty() -> "אין שינויים שמחכים"
+                b?.state == "sent" -> "נשלח לטיפול ב-${when_(b.at)} · ממתין שאכניס"
+                else -> "${items.count { !it.header }} שינויים מחכים לשליחה" } }
             else -> "${items.size} פריטים"
         }
         adapter?.notifyDataSetChanged()
