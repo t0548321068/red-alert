@@ -24,7 +24,8 @@ function withState() {
   return data;
 }
 // batches: "שליחה לטיפול" מהאפליקציה - מה לטפל בו (הקלטות, הצעות שינוי, לתיקון). sent → done כשהוכנס
-const empty = () => ({ status: {}, notes: {}, edits: [], recs: {}, batches: [] });
+// tasks: דברים שהוספת ידנית לטיפול (טקסט חופשי)
+const empty = () => ({ status: {}, notes: {}, edits: [], recs: {}, batches: [], tasks: [] });
 let data = empty();
 try { data = { ...empty(), ...JSON.parse(fs.readFileSync(FILE, 'utf8')) }; } catch (_) {}
 
@@ -67,15 +68,26 @@ function apply(op) {
       try { fs.unlinkSync(path.join(REC_DIR, data.recs[key].f)); } catch (_) {}
       delete data.recs[key];
       break;
+    case 'task':
+      { const t = str(op.text, 1000); if (!t || data.tasks.length >= 500) return null;
+        data.tasks.push({ id: crypto.randomBytes(5).toString('hex'), text: t, at: Date.now() }); }
+      break;
+    case 'deltask':
+      { const n = data.tasks.length; data.tasks = data.tasks.filter(t => t.id !== str(op.id, 20)); if (n === data.tasks.length) return null; }
+      break;
     case 'submit': {
       withState();
-      const recs = Object.entries(data.recs).filter(([, r]) => r.state === 'pending' || r.state === 'rejected').map(([k]) => k);
-      const edits = data.edits.map(e => e.id);
-      const fix = Object.entries(data.status).filter(([, v]) => v === 'fix').map(([k]) => k);
-      if (!recs.length && !edits.length && !fix.length) return null;
-      data.batches.push({ id: crypto.randomBytes(4).toString('hex'), at: Date.now(), state: 'sent', recs, edits, fix });
+      // רק מה שסימנת (אם נשלחה רשימה), ורק מה שעדיין קיים
+      const pick = (all, sel) => Array.isArray(sel) ? all.filter(x => sel.includes(x)) : all;
+      const recs = pick(Object.entries(data.recs).filter(([, r]) => r.state === 'pending' || r.state === 'rejected').map(([k]) => k), op.recs);
+      const edits = pick(data.edits.map(e => e.id), op.edits);
+      const fix = pick(Object.entries(data.status).filter(([, v]) => v === 'fix').map(([k]) => k), op.fix);
+      const tasks = pick(data.tasks.map(t => t.id), op.tasks);
+      if (!recs.length && !edits.length && !fix.length && !tasks.length) return null;
+      data.batches.push({ id: crypto.randomBytes(4).toString('hex'), at: Date.now(), state: 'sent', recs, edits, fix, tasks,
+        taskText: data.tasks.filter(t => tasks.includes(t.id)).map(t => t.text) });
       data.batches = data.batches.slice(-50);
-      log(`review: נשלח לטיפול - ${recs.length} הקלטות, ${edits.length} שינויים, ${fix.length} לתיקון`);
+      log(`review: נשלח לטיפול - ${recs.length} הקלטות, ${edits.length} שינויים, ${fix.length} לתיקון, ${tasks.length} ידני`);
       break;
     }
     case 'batchdone': {
