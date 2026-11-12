@@ -31,7 +31,8 @@ function withState() {
 const newerThan = (r, t) => [0, 1, 2, 3, 4, 5].some(v => { try { return fs.statSync(candFile(r, v || undefined)).mtimeMs > t; } catch (_) { return false; } });
 // batches: "שליחה לטיפול" מהאפליקציה - מה לטפל בו (הקלטות, הצעות שינוי, לתיקון). sent → done כשהוכנס
 // tasks: דברים שהוספת ידנית לטיפול (טקסט חופשי)
-const empty = () => ({ status: {}, notes: {}, edits: [], recs: {}, batches: [], tasks: [] });
+// done: מה שבוצע (מפתח -> מתי) - כבר לא "לתיקון" ולא "שינוי ממתין"
+const empty = () => ({ status: {}, notes: {}, edits: [], recs: {}, batches: [], tasks: [], done: {} });
 let data = empty();
 try { data = { ...empty(), ...JSON.parse(fs.readFileSync(FILE, 'utf8')) }; } catch (_) {}
 
@@ -58,11 +59,34 @@ function applyRec(key) {
       i.state = 'done'; i.at = Date.now(); i.msg = 'נכנס – גרסה ' + (r.chosen || 1) + ' בקול אבר, הטלפונים מורידים אותה';
       b.state = b.items.every(x => x.state === 'done' || x.state === 'skipped') ? 'done' : 'working';
     }
+    if (data.status[key] === 'fix') delete data.status[key];
+    data.done[key] = Date.now();
   }
   catch (e) { log('review apply failed', e.message); }
 }
 // פעם אחת בהפעלה: מה שאושר ועוד לא נכנס
 setTimeout(() => { for (const [k, r] of Object.entries(data.recs)) if (r.state === 'approved' && !r.applied) applyRec(k); save(); }, 3000);
+
+/** בוצע: מוריד "לתיקון" ושינויים ממתינים של המפתח, ומסמן טופל בשליחה לטיפול */
+function markDone(key, msg) {
+  if (data.status[key] === 'fix') delete data.status[key];
+  data.edits = data.edits.filter(e => e.key !== key);
+  data.done[key] = Date.now();
+  for (const b of data.batches) for (const i of (b.items || [])) {
+    const ik = i.t === 'edit' ? i.key : i.k;
+    if (ik === key && i.state !== 'done') { i.state = 'done'; i.at = Date.now(); if (msg) i.msg = msg; }
+    b.state = (b.items || []).every(x => x.state === 'done' || x.state === 'skipped') ? 'done' : b.state;
+  }
+}
+/** פריטים שסומנו טופל בשליחה (שינוי שהוכנס, הקלטה שנכנסה) - בוצעו */
+function settle() {
+  for (const b of data.batches) for (const i of (b.items || [])) if (i.state === 'done') {
+    const key = i.t === 'edit' ? i.key : i.k;
+    if (i.t === 'edit') { data.edits = data.edits.filter(e => e.id !== i.k); data.done[key] = data.done[key] || i.at || Date.now(); }
+    if ((i.t === 'fix' || i.t === 'rec') && !data.done[key]) { if (data.status[key] === 'fix') delete data.status[key]; data.done[key] = i.at || Date.now(); }
+  }
+}
+setTimeout(() => { settle(); save(); }, 4000);
 
 /** פעולה אחת מהאפליקציה. מחזיר את המצב המלא, או null אם הבקשה לא תקינה */
 function apply(op) {
@@ -136,6 +160,7 @@ function apply(op) {
       it.state = op.state; it.at = Date.now(); if (op.msg != null) it.msg = str(op.msg, 500);
       b.state = b.items.every(i => i.state === 'done' || i.state === 'skipped') ? 'done' : b.items.some(i => i.state !== 'sent') ? 'working' : 'sent';
       if (b.state === 'done') b.doneAt = Date.now();
+      settle();
       break;
     }
     case 'batchdone': {
@@ -143,6 +168,10 @@ function apply(op) {
       b.state = 'done'; b.doneAt = Date.now(); b.summary = str(op.summary, 2000);
       break;
     }
+    case 'markdone':
+      if (!key) return null;
+      markDone(key, 'סומן כבוצע');
+      break;
     case 'import':   // מעבר מגרסה קודמת: הסימונים שהיו רק בטלפון
       for (const k of Array.isArray(op.fix) ? op.fix.slice(0, 3000) : []) { const s = str(k, 200); if (s && !data.status[s]) data.status[s] = 'fix'; }
       break;
