@@ -66,6 +66,7 @@ function applyRec(key) {
       b.state = b.items.every(x => x.state === 'done' || x.state === 'skipped') ? 'done' : 'working';
     }
     if (data.status[key] === 'fix') delete data.status[key];
+    delete data.notes[key];
     data.done[key] = Date.now();
   }
   catch (e) { log('review apply failed', e.message); }
@@ -76,6 +77,7 @@ setTimeout(() => { for (const [k, r] of Object.entries(data.recs)) if (r.state =
 /** בוצע: מוריד "לתיקון" ושינויים ממתינים של המפתח, ומסמן טופל בשליחה לטיפול */
 function markDone(key, msg) {
   if (data.status[key] === 'fix') delete data.status[key];
+  delete data.notes[key];   // ההערה היא בקשת השינוי - כשבוצע, נמחקת
   data.edits = data.edits.filter(e => e.key !== key);
   data.done[key] = Date.now();
   for (const b of data.batches) for (const i of (b.items || [])) {
@@ -89,7 +91,7 @@ function settle() {
   for (const b of data.batches) for (const i of (b.items || [])) if (i.state === 'done') {
     const key = i.t === 'edit' ? i.key : i.k;
     if (i.t === 'edit') { data.edits = data.edits.filter(e => e.id !== i.k); data.done[key] = data.done[key] || i.at || Date.now(); }
-    if ((i.t === 'fix' || i.t === 'rec') && !data.done[key]) { if (data.status[key] === 'fix') delete data.status[key]; data.done[key] = i.at || Date.now(); }
+    if ((i.t === 'fix' || i.t === 'rec') && !data.done[key]) { if (data.status[key] === 'fix') delete data.status[key]; delete data.notes[key]; data.done[key] = i.at || Date.now(); }
   }
 }
 setTimeout(() => { settle(); save(); }, 4000);
