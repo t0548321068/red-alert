@@ -178,6 +178,18 @@ function apply(op) {
       if (!key) return null;
       markDone(key, 'סומן כבוצע');
       break;
+    case 'resetkey': {   // איפוס של פריט אחד: כל הסימונים, ההערה, ההקלטה, השינויים והשליחות שלו
+      if (!key) return null;
+      for (const k of [key, 'list:' + key, 'list-d:' + key, 'district:' + key]) delete data.status[k];
+      delete data.notes[key]; delete data.done[key];
+      if (data.recs[key]) { try { fs.unlinkSync(path.join(REC_DIR, data.recs[key].f)); } catch (_) {} delete data.recs[key]; }
+      const ids = new Set(data.edits.filter(e => e.key === key).map(e => e.id));
+      data.edits = data.edits.filter(e => e.key !== key);
+      for (const b of data.batches) if (b.items) b.items = b.items.filter(i => !(i.k === key || i.key === key || ids.has(i.k)));
+      data.batches = data.batches.filter(b => !b.items || b.items.length);
+      log('review: אופס פריט');
+      break;
+    }
     case 'reset':   // איפוס מלא של ניהול צופר: סימונים, הערות, שינויים, הקלטות, שליחות - הכל מההתחלה
       if (op.confirm !== 'RESET') return null;
       try { for (const f of fs.readdirSync(REC_DIR)) fs.unlinkSync(path.join(REC_DIR, f)); } catch (_) {}
