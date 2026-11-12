@@ -158,9 +158,36 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         // בכל חזרה לאפליקציה (לא רק בפתיחה ראשונה) - לכל היותר פעם בדקה; מיד אחרי אישור "התקנת עדכונים" בהגדרות
+        ui.removeCallbacks(live); ui.postDelayed(live, 5000)
         if (System.currentTimeMillis() - Update.lastCheck > 60_000 || (Update.needPermission && packageManager.canRequestPackageInstalls())) checkUpdate()
     }
-    override fun onPause() { stop(); if (recorder != null) stopRec(false); super.onPause() }
+    override fun onPause() { ui.removeCallbacks(live); stop(); if (recorder != null) stopRec(false); super.onPause() }
+
+    // ---- לייב: כל 5 שניות בודק אם משהו השתנה בשרת (סטטוסים, התקדמות, גרסאות), ומעדכן את המסך במקום ----
+    @Volatile private var polling = false
+    private val live = object : Runnable {
+        override fun run() {
+            ui.postDelayed(this, 5000)
+            if (polling || !Review.loggedIn(this@MainActivity) || Data.loadedAt == 0L) return
+            polling = true
+            Thread {
+                val changed = Review.poll(this@MainActivity)
+                ui.post {
+                    polling = false
+                    if (!changed) return@post
+                    // בזמן הקלדה או הקלטה - לא בונים מחדש את הדף (שלא יימחק מה שהקלדת)
+                    val typing = currentFocus is EditText
+                    when {
+                        page == Page.ITEM -> if (!typing && recorder == null && !recBusy) item()
+                        page == Page.ADD -> Unit
+                        page == Page.MAIN -> main()
+                        page == Page.SEND -> { val pos = scrollPos(); list(); listView?.setSelectionFromTop(pos.first, pos.second) }
+                        else -> refreshList()
+                    }
+                }
+            }.start()
+        }
+    }
 
     // ---- הקלטת הגייה: אתה מקליט איך השם צריך להישמע, וזה נשמר בשרת (ממנו מכינים הקלטה חדשה בקול אבר) ----
     private var recorder: android.media.MediaRecorder? = null

@@ -80,6 +80,14 @@ object Review {
         } catch (_: Exception) { null } finally { conn.disconnect() }
     }
 
+    @Volatile private var lastRaw = ""
+    /** לייב: טוען שוב, ומחזיר true רק אם משהו השתנה */
+    fun poll(c: Context): Boolean {
+        val o = call(c, null) ?: return false
+        val raw = o.toString()
+        if (raw == lastRaw) return false
+        lastRaw = raw; read(o); return true
+    }
     private fun read(o: JSONObject) {
         fun map(j: JSONObject?) = j?.keys()?.asSequence()?.associateWith { j.getString(it) } ?: emptyMap()
         status = map(o.optJSONObject("status")); notes = map(o.optJSONObject("notes"))
