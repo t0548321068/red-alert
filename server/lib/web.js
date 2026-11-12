@@ -123,6 +123,9 @@ function handle(req, res, u, state) {
   }
   if (p === '/app') { res.writeHead(301, { Location: '/app/' }); res.end(); return true; }
   // קישור חד-פעמי להקלטת הגייה (לגיטהאב) - בלי כניסה, תקף 15 דקות להורדה אחת
+  // יצירת גרסאות בקול אבר (בנייה מתוזמנת בגיטהאב): רשימת עבודות והעלאת קבצים - עם מפתח חד-פעמי לכל הקלטה
+  if (p === '/voice-jobs') { require('./review').jobs(res); return true; }
+  if (p === '/voice-upload') { require('./review').upload(req, res, u); return true; }
   if (p.startsWith('/rec-pub/')) { require('./review').pub(res, p.slice(9).replace(/[^0-9a-f]/g, '')); return true; }
   const isWeb = p === '/' || p.startsWith('/app/') || p.startsWith('/api/') || p.startsWith('/assets/') || p.startsWith('/w/');
   if (!isWeb) return false;
