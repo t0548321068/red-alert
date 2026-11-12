@@ -180,7 +180,6 @@ function apply(op) {
     case 'reset':   // איפוס מלא של ניהול צופר: סימונים, הערות, שינויים, הקלטות, שליחות - הכל מההתחלה
       if (op.confirm !== 'RESET') return null;
       try { for (const f of fs.readdirSync(REC_DIR)) fs.unlinkSync(path.join(REC_DIR, f)); } catch (_) {}
-      try { for (const f of fs.readdirSync(CAND_DIR)) if (f.endsWith('.mp3')) fs.unlinkSync(path.join(CAND_DIR, f)); } catch (_) {}
       data = empty(); shares.clear();
       log('review: ניהול צופר אופס');
       break;
