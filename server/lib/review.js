@@ -74,6 +74,37 @@ function applyRec(key) {
 // פעם אחת בהפעלה: מה שאושר ועוד לא נכנס
 setTimeout(() => { for (const [k, r] of Object.entries(data.recs)) if (r.state === 'approved' && !r.applied) applyRec(k); save(); }, 3000);
 
+/** הצעת שינוי של אזור / זמן מיגון - נכנסת מיד לנתונים שהשרת מגיש (הטלפונים מקבלים). מחזיר true אם נכנסה */
+function applyEdit(e) {
+  const files = require('./files');
+  try {
+    if (e.field === 'district') {
+      const d = JSON.parse(files.currentText('districts.json'));
+      d[e.key] = e.to; files.overrideText('districts.json', JSON.stringify(d));
+    } else if (e.field === 'shelter') {
+      const sec = parseInt(e.to, 10); if (!(sec >= 0 && sec <= 600)) return false;
+      const lines = files.currentText('migun.txt').split('\n'); let found = false;
+      const out = lines.map(l => { const p = l.split('\t'); if (p[0] === e.key) { found = true; return e.key + '\t' + sec; } return l; });
+      if (!found) out.splice(out.length && out[out.length - 1] === '' ? out.length - 1 : out.length, 0, e.key + '\t' + sec);
+      files.overrideText('migun.txt', out.join('\n'));
+    } else return false;
+    log('review: שינוי נכנס - ' + e.field);
+    return true;
+  } catch (err) { log('review edit failed', err.message); return false; }
+}
+/** שינויים של אזור / זמן מיגון בשליחה: נכנסים עכשיו, ומסומנים טופל */
+function applyEditsIn(b) {
+  for (const i of (b.items || [])) if (i.t === 'edit' && i.state !== 'done' && (i.field === 'district' || i.field === 'shelter')) {
+    if (applyEdit({ key: i.key, field: i.field, to: i.to })) {
+      i.state = 'done'; i.at = Date.now(); i.msg = 'נכנס – הטלפונים מקבלים את השינוי מהשרת';
+      if (data.status[i.key] === 'fix') delete data.status[i.key];
+      delete data.notes[i.key]; data.done[i.key] = Date.now();
+      for (const x of b.items) if (x.t === 'fix' && x.k === i.key && x.state !== 'done') { x.state = 'done'; x.at = Date.now(); x.msg = i.msg; }
+    }
+  }
+  b.state = (b.items || []).every(x => x.state === 'done' || x.state === 'skipped') ? 'done' : b.state;
+}
+
 /** בוצע: מוריד "לתיקון" ושינויים ממתינים של המפתח, ומסמן טופל בשליחה לטיפול */
 function markDone(key, msg) {
   if (data.status[key] === 'fix') delete data.status[key];
@@ -94,7 +125,7 @@ function settle() {
     if ((i.t === 'fix' || i.t === 'rec') && !data.done[key]) { if (data.status[key] === 'fix') delete data.status[key]; delete data.notes[key]; data.done[key] = i.at || Date.now(); }
   }
 }
-setTimeout(() => { settle(); save(); }, 4000);
+setTimeout(() => { for (const b of data.batches) applyEditsIn(b); settle(); save(); }, 4000);
 
 /** פעולה אחת מהאפליקציה. מחזיר את המצב המלא, או null אם הבקשה לא תקינה */
 function apply(op) {
@@ -162,6 +193,8 @@ function apply(op) {
       ].map(i => ({ ...i, state: 'sent', at: Date.now() }));
       data.batches.push({ id: crypto.randomBytes(4).toString('hex'), at: Date.now(), state: 'sent', recs, edits, fix, tasks, items });
       data.tasks = data.tasks.filter(t => !tasks.includes(t.id));   // מה שנוסף ידנית עובר לשליחה
+      applyEditsIn(data.batches[data.batches.length - 1]);           // אזור / זמן מיגון - נכנסים מיד
+      settle();
       // הקלטה שנשלחה לטיפול (גם אחרי "אף אחת לא טובה") - מכינים גרסאות חדשות מיד
       for (const k of recs.concat(fix)) { const r = data.recs[k];
         if (r && ['pending', 'ready', 'rejected'].includes(r.state)) { r.state = 'pending'; r.since = Date.now(); r.prog = null; r.retried = false; delete r.rejectedAt; delete r.vtext; } }
@@ -192,8 +225,11 @@ function apply(op) {
       if (r && r.state === 'ready') { r.chosen = r.chosen || 1; r.state = 'approved'; applyRec(key); }
       // הצעות שינוי: מאושרות ועוברות לשליחה לטיפול (אני מכניס)
       const eds = data.edits.filter(e => e.key === key);
-      if (eds.length) data.batches.push({ id: crypto.randomBytes(4).toString('hex'), at: Date.now(), state: 'sent', recs: [], edits: eds.map(e => e.id), fix: [], tasks: [],
+      if (eds.length) { data.batches.push({ id: crypto.randomBytes(4).toString('hex'), at: Date.now(), state: 'sent', recs: [], edits: eds.map(e => e.id), fix: [], tasks: [],
         items: eds.map(e => ({ t: 'edit', k: e.id, key: e.key, field: e.field, from: e.from, to: e.to, state: 'sent', at: Date.now(), msg: 'אושר – ממתין שאכניס' })) });
+        applyEditsIn(data.batches[data.batches.length - 1]); }
+      // שינויים שכבר נשלחו ועוד לא נכנסו - גם הם עכשיו
+      for (const b of data.batches) if (b.items && b.items.some(i => i.t === 'edit' && i.key === key && i.state !== 'done')) applyEditsIn(b);
       markDone(key, 'סומן כבוצע');
       // הכרטיס חוזר לרגיל: בלי לתיקון, בלי הערה, בלי הקלטה פתוחה
       if (data.recs[key]) { try { fs.unlinkSync(path.join(REC_DIR, data.recs[key].f)); } catch (_) {} delete data.recs[key]; }
