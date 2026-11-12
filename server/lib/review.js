@@ -41,6 +41,22 @@ function save() {
 }
 const str = (v, max) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
 
+// אישור: הגרסה שבחרת נכנסת מיד במקום ההקלטה הקיימת (השרת מגיש אותה, והטלפונים מורידים)
+const APP_INDEX = path.join(__dirname, '..', '..', 'app', 'src', 'main', 'assets', 'voice', 'index.json');
+function targetOf(key) {
+  if (/^voice\/(phrases|extra)\/[\w.-]+\.mp3$/.test(key)) return key;
+  try { const rel = JSON.parse(fs.readFileSync(APP_INDEX, 'utf8'))[key]; return rel ? 'voice/' + rel : null; } catch (_) { return null; }
+}
+function applyRec(key) {
+  const r = data.recs[key], t = targetOf(key);
+  if (!r || !t) { log('review: לא נמצא לאן להכניס את ההקלטה'); return; }
+  const f = candFile(r, r.chosen || undefined);
+  try { require('./files').override(t, f); r.applied = t; r.appliedAt = Date.now(); log('review: הקלטה חדשה נכנסה - ' + t); }
+  catch (e) { log('review apply failed', e.message); }
+}
+// פעם אחת בהפעלה: מה שאושר ועוד לא נכנס
+setTimeout(() => { for (const [k, r] of Object.entries(data.recs)) if (r.state === 'approved' && !r.applied) applyRec(k); save(); }, 3000);
+
 /** פעולה אחת מהאפליקציה. מחזיר את המצב המלא, או null אם הבקשה לא תקינה */
 function apply(op) {
   const key = str(op.key, 200);
@@ -69,6 +85,7 @@ function apply(op) {
       data.recs[key].decidedAt = Date.now();
       if (op.op === 'reject') data.recs[key].rejectedAt = Date.now();
       if (op.op === 'approve' && op.v) data.recs[key].chosen = Math.max(1, Math.min(5, op.v | 0));
+      if (op.op === 'approve') applyRec(key);
       log('review: ' + (op.op === 'approve' ? 'אושרה' : 'נדחתה') + ' גרסה בקול אבר');
       break;
     case 'delrec':
