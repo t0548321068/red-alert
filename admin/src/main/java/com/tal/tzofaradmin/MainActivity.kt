@@ -456,7 +456,18 @@ class MainActivity : Activity() {
     // ---- רשימות ----
     private class Item(val title: String, val sub: String, val path: String?, val key: String?, val bad: Boolean,
         val seq: List<String>? = null, val tap: (() -> Unit)? = null, val chevron: Boolean = false, val header: Boolean = false,
-        val ok: Boolean = false, val say: String? = null, val found: Boolean? = null, val listKey: String? = null)
+        val ok: Boolean = false, val say: String? = null, val found: Boolean? = null, val listKey: String? = null, val sel: String? = null)
+    /** בשליחה לטיפול: מה לא לשלוח (ברירת מחדל - הכל מסומן) */
+    private val unselected = HashSet<String>()
+    private fun submitSelected() {
+        val recs = Review.recs.filter { (it.value.state == "pending" || it.value.state == "rejected") && "rec:${it.key}" !in unselected }.keys
+        val edits = Review.edits.map { it.id }.filter { "edit:$it" !in unselected }
+        val fix = Review.status.filter { it.value == "fix" && "fix:${it.key}" !in unselected }.keys
+        val tasks = Review.tasks.map { it.id }.filter { "task:$it" !in unselected }
+        if (recs.isEmpty() && edits.isEmpty() && fix.isEmpty() && tasks.isEmpty()) { toast("לא סומן כלום לשליחה"); return }
+        sendOp(JSONObject().put("op", "submit").put("recs", org.json.JSONArray(recs.toList())).put("edits", org.json.JSONArray(edits))
+            .put("fix", org.json.JSONArray(fix.toList())).put("tasks", org.json.JSONArray(tasks)), "נשלח לטיפול")
+    }
     private var items: List<Item> = emptyList()
     private var adapter: BaseAdapter? = null
     private var countView: TextView? = null
@@ -515,14 +526,16 @@ class MainActivity : Activity() {
         countView = count
         if (page == Page.SEND) {
             root.addView(LinearLayout(this).apply {
-                gravity = Gravity.CENTER; setPadding(dp(40), dp(8), dp(40), dp(18))
+                gravity = Gravity.CENTER; setPadding(dp(16), dp(8), dp(16), dp(18))
+                addView(text("הוספה", 16f, Color.WHITE, true).apply {
+                    gravity = Gravity.CENTER; includeFontPadding = false; background = round(LINE, 23)
+                    setOnClickListener { askText("מה להוסיף לטיפול?", "") { t -> if (t.isNotBlank()) sendOp(JSONObject().put("op", "task").put("text", t), "נוסף") } }
+                }, LinearLayout.LayoutParams(0, dp(46), 1f))
                 addView(text("שליחה לטיפול", 16f, Color.WHITE, true).apply {
                     gravity = Gravity.CENTER; includeFontPadding = false
-                    background = round(if (Review.waiting() > 0) Color.parseColor("#4C7DFF") else LINE, 23)
-                    setOnClickListener {
-                        if (Review.waiting() == 0) toast("אין מה לשלוח") else sendOp(JSONObject().put("op", "submit"), "נשלח לטיפול")
-                    }
-                }, LinearLayout.LayoutParams(-1, dp(46)))
+                    background = round(Color.parseColor("#4C7DFF"), 23)
+                    setOnClickListener { submitSelected() }
+                }, LinearLayout.LayoutParams(0, dp(46), 1.6f).apply { marginStart = dp(10) })
             })
         }
         if (page == Page.ALERT) {
@@ -595,17 +608,24 @@ class MainActivity : Activity() {
                 if (recs.isNotEmpty()) {
                     out += Item("הקלטות הגייה · ${recs.size}", "", null, null, false, header = true)
                     recs.forEach { (k, r) -> out += Item(title(k), (if (r.state == "rejected") "נדחה – גרסה חדשה בקול אבר" else "גרסה בקול אבר") + " · הוקלט ${when_(r.at)}",
-                        null, null, false, chevron = true, tap = { open(k) }) }
+                        null, null, false, chevron = true, tap = { open(k) }, sel = "rec:$k") }
                 }
                 if (Review.edits.isNotEmpty()) {
                     out += Item("הצעות שינוי · ${Review.edits.size}", "", null, null, false, header = true)
                     Review.edits.forEach { e -> out += Item(title(e.key), "${FIELD_NAMES[e.field] ?: e.field}: ${e.from.ifEmpty { "—" }} ← ${e.to}",
-                        null, null, false, chevron = true, tap = { open(e.key) }) }
+                        null, null, false, chevron = true, tap = { open(e.key) }, sel = "edit:${e.id}") }
                 }
                 if (fix.isNotEmpty()) {
                     out += Item("לתיקון · ${fix.size}", "", null, null, false, header = true)
                     fix.forEach { k -> out += Item(title(k), Review.notes[k] ?: "בלי הערה", null, null, Review.notes[k] == null,
-                        chevron = true, tap = { open(k) }) }
+                        chevron = true, tap = { open(k) }, sel = "fix:$k") }
+                }
+                if (Review.tasks.isNotEmpty()) {
+                    out += Item("נוסף ידנית · ${Review.tasks.size}", "", null, null, false, header = true)
+                    Review.tasks.forEach { t -> out += Item(t.text, when_(t.at) + " · לחיצה למחיקה", null, null, false, sel = "task:${t.id}", tap = {
+                        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("למחוק?").setMessage(t.text)
+                            .setPositiveButton("מחיקה") { _, _ -> sendOp(JSONObject().put("op", "deltask").put("id", t.id), "נמחק") }
+                            .setNegativeButton("ביטול", null).show() }, chevron = true) }
                 }
                 out
             }
@@ -655,7 +675,7 @@ class MainActivity : Activity() {
             page == Page.SEND -> Review.lastBatch.let { b -> when {
                 items.isEmpty() -> "אין שינויים שמחכים"
                 b?.state == "sent" -> "נשלח לטיפול ב-${when_(b.at)} · ממתין שאכניס"
-                else -> "${items.count { !it.header }} שינויים מחכים לשליחה" } }
+                else -> items.filter { it.sel != null }.let { s -> "סומנו ${s.count { it.sel !in unselected }} מתוך ${s.size} לשליחה" } } }
             else -> "${items.size} פריטים"
         }
         adapter?.notifyDataSetChanged()
@@ -686,6 +706,14 @@ class MainActivity : Activity() {
                     else if (page == Page.HISTORY && it.title == "האירוע הסתיים") GREEN else Color.WHITE))
                 addView(text(it.sub, 12f, if (it.bad) ORANGE else MUTED))
             }, LinearLayout.LayoutParams(0, -2, 1f))
+            // בשליחה לטיפול: מה לשלוח
+            it.sel?.let { sid ->
+                val on = sid !in unselected
+                addView(icon(if (on) R.drawable.ic_box_on else R.drawable.ic_box, if (on) BLUE else MUTED, 24).apply {
+                    (layoutParams as LinearLayout.LayoutParams).marginEnd = dp(12)
+                    setOnClickListener { if (!unselected.remove(sid)) unselected.add(sid); refreshList() }
+                })
+            }
             // "בדוק יישובים": וי ירוק - מופיע ברשימת היישובים, סימן אדום - לא מופיע
             it.found?.let { f -> addView(icon(if (f) R.drawable.ic_ok else R.drawable.ic_warn, if (f) GREEN else RED, 22).apply {
                 (layoutParams as LinearLayout.LayoutParams).marginEnd = dp(12) }) }
