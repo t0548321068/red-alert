@@ -87,7 +87,7 @@ object Data {
         }
         byName = areas.associateBy { it.name }
         val col = java.text.Collator.getInstance(java.util.Locale("he"))
-        districts = areas.filter { it.district != null }.groupBy { it.district!! }.toSortedMap(col)
+        this.districts = areas.filter { it.district != null }.groupBy { it.district!! }.toSortedMap(col)
         try {
             val t = JSONObject(text(c, "config.json")).getJSONObject("titles")
             fun l(k: String) = t.optJSONArray(k)?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList()
