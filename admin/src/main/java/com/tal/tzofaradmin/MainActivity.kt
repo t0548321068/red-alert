@@ -930,25 +930,17 @@ class MainActivity : Activity() {
             return
         }
 
-        // בוצע: השינוי נעשה - לא מופיע יותר כ"לתיקון" / "שינוי ממתין"
-        val open = statusOf(itemKey) == "fix" || Review.edits.any { it.key == itemKey } ||
-            Review.recs[itemKey]?.state.let { it == "pending" || it == "ready" || it == "rejected" }
-        val doneAt = Review.done[itemKey]
-        root.addView(card().apply {
-            if (doneAt != null) addView(LinearLayout(this@MainActivity).apply {
-                gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(14), dp(18), dp(14))
-                addView(icon(R.drawable.ic_ok, GREEN, 22).apply { (layoutParams as LinearLayout.LayoutParams).marginEnd = dp(12) })
-                addView(text("בוצע", 15f, GREEN, true), LinearLayout.LayoutParams(0, -2, 1f))
-                addView(text(when_(doneAt), 13f, MUTED))
+        // סימון כבוצע: מאשר הכל (ההקלטה שבחרת או הראשונה נכנסת, הצעות שינוי מאושרות) והכרטיס חוזר לרגיל
+        val open = statusOf(itemKey) == "fix" || Review.edits.any { it.key == itemKey } || Review.notes.containsKey(itemKey) ||
+            Review.recs[itemKey]?.state.let { it == "pending" || it == "ready" || it == "rejected" || it == "approved" }
+        if (open) root.addView(card().apply {
+            addView(text("סימון כבוצע", 15f, BLUE, true).apply {
+                setPadding(dp(18), dp(14), dp(18), dp(14))
+                setOnClickListener { sendOp(Review.op("markdone", itemKey), "בוצע – נכנס לשרת") { load() } }
             })
-            if (open) {
-                if (childCount > 0) divider(this)
-                addView(text("סימון כבוצע", 15f, BLUE, true).apply {
-                    setPadding(dp(18), dp(14), dp(18), dp(14))
-                    setOnClickListener { sendOp(Review.op("markdone", itemKey), "סומן כבוצע") }
-                })
-            }
-            if (childCount == 0) addView(text("אין שינוי פתוח", 14f, MUTED).apply { setPadding(dp(18), dp(14), dp(18), dp(14)) })
+            addView(text(if (Review.recs[itemKey]?.state == "ready" && (Review.recs[itemKey]?.chosen ?: 0) == 0)
+                "ההקלטה: תיכנס גרסה 1 (מההערה). אפשר לבחור גרסה אחרת קודם" else "מאשר הכל ומחזיר את הכרטיס לרגיל", 12f, MUTED).apply {
+                setPadding(dp(18), 0, dp(18), dp(12)) })
         }, lp())
 
         root.addView(label("מצב"))
