@@ -23,7 +23,8 @@ function withState() {
   }
   return data;
 }
-const empty = () => ({ status: {}, notes: {}, edits: [], recs: {} });
+// batches: "שליחה לטיפול" מהאפליקציה - מה לטפל בו (הקלטות, הצעות שינוי, לתיקון). sent → done כשהוכנס
+const empty = () => ({ status: {}, notes: {}, edits: [], recs: {}, batches: [] });
 let data = empty();
 try { data = { ...empty(), ...JSON.parse(fs.readFileSync(FILE, 'utf8')) }; } catch (_) {}
 
@@ -66,6 +67,22 @@ function apply(op) {
       try { fs.unlinkSync(path.join(REC_DIR, data.recs[key].f)); } catch (_) {}
       delete data.recs[key];
       break;
+    case 'submit': {
+      withState();
+      const recs = Object.entries(data.recs).filter(([, r]) => r.state === 'pending' || r.state === 'rejected').map(([k]) => k);
+      const edits = data.edits.map(e => e.id);
+      const fix = Object.entries(data.status).filter(([, v]) => v === 'fix').map(([k]) => k);
+      if (!recs.length && !edits.length && !fix.length) return null;
+      data.batches.push({ id: crypto.randomBytes(4).toString('hex'), at: Date.now(), state: 'sent', recs, edits, fix });
+      data.batches = data.batches.slice(-50);
+      log(`review: נשלח לטיפול - ${recs.length} הקלטות, ${edits.length} שינויים, ${fix.length} לתיקון`);
+      break;
+    }
+    case 'batchdone': {
+      const b = data.batches.find(x => x.id === str(op.id, 20)); if (!b) return null;
+      b.state = 'done'; b.doneAt = Date.now(); b.summary = str(op.summary, 2000);
+      break;
+    }
     case 'import':   // מעבר מגרסה קודמת: הסימונים שהיו רק בטלפון
       for (const k of Array.isArray(op.fix) ? op.fix.slice(0, 3000) : []) { const s = str(k, 200); if (s && !data.status[s]) data.status[s] = 'fix'; }
       break;
