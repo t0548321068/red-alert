@@ -125,7 +125,9 @@ function apply(op) {
       if (!key || !data.recs[key] || data.recs[key].state !== 'ready') return null;
       data.recs[key].state = op.op === 'approve' ? 'approved' : 'rejected';
       data.recs[key].decidedAt = Date.now();
-      if (op.op === 'reject') data.recs[key].rejectedAt = Date.now();
+      if (op.op === 'reject') { const r = data.recs[key]; r.rejectedAt = Date.now();
+        // "אף אחת לא טובה" - מנסים שוב אוטומטית (פעם אחת); אחר כך לפי ההערה שתשנה
+        if (!r.retried) { r.state = 'pending'; r.since = Date.now(); r.prog = null; r.retried = true; delete r.vtext; } }
       if (op.op === 'approve' && op.v) data.recs[key].chosen = Math.max(1, Math.min(5, op.v | 0));
       if (op.op === 'approve') applyRec(key);
       log('review: ' + (op.op === 'approve' ? 'אושרה' : 'נדחתה') + ' גרסה בקול אבר');
@@ -160,6 +162,9 @@ function apply(op) {
       ].map(i => ({ ...i, state: 'sent', at: Date.now() }));
       data.batches.push({ id: crypto.randomBytes(4).toString('hex'), at: Date.now(), state: 'sent', recs, edits, fix, tasks, items });
       data.tasks = data.tasks.filter(t => !tasks.includes(t.id));   // מה שנוסף ידנית עובר לשליחה
+      // הקלטה שנשלחה לטיפול (גם אחרי "אף אחת לא טובה") - מכינים גרסאות חדשות מיד
+      for (const k of recs.concat(fix)) { const r = data.recs[k];
+        if (r && ['pending', 'ready', 'rejected'].includes(r.state)) { r.state = 'pending'; r.since = Date.now(); r.prog = null; r.retried = false; delete r.rejectedAt; delete r.vtext; } }
       data.batches = data.batches.slice(-50);
       log(`review: נשלח לטיפול - ${recs.length} הקלטות, ${edits.length} שינויים, ${fix.length} לתיקון, ${tasks.length} ידני`);
       break;
