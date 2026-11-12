@@ -919,7 +919,7 @@ class MainActivity : Activity() {
                     infoRow(this, "הוקלט", when_(has.at))
                     divider(this)
                     val (st, stColor) = when (has.state) {
-                        "ready" -> "מוכן לאישור" to GREEN; "approved" -> "אושר – נכנס לטלפונים" to BLUE
+                        "ready" -> "מוכן לאישור" to GREEN; "approved" -> "נכנס – זו ההקלטה עכשיו" to BLUE
                         "rejected" -> "נדחה – אכין גרסה חדשה" to RED; else -> "ממתין – אכין גרסה בקול אבר" to ORANGE
                     }
                     addView(LinearLayout(this@MainActivity).apply {
@@ -941,7 +941,7 @@ class MainActivity : Activity() {
                                 }, LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginEnd = dp(10) })
                                 addView(text("בחירה", 14f, Color.WHITE, true).apply {
                                     setPadding(dp(16), dp(8), dp(16), dp(8)); background = round(Color.parseColor("#1E5631"), 16)
-                                    setOnClickListener { sendOp(Review.op("approve", itemKey).put("v", v), "נבחרה גרסה $v – אכניס אותה") }
+                                    setOnClickListener { sendOp(Review.op("approve", itemKey).put("v", v), "נבחרה גרסה $v – נכנסת עכשיו") { load() } }
                                 })
                             })
                         }
@@ -961,7 +961,7 @@ class MainActivity : Activity() {
                             setPadding(dp(12), dp(10), dp(12), dp(12))
                             addView(text("אישור", 15f, Color.WHITE, true).apply {
                                 gravity = Gravity.CENTER; setPadding(0, dp(11), 0, dp(11)); background = round(Color.parseColor("#1E5631"), 18)
-                                setOnClickListener { sendOp(Review.op("approve", itemKey), "אושר – אכניס את הגרסה החדשה") }
+                                setOnClickListener { sendOp(Review.op("approve", itemKey), "אושר – נכנס עכשיו") { load() } }
                             }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(8) })
                             addView(text("לא טוב", 15f, Color.WHITE, true).apply {
                                 gravity = Gravity.CENTER; setPadding(0, dp(11), 0, dp(11)); background = round(Color.parseColor("#6B1D1A"), 18)
