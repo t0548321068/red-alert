@@ -190,6 +190,10 @@ function apply(op) {
       log('review: אופס פריט');
       break;
     }
+    case 'resetsend':   // איפוס שליחה לטיפול: כל השליחות והסטטוסים שלהן, ומה שנוסף ידנית
+      data.batches = []; data.tasks = [];
+      log('review: שליחה לטיפול אופסה');
+      break;
     case 'reset':   // איפוס מלא של ניהול צופר: סימונים, הערות, שינויים, הקלטות, שליחות - הכל מההתחלה
       if (op.confirm !== 'RESET') return null;
       try { for (const f of fs.readdirSync(REC_DIR)) fs.unlinkSync(path.join(REC_DIR, f)); } catch (_) {}
