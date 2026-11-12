@@ -184,10 +184,21 @@ function apply(op) {
       b.state = 'done'; b.doneAt = Date.now(); b.summary = str(op.summary, 2000);
       break;
     }
-    case 'markdone':
+    case 'markdone': {   // סימון כבוצע: מאשר הכל, מעלה לשרת, ומחזיר את הכרטיס לרגיל
       if (!key) return null;
+      withState();
+      const r = data.recs[key];
+      // הקלטה עם גרסאות בקול אבר: הגרסה שבחרת (או הראשונה - מההערה שלך) נכנסת עכשיו
+      if (r && r.state === 'ready') { r.chosen = r.chosen || 1; r.state = 'approved'; applyRec(key); }
+      // הצעות שינוי: מאושרות ועוברות לשליחה לטיפול (אני מכניס)
+      const eds = data.edits.filter(e => e.key === key);
+      if (eds.length) data.batches.push({ id: crypto.randomBytes(4).toString('hex'), at: Date.now(), state: 'sent', recs: [], edits: eds.map(e => e.id), fix: [], tasks: [],
+        items: eds.map(e => ({ t: 'edit', k: e.id, key: e.key, field: e.field, from: e.from, to: e.to, state: 'sent', at: Date.now(), msg: 'אושר – ממתין שאכניס' })) });
       markDone(key, 'סומן כבוצע');
+      // הכרטיס חוזר לרגיל: בלי לתיקון, בלי הערה, בלי הקלטה פתוחה
+      if (data.recs[key]) { try { fs.unlinkSync(path.join(REC_DIR, data.recs[key].f)); } catch (_) {} delete data.recs[key]; }
       break;
+    }
     case 'resetkey': {   // איפוס של פריט אחד: כל הסימונים, ההערה, ההקלטה, השינויים והשליחות שלו
       if (!key) return null;
       for (const k of [key, 'list:' + key, 'list-d:' + key, 'district:' + key]) delete data.status[k];
