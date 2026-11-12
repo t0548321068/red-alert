@@ -11,6 +11,18 @@ const { log } = require('./util');
 const FILE = path.join(__dirname, '..', 'review.json');   // לא נכנס לגיט
 const FIELDS = new Set(['name', 'district', 'shelter', 'other']);
 const REC_DIR = path.join(__dirname, '..', 'recordings');   // הקלטות ההגייה שלך (לא נכנס לגיט)
+// הגרסה החדשה בקול אבר לכל הקלטה (נוצרת בגיטהאב ונכנסת לגיט): candidates/<אותו שם>.mp3
+const CAND_DIR = path.join(__dirname, '..', 'candidates');
+// מצב הקלטה: pending (ממתין) → ready (יש גרסה בקול אבר) → approved / rejected
+const candFile = r => path.join(CAND_DIR, r.f.replace(/\.m4a$/, '.mp3'));
+function withState() {
+  for (const r of Object.values(data.recs)) {
+    let st = r.state || 'pending';
+    if (st === 'pending') try { if (fs.statSync(candFile(r)).mtimeMs > r.at) st = 'ready'; } catch (_) {}
+    r.state = st;
+  }
+  return data;
+}
 const empty = () => ({ status: {}, notes: {}, edits: [], recs: {} });
 let data = empty();
 try { data = { ...empty(), ...JSON.parse(fs.readFileSync(FILE, 'utf8')) }; } catch (_) {}
@@ -42,6 +54,13 @@ function apply(op) {
     case 'cancel':
       { const n = data.edits.length; data.edits = data.edits.filter(e => e.id !== str(op.id, 20)); if (n === data.edits.length) return null; }
       break;
+    case 'approve': case 'reject':
+      withState();
+      if (!key || !data.recs[key] || data.recs[key].state !== 'ready') return null;
+      data.recs[key].state = op.op === 'approve' ? 'approved' : 'rejected';
+      data.recs[key].decidedAt = Date.now();
+      log('review: ' + (op.op === 'approve' ? 'אושרה' : 'נדחתה') + ' גרסה בקול אבר');
+      break;
     case 'delrec':
       if (!key || !data.recs[key]) return null;
       try { fs.unlinkSync(path.join(REC_DIR, data.recs[key].f)); } catch (_) {}
@@ -53,7 +72,7 @@ function apply(op) {
     default: return null;
   }
   save();
-  return data;
+  return withState();
 }
 
 const recName = key => crypto.createHash('sha1').update(key).digest('hex').slice(0, 16) + '.m4a';
@@ -76,17 +95,42 @@ function rec(req, res, u) {
       fs.mkdirSync(REC_DIR, { recursive: true });
       const f = recName(key);
       fs.writeFileSync(path.join(REC_DIR, f + '.tmp'), Buffer.concat(bufs)); fs.renameSync(path.join(REC_DIR, f + '.tmp'), path.join(REC_DIR, f));
-      data.recs[key] = { f, at: Date.now() }; save();
+      data.recs[key] = { f, at: Date.now(), state: 'pending' }; save();
       log('review: הקלטת הגייה נשמרה');
-      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(data));
+      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(withState()));
     } catch (e) { log('review rec save failed', e.message); res.writeHead(500); res.end(); }
   });
 }
 
+// קישור חד-פעמי להקלטה (15 דקות, הורדה אחת) - כדי שהבנייה בגיטהאב תוכל לנתח אותה בלי קוד הכניסה
+const shares = new Map();   // טוקן -> { f, until }
+function share(res, u) {
+  const r = data.recs[str(u.searchParams.get('key'), 200)];
+  if (!r) { res.writeHead(404); return res.end(); }
+  const t = crypto.randomBytes(16).toString('hex');
+  shares.set(t, { f: r.f, until: Date.now() + 15 * 60 * 1000 });
+  res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ path: '/rec-pub/' + t, name: r.f.replace(/\.m4a$/, '') }));
+}
+function pub(res, t) {
+  const s = shares.get(t); shares.delete(t);
+  if (!s || Date.now() > s.until) { res.writeHead(404); return res.end(); }
+  res.writeHead(200, { 'Content-Type': 'audio/mp4' });
+  fs.createReadStream(path.join(REC_DIR, s.f)).on('error', () => res.end()).pipe(res);
+}
+/** הגרסה החדשה בקול אבר */
+function cand(res, u) {
+  const r = data.recs[str(u.searchParams.get('key'), 200)];
+  if (!r) { res.writeHead(404); return res.end(); }
+  res.writeHead(200, { 'Content-Type': 'audio/mpeg' });
+  fs.createReadStream(candFile(r)).on('error', () => res.end()).pipe(res);
+}
+
 function handle(req, res, u) {
   if (u && u.pathname === '/api/review/rec') return rec(req, res, u);
+  if (u && u.pathname === '/api/review/share') return share(res, u);
+  if (u && u.pathname === '/api/review/cand') return cand(res, u);
   const send = (code, o) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); };
-  if (req.method === 'GET') return send(200, data);
+  if (req.method === 'GET') return send(200, withState());
   if (req.method !== 'POST') return send(405, {});
   let body = '';
   req.on('data', d => { body += d; if (body.length > 200000) req.destroy(); });
@@ -97,4 +141,4 @@ function handle(req, res, u) {
   });
 }
 
-module.exports = { handle };
+module.exports = { handle, pub };
