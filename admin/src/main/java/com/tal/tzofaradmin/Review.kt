@@ -24,7 +24,14 @@ object Review {
     class Batch(val at: Long, val state: String, val count: Int, val doneAt: Long, val summary: String)
     @Volatile var lastBatch: Batch? = null; private set
     /** כמה דברים מחכים לטיפול: הקלטות שממתינות, הצעות שינוי, ומה שסומן לתיקון */
-    fun waiting() = recs.values.count { it.state == "pending" || it.state == "rejected" } + edits.size + status.values.count { it == "fix" } + tasks.size
+    /** פריט בשליחה: t = rec/edit/fix/task, k = מפתח; state = sent נשלח · working בטיפול · done טופל · skipped לא בוצע */
+    class BItem(val t: String, val k: String, val state: String, val msg: String, val title: String, val detail: String)
+    class SentBatch(val id: String, val at: Long, val state: String, val items: List<BItem>)
+    @Volatile var batches: List<SentBatch> = emptyList(); private set
+    /** מה שכבר נשלח ועוד לא טופל - לא מוצג שוב כ"מחכה לשליחה" */
+    fun inFlight(t: String, k: String) = batches.any { b -> b.items.any { it.t == t && it.k == k && (it.state == "sent" || it.state == "working") } }
+    fun waiting() = recs.count { (it.value.state == "pending" || it.value.state == "rejected") && !inFlight("rec", it.key) } +
+        edits.count { !inFlight("edit", it.id) } + status.count { it.value == "fix" && !inFlight("fix", it.key) } + tasks.size
     /** דברים שהוספת ידנית לטיפול */
     class Task(val id: String, val text: String, val at: Long)
     @Volatile var tasks: List<Task> = emptyList(); private set
@@ -81,6 +88,17 @@ object Review {
         recs = o.optJSONObject("recs")?.let { j -> j.keys().asSequence().associateWith {
             val r = j.getJSONObject(it); Rec(r.optLong("at"), r.optString("state", "pending")) } } ?: emptyMap()
         tasks = o.optJSONArray("tasks")?.let { a -> (0 until a.length()).map { a.getJSONObject(it) }.map { Task(it.getString("id"), it.optString("text"), it.optLong("at")) } } ?: emptyList()
+        batches = o.optJSONArray("batches")?.let { a -> (0 until a.length()).map { a.getJSONObject(it) }.map { b ->
+            val its = b.optJSONArray("items")?.let { ia -> (0 until ia.length()).map { ia.getJSONObject(it) }.map { i ->
+                val t = i.optString("t"); val k = i.optString("k")
+                val (title, detail) = when (t) {
+                    "edit" -> i.optString("key") to "${i.optString("field")}: ${i.optString("from").ifEmpty { "—" }} ← ${i.optString("to")}"
+                    "task" -> i.optString("text") to "נוסף ידנית"
+                    "rec" -> k to "הקלטת הגייה"
+                    else -> k to (i.optString("note").ifEmpty { "לתיקון" })
+                }
+                BItem(t, k, i.optString("state", "sent"), i.optString("msg"), title, detail) } } ?: emptyList()
+            SentBatch(b.optString("id"), b.optLong("at"), b.optString("state"), its) }.reversed() } ?: emptyList()
         lastBatch = o.optJSONArray("batches")?.let { a -> if (a.length() == 0) null else a.getJSONObject(a.length() - 1) }?.let {
             Batch(it.optLong("at"), it.optString("state"), (it.optJSONArray("recs")?.length() ?: 0) + (it.optJSONArray("edits")?.length() ?: 0) +
                 (it.optJSONArray("fix")?.length() ?: 0), it.optLong("doneAt"), it.optString("summary"))

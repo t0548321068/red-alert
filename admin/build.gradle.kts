@@ -19,7 +19,7 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
-        versionName = "1.0.19"
+        versionName = "1.0.20"
     }
 
     // הנתונים וההקלטות - ישירות מהתיקייה של האפליקציה הראשית (בלי עותק נפרד)

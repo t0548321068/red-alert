@@ -456,13 +456,14 @@ class MainActivity : Activity() {
     // ---- רשימות ----
     private class Item(val title: String, val sub: String, val path: String?, val key: String?, val bad: Boolean,
         val seq: List<String>? = null, val tap: (() -> Unit)? = null, val chevron: Boolean = false, val header: Boolean = false,
-        val ok: Boolean = false, val say: String? = null, val found: Boolean? = null, val listKey: String? = null, val sel: String? = null)
+        val ok: Boolean = false, val say: String? = null, val found: Boolean? = null, val listKey: String? = null, val sel: String? = null,
+        val badge: Pair<String, Int>? = null)
     /** בשליחה לטיפול: מה לא לשלוח (ברירת מחדל - הכל מסומן) */
     private val unselected = HashSet<String>()
     private fun submitSelected() {
-        val recs = Review.recs.filter { (it.value.state == "pending" || it.value.state == "rejected") && "rec:${it.key}" !in unselected }.keys
-        val edits = Review.edits.map { it.id }.filter { "edit:$it" !in unselected }
-        val fix = Review.status.filter { it.value == "fix" && "fix:${it.key}" !in unselected }.keys
+        val recs = Review.recs.filter { (it.value.state == "pending" || it.value.state == "rejected") && "rec:${it.key}" !in unselected && !Review.inFlight("rec", it.key) }.keys
+        val edits = Review.edits.map { it.id }.filter { "edit:$it" !in unselected && !Review.inFlight("edit", it) }
+        val fix = Review.status.filter { it.value == "fix" && "fix:${it.key}" !in unselected && !Review.inFlight("fix", it.key) }.keys
         val tasks = Review.tasks.map { it.id }.filter { "task:$it" !in unselected }
         if (recs.isEmpty() && edits.isEmpty() && fix.isEmpty() && tasks.isEmpty()) { toast("לא סומן כלום לשליחה"); return }
         sendOp(JSONObject().put("op", "submit").put("recs", org.json.JSONArray(recs.toList())).put("edits", org.json.JSONArray(edits))
@@ -602,17 +603,32 @@ class MainActivity : Activity() {
                 fun open(k: String) { val a = Data.areas.firstOrNull { it.name == k }
                     if (a != null) openItem(k, a.voice?.takeIf { a.voiceOk }, a)
                     else if (k.startsWith("voice/") || k.startsWith("sounds/")) openItem(k, k, null) }
-                val recs = Review.recs.filter { it.value.state == "pending" || it.value.state == "rejected" }
-                val fix = Review.status.filter { it.value == "fix" }.keys
+                val recs = Review.recs.filter { (it.value.state == "pending" || it.value.state == "rejected") && !Review.inFlight("rec", it.key) }
+                val fix = Review.status.filter { it.value == "fix" && !Review.inFlight("fix", it.key) }.keys
+                val editsW = Review.edits.filter { !Review.inFlight("edit", it.id) }
                 val out = mutableListOf<Item>()
+                // מה שכבר נשלח - עם סטטוס לכל פריט (5 השליחות האחרונות)
+                Review.batches.take(5).forEach { b ->
+                    val done = b.items.count { it.state == "done" || it.state == "skipped" }
+                    out += Item("נשלח ${when_(b.at)} · ${if (b.state == "done") "הסתיים" else "טופלו $done מתוך ${b.items.size}"}", "", null, null, false, header = true)
+                    b.items.forEach { i ->
+                        val badge = when (i.state) { "working" -> "בטיפול" to BLUE; "done" -> "טופל" to GREEN; "skipped" -> "לא בוצע" to RED; else -> "נשלח" to ORANGE }
+                        val key = if (i.t == "edit") i.title else i.k
+                        out += Item(title(i.title), i.detail.let { d -> if (i.t == "edit") d.replace(Regex("^(\\w+):")) { m -> (FIELD_NAMES[m.groupValues[1]] ?: m.groupValues[1]) + ":" } else d } +
+                            (if (i.msg.isNotEmpty()) "\n" + i.msg else ""), null, null, false, badge = badge,
+                            tap = if (i.t == "task") null else ({ open(key) }))
+                    }
+                }
                 if (recs.isNotEmpty()) {
                     out += Item("הקלטות הגייה · ${recs.size}", "", null, null, false, header = true)
                     recs.forEach { (k, r) -> out += Item(title(k), (if (r.state == "rejected") "נדחה – גרסה חדשה בקול אבר" else "גרסה בקול אבר") + " · הוקלט ${when_(r.at)}",
                         null, null, false, chevron = true, tap = { open(k) }, sel = "rec:$k") }
                 }
-                if (Review.edits.isNotEmpty()) {
-                    out += Item("הצעות שינוי · ${Review.edits.size}", "", null, null, false, header = true)
-                    Review.edits.forEach { e -> out += Item(title(e.key), "${FIELD_NAMES[e.field] ?: e.field}: ${e.from.ifEmpty { "—" }} ← ${e.to}",
+                if (recs.isNotEmpty() || editsW.isNotEmpty() || fix.isNotEmpty() || Review.tasks.isNotEmpty())
+                    out += Item("מחכה לשליחה", "", null, null, false, header = true)
+                if (editsW.isNotEmpty()) {
+                    out += Item("הצעות שינוי · ${editsW.size}", "", null, null, false, header = true)
+                    editsW.forEach { e -> out += Item(title(e.key), "${FIELD_NAMES[e.field] ?: e.field}: ${e.from.ifEmpty { "—" }} ← ${e.to}",
                         null, null, false, chevron = true, tap = { open(e.key) }, sel = "edit:${e.id}") }
                 }
                 if (fix.isNotEmpty()) {
@@ -730,7 +746,11 @@ class MainActivity : Activity() {
                     setOnClickListener { cycle(k) }
                 })
             }
-            if (it.chevron) addView(icon(R.drawable.ic_chev, MUTED, 18))
+            if (it.badge != null) addView(text(it.badge.first, 13f, it.badge.second, true).apply {
+                setPadding(dp(10), dp(4), dp(10), dp(4))
+                background = round(Color.argb(45, Color.red(it.badge.second), Color.green(it.badge.second), Color.blue(it.badge.second)), 12)
+            })
+            else if (it.chevron) addView(icon(R.drawable.ic_chev, MUTED, 18))
             else if (it.ok) addView(icon(R.drawable.ic_ok, GREEN, 24))
             else if (page == Page.ALERT && it.path == null && it.key == null && it.seq == null) addView(icon(R.drawable.ic_warn, RED, 24))
             else {
