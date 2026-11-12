@@ -51,8 +51,8 @@ jobs:
           R=${{ github.repository }}
           if gh release view admin --repo $R >/dev/null 2>&1; then
             gh release upload admin tzofar-admin.apk --clobber --repo $R
-            gh release edit admin --repo $R --title "ניהול צופר · 1.0.24" --prerelease --draft=false
+            gh release edit admin --repo $R --title "ניהול צופר · 1.0.25" --prerelease --draft=false
           else
             gh release create admin tzofar-admin.apk --repo $R --prerelease --latest=false --target ${{ github.sha }} \
-              --title "ניהול צופר · 1.0.24" --notes "בדיקת היישובים, ההקראה והצלילים של צופר חירום"
+              --title "ניהול צופר · 1.0.25" --notes "בדיקת היישובים, ההקראה והצלילים של צופר חירום"
           fi

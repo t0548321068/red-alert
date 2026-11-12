@@ -381,7 +381,7 @@ class MainActivity : Activity() {
                     addView(text(line, 12f, color))
                 }, LinearLayout.LayoutParams(0, -2, 1f))
                 addView(icon(R.drawable.ic_chev, MUTED, 18))
-                setOnClickListener { go(Page.SEND) }   // מה יש בשליחה
+                setOnClickListener { sendFolder = 0; go(Page.SEND) }   // מה יש בשליחה
             })
             addView(text("שליחה לטיפול", 16f, Color.WHITE, true).apply {
                 gravity = Gravity.CENTER; includeFontPadding = false
@@ -403,12 +403,19 @@ class MainActivity : Activity() {
             if (its.isEmpty()) null else Triple(n, its.count { it.state == "done" || it.state == "skipped" }, its.size)
         }
         root.addView(label("התקדמות"))
-        root.addView(ringsRow(stages).apply { setOnClickListener { go(Page.SEND) } })
+        root.addView(ringsRow(stages).apply { setOnClickListener { sendFolder = 2; go(Page.SEND) } })
         val working = all.count { it.state == "working" }; val done = all.count { it.state == "done" }
         val skipped = all.count { it.state == "skipped" }; val sent = all.count { it.state == "sent" }
         root.addView(card().apply {
-            nav(this, 0, "נשלח $sent · בטיפול $working · טופל $done · לא בוצע $skipped", "", MUTED) { go(Page.SEND) }
+            nav(this, 0, "נשלח $sent · בטיפול $working · טופל $done · לא בוצע $skipped", "", MUTED) { sendFolder = 2; go(Page.SEND) }
         }, lp())
+    }
+    private var sendFolder = 0
+    /** כל מה שנשלח, כל פריט פעם אחת (מהשליחה האחרונה שלו): (מתי נשלח, פריט) */
+    private fun sentItems(): List<Pair<Long, Review.BItem>> {
+        val seen = HashSet<String>(); val out = mutableListOf<Pair<Long, Review.BItem>>()
+        for (b in Review.batches) for (i in b.items) if (seen.add(i.t + ":" + i.k)) out += b.at to i
+        return out
     }
     /** שלבים של פריט: נשלח › בטיפול › טופל (או לא בוצע) */
     private fun steps(state: String): String {
@@ -536,6 +543,18 @@ class MainActivity : Activity() {
         }
 
         if (page == Page.SEND) {
+            val si = sentItems()
+            val counts = listOf(Review.waiting()) + listOf("sent", "working", "done", "skipped").map { st -> si.count { it.second.state == st } }
+            val chips = LinearLayout(this).apply { setPadding(dp(12), 0, dp(12), dp(10)) }
+            listOf("מחכה לשליחה", "נשלח", "בטיפול", "טופל", "לא בוצע").forEachIndexed { i, t ->
+                chips.addView(text("$t · ${counts[i]}", 13f).apply {
+                    background = round(if (i == sendFolder) BLUE else LINE, 16); setPadding(dp(14), dp(7), dp(14), dp(7))
+                    setOnClickListener { sendFolder = i; list() }
+                }, LinearLayout.LayoutParams(-2, -2).apply { marginEnd = dp(6) })
+            }
+            root.addView(HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; addView(chips) })
+        }
+        if (page == Page.SEND && sendFolder == 0) {
             // [עיגול "הכול"] "N נבחרו" - כמו בבחירת יישובים בצופר חירום
             val dot = CheckDot(this, false); allDot = dot
             root.addView(LinearLayout(this).apply {
@@ -579,7 +598,7 @@ class MainActivity : Activity() {
                 }, LinearLayout.LayoutParams(-1, dp(46)))
             })
         }
-        if (page == Page.SEND) {
+        if (page == Page.SEND && sendFolder == 0) {
             root.addView(LinearLayout(this).apply {
                 gravity = Gravity.CENTER; setPadding(dp(16), dp(8), dp(16), dp(18))
                 addView(text("הוספה", 16f, Color.WHITE, true).apply {
@@ -661,31 +680,13 @@ class MainActivity : Activity() {
                 val fix = Review.status.filter { it.value == "fix" && !Review.inFlight("fix", it.key) }.keys
                 val editsW = Review.edits.filter { !Review.inFlight("edit", it.id) }
                 val out = mutableListOf<Item>()
-                // מה שכבר נשלח - עם סטטוס לכל פריט (5 השליחות האחרונות)
-                Review.batches.take(5).forEach { b ->
-                    val done = b.items.count { it.state == "done" || it.state == "skipped" }
-                    out += Item("נשלח ${when_(b.at)} · ${if (b.state == "done") "הסתיים" else "טופלו $done מתוך ${b.items.size}"}", "", null, null, false, header = true)
-                    // עיגול התקדמות לכל שלב: הקלטות · שינויים · לתיקון · ידני
-                    val stages = listOf("rec" to "הקלטות", "edit" to "שינויים", "fix" to "לתיקון", "task" to "ידני").mapNotNull { (t, n) ->
-                        val its = b.items.filter { it.t == t }
-                        if (its.isEmpty()) null else Triple(n, its.count { it.state == "done" || it.state == "skipped" }, its.size)
-                    }
-                    if (stages.isNotEmpty()) out += Item("", "", null, null, false, rings = stages)
-                    b.items.forEach { i ->
-                        val badge = when (i.state) { "working" -> "בטיפול" to BLUE; "done" -> "טופל" to GREEN; "skipped" -> "לא בוצע" to RED; else -> "נשלח" to ORANGE }
-                        val key = if (i.t == "edit") i.title else i.k
-                        out += Item(title(i.title), i.detail.let { d -> if (i.t == "edit") d.replace(Regex("^(\\w+):")) { m -> (FIELD_NAMES[m.groupValues[1]] ?: m.groupValues[1]) + ":" } else d } +
-                            "\n" + steps(i.state) + (if (i.msg.isNotEmpty()) "\n" + i.msg else ""), null, null, false, badge = badge,
-                            tap = if (i.t == "task") null else ({ open(key) }))
-                    }
-                }
+                // תיקיות: 0 מחכה לשליחה · 1 נשלח · 2 בטיפול · 3 טופל · 4 לא בוצע
+                if (sendFolder == 0) {
                 if (recs.isNotEmpty()) {
                     out += Item("הקלטות הגייה · ${recs.size}", "", null, null, false, header = true)
                     recs.forEach { (k, r) -> out += Item(title(k), (if (r.state == "rejected") "נדחה – גרסה חדשה בקול אבר" else "גרסה בקול אבר") + " · הוקלט ${when_(r.at)}",
                         null, null, false, chevron = true, tap = { open(k) }, sel = "rec:$k") }
                 }
-                if (recs.isNotEmpty() || editsW.isNotEmpty() || fix.isNotEmpty() || Review.tasks.isNotEmpty())
-                    out += Item("מחכה לשליחה", "", null, null, false, header = true)
                 if (editsW.isNotEmpty()) {
                     out += Item("הצעות שינוי · ${editsW.size}", "", null, null, false, header = true)
                     editsW.forEach { e -> out += Item(title(e.key), "${FIELD_NAMES[e.field] ?: e.field}: ${e.from.ifEmpty { "—" }} ← ${e.to}",
@@ -702,6 +703,22 @@ class MainActivity : Activity() {
                         AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("למחוק?").setMessage(t.text)
                             .setPositiveButton("מחיקה") { _, _ -> sendOp(JSONObject().put("op", "deltask").put("id", t.id), "נמחק") }
                             .setNegativeButton("ביטול", null).show() }, chevron = true) }
+                }
+                } else {
+                    val want = listOf("", "sent", "working", "done", "skipped")[sendFolder]
+                    val types = listOf("rec" to "הקלטות הגייה", "edit" to "הצעות שינוי", "fix" to "לתיקון", "task" to "נוסף ידנית")
+                    val its = sentItems().filter { it.second.state == want }
+                    types.forEach { (t, name) ->
+                        val g = its.filter { it.second.t == t }
+                        if (g.isEmpty()) return@forEach
+                        out += Item("$name · ${g.size}", "", null, null, false, header = true)
+                        g.forEach { (at, i) ->
+                            val key = if (i.t == "edit") i.title else i.k
+                            out += Item(title(i.title), i.detail.let { d -> if (i.t == "edit") d.replace(Regex("^(\\w+):")) { m -> (FIELD_NAMES[m.groupValues[1]] ?: m.groupValues[1]) + ":" } else d } +
+                                "\n" + steps(i.state) + (if (i.msg.isNotEmpty()) "\n" + i.msg else "") + "\nנשלח ${when_(at)}", null, null, false,
+                                chevron = i.t != "task", tap = if (i.t == "task") null else ({ open(key) }))
+                        }
+                    }
                 }
                 out
             }
@@ -748,13 +765,14 @@ class MainActivity : Activity() {
                 " · נבדקו מול הרשימה ${Data.districts.keys.count { listChecked(districtListKey(it)) }}/${Data.districts.size}" else "")
             page == Page.AREAS && Review.loggedIn(this) -> "${items.size} יישובים · נבדקו מול הרשימה ${items.count { it.listKey != null && listChecked(it.listKey) }}/${items.size}"
             page == Page.PHRASES -> "${items.count { !it.header }} הקלטות"
+            page == Page.SEND && sendFolder != 0 -> if (items.isEmpty()) "אין כאן כלום" else "${items.count { !it.header }} פריטים"
             page == Page.SEND -> Review.lastBatch.let { b -> when {
                 items.isEmpty() -> "אין שינויים שמחכים"
                 b?.state == "sent" -> "נשלח לטיפול ב-${when_(b.at)} · ממתין שאכניס"
                 else -> items.filter { it.sel != null }.let { s -> "מתוך ${s.size} שמחכים לשליחה" } } }
             else -> "${items.size} פריטים"
         }
-        if (page == Page.SEND) {
+        if (page == Page.SEND && sendFolder == 0) {
             val ids = items.mapNotNull { it.sel }; val n = ids.count { it !in unselected }
             allDot?.let { it.on = ids.isNotEmpty() && n == ids.size; it.invalidate() }
             selCount?.text = when { ids.isEmpty() -> "אין מה לשלוח"; n == 1 -> "1 נבחר"; else -> "$n נבחרו" }
