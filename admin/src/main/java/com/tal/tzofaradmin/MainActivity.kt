@@ -695,7 +695,6 @@ class MainActivity : Activity() {
             }.map { a ->
                 val sub = listOf(a.district ?: "אין מחוז", shelter(a.shelter)).joinToString(" · ") +
                     (if (!a.voiceOk) " · אין הקראה" else "") + (a.voice?.let { "\n" + it.substringAfterLast('/') } ?: "") +
-                    (if (Review.done.containsKey(a.name)) " · בוצע" else "") +
                     (Review.recs[a.name]?.let { r -> " · הקלטה שלך: " + when (r.state) { "ready" -> "מוכן לאישור"; "approved" -> "אושר"; "rejected" -> "נדחה"; else -> "ממתין" } } ?: "") + note(a.name)
                 Item(a.name, sub, a.voice?.takeIf { a.voiceOk }, a.name, a.missing, tap = { openItem(a.name, a.voice?.takeIf { a.voiceOk }, a) },
                     listKey = listKey(a.name))
@@ -936,10 +935,10 @@ class MainActivity : Activity() {
         if (open) root.addView(card().apply {
             addView(text("סימון כבוצע", 15f, BLUE, true).apply {
                 setPadding(dp(18), dp(14), dp(18), dp(14))
-                setOnClickListener { sendOp(Review.op("markdone", itemKey), "בוצע – נכנס לשרת") { load() } }
+                setOnClickListener { sendOp(Review.op("markdone", itemKey), "נכנס לשרת") { load() } }
             })
             addView(text(if (Review.recs[itemKey]?.state == "ready" && (Review.recs[itemKey]?.chosen ?: 0) == 0)
-                "ההקלטה: תיכנס גרסה 1 (מההערה). אפשר לבחור גרסה אחרת קודם" else "מאשר הכל ומחזיר את הכרטיס לרגיל", 12f, MUTED).apply {
+                "ההקלטה בשרת לא משתנה בלי שתבחר גרסה" else "מאשר הכל ומחזיר את הכרטיס לרגיל", 12f, MUTED).apply {
                 setPadding(dp(18), 0, dp(18), dp(12)) })
         }, lp())
 
@@ -1027,7 +1026,7 @@ class MainActivity : Activity() {
                                 }, LinearLayout.LayoutParams(dp(38), dp(38)).apply { marginEnd = dp(10) })
                                 addView(text("בחירה", 14f, Color.WHITE, true).apply {
                                     setPadding(dp(16), dp(8), dp(16), dp(8)); background = round(Color.parseColor("#1E5631"), 16)
-                                    setOnClickListener { sendOp(Review.op("approve", itemKey).put("v", v), "נבחרה גרסה $v – נכנסת עכשיו") { load() } }
+                                    setOnClickListener { sendOp(Review.op("approve", itemKey).put("v", v), "גרסה $v נכנסה לשרת") { load() } }
                                 })
                             })
                         }
