@@ -24,7 +24,10 @@ object Review {
     class Batch(val at: Long, val state: String, val count: Int, val doneAt: Long, val summary: String)
     @Volatile var lastBatch: Batch? = null; private set
     /** כמה דברים מחכים לטיפול: הקלטות שממתינות, הצעות שינוי, ומה שסומן לתיקון */
-    fun waiting() = recs.values.count { it.state == "pending" || it.state == "rejected" } + edits.size + status.values.count { it == "fix" }
+    fun waiting() = recs.values.count { it.state == "pending" || it.state == "rejected" } + edits.size + status.values.count { it == "fix" } + tasks.size
+    /** דברים שהוספת ידנית לטיפול */
+    class Task(val id: String, val text: String, val at: Long)
+    @Volatile var tasks: List<Task> = emptyList(); private set
     @Volatile var online = false; private set
 
     private fun sp(c: Context) = c.getSharedPreferences("admin", Context.MODE_PRIVATE)
@@ -77,6 +80,7 @@ object Review {
         }.sortedByDescending { it.at }
         recs = o.optJSONObject("recs")?.let { j -> j.keys().asSequence().associateWith {
             val r = j.getJSONObject(it); Rec(r.optLong("at"), r.optString("state", "pending")) } } ?: emptyMap()
+        tasks = o.optJSONArray("tasks")?.let { a -> (0 until a.length()).map { a.getJSONObject(it) }.map { Task(it.getString("id"), it.optString("text"), it.optLong("at")) } } ?: emptyList()
         lastBatch = o.optJSONArray("batches")?.let { a -> if (a.length() == 0) null else a.getJSONObject(a.length() - 1) }?.let {
             Batch(it.optLong("at"), it.optString("state"), (it.optJSONArray("recs")?.length() ?: 0) + (it.optJSONArray("edits")?.length() ?: 0) +
                 (it.optJSONArray("fix")?.length() ?: 0), it.optLong("doneAt"), it.optString("summary"))
