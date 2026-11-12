@@ -19,6 +19,8 @@ object Data {
     class Clip(val title: String, val path: String)
 
     @Volatile var areas: List<Area> = emptyList(); private set
+    /** אזור (מחוז) → היישובים שבו, לפי הא"ב */
+    @Volatile var districts: Map<String, List<Area>> = emptyMap(); private set
     @Volatile var orphans: List<Clip> = emptyList(); private set   // הקלטה בלי יישוב
     @Volatile var phrases: List<Clip> = emptyList(); private set
     @Volatile var sounds: List<Clip> = emptyList(); private set
@@ -84,6 +86,8 @@ object Data {
             Clip(SOUNDS[it.substringBeforeLast('.')] ?: it, "sounds/$it")
         }
         byName = areas.associateBy { it.name }
+        val col = java.text.Collator.getInstance(java.util.Locale("he"))
+        districts = areas.filter { it.district != null }.groupBy { it.district!! }.toSortedMap(col)
         try {
             val t = JSONObject(text(c, "config.json")).getJSONObject("titles")
             fun l(k: String) = t.optJSONArray(k)?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList()
