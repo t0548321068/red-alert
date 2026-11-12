@@ -16,7 +16,7 @@ const CAND_DIR = path.join(__dirname, '..', 'candidates');
 // מצב הקלטה: pending (ממתין) → ready (יש גרסה בקול אבר) → approved / rejected
 // כמה גרסאות: candidates/<שם>_1.mp3, _2, _3 (אתה בוחר אחת), או קובץ אחד <שם>.mp3
 const candFile = (r, v) => path.join(CAND_DIR, r.f.replace(/\.m4a$/, '') + (v ? '_' + v : '') + '.mp3');
-const fresh = (f, r) => { try { return fs.statSync(f).mtimeMs > r.at; } catch (_) { return false; } };
+const fresh = (f, r) => { try { return fs.statSync(f).mtimeMs > Math.max(r.at, r.since || 0); } catch (_) { return false; } };
 function withState() {
   for (const [key, r] of Object.entries(data.recs)) {
     let st = r.state || 'pending';
@@ -106,7 +106,10 @@ function apply(op) {
       break;
     case 'note':
       if (!key) return null;
-      { const t = str(op.text, 1000); if (t) data.notes[key] = t; else delete data.notes[key]; }
+      { const t = str(op.text, 1000); const changed = (data.notes[key] || '') !== t; if (t) data.notes[key] = t; else delete data.notes[key];
+        // יש הקלטה שעוד לא נבחרה לה גרסה - מכינים מחדש לפי ההערה החדשה
+        const r = data.recs[key];
+        if (changed && r && ['pending', 'ready', 'rejected'].includes(r.state)) { r.state = 'pending'; r.since = Date.now(); r.prog = null; r.retried = false; delete r.rejectedAt; } }
       break;
     case 'edit':
       if (!key || !FIELDS.has(op.field)) return null;
@@ -278,6 +281,12 @@ function textsFor(key) {
     plain = key.replace(/ - /g, ' ').replace(/-/g, ' ');
   }
   if (!plain && !nik) return null;
+  // ההערה שלך (איך להגות) קודמת לכל: 1 - כמו שכתבת · 2 - כמו שכתבת, לאט · 3 - כמו שכתבת בלי ניקוד (אם יש)
+  const note = str(data.notes[key], 200);
+  if (note) {
+    const bare = note.replace(/[\u0591-\u05C7]/g, '');
+    return [{ text: note, rate: '+12%' }, { text: note, rate: '+0%' }, { text: bare !== note ? bare : (nik || plain), rate: '+12%' }];
+  }
   // 1: הניקוד של היום · 2: בלי ניקוד · 3: הניקוד, לאט יותר
   return [{ text: nik || plain, rate: '+12%' }, { text: plain || nik, rate: '+12%' }, { text: nik || plain, rate: '+0%' }];
 }
