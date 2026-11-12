@@ -28,6 +28,9 @@ object Data {
     @Volatile var loadedAt = 0L; private set
     private var serverFiles: Set<String> = emptySet()
     private var byName: Map<String, Area> = emptyMap()
+    private val NATIONAL = setOf("כל הארץ", "ברחבי הארץ")
+    private const val TEST = "התראת בדיקה"
+    @Volatile private var national: List<Area> = emptyList()
     private var endWords = listOf<String>(); private var preWords = listOf<String>(); private var updateWords = listOf<String>()
     private var endDisplay = "האירוע הסתיים"
     private var prefix = ""; private var prefixWords = listOf<String>()
@@ -71,25 +74,31 @@ object Data {
             val p = "voice/$rel"
             return p in serverFiles || assetExists(c, p)
         }
-        areas = all.keys().asSequence().map { n ->
+        val allAreas = all.keys().asSequence().map { n ->
             val rel = vIdx.optString(n).ifEmpty { null }
             Area(n, districts.optString(n).ifEmpty { null },
                 migun[n] ?: all.optJSONObject(n)?.takeIf { it.has("t") }?.optInt("t"),
                 rel?.let { "voice/$it" }, voiceOk(rel))
         }.sortedWith(compareBy(java.text.Collator.getInstance(java.util.Locale("he")), { it.name })).toList()
-        orphans = vIdx.keys().asSequence().filter { !all.has(it) }.map { Clip(it, "voice/" + vIdx.getString(it)) }.toList()
+        // "כל הארץ" / "ברחבי הארץ" - לא יישובים: מופיעים במשפטי ההקראה (אחר), ועדיין נמצאים בהתרעות
+        areas = allAreas.filter { it.name !in NATIONAL }
+        national = allAreas.filter { it.name in NATIONAL }
+        // "התראת בדיקה" - הקלטה בלי יישוב בכוונה: גם היא במשפטי ההקראה (אחר)
+        val test = vIdx.optString(TEST).ifEmpty { null }?.let { Clip(TEST, "voice/$it", "אחר") }
+        orphans = vIdx.keys().asSequence().filter { !all.has(it) && it != TEST }.map { Clip(it, "voice/" + vIdx.getString(it)) }.toList()
 
         phrases = listOf("phrases", "extra").flatMap { d ->
             (c.assets.list("voice/$d") ?: emptyArray()).sorted().map {
                 val k = it.removeSuffix(".mp3")
                 Clip(PHRASES[k] ?: it, "voice/$d/$it", GROUPS.firstOrNull { g -> k in g.second }?.first ?: "אחר")
             }
-        }.sortedWith(compareBy({ c -> GROUPS.indexOfFirst { it.first == c.group }.let { if (it < 0) GROUPS.size else it } },
+        }.plus(national.filter { it.voice != null }.map { Clip(it.name, it.voice!!, "אחר") }).plus(listOfNotNull(test))
+        .sortedWith(compareBy({ c -> GROUPS.indexOfFirst { it.first == c.group }.let { if (it < 0) GROUPS.size else it } },
             { c -> GROUPS.flatMap { it.second }.indexOf(c.path.substringAfterLast('/').removeSuffix(".mp3")) }))
         sounds = (c.assets.list("sounds") ?: emptyArray()).sorted().map {
             Clip(SOUNDS[it.substringBeforeLast('.')] ?: it, "sounds/$it")
         }
-        byName = areas.associateBy { it.name }
+        byName = allAreas.associateBy { it.name }
         val col = java.text.Collator.getInstance(java.util.Locale("he"))
         this.districts = areas.filter { it.district != null }.groupBy { it.district!! }.toSortedMap(col)
         try {
@@ -140,7 +149,7 @@ object Data {
 
     /** השם שהגיע מהמקור → היישובים במפה (כמו באפליקציה: "יבנה" לא תופס את "גן יבנה") */
     fun match(raw: String): List<Area> = byName[raw]?.let { listOf(it) }
-        ?: areas.filter { it.name.startsWith("$raw -") || it.name.startsWith("$raw,") }
+        ?: byName.values.filter { it.name.startsWith("$raw -") || it.name.startsWith("$raw,") }
 
     /** ההקראה של התרעה, כמו באפליקציה: סוג → עד 4 יישובים (ואם יש עוד - "ואזורים נוספים") → זמן להגעה */
     fun clips(a: Alert): List<String>? {
@@ -173,7 +182,7 @@ object Data {
         "סוג ההתרעה" to listOf("red_alert", "early_warning", "event_ended", "event_end", "launches_detected", "mivzak_pikud_haoref", "update_pikud_haoref"),
         "סוג האירוע" to listOf("rockets", "hostile_aircraft", "terrorist_infiltration", "earthquake", "tsunami", "hazardous_materials", "radiological", "nonconventional"),
         "זמן התגוננות" to listOf("time_immediate", "time_15s", "time_30s", "time_45s", "time_1min", "time_1_5min"),
-        "אחר" to listOf("in_areas", "more_areas", "siren"),
+        "אחר" to listOf("all_of_israel", "all_over_the_country", "test_alert", "in_areas", "more_areas", "siren"),
     )
 
     private val SOUNDS = mapOf("app_siren" to "צופר", "app_beep" to "צפצוף")

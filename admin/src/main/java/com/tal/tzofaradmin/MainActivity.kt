@@ -333,7 +333,7 @@ class MainActivity : Activity() {
     // ---- רשימות ----
     private class Item(val title: String, val sub: String, val path: String?, val key: String?, val bad: Boolean,
         val seq: List<String>? = null, val tap: (() -> Unit)? = null, val chevron: Boolean = false, val header: Boolean = false,
-        val ok: Boolean = false, val say: String? = null)
+        val ok: Boolean = false, val say: String? = null, val found: Boolean? = null)
     private var items: List<Item> = emptyList()
     private var adapter: BaseAdapter? = null
     private var countView: TextView? = null
@@ -467,7 +467,8 @@ class MainActivity : Activity() {
                     val sub = if (m.isEmpty()) "לא נמצא ברשימת היישובים" else if (v == null) "אין הקראה"
                         else listOfNotNull(v.district, v.voice?.substringAfterLast('/')).joinToString(" · ")
                     val area = m.firstOrNull()
-                    Item(r, sub, v?.voice, area?.name, v == null, tap = area?.let { ar -> { openItem(ar.name, v?.voice, ar) } })
+                    Item(r, sub, v?.voice, area?.name, v == null, tap = area?.let { ar -> { openItem(ar.name, v?.voice, ar) } },
+                        found = if (checkAreas) m.isNotEmpty() else null)
                 }
             } ?: emptyList()
             else -> Data.orphans.map { Item(it.title, it.path.substringAfterLast('/'), it.path, null, true) }
@@ -510,7 +511,10 @@ class MainActivity : Activity() {
                     else if (page == Page.HISTORY && it.title == "האירוע הסתיים") GREEN else Color.WHITE))
                 addView(text(it.sub, 12f, if (it.bad) ORANGE else MUTED))
             }, LinearLayout.LayoutParams(0, -2, 1f))
-            it.key?.let { k ->
+            // "בדוק יישובים": וי ירוק - מופיע ברשימת היישובים, סימן אדום - לא מופיע
+            it.found?.let { f -> addView(icon(if (f) R.drawable.ic_ok else R.drawable.ic_warn, if (f) GREEN else RED, 22).apply {
+                (layoutParams as LinearLayout.LayoutParams).marginEnd = dp(12) }) }
+            if (it.found == null) it.key?.let { k ->
                 if (Review.loggedIn(this@MainActivity)) addView(statusIcon(k).apply {
                     (layoutParams as LinearLayout.LayoutParams).marginEnd = dp(12)
                     setOnClickListener { cycle(k) }
