@@ -457,7 +457,8 @@ class MainActivity : Activity() {
             Page.DISTRICTS -> Data.districts.map { (d, list) ->
                 val ok = list.count { statusOf(it.name) == "ok" }; val fix = list.count { statusOf(it.name) == "fix" }
                 val miss = list.count { it.missing }
-                Item(d, "${list.size} יישובים" + (if (Review.loggedIn(this)) " · נבדקו $ok" else "") +
+                val inl = list.count { listChecked(listKey(it.name)) }
+                Item(d, "${list.size} יישובים" + (if (Review.loggedIn(this)) " · נבדקו $ok · ברשימה $inl/${list.size}" else "") +
                     (if (fix > 0) " · לתיקון $fix" else "") + (if (miss > 0) " · חסרים $miss" else ""),
                     null, "district:$d", miss > 0, tap = { district = d; filter = 0; query = ""; go(Page.AREAS) }, chevron = true,
                     listKey = districtListKey(d))
@@ -509,7 +510,9 @@ class MainActivity : Activity() {
             page == Page.HISTORY -> "${items.size} התרעות ב-30 הימים האחרונים"
             page == Page.EDITS -> if (items.isEmpty()) "אין שינויים ממתינים" else "לא נכנסים לטלפונים עד שמאשרים ומכניסים אותם"
             page == Page.ALERT -> ""
-            page == Page.DISTRICTS -> "${items.size} אזורים"
+            page == Page.DISTRICTS -> "${items.size} אזורים" + (if (Review.loggedIn(this))
+                " · נבדקו מול הרשימה ${Data.districts.keys.count { listChecked(districtListKey(it)) }}/${Data.districts.size}" else "")
+            page == Page.AREAS && Review.loggedIn(this) -> "${items.size} יישובים · נבדקו מול הרשימה ${items.count { it.listKey != null && listChecked(it.listKey) }}/${items.size}"
             page == Page.PHRASES -> "${items.count { !it.header }} הקלטות"
             else -> "${items.size} פריטים"
         }
