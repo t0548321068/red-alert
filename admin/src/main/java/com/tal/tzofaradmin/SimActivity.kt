@@ -200,3 +200,22 @@ class Flow(c: android.content.Context, private val gap: Int) : ViewGroup(c) {
         }
     }
 }
+
+/** עיגול סימון בדיוק כמו בצופר חירום (בחירת יישובים): עיגול אפור, ומסומן - כחול עם וי שחור */
+class CheckDot(context: android.content.Context, var on: Boolean) : View(context) {
+    private val d = resources.displayMetrics.density
+    private val ring = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        style = android.graphics.Paint.Style.STROKE; strokeWidth = 1.6f * d; color = android.graphics.Color.parseColor("#8E8E93") }
+    private val fill = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.parseColor("#5B8AF5") }
+    private val tick = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        style = android.graphics.Paint.Style.STROKE; strokeWidth = 2.4f * d; color = android.graphics.Color.BLACK   // וי שחור כמו בסמסונג
+        strokeCap = android.graphics.Paint.Cap.ROUND; strokeJoin = android.graphics.Paint.Join.ROUND }
+    override fun onDraw(c: android.graphics.Canvas) {
+        val cx = width / 2f; val cy = height / 2f; val r = minOf(width, height) / 2f - 1.5f * d
+        if (!on) { c.drawCircle(cx, cy, r, ring); return }
+        c.drawCircle(cx, cy, r, fill)
+        val p = android.graphics.Path().apply {
+            moveTo(cx - r * 0.42f, cy + r * 0.02f); lineTo(cx - r * 0.1f, cy + r * 0.34f); lineTo(cx + r * 0.44f, cy - r * 0.3f) }
+        c.drawPath(p, tick)
+    }
+}

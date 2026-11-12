@@ -472,6 +472,8 @@ class MainActivity : Activity() {
     private var items: List<Item> = emptyList()
     private var adapter: BaseAdapter? = null
     private var countView: TextView? = null
+    private var allDot: CheckDot? = null
+    private var selCount: TextView? = null
 
     private fun list() {
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.BLACK) }
@@ -509,6 +511,24 @@ class MainActivity : Activity() {
             root.addView(HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; addView(chips) })
         }
 
+        if (page == Page.SEND) {
+            // [עיגול "הכול"] "N נבחרו" - כמו בבחירת יישובים בצופר חירום
+            val dot = CheckDot(this, false); allDot = dot
+            root.addView(LinearLayout(this).apply {
+                gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), 0, dp(20), dp(10))
+                addView(LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
+                    addView(dot, LinearLayout.LayoutParams(dp(22), dp(22)))
+                    addView(text("הכול", 12f).apply { setPadding(0, dp(2), 0, 0) })
+                    setOnClickListener {
+                        val ids = items.mapNotNull { it.sel }
+                        if (ids.isNotEmpty() && ids.none { it in unselected }) unselected.addAll(ids) else unselected.removeAll(ids.toSet())
+                        refreshList()
+                    }
+                }, LinearLayout.LayoutParams(dp(44), -2))
+                addView(text("", 22f, bold = true).also { selCount = it }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(12) })
+            })
+        } else { allDot = null; selCount = null }
         val count = text("", 12f, MUTED).apply { setPadding(dp(22), 0, dp(22), dp(6)) }
         root.addView(count)
         adapter = object : BaseAdapter() {
@@ -691,8 +711,13 @@ class MainActivity : Activity() {
             page == Page.SEND -> Review.lastBatch.let { b -> when {
                 items.isEmpty() -> "אין שינויים שמחכים"
                 b?.state == "sent" -> "נשלח לטיפול ב-${when_(b.at)} · ממתין שאכניס"
-                else -> items.filter { it.sel != null }.let { s -> "סומנו ${s.count { it.sel !in unselected }} מתוך ${s.size} לשליחה" } } }
+                else -> items.filter { it.sel != null }.let { s -> "מתוך ${s.size} שמחכים לשליחה" } } }
             else -> "${items.size} פריטים"
+        }
+        if (page == Page.SEND) {
+            val ids = items.mapNotNull { it.sel }; val n = ids.count { it !in unselected }
+            allDot?.let { it.on = ids.isNotEmpty() && n == ids.size; it.invalidate() }
+            selCount?.text = when { ids.isEmpty() -> "אין מה לשלוח"; n == 1 -> "1 נבחר"; else -> "$n נבחרו" }
         }
         adapter?.notifyDataSetChanged()
     }
@@ -724,11 +749,9 @@ class MainActivity : Activity() {
             }, LinearLayout.LayoutParams(0, -2, 1f))
             // בשליחה לטיפול: מה לשלוח
             it.sel?.let { sid ->
-                val on = sid !in unselected
-                addView(icon(if (on) R.drawable.ic_box_on else R.drawable.ic_box, if (on) BLUE else MUTED, 24).apply {
-                    (layoutParams as LinearLayout.LayoutParams).marginEnd = dp(12)
+                addView(CheckDot(this@MainActivity, sid !in unselected).apply {
                     setOnClickListener { if (!unselected.remove(sid)) unselected.add(sid); refreshList() }
-                })
+                }, LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(14) })
             }
             // "בדוק יישובים": וי ירוק - מופיע ברשימת היישובים, סימן אדום - לא מופיע
             it.found?.let { f -> addView(icon(if (f) R.drawable.ic_ok else R.drawable.ic_warn, if (f) GREEN else RED, 22).apply {
