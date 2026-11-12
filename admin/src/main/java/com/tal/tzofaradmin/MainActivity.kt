@@ -316,7 +316,7 @@ class MainActivity : Activity() {
         }, lp())
         if (!ready) return
 
-        if (!Review.loggedIn(this)) loginCard(root) else sendCard(root)
+        if (!Review.loggedIn(this)) loginCard(root) else { sendCard(root); progressCard(root) }
 
         val n = java.text.NumberFormat.getIntegerInstance()
         root.addView(card().apply {
@@ -392,6 +392,29 @@ class MainActivity : Activity() {
                 }
             }, LinearLayout.LayoutParams(-1, dp(46)).apply { setMargins(dp(40), dp(4), dp(40), 0) })
         }, lp())
+    }
+    /** התקדמות במסך הראשי: עיגול לכל שלב של מה שנשלח ועוד לא הסתיים, ושורה מה בטיפול ומה טופל */
+    private fun progressCard(root: LinearLayout) {
+        val open = Review.batches.filter { it.state != "done" }
+        if (open.isEmpty()) return
+        val all = open.flatMap { it.items }
+        val stages = listOf("rec" to "הקלטות", "edit" to "שינויים", "fix" to "לתיקון", "task" to "ידני").mapNotNull { (t, n) ->
+            val its = all.filter { it.t == t }
+            if (its.isEmpty()) null else Triple(n, its.count { it.state == "done" || it.state == "skipped" }, its.size)
+        }
+        root.addView(label("התקדמות"))
+        root.addView(ringsRow(stages).apply { setOnClickListener { go(Page.SEND) } })
+        val working = all.count { it.state == "working" }; val done = all.count { it.state == "done" }
+        val skipped = all.count { it.state == "skipped" }; val sent = all.count { it.state == "sent" }
+        root.addView(card().apply {
+            nav(this, 0, "נשלח $sent · בטיפול $working · טופל $done · לא בוצע $skipped", "", MUTED) { go(Page.SEND) }
+        }, lp())
+    }
+    /** שלבים של פריט: נשלח › בטיפול › טופל (או לא בוצע) */
+    private fun steps(state: String): String {
+        val n = when (state) { "working" -> 1; "done", "skipped" -> 2; else -> 0 }
+        val last = if (state == "skipped") "לא בוצע" else "טופל"
+        return listOf("נשלח", "בטיפול", last).mapIndexed { i, s -> (if (i <= n) "●" else "○") + " " + s }.joinToString("  ›  ")
     }
     private fun areasWith(f: Int) { district = null; filter = f; query = ""; go(Page.AREAS) }
 
@@ -652,7 +675,7 @@ class MainActivity : Activity() {
                         val badge = when (i.state) { "working" -> "בטיפול" to BLUE; "done" -> "טופל" to GREEN; "skipped" -> "לא בוצע" to RED; else -> "נשלח" to ORANGE }
                         val key = if (i.t == "edit") i.title else i.k
                         out += Item(title(i.title), i.detail.let { d -> if (i.t == "edit") d.replace(Regex("^(\\w+):")) { m -> (FIELD_NAMES[m.groupValues[1]] ?: m.groupValues[1]) + ":" } else d } +
-                            (if (i.msg.isNotEmpty()) "\n" + i.msg else ""), null, null, false, badge = badge,
+                            "\n" + steps(i.state) + (if (i.msg.isNotEmpty()) "\n" + i.msg else ""), null, null, false, badge = badge,
                             tap = if (i.t == "task") null else ({ open(key) }))
                     }
                 }
