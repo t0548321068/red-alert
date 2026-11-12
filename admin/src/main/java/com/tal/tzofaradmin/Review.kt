@@ -20,6 +20,8 @@ object Review {
     /** הקלטת הגייה שלך: מתי הוקלטה, ומצב: pending ממתין · ready מוכן לאישור · approved אושר · rejected נדחה */
     class Rec(val at: Long, val state: String, val variants: Int = 0, val chosen: Int = 0)
     @Volatile var recs: Map<String, Rec> = emptyMap(); private set
+    /** מה שבוצע: מפתח → מתי */
+    @Volatile var done: Map<String, Long> = emptyMap(); private set
     /** השליחה האחרונה לטיפול: sent (ממתין לטיפול) / done (טופל) */
     class Batch(val at: Long, val state: String, val count: Int, val doneAt: Long, val summary: String)
     @Volatile var lastBatch: Batch? = null; private set
@@ -87,6 +89,7 @@ object Review {
         }.sortedByDescending { it.at }
         recs = o.optJSONObject("recs")?.let { j -> j.keys().asSequence().associateWith {
             val r = j.getJSONObject(it); Rec(r.optLong("at"), r.optString("state", "pending"), r.optInt("variants"), r.optInt("chosen")) } } ?: emptyMap()
+        done = o.optJSONObject("done")?.let { j -> j.keys().asSequence().associateWith { j.optLong(it) } } ?: emptyMap()
         tasks = o.optJSONArray("tasks")?.let { a -> (0 until a.length()).map { a.getJSONObject(it) }.map { Task(it.getString("id"), it.optString("text"), it.optLong("at")) } } ?: emptyList()
         batches = o.optJSONArray("batches")?.let { a -> (0 until a.length()).map { a.getJSONObject(it) }.map { b ->
             val its = b.optJSONArray("items")?.let { ia -> (0 until ia.length()).map { ia.getJSONObject(it) }.map { i ->

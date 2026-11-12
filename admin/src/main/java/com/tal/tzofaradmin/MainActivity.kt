@@ -646,6 +646,7 @@ class MainActivity : Activity() {
             }.map { a ->
                 val sub = listOf(a.district ?: "אין מחוז", shelter(a.shelter)).joinToString(" · ") +
                     (if (!a.voiceOk) " · אין הקראה" else "") + (a.voice?.let { "\n" + it.substringAfterLast('/') } ?: "") +
+                    (if (Review.done.containsKey(a.name)) " · בוצע" else "") +
                     (Review.recs[a.name]?.let { r -> " · הקלטה שלך: " + when (r.state) { "ready" -> "מוכן לאישור"; "approved" -> "אושר"; "rejected" -> "נדחה"; else -> "ממתין" } } ?: "") + note(a.name)
                 Item(a.name, sub, a.voice?.takeIf { a.voiceOk }, a.name, a.missing, tap = { openItem(a.name, a.voice?.takeIf { a.voiceOk }, a) },
                     listKey = listKey(a.name))
@@ -879,6 +880,27 @@ class MainActivity : Activity() {
             root.addView(text("כדי לסמן, לכתוב הערה או להציע שינוי - צריך להיכנס במסך הראשי", 13f, MUTED).apply { setPadding(dp(22), dp(4), dp(22), 0) })
             return
         }
+
+        // בוצע: השינוי נעשה - לא מופיע יותר כ"לתיקון" / "שינוי ממתין"
+        val open = statusOf(itemKey) == "fix" || Review.edits.any { it.key == itemKey } ||
+            Review.recs[itemKey]?.state.let { it == "pending" || it == "ready" || it == "rejected" }
+        val doneAt = Review.done[itemKey]
+        root.addView(card().apply {
+            if (doneAt != null) addView(LinearLayout(this@MainActivity).apply {
+                gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(14), dp(18), dp(14))
+                addView(icon(R.drawable.ic_ok, GREEN, 22).apply { (layoutParams as LinearLayout.LayoutParams).marginEnd = dp(12) })
+                addView(text("בוצע", 15f, GREEN, true), LinearLayout.LayoutParams(0, -2, 1f))
+                addView(text(when_(doneAt), 13f, MUTED))
+            })
+            if (open) {
+                if (childCount > 0) divider(this)
+                addView(text("סימון כבוצע", 15f, BLUE, true).apply {
+                    setPadding(dp(18), dp(14), dp(18), dp(14))
+                    setOnClickListener { sendOp(Review.op("markdone", itemKey), "סומן כבוצע") }
+                })
+            }
+            if (childCount == 0) addView(text("אין שינוי פתוח", 14f, MUTED).apply { setPadding(dp(18), dp(14), dp(18), dp(14)) })
+        }, lp())
 
         root.addView(label("מצב"))
         root.addView(LinearLayout(this).apply {
