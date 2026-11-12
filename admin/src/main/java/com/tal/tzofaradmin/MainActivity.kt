@@ -459,7 +459,7 @@ class MainActivity : Activity() {
                 val miss = list.count { it.missing }
                 Item(d, "${list.size} יישובים" + (if (Review.loggedIn(this)) " · נבדקו $ok" else "") +
                     (if (fix > 0) " · לתיקון $fix" else "") + (if (miss > 0) " · חסרים $miss" else ""),
-                    null, null, miss > 0, tap = { district = d; filter = 0; query = ""; go(Page.AREAS) }, chevron = true,
+                    null, "district:$d", miss > 0, tap = { district = d; filter = 0; query = ""; go(Page.AREAS) }, chevron = true,
                     listKey = districtListKey(d))
             }
             Page.PHRASES -> Data.phrases.groupBy { it.group }.flatMap { (g, list) ->
