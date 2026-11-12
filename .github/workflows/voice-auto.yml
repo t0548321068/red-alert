@@ -20,8 +20,8 @@ jobs:
         with: { python-version: '3.11' }
       - name: Worker
         run: |
-          sudo apt-get -qq install -y ffmpeg >/dev/null
-          pip -q install edge-tts soundfile transformers
+          sudo apt-get -qq install -y ffmpeg espeak-ng >/dev/null
+          pip -q install edge-tts soundfile transformers phonemizer
           pip -q install torch --index-url https://download.pytorch.org/whl/cpu
           python -u - <<'P'
           import asyncio, json, re, time, urllib.request, urllib.parse
