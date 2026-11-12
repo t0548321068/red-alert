@@ -81,6 +81,11 @@ class MainActivity : Activity() {
         localStatus[key] = v; refresh()
         sendOp(Review.op("status", key).put("value", v)) { localStatus.remove(key) }
     }
+    /** סימון נוסף: "נבדק מול רשימת היישובים" - ליישוב ("list:שם") ולאזור ("list-d:שם") */
+    private fun listKey(name: String) = "list:$name"
+    private fun districtListKey(name: String) = "list-d:$name"
+    private fun listChecked(k: String) = statusOf(k) == "ok"
+    private fun toggleList(k: String) = setStatus(k, if (listChecked(k)) "" else "ok")
     private fun cycle(key: String) = setStatus(key, when (statusOf(key)) { "" -> "ok"; "ok" -> "fix"; else -> "" })
     /** פעולה לשרת ברקע; done רץ בכל מקרה, ok = הודעה כשנשמר */
     private fun sendOp(op: JSONObject, ok: String? = null, done: () -> Unit = {}) {
@@ -267,6 +272,10 @@ class MainActivity : Activity() {
                 nav(this, R.drawable.ic_ok, "נבדקו ותקינים", "${n.format(ok)}/${n.format(a.size)}", if (ok == a.size) GREEN else Color.WHITE) { areasWith(3) }
                 nav(this, R.drawable.ic_flag, "לתיקון", fix.toString(), if (fix == 0) MUTED else RED, fix > 0) { areasWith(4) }
                 nav(this, 0, "לא נבדקו", n.format(a.size - ok - fix), MUTED) { areasWith(2) }
+                val inList = a.count { listChecked(listKey(it.name)) }
+                val dList = Data.districts.keys.count { listChecked(districtListKey(it)) }
+                nav(this, R.drawable.ic_listcheck, "יישובים שנבדקו ברשימה", "${n.format(inList)}/${n.format(a.size)}", if (inList == a.size) BLUE else Color.WHITE) { areasWith(6) }
+                nav(this, R.drawable.ic_listcheck, "אזורים שנבדקו ברשימה", "$dList/${Data.districts.size}", if (dList == Data.districts.size) BLUE else Color.WHITE) { go(Page.DISTRICTS) }
                 nav(this, R.drawable.ic_edit, "שינויים ממתינים לאישור", Review.edits.size.toString(),
                     if (Review.edits.isEmpty()) MUTED else ORANGE, Review.edits.isNotEmpty()) { go(Page.EDITS) }
                 if (!Review.online) nav(this, R.drawable.ic_warn, "הסימונים לא נטענו מהשרת", "", ORANGE, false) { }
@@ -351,7 +360,7 @@ class MainActivity : Activity() {
     // ---- רשימות ----
     private class Item(val title: String, val sub: String, val path: String?, val key: String?, val bad: Boolean,
         val seq: List<String>? = null, val tap: (() -> Unit)? = null, val chevron: Boolean = false, val header: Boolean = false,
-        val ok: Boolean = false, val say: String? = null, val found: Boolean? = null)
+        val ok: Boolean = false, val say: String? = null, val found: Boolean? = null, val listKey: String? = null)
     private var items: List<Item> = emptyList()
     private var adapter: BaseAdapter? = null
     private var countView: TextView? = null
@@ -383,7 +392,7 @@ class MainActivity : Activity() {
         }
         if (page == Page.AREAS) {
             val chips = LinearLayout(this).apply { setPadding(dp(12), 0, dp(12), dp(10)) }
-            listOf("הכל", "חסרים", "לא נבדקו", "תקינים", "לתיקון").forEachIndexed { i, t ->
+            listOf("הכל", "חסרים", "לא נבדקו", "תקינים", "לתיקון", "נבדקו ברשימה", "לא נבדקו ברשימה").forEachIndexed { i, t ->
                 chips.addView(text(t, 13f).apply {
                     background = round(if (i == filter) BLUE else LINE, 16); setPadding(dp(14), dp(7), dp(14), dp(7))
                     setOnClickListener { filter = i; list() }
@@ -437,18 +446,21 @@ class MainActivity : Activity() {
             Page.AREAS -> Data.areas.filter {
                 (district == null || it.district == district) &&
                 (query.isEmpty() || it.name.contains(query)) &&
-                    when (filter) { 1 -> it.missing; 2 -> statusOf(it.name) == ""; 3 -> statusOf(it.name) == "ok"; 4 -> statusOf(it.name) == "fix"; else -> true }
+                    when (filter) { 1 -> it.missing; 2 -> statusOf(it.name) == ""; 3 -> statusOf(it.name) == "ok"; 4 -> statusOf(it.name) == "fix"
+                        5 -> listChecked(listKey(it.name)); 6 -> !listChecked(listKey(it.name)); else -> true }
             }.map { a ->
                 val sub = listOf(a.district ?: "אין מחוז", shelter(a.shelter)).joinToString(" · ") +
                     (if (!a.voiceOk) " · אין הקראה" else "") + (a.voice?.let { "\n" + it.substringAfterLast('/') } ?: "") + note(a.name)
-                Item(a.name, sub, a.voice?.takeIf { a.voiceOk }, a.name, a.missing, tap = { openItem(a.name, a.voice?.takeIf { a.voiceOk }, a) })
+                Item(a.name, sub, a.voice?.takeIf { a.voiceOk }, a.name, a.missing, tap = { openItem(a.name, a.voice?.takeIf { a.voiceOk }, a) },
+                    listKey = listKey(a.name))
             }
             Page.DISTRICTS -> Data.districts.map { (d, list) ->
                 val ok = list.count { statusOf(it.name) == "ok" }; val fix = list.count { statusOf(it.name) == "fix" }
                 val miss = list.count { it.missing }
                 Item(d, "${list.size} יישובים" + (if (Review.loggedIn(this)) " · נבדקו $ok" else "") +
                     (if (fix > 0) " · לתיקון $fix" else "") + (if (miss > 0) " · חסרים $miss" else ""),
-                    null, null, miss > 0, tap = { district = d; filter = 0; query = ""; go(Page.AREAS) }, chevron = true)
+                    null, null, miss > 0, tap = { district = d; filter = 0; query = ""; go(Page.AREAS) }, chevron = true,
+                    listKey = districtListKey(d))
             }
             Page.PHRASES -> Data.phrases.groupBy { it.group }.flatMap { (g, list) ->
                 listOf(Item(g, "", null, null, false, header = true)) + list.map {
@@ -532,6 +544,13 @@ class MainActivity : Activity() {
             // "בדוק יישובים": וי ירוק - מופיע ברשימת היישובים, סימן אדום - לא מופיע
             it.found?.let { f -> addView(icon(if (f) R.drawable.ic_ok else R.drawable.ic_warn, if (f) GREEN else RED, 22).apply {
                 (layoutParams as LinearLayout.LayoutParams).marginEnd = dp(12) }) }
+            if (it.found == null && Review.loggedIn(this@MainActivity)) it.listKey?.let { lk ->
+                val on = listChecked(lk)
+                addView(icon(R.drawable.ic_listcheck, if (on) BLUE else Color.parseColor("#48484A"), 22).apply {
+                    (layoutParams as LinearLayout.LayoutParams).marginEnd = dp(12)
+                    setOnClickListener { toggleList(lk) }
+                })
+            }
             if (it.found == null) it.key?.let { k ->
                 if (Review.loggedIn(this@MainActivity)) addView(statusIcon(k).apply {
                     (layoutParams as LinearLayout.LayoutParams).marginEnd = dp(12)
@@ -600,6 +619,18 @@ class MainActivity : Activity() {
             }
         })
 
+        if (a != null) {
+            val lk = listKey(a.name); val on = listChecked(lk)
+            root.addView(card().apply {
+                addView(LinearLayout(this@MainActivity).apply {
+                    gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(14), dp(18), dp(14))
+                    addView(icon(R.drawable.ic_listcheck, if (on) BLUE else MUTED, 20).apply { (layoutParams as LinearLayout.LayoutParams).marginEnd = dp(12) })
+                    addView(text("נבדק מול רשימת היישובים", 15f), LinearLayout.LayoutParams(0, -2, 1f))
+                    addView(text(if (on) "כן" else "לא", 14f, if (on) BLUE else MUTED))
+                    setOnClickListener { toggleList(lk) }
+                })
+            }, lp())
+        }
         root.addView(label("הערה"))
         root.addView(card().apply {
             val note = EditText(this@MainActivity).apply {
