@@ -153,7 +153,13 @@ object Data {
 
     /** ההקראה של התרעה, כמו באפליקציה: סוג → עד 4 יישובים (ואם יש עוד - "ואזורים נוספים") → זמן להגעה */
     fun clips(a: Alert): List<String>? {
-        if (isUpdate(a.raw)) return null   // עדכון - מוקרא באפליקציה בקול של הטלפון, אין הקלטה
+        // עדכון (כמו "רעידת אדמה - הנחיות חזרה למבנים"): "עדכון פיקוד העורף. סיום אירוע. האירוע הסתיים. באזורים: ..."
+        if (isUpdate(a.raw)) {
+            val files = a.areas.mapNotNull { r -> match(r).firstOrNull { it.voiceOk }?.voice }.distinct()
+            val shown = if (files.size <= 5) files else files.take(4)
+            return listOf("voice/extra/update_pikud_haoref.mp3", "voice/extra/event_end.mp3", "voice/extra/event_ended.mp3",
+                "voice/extra/in_areas.mp3") + shown + (if (files.size > shown.size) listOf("voice/phrases/more_areas.mp3") else emptyList())
+        }
         val level = levelOf(a.raw); val t = a.raw
         val type = when {
             level == LEVEL_END -> "event_ended"; level == LEVEL_PRE -> "early_warning"
