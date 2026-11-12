@@ -257,6 +257,15 @@ function apply(op) {
       require('./files').restore(t); log('review: הוחזרה ההקלטה המקורית - ' + t);
       break;
     }
+    case 'unsend': {   // ביטול משליחה לטיפול: הפריט יוצא מהשליחות ומ"מחכה לשליחה" (בלי לגעת בשאר הסימונים)
+      if (!key) return null;
+      for (const b of data.batches) if (b.items) b.items = b.items.filter(i => !(i.k === key || i.key === key));
+      data.batches = data.batches.filter(b => !b.items || b.items.length);
+      data.edits = data.edits.filter(e => e.key !== key);
+      if (data.status[key] === 'fix') delete data.status[key];
+      log('review: בוטל משליחה לטיפול');
+      break;
+    }
     case 'reset':   // איפוס מלא של ניהול צופר: סימונים, הערות, שינויים, הקלטות, שליחות - הכל מההתחלה
       if (op.confirm !== 'RESET') return null;
       try { for (const f of fs.readdirSync(REC_DIR)) fs.unlinkSync(path.join(REC_DIR, f)); } catch (_) {}
