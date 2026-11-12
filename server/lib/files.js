@@ -41,6 +41,8 @@ function override(rel, fromFile) {
   if (!/^voice\/[\w/.-]+\.mp3$/.test(rel) || rel.includes('..')) throw new Error('bad path');
   const dst = path.join(OVERRIDE_DIR, rel);
   fs.mkdirSync(path.dirname(dst), { recursive: true });
+  // גיבוי של מה שהיה לפני כל החלפה (voice-history/<נתיב>.<זמן>) - כדי שאפשר יהיה להחזיר
+  try { const prev = src[rel]; if (prev) { const h = path.join(__dirname, '..', 'voice-history', rel + '.' + Date.now()); fs.mkdirSync(path.dirname(h), { recursive: true }); fs.copyFileSync(prev, h); } } catch (_) {}
   fs.copyFileSync(fromFile, dst + '.tmp'); fs.renameSync(dst + '.tmp', dst);
   scan();
 }
@@ -76,4 +78,10 @@ function currentText(rel) {
   return fs.readFileSync(path.join(__dirname, '..', '..', 'app', 'src', 'main', 'assets', rel), 'utf8');
 }
 
-module.exports = { dataIndex, voiceIndex, serveData, serveBeta, override, overrideText, currentText };
+/** החזרה להקלטה המקורית (מבטל את ההחלפה) */
+function restore(rel) {
+  try { fs.unlinkSync(path.join(OVERRIDE_DIR, rel)); } catch (_) {}
+  scan();
+}
+
+module.exports = { dataIndex, voiceIndex, serveData, serveBeta, override, overrideText, currentText, restore };

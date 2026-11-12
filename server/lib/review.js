@@ -140,7 +140,7 @@ function apply(op) {
       { const t = str(op.text, 1000); const changed = (data.notes[key] || '') !== t; if (t) data.notes[key] = t; else delete data.notes[key];
         // יש הקלטה שעוד לא נבחרה לה גרסה - מכינים מחדש לפי ההערה החדשה
         const r = data.recs[key];
-        if (changed && r && ['pending', 'ready', 'rejected'].includes(r.state)) { r.state = 'pending'; r.since = Date.now(); r.prog = null; r.retried = false; delete r.rejectedAt; delete r.vtext; } }
+        if (changed && r && ['pending', 'ready', 'rejected'].includes(r.state)) { r.state = 'pending'; r.since = Date.now(); delete r.chosen; delete r.chosenGen; r.prog = null; r.retried = false; delete r.rejectedAt; delete r.vtext; } }
       break;
     case 'edit':
       if (!key || !FIELDS.has(op.field)) return null;
@@ -158,8 +158,8 @@ function apply(op) {
       data.recs[key].decidedAt = Date.now();
       if (op.op === 'reject') { const r = data.recs[key]; r.rejectedAt = Date.now();
         // "אף אחת לא טובה" - מנסים שוב אוטומטית (פעם אחת); אחר כך לפי ההערה שתשנה
-        if (!r.retried) { r.state = 'pending'; r.since = Date.now(); r.prog = null; r.retried = true; delete r.vtext; } }
-      if (op.op === 'approve' && op.v) data.recs[key].chosen = Math.max(1, Math.min(5, op.v | 0));
+        if (!r.retried) { r.state = 'pending'; r.since = Date.now(); delete r.chosen; delete r.chosenGen; r.prog = null; r.retried = true; delete r.vtext; } }
+      if (op.op === 'approve' && op.v) { data.recs[key].chosen = Math.max(1, Math.min(5, op.v | 0)); data.recs[key].chosenGen = data.recs[key].since || data.recs[key].at; }
       if (op.op === 'approve') applyRec(key);
       log('review: ' + (op.op === 'approve' ? 'אושרה' : 'נדחתה') + ' גרסה בקול אבר');
       break;
@@ -197,7 +197,7 @@ function apply(op) {
       settle();
       // הקלטה שנשלחה לטיפול (גם אחרי "אף אחת לא טובה") - מכינים גרסאות חדשות מיד
       for (const k of recs.concat(fix)) { const r = data.recs[k];
-        if (r && ['pending', 'ready', 'rejected'].includes(r.state)) { r.state = 'pending'; r.since = Date.now(); r.prog = null; r.retried = false; delete r.rejectedAt; delete r.vtext; } }
+        if (r && ['pending', 'ready', 'rejected'].includes(r.state)) { r.state = 'pending'; r.since = Date.now(); delete r.chosen; delete r.chosenGen; r.prog = null; r.retried = false; delete r.rejectedAt; delete r.vtext; } }
       data.batches = data.batches.slice(-50);
       log(`review: נשלח לטיפול - ${recs.length} הקלטות, ${edits.length} שינויים, ${fix.length} לתיקון, ${tasks.length} ידני`);
       break;
@@ -222,7 +222,8 @@ function apply(op) {
       withState();
       const r = data.recs[key];
       // הקלטה עם גרסאות בקול אבר: הגרסה שבחרת (או הראשונה - מההערה שלך) נכנסת עכשיו
-      if (r && r.state === 'ready') { r.chosen = r.chosen || 1; r.state = 'approved'; applyRec(key); }
+      // רק גרסה שבחרת במפורש נכנסת. בלי בחירה - ההקלטה שבשרת לא משתנה
+      if (r && r.state === 'ready' && r.chosen && r.chosenGen === (r.since || r.at)) { r.state = 'approved'; applyRec(key); }
       // הצעות שינוי: מאושרות ועוברות לשליחה לטיפול (אני מכניס)
       const eds = data.edits.filter(e => e.key === key);
       if (eds.length) { data.batches.push({ id: crypto.randomBytes(4).toString('hex'), at: Date.now(), state: 'sent', recs: [], edits: eds.map(e => e.id), fix: [], tasks: [],
@@ -251,6 +252,11 @@ function apply(op) {
       data.batches = []; data.tasks = [];
       log('review: שליחה לטיפול אופסה');
       break;
+    case 'restorevoice': {   // החזרת ההקלטה המקורית של יישוב / משפט
+      const t = targetOf(key); if (!t) return null;
+      require('./files').restore(t); log('review: הוחזרה ההקלטה המקורית - ' + t);
+      break;
+    }
     case 'reset':   // איפוס מלא של ניהול צופר: סימונים, הערות, שינויים, הקלטות, שליחות - הכל מההתחלה
       if (op.confirm !== 'RESET') return null;
       try { for (const f of fs.readdirSync(REC_DIR)) fs.unlinkSync(path.join(REC_DIR, f)); } catch (_) {}
