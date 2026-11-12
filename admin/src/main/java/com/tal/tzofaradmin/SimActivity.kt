@@ -19,7 +19,7 @@ import android.widget.TextView
 
 /**
  * הדמיה של התרעה מההיסטוריה, כמו מסך ההתרעה המלא בצופר חירום: צבע לפי הסוג, אייקון, כותרת, היישובים,
- * ספירה לאחור (מתחילה עכשיו, כאילו ההתרעה הגיעה הרגע), צליל ואז ההקראה. בלי מפה.
+ * ספירה לאחור (מתחילה עכשיו, כאילו ההתרעה הגיעה הרגע) וההקראה. בלי צליל ובלי מפה.
  */
 class SimActivity : Activity() {
     private val ui = Handler(Looper.getMainLooper())
@@ -141,9 +141,8 @@ class SimActivity : Activity() {
         root.addView(buttons)
         setContentView(root)
 
-        // צליל לפי הסוג (ירי - צופר, מקדימה - צפצוף, סיום - בלי), ואחריו ההקראה כמו באפליקציה
-        val sound = when (level) { 0 -> listOf("sounds/app_siren.ogg"); 1 -> listOf("sounds/app_beep.ogg"); else -> emptyList() }
-        queue = sound + (Data.clips(a) ?: emptyList())
+        // רק ההקראה, כמו באפליקציה (בלי צליל)
+        queue = Data.clips(a) ?: emptyList()
         next()
     }
 
