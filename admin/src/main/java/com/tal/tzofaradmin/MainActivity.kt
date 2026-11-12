@@ -316,7 +316,7 @@ class MainActivity : Activity() {
         }, lp())
         if (!ready) return
 
-        if (!Review.loggedIn(this)) loginCard(root)
+        if (!Review.loggedIn(this)) loginCard(root) else sendCard(root)
 
         val n = java.text.NumberFormat.getIntegerInstance()
         root.addView(card().apply {
@@ -361,6 +361,34 @@ class MainActivity : Activity() {
             }, 12f, MUTED).apply {
                 gravity = Gravity.CENTER; setPadding(0, dp(10), 0, dp(10)); setOnClickListener { checkUpdate() }
             }, LinearLayout.LayoutParams(-1, -2))
+    }
+    /** שליחה לטיפול: כל מה שמחכה (הקלטות, הצעות שינוי, לתיקון) נשלח, ואני מכניס את השינויים */
+    private fun sendCard(root: LinearLayout) {
+        val n = Review.waiting(); val b = Review.lastBatch
+        root.addView(card().apply {
+            setPadding(0, dp(4), 0, dp(14))
+            val (line, color) = when {
+                b?.state == "sent" -> "נשלח לטיפול ב-${when_(b.at)} · ממתין שאכניס" to ORANGE
+                b?.state == "done" -> "טופל ב-${when_(b.doneAt)}" + (if (b.summary.isNotEmpty()) " · ${b.summary}" else "") to GREEN
+                else -> "עוד לא נשלח לטיפול" to MUTED
+            }
+            addView(LinearLayout(this@MainActivity).apply {
+                gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(12), dp(18), dp(10))
+                addView(LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    addView(text(if (n == 0) "אין שינויים שמחכים" else "$n שינויים מחכים לשליחה", 15f, bold = true))
+                    addView(text(line, 12f, color))
+                }, LinearLayout.LayoutParams(0, -2, 1f))
+            })
+            addView(text("שליחה לטיפול", 16f, Color.WHITE, true).apply {
+                gravity = Gravity.CENTER; includeFontPadding = false
+                background = round(if (n > 0) Color.parseColor("#4C7DFF") else LINE, 23)
+                setOnClickListener {
+                    if (n == 0) { toast("אין מה לשלוח"); return@setOnClickListener }
+                    sendOp(JSONObject().put("op", "submit"), "נשלח לטיפול")
+                }
+            }, LinearLayout.LayoutParams(-1, dp(46)).apply { setMargins(dp(40), dp(4), dp(40), 0) })
+        }, lp())
     }
     private fun areasWith(f: Int) { district = null; filter = f; query = ""; go(Page.AREAS) }
 

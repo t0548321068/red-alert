@@ -20,6 +20,11 @@ object Review {
     /** הקלטת הגייה שלך: מתי הוקלטה, ומצב: pending ממתין · ready מוכן לאישור · approved אושר · rejected נדחה */
     class Rec(val at: Long, val state: String)
     @Volatile var recs: Map<String, Rec> = emptyMap(); private set
+    /** השליחה האחרונה לטיפול: sent (ממתין לטיפול) / done (טופל) */
+    class Batch(val at: Long, val state: String, val count: Int, val doneAt: Long, val summary: String)
+    @Volatile var lastBatch: Batch? = null; private set
+    /** כמה דברים מחכים לטיפול: הקלטות שממתינות, הצעות שינוי, ומה שסומן לתיקון */
+    fun waiting() = recs.values.count { it.state == "pending" || it.state == "rejected" } + edits.size + status.values.count { it == "fix" }
     @Volatile var online = false; private set
 
     private fun sp(c: Context) = c.getSharedPreferences("admin", Context.MODE_PRIVATE)
@@ -72,6 +77,10 @@ object Review {
         }.sortedByDescending { it.at }
         recs = o.optJSONObject("recs")?.let { j -> j.keys().asSequence().associateWith {
             val r = j.getJSONObject(it); Rec(r.optLong("at"), r.optString("state", "pending")) } } ?: emptyMap()
+        lastBatch = o.optJSONArray("batches")?.let { a -> if (a.length() == 0) null else a.getJSONObject(a.length() - 1) }?.let {
+            Batch(it.optLong("at"), it.optString("state"), (it.optJSONArray("recs")?.length() ?: 0) + (it.optJSONArray("edits")?.length() ?: 0) +
+                (it.optJSONArray("fix")?.length() ?: 0), it.optLong("doneAt"), it.optString("summary"))
+        }
         online = true
     }
 
