@@ -1,32 +1,38 @@
 name: Voice auto
 
-# הקלטות הגייה מ"ניהול צופר": כל 10 דקות לוקח מהשרת הקלטות שממתינות, יוצר 3 גרסאות בקול אבר ומעלה לשרת.
-# אתה שומע אותן באפליקציה ובוחר אחת - והיא נכנסת מיד. לא נוגע בגרסאות האפליקציה.
+# הקלטות הגייה מ"ניהול צופר": עובד שרץ ברציפות (עד כ-5.5 שעות, ואז מתחיל מחדש) - בודק בשרת כל 15 שניות,
+# ולכל הקלטה שממתינה יוצר 3 גרסאות בקול אבר, מדווח אחוזים בזמן אמת ומעלה לשרת. לא נוגע בגרסאות האפליקציה.
 on:
   schedule:
     - cron: '*/10 * * * *'
   workflow_dispatch:
 
+concurrency:
+  group: voice-auto
+  cancel-in-progress: false
+
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 340
     steps:
-      - name: Jobs
-        id: j
-        run: |
-          curl -sf -m 30 https://tzofar-app.duckdns.org/voice-jobs -o jobs.json || echo '[]' > jobs.json
-          echo "n=$(python3 -c "import json;print(len(json.load(open('jobs.json'))))")" >> $GITHUB_OUTPUT
       - uses: actions/setup-python@v5
-        if: steps.j.outputs.n != '0'
         with: { python-version: '3.11' }
-      - name: Avri versions
-        if: steps.j.outputs.n != '0'
+      - name: Worker
         run: |
           pip -q install edge-tts
           python - <<'P'
-          import asyncio, json, re, subprocess
+          import asyncio, json, re, time, urllib.request, urllib.parse
           import edge_tts
+          S = "https://tzofar-app.duckdns.org"
+          def get(u):
+              with urllib.request.urlopen(u, timeout=30) as r: return r.read()
+          def post(u, data):
+              req = urllib.request.Request(u, data=data, method="POST")
+              with urllib.request.urlopen(req, timeout=30) as r: return r.status
+          def prog(tok, p, s):
+              try: get(f"{S}/voice-progress?t={tok}&p={p}&s=" + urllib.parse.quote(s))
+              except Exception as e: print("progress", e)
           def tts_text(t):
               return re.sub(r'([א-ת])([֑-ׇ]*)',
                   lambda m: m.group(1) + (m.group(2) if m.group(1) in 'בכךפףוה' else m.group(2).replace('ּ', '')), t)
@@ -35,11 +41,21 @@ jobs:
                   try: await edge_tts.Communicate(tts_text(text), "he-IL-AvriNeural", rate=rate, pitch="+8Hz").save(dst); return True
                   except Exception as e: print("retry", e); await asyncio.sleep(3)
               return False
-          for job in json.load(open("jobs.json")):
-              for i, v in enumerate(job["texts"], 1):
-                  f = f"/tmp/{job['name']}_{i}.mp3"
-                  if not asyncio.run(gen(v["text"], v["rate"], f)): continue
-                  r = subprocess.run(["curl", "-sf", "-m", "30", "-X", "POST", "--data-binary", "@" + f,
-                      f"https://tzofar-app.duckdns.org/voice-upload?t={job['token']}&v={i}"])
-                  print(job["name"], i, "uploaded" if r.returncode == 0 else "upload failed")
+          end = time.time() + 5.4 * 3600
+          while time.time() < end:
+              try: jobs = json.loads(get(f"{S}/voice-jobs"))
+              except Exception as e: print("jobs", e); jobs = []
+              for job in jobs:
+                  tok, n = job["token"], len(job["texts"])
+                  prog(tok, 5, "התחלתי")
+                  for i, v in enumerate(job["texts"], 1):
+                      base = int(5 + (i - 1) * 95 / n)
+                      prog(tok, base + 5, f"יוצר גרסה {i} מתוך {n}")
+                      f = f"/tmp/{job['name']}_{i}.mp3"
+                      if not asyncio.run(gen(v["text"], v["rate"], f)): prog(tok, base + 5, f"גרסה {i} נכשלה – מנסה שוב"); continue
+                      prog(tok, int(5 + (i - 0.3) * 95 / n), f"מעלה גרסה {i}")
+                      try: post(f"{S}/voice-upload?t={tok}&v={i}", open(f, "rb").read()); print(job["name"], i, "ok")
+                      except Exception as e: print("upload", e)
+                  prog(tok, 100, "מוכן")
+              time.sleep(15)
           P
