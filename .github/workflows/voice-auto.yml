@@ -149,9 +149,11 @@ jobs:
                       except Exception: pass
                   note = job.get("note") or ""
                   # 1 ההערה שלך · 2 מה ששמעתי בהקלטה · 3 לאט / הניקוד הקיים
-                  if note and heard: texts = [{"text": note, "rate": "+12%"}, {"text": heard, "rate": "+12%"}, {"text": note, "rate": "+0%"}]
-                  elif heard: texts = [{"text": heard, "rate": "+12%"}, {"text": heard, "rate": "+0%"}, {"text": job.get("nik") or heard, "rate": "+12%"}]
-                  else: texts = job["texts"]
+                  N, H, K = "מההערה שלך", "ממה ששמעתי בהקלטה", "מהניקוד הקיים"
+                  if note and heard: texts = [{"text": note, "rate": "+12%", "src": N}, {"text": heard, "rate": "+12%", "src": H}, {"text": note, "rate": "+0%", "src": N}]
+                  elif note: texts = [{"text": note, "rate": "+12%", "src": N}, {"text": note, "rate": "+0%", "src": N}, {"text": job.get("nik") or note, "rate": "+12%", "src": K}]
+                  elif heard: texts = [{"text": heard, "rate": "+12%", "src": H}, {"text": heard, "rate": "+0%", "src": H}, {"text": job.get("nik") or heard, "rate": "+12%", "src": K}]
+                  else: texts = [dict(t, src=K) for t in job["texts"]]
                   n = len(texts)
                   for i, v in enumerate(texts, 1):
                       base = int(25 + (i - 1) * 75 / n)
@@ -159,7 +161,7 @@ jobs:
                       f = f"/tmp/{job['name']}_{i}.mp3"
                       if not asyncio.run(gen(v["text"], v["rate"], f)): prog(tok, base + 5, f"גרסה {i} נכשלה – מנסה שוב"); continue
                       prog(tok, int(25 + (i - 0.3) * 75 / n), f"מעלה גרסה {i}")
-                      try: post(f"{S}/voice-upload?t={tok}&v={i}&txt=" + urllib.parse.quote(v["text"] + ("" if v["rate"] == "+12%" else " (לאט)")), open(f, "rb").read()); print(job["name"], i, "ok")
+                      try: post(f"{S}/voice-upload?t={tok}&v={i}&txt=" + urllib.parse.quote(v["text"] + " · " + v.get("src", "") + ("" if v["rate"] == "+12%" else ", לאט")), open(f, "rb").read()); print(job["name"], i, "ok")
                       except Exception as e: print("upload", e)
                   prog(tok, 100, "מוכן")
               time.sleep(15)
