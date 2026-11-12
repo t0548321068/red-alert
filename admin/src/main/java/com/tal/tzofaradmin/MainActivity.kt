@@ -31,12 +31,19 @@ class MainActivity : Activity() {
     private val CARD = Color.parseColor("#1C1C1E"); private val LINE = Color.parseColor("#2C2C2E")
     private val BLUE = Color.parseColor("#0A84FF")
 
-    private enum class Page { MAIN, AREAS, PHRASES, SOUNDS, ORPHANS }
+    private enum class Page { MAIN, AREAS, PHRASES, SOUNDS, ORPHANS, HISTORY, ALERT }
     private var page = Page.MAIN
     private var filter = 0          // 0 הכל · 1 חסרים · 2 סומנו לתיקון
     private var query = ""
     private var loading = false
     private var error = ""
+    // היסטוריה
+    private var history: List<Data.Alert>? = null
+    private var histLoading = false
+    private var histError = false
+    private var histAt = 0L
+    private var alert: Data.Alert? = null
+    private var histQuery = ""
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     private fun text(t: String, size: Float, color: Int = Color.WHITE, bold: Boolean = false) = TextView(this).apply {
@@ -61,7 +68,33 @@ class MainActivity : Activity() {
     private var playing: String? = null
     private fun stop() {
         player?.let { try { it.stop() } catch (_: Exception) { }; it.release() }
-        player = null; playing = null; refreshList()
+        player = null; playing = null; queue = emptyList(); refreshList()
+    }
+    private var queue: List<String> = emptyList()
+    /** השמעה של כמה קבצים ברצף (הקראת התרעה), key = מה שמסומן כמושמע */
+    private fun playSeq(key: String, paths: List<String>) {
+        if (playing == key) { stop(); return }
+        stop()
+        if (paths.isEmpty()) return
+        playing = key; queue = paths.drop(1); start(paths[0])
+    }
+    private fun start(path: String) {
+        val mp = MediaPlayer()
+        mp.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).build())
+        try {
+            val u = Data.url(path)
+            if (u != null) mp.setDataSource(u)
+            else assets.openFd(path).use { mp.setDataSource(it.fileDescriptor, it.startOffset, it.length) }
+            mp.setOnPreparedListener { it.start() }
+            mp.setOnCompletionListener { p ->
+                if (player !== p) return@setOnCompletionListener
+                if (queue.isEmpty()) stop() else { p.release(); player = null; val n = queue[0]; queue = queue.drop(1); start(n) }
+            }
+            mp.setOnErrorListener { p, _, _ -> if (player === p) { stop(); toast("הקובץ לא נפתח") }; true }
+            player = mp
+            mp.prepareAsync()
+        } catch (_: Exception) { mp.release(); stop(); toast("הקובץ לא נמצא") }
+        refreshList()
     }
     private fun play(path: String) {
         if (playing == path) { stop(); return }
@@ -102,7 +135,8 @@ class MainActivity : Activity() {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        if (page != Page.MAIN) { page = Page.MAIN; query = ""; stop(); show() } else @Suppress("DEPRECATION") super.onBackPressed()
+        if (page == Page.ALERT) { page = Page.HISTORY; stop(); show() }
+        else if (page != Page.MAIN) { page = Page.MAIN; query = ""; histQuery = ""; stop(); show() } else @Suppress("DEPRECATION") super.onBackPressed()
     }
 
     private fun show() = when (page) { Page.MAIN -> main(); else -> list() }
@@ -160,6 +194,7 @@ class MainActivity : Activity() {
                 if (noVoice == 0) GREEN else RED) { open(Page.AREAS, if (noVoice > 0) 1 else 0) }
             nav(this, R.drawable.ic_msg, "משפטי הקראה", Data.phrases.size.toString(), GREEN) { open(Page.PHRASES, 0) }
             nav(this, R.drawable.ic_vol, "צלילי התרעה", Data.sounds.size.toString(), GREEN) { open(Page.SOUNDS, 0) }
+            nav(this, R.drawable.ic_clock, "היסטוריית התרעות", "30 יום", MUTED) { openHistory() }
         }, lp())
 
         root.addView(card().apply {
@@ -185,13 +220,28 @@ class MainActivity : Activity() {
 
     private fun open(p: Page, f: Int) { page = p; filter = f; query = ""; show() }
 
+    private fun openHistory() {
+        page = Page.HISTORY; show()
+        if (histLoading || (history != null && System.currentTimeMillis() - histAt < 60_000)) return
+        histLoading = true; histError = false; refreshList()
+        Thread {
+            val h = Data.history(30)
+            ui.post {
+                histLoading = false
+                if (h != null) { history = h; histAt = System.currentTimeMillis() } else histError = history == null
+                refreshList()
+            }
+        }.start()
+    }
+
     private fun ago(t: Long): String {
         val s = ((System.currentTimeMillis() - t) / 1000).coerceAtLeast(0)
         return when { s < 60 -> "עכשיו"; s < 3600 -> "לפני ${s / 60} דק׳"; else -> "לפני ${s / 3600} שע׳" }
     }
 
     // ---- רשימות ----
-    private class Item(val title: String, val sub: String, val path: String?, val flagKey: String?, val bad: Boolean)
+    private class Item(val title: String, val sub: String, val path: String?, val flagKey: String?, val bad: Boolean,
+        val seq: List<String>? = null, val tap: (() -> Unit)? = null)
     private var items: List<Item> = emptyList()
     private var adapter: BaseAdapter? = null
 
@@ -200,22 +250,27 @@ class MainActivity : Activity() {
         setContentView(root)
         header(root, when (page) {
             Page.AREAS -> "אזורים ויישובים"; Page.PHRASES -> "משפטי הקראה"
-            Page.SOUNDS -> "צלילי התרעה"; else -> "הקלטה בלי יישוב" }, true)
+            Page.SOUNDS -> "צלילי התרעה"; Page.HISTORY -> "היסטוריית התרעות"
+            Page.ALERT -> alert?.title ?: ""; else -> "הקלטה בלי יישוב" }, true)
 
-        if (page == Page.AREAS) {
+        if (page == Page.AREAS || page == Page.HISTORY) {
+            val hist = page == Page.HISTORY
             root.addView(LinearLayout(this).apply {
                 gravity = Gravity.CENTER_VERTICAL; background = round(CARD, 16); setPadding(dp(14), 0, dp(14), 0)
                 addView(icon(R.drawable.ic_search, MUTED, 18))
                 addView(EditText(this@MainActivity).apply {
-                    hint = "חיפוש יישוב"; setHintTextColor(MUTED); setTextColor(Color.WHITE); textSize = 15f
-                    background = null; setSingleLine(); setText(query)
+                    hint = if (hist) "חיפוש יישוב או סוג" else "חיפוש יישוב"; setHintTextColor(MUTED); setTextColor(Color.WHITE); textSize = 15f
+                    background = null; setSingleLine(); setText(if (hist) histQuery else query)
                     addTextChangedListener(object : TextWatcher {
-                        override fun afterTextChanged(s: Editable?) { query = s.toString().trim(); refreshList() }
+                        override fun afterTextChanged(s: Editable?) {
+                            if (hist) histQuery = s.toString().trim() else query = s.toString().trim(); refreshList() }
                         override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
                         override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
                     })
                 }, LinearLayout.LayoutParams(0, dp(46), 1f))
             }, lp())
+        }
+        if (page == Page.AREAS) {
             val chips = LinearLayout(this).apply { setPadding(dp(12), 0, dp(12), dp(10)) }
             listOf("הכל", "חסרים", "סומנו לתיקון").forEachIndexed { i, t ->
                 chips.addView(text(t, 13f).apply {
@@ -260,11 +315,41 @@ class MainActivity : Activity() {
             }
             Page.PHRASES -> Data.phrases.map { Item(it.title, it.path.removePrefix("voice/"), it.path, it.path, false) }
             Page.SOUNDS -> Data.sounds.map { Item(it.title, it.path.substringAfterLast('/'), it.path, null, false) }
+            Page.HISTORY -> (history ?: emptyList()).filter { a ->
+                histQuery.isEmpty() || a.title.contains(histQuery) || a.areas.any { it.contains(histQuery) }
+            }.map { a ->
+                val names = a.areas.take(3).joinToString(", ") + if (a.areas.size > 3) " ועוד ${a.areas.size - 3}" else ""
+                val missing = a.areas.any { r -> Data.match(r).none { it.voiceOk } }
+                val c = Data.clips(a)
+                Item(a.title, when_(a.ts) + " · " + names, "alert:${a.ts}:${a.raw}", null, missing,
+                    seq = c ?: emptyList(), tap = { alert = a; page = Page.ALERT; stop(); show() })
+            }
+            Page.ALERT -> alert?.let { a ->
+                val c = Data.clips(a)
+                listOf(Item("הקראה מלאה", when_(a.ts) + " · " + a.areas.size + " יישובים" +
+                    (if (c == null) "\nעדכון - באפליקציה מוקרא בקול של הטלפון" else ""),
+                    if (c == null) null else "alert:${a.ts}:${a.raw}", null, false, seq = c ?: emptyList())) +
+                a.areas.map { r ->
+                    val m = Data.match(r); val v = m.firstOrNull { it.voiceOk }
+                    val sub = if (m.isEmpty()) "לא נמצא ברשימת היישובים" else if (v == null) "אין הקראה"
+                        else listOfNotNull(v.district, v.voice?.substringAfterLast('/')).joinToString(" · ")
+                    Item(r, sub, v?.voice, m.firstOrNull()?.name, v == null)
+                }
+            } ?: emptyList()
             else -> Data.orphans.map { Item(it.title, it.path.substringAfterLast('/'), it.path, null, true) }
         }
-        countView?.text = "${items.size} פריטים"
+        countView?.text = when {
+            page == Page.HISTORY && histLoading && history == null -> "טוען את ההתרעות…"
+            page == Page.HISTORY && histError -> "השרת לא ענה - נסה שוב"
+            page == Page.HISTORY -> "${items.size} התרעות ב-30 הימים האחרונים"
+            page == Page.ALERT -> ""
+            else -> "${items.size} פריטים"
+        }
         adapter?.notifyDataSetChanged()
     }
+
+    private val dayFmt = java.text.SimpleDateFormat("dd/MM HH:mm", java.util.Locale("he"))
+    private fun when_(ts: Long) = dayFmt.format(java.util.Date(ts))
 
     private fun row(it: Item, first: Boolean, last: Boolean): View {
         val r = dp(26).toFloat()
@@ -278,7 +363,8 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL; background = bg; setPadding(dp(18), dp(12), dp(14), dp(12))
             addView(LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.VERTICAL
-                addView(text(it.title, 15f))
+                addView(text(it.title, 15f, if (it.title.startsWith("התרעה מקדימה")) ORANGE
+                    else if (page == Page.HISTORY && it.title == "האירוע הסתיים") GREEN else Color.WHITE))
                 addView(text(it.sub, 12f, if (it.bad) ORANGE else MUTED))
             }, LinearLayout.LayoutParams(0, -2, 1f))
             it.flagKey?.let { k ->
@@ -287,16 +373,17 @@ class MainActivity : Activity() {
                     setOnClickListener { toggleFlag(k); refreshList() }
                 })
             }
-            val path = it.path
+            val path = it.path; val seq = it.seq
             addView(FrameLayout(this@MainActivity).apply {
                 background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(LINE) }
                 addView(ImageView(this@MainActivity).apply {
                     setImageResource(if (path != null && playing == path) R.drawable.ic_stop else R.drawable.ic_play)
                     setColorFilter(if (path == null) MUTED else Color.WHITE)
                 }, FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))
-                if (path != null) setOnClickListener { play(path) }
+                if (path != null) setOnClickListener { if (seq != null) playSeq(path, seq) else play(path) }
             }, LinearLayout.LayoutParams(dp(38), dp(38)))
         }
+        it.tap?.let { t -> row.setOnClickListener { t() } }
         wrap.addView(row)
         if (!last) wrap.addView(View(this).apply { setBackgroundColor(LINE) },
             FrameLayout.LayoutParams(-1, 1, Gravity.BOTTOM).apply { setMargins(dp(18), 0, dp(18), 0) })

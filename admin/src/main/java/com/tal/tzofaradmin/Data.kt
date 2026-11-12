@@ -25,6 +25,11 @@ object Data {
     @Volatile var serverOk = false; private set
     @Volatile var loadedAt = 0L; private set
     private var serverFiles: Set<String> = emptySet()
+    private var byName: Map<String, Area> = emptyMap()
+    private var endWords = listOf<String>(); private var preWords = listOf<String>(); private var updateWords = listOf<String>()
+    private var endDisplay = "האירוע הסתיים"
+    private var prefix = ""; private var prefixWords = listOf<String>()
+    private const val LEVEL_ALERT = 0; private const val LEVEL_PRE = 1; private const val LEVEL_END = 2
 
     /** כתובת להשמעה מהשרת, או null = מתוך האפליקציה */
     fun url(path: String): String? = if (path in serverFiles) "$SERVER/" + path.split('/').joinToString("/") {
@@ -78,7 +83,75 @@ object Data {
         sounds = (c.assets.list("sounds") ?: emptyArray()).sorted().map {
             Clip(SOUNDS[it.substringBeforeLast('.')] ?: it, "sounds/$it")
         }
+        byName = areas.associateBy { it.name }
+        try {
+            val t = JSONObject(text(c, "config.json")).getJSONObject("titles")
+            fun l(k: String) = t.optJSONArray(k)?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList()
+            endWords = l("end"); preWords = l("pre"); updateWords = l("update"); endDisplay = t.optString("endDisplay", endDisplay)
+            t.optJSONObject("prePrefix")?.let { o -> prefix = o.optString("prefix")
+                prefixWords = o.optJSONArray("contains")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList() }
+        } catch (_: Exception) { }
         loadedAt = System.currentTimeMillis()
+    }
+
+    // ---- היסטוריה: ההתרעות שהיו (מהארכיון של השרת), וההקראה שלהן כמו באפליקציה ----
+    class Alert(val title: String, val raw: String, val ts: Long, val areas: List<String>)
+
+    fun history(days: Int): List<Alert>? {
+        val since = System.currentTimeMillis() - days * 24 * 3600 * 1000L
+        val c = URL("http://151.145.91.93:8080/archive?since=$since").openConnection() as HttpURLConnection
+        c.connectTimeout = 6000; c.readTimeout = 30000; c.useCaches = false
+        return try {
+            if (c.responseCode != 200) null else {
+                val arr = org.json.JSONArray(c.inputStream.use { it.readBytes().toString(Charsets.UTF_8) })
+                (0 until arr.length()).map { i ->
+                    val o = arr.getJSONObject(i); val t = o.getString("t")
+                    Alert(displayTitle(t), t, o.getLong("ts"), o.optString("b").split(",").map { it.trim() }.filter { it.isNotEmpty() })
+                }.sortedByDescending { it.ts }
+            }
+        } catch (_: Exception) { null } finally { c.disconnect() }
+    }
+
+    private fun isUpdate(t: String) = updateWords.any { t.contains(it) }
+    private fun levelOf(t: String) = when {
+        endWords.any { t.contains(it) } || isUpdate(t) -> LEVEL_END
+        preWords.any { t.contains(it) } -> LEVEL_PRE
+        else -> LEVEL_ALERT
+    }
+    private fun displayTitle(raw: String): String {
+        val t = raw.trim()
+        return if (levelOf(t) == LEVEL_END && !isUpdate(t)) endDisplay
+            else if (prefix.isNotEmpty() && !t.startsWith(prefix.trimEnd(' ', '-')) && prefixWords.any { t.contains(it) }) prefix + t else t
+    }
+
+    /** השם שהגיע מהמקור → היישובים במפה (כמו באפליקציה: "יבנה" לא תופס את "גן יבנה") */
+    fun match(raw: String): List<Area> = byName[raw]?.let { listOf(it) }
+        ?: areas.filter { it.name.startsWith("$raw -") || it.name.startsWith("$raw,") }
+
+    /** ההקראה של התרעה, כמו באפליקציה: סוג → עד 4 יישובים (ואם יש עוד - "ואזורים נוספים") → זמן להגעה */
+    fun clips(a: Alert): List<String>? {
+        if (isUpdate(a.raw)) return null   // עדכון - מוקרא באפליקציה בקול של הטלפון, אין הקלטה
+        val level = levelOf(a.raw); val t = a.raw
+        val type = when {
+            level == LEVEL_END -> "event_ended"; level == LEVEL_PRE -> "early_warning"
+            t.contains("טילים") || t.contains("רקטות") -> "rockets"; t.contains("כלי טיס") -> "hostile_aircraft"
+            t.contains("מחבלים") -> "terrorist_infiltration"; t.contains("רעידת") -> "earthquake"
+            t.contains("צונאמי") -> "tsunami"; t.contains("חומרים מסוכנים") -> "hazardous_materials"
+            t.contains("רדיולוג") -> "radiological"; t.contains("קונבנציונלי") -> "nonconventional"
+            else -> "red_alert"
+        }
+        val out = mutableListOf("voice/phrases/$type.mp3")
+        val files = a.areas.mapNotNull { r -> match(r).firstOrNull { it.voiceOk }?.voice }.distinct()
+        val shown = if (files.size <= 5) files else files.take(4)
+        out += shown
+        if (files.size > shown.size) out += "voice/phrases/more_areas.mp3"
+        val shelter = a.areas.flatMap { match(it) }.mapNotNull { it.shelter }.minOrNull()
+        if (level == LEVEL_ALERT && shelter != null) {
+            val s = listOf(0, 15, 30, 45, 60, 90).minByOrNull { Math.abs(it - shelter) }
+            out += "voice/phrases/" + when (s) { 0 -> "time_immediate"; 15 -> "time_15s"; 30 -> "time_30s"
+                45 -> "time_45s"; 60 -> "time_1min"; else -> "time_1_5min" } + ".mp3"
+        }
+        return out
     }
 
     private val SOUNDS = mapOf("app_siren" to "צופר", "app_beep" to "צפצוף")
