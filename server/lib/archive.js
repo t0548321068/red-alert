@@ -11,6 +11,7 @@ const ARCH_FILE = path.join(__dirname, '..', 'archive.json');
 const ARCH_BASE = 'https://www.oref.org.il/api/v1/AlertHistory/heb?period=';
 // התשובה החדשה (מקובצת לפי תאריך) -> שורות בפורמט הישן: data, category_desc, alertDate עם שניות, date, time
 const convert = require('./parse').archiveRows;   // נבדק בבדיקות
+const { NOT_AREA } = require('./parse');
 const YEAR = 366 * 24 * 3600 * 1000;
 const arch = new Map();   // "כותרת|דקה" -> { t, ts, b: Set, a: { יישוב: מתי הגיע } }
 try { for (const e of JSON.parse(fs.readFileSync(ARCH_FILE, 'utf8'))) arch.set(e.k, { t: e.t, ts: e.ts, b: new Set(e.b), a: e.a || {}, src: e.src || '' }); } catch (_) {}
@@ -22,7 +23,7 @@ function sorted() {
   if (!cache) {
     // s: לכל יישוב (באותו סדר כמו b) - כמה שניות אחרי תחילת השורה הוא הגיע
     const list = [...arch.values()].sort((a, b) => b.ts - a.ts).map(e => {
-      const b = [...e.b];
+      const b = [...e.b].filter(x => !NOT_AREA.test(x));   // שורות שנשמרו לפני התיקון - בלי חתימת ערוץ
       // src: המקור הראשון שהתריע בזמן אמת ("archive" - הגיע רק מהארכיון של פיקוד העורף; ריק - שורה ישנה, לא ידוע)
       return { t: e.t, b: b.join(', '), ts: e.ts, src: e.src || '', s: b.map(x => e.a && e.a[x] ? Math.max(0, Math.round((e.a[x] - e.ts) / 1000)) : 0) };
     });

@@ -123,4 +123,4 @@ function chunks(areas, max = 3000) {
   return out;
 }
 
-module.exports = { THREATS, PRE, END, decodeHtml, telegram, tzofar, orefLive, archiveRows, historyGroups, fresh, chunks, DEDUP_MS };
+module.exports = { NOT_AREA, THREATS, PRE, END, decodeHtml, telegram, tzofar, orefLive, archiveRows, historyGroups, fresh, chunks, DEDUP_MS };
