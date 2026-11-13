@@ -1,0 +1,168 @@
+name: Voice auto
+
+# הקלטות הגייה מ"ניהול צופר": עובד שרץ ברציפות (עד כ-5.5 שעות, ואז מתחיל מחדש) - בודק בשרת כל 15 שניות,
+# ולכל הקלטה שממתינה יוצר 3 גרסאות בקול אבר, מדווח אחוזים בזמן אמת ומעלה לשרת. לא נוגע בגרסאות האפליקציה.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: voice-auto
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Worker
+        run: |
+          sudo apt-get -qq install -y ffmpeg espeak-ng >/dev/null
+          pip -q install edge-tts soundfile transformers phonemizer
+          pip -q install torch --index-url https://download.pytorch.org/whl/cpu
+          python -u - <<'P'
+          import asyncio, json, re, time, urllib.request, urllib.parse
+          import edge_tts
+          S = "https://tzofar-app.duckdns.org"
+          def get(u):
+              with urllib.request.urlopen(u, timeout=30) as r: return r.read()
+          def post(u, data):
+              req = urllib.request.Request(u, data=data, method="POST")
+              with urllib.request.urlopen(req, timeout=30) as r: return r.status
+          def prog(tok, p, s):
+              try: get(f"{S}/voice-progress?t={tok}&p={p}&s=" + urllib.parse.quote(s))
+              except Exception as e: print("progress", e)
+          def tts_text(t):
+              return re.sub(r'([א-ת])([֑-ׇ]*)',
+                  lambda m: m.group(1) + (m.group(2) if m.group(1) in 'בכךפףוה' else m.group(2).replace('ּ', '')), t)
+          async def gen(text, rate, dst):
+              for t in range(5):
+                  try: await edge_tts.Communicate(tts_text(text), "he-IL-AvriNeural", rate=rate, pitch="+8Hz").save(dst); return True
+                  except Exception as e: print("retry", e); await asyncio.sleep(3)
+              return False
+          import subprocess, sys
+          # ---- IPA -> כתיב עברי מנוקד ----
+          import re
+          # IPA (מהמודל, צלילים מופרדים ברווח) -> כתיב עברי מנוקד שאבר קורא כמו שאמרת
+          CONS = {"b":"בּ","v":"ב","ɡ":"ג","g":"ג","d":"ד","h":"ה","z":"ז","χ":"ח","x":"ח","ħ":"ח","t":"ט","j":"י","k":"ק","l":"ל","m":"מ","n":"נ",
+                  "s":"ס","ʔ":"א","p":"פּ","f":"פ","ts":"צ","t͡s":"צ","ʁ":"ר","r":"ר","ɾ":"ר","ʀ":"ר","ʃ":"שׁ","w":"ו","ʒ":"ז׳","tʃ":"צ׳","dʒ":"ג׳","c":"ק","ɣ":"ר"}
+          VOW = {"a":"a","ɑ":"a","ɐ":"a","æ":"a","e":"e","ɛ":"e","ə":"e","i":"i","ɪ":"i","o":"o","ɔ":"o","u":"u","ʊ":"u","y":"i"}
+          NIQ = {"a":"ַ","e":"ֶ","i":"ִ","o":"ֹ","u":"ֻ"}
+          FINAL = {"מ":"ם","נ":"ן","צ":"ץ","פ":"ף","כ":"ך"}
+          def tokens(ipa):
+              out = []
+              for t in ipa.split():
+                  t = t.replace("ː", "")
+                  if t in CONS: out.append(("C", CONS[t]))
+                  elif t and t[0] in VOW: out.append(("V", VOW[t[0]]))
+                  elif t: out.append(("C", CONS.get(t[0], "")))
+              # "t s" -> צ
+              res = []
+              for k, v in out:
+                  if res and res[-1] == ("C", "ט") and (k, v) == ("C", "ס"): res[-1] = ("C", "צ"); continue
+                  res.append((k, v))
+              return [x for x in res if x[1]]
+          def word(toks):
+              s = _word(toks)
+              if len(toks) >= 2 and toks[-1][0] == "V" and toks[-1][1] in "ae" and toks[-2][0] == "C": s += "ה"
+              return s
+          def _word(toks):
+              s = ""; i = 0
+              while i < len(toks):
+                  k, v = toks[i]
+                  if k == "V":   # תנועה בלי עיצור לפניה - על א
+                      s += "א" + NIQ[v] + ("י" if v == "i" else "") if v not in "ou" else ("או" if v == "u" else "אוֹ")
+                      if v == "u": s = s[:-1] + "וּ"
+                      i += 1; continue
+                  nxt = toks[i + 1] if i + 1 < len(toks) else None
+                  last = nxt is None
+                  base = v
+                  if last and base in FINAL: base = FINAL[base]
+                  if nxt and nxt[0] == "V":
+                      vv = nxt[1]
+                      if vv == "o": s += base + "וֹ"
+                      elif vv == "u": s += base + "וּ"
+                      elif vv == "i": s += base + NIQ["i"] + "י"
+                      else: s += base + NIQ[vv]
+                      i += 2
+                  else:
+                      s += base + ("" if last else "ְ")
+                      i += 1
+              return s
+          def split_words(toks, n_words, weights, words_=()):
+              if n_words <= 1: return [toks]
+              cons = [i for i, (k, _) in enumerate(toks) if k == "C"]
+              total = sum(weights) or 1; cuts = []; acc = 0
+              for w in weights[:-1]:
+                  acc += w; target = round(len(cons) * acc / total)
+                  target = max(1, min(len(cons) - 1, target))
+                  cuts.append(cons[target])
+              # תנועה בין שתי מילים: למילה הבאה (כשהיא מתחילה בתנועה - א/ה/ע, או רצף של שתי תנועות)
+              fixed = []
+              for j, c in enumerate(cuts):
+                  nxt_word = words_[j + 1] if j + 1 < len(words_) else ""
+                  if c >= 2 and toks[c - 1][0] == "V" and (toks[c - 2][0] == "V" or nxt_word[:1] in "אהע"): c -= 1
+                  fixed.append(c)
+              cuts = fixed
+              parts, prev = [], 0
+              for c in cuts: parts.append(toks[prev:c]); prev = c
+              parts.append(toks[prev:])
+              return [p for p in parts if p]
+          def heb(ipa, original):
+              toks = tokens(ipa)
+              words = [w for w in re.split(r"[\s\-]+", original) if w]
+              weights = [max(1, len([ch for ch in re.sub(r"[֑-ׇ]", "", w) if ch not in "אוי"])) for w in words]
+              return " ".join(word(p) for p in split_words(toks, len(words), weights, words))
+          _m = {}
+          def hear(tok, key):
+              # פענוח ההקלטה שלך לצלילים (IPA) ואז לכתיב מנוקד שאבר קורא כמו שאמרת
+              try:
+                  open("/tmp/r.m4a", "wb").write(get(f"{S}/voice-rec?t={tok}"))
+                  subprocess.check_call(["ffmpeg", "-loglevel", "error", "-y", "-i", "/tmp/r.m4a", "-ac", "1", "-ar", "16000", "/tmp/r.wav"])
+                  import soundfile as sf, torch
+                  from transformers import AutoProcessor, AutoModelForCTC
+                  if not _m:
+                      n = "facebook/wav2vec2-lv-60-espeak-cv-ft"; _m["p"] = AutoProcessor.from_pretrained(n); _m["m"] = AutoModelForCTC.from_pretrained(n)
+                  a, sr = sf.read("/tmp/r.wav")
+                  with torch.no_grad(): ids = _m["m"](_m["p"](a, sampling_rate=16000, return_tensors="pt").input_values).logits.argmax(-1)
+                  ipa = _m["p"].batch_decode(ids)[0]; print("IPA", key, ":", ipa, flush=True)
+                  return heb(ipa, key) or None
+              except Exception as e:
+                  print("hear", repr(e), flush=True)
+                  try: get(f"{S}/voice-progress?t={tok}&p=20&s=" + urllib.parse.quote("הפענוח נכשל: " + repr(e)[:80]))
+                  except Exception: pass
+                  return None
+          end = time.time() + 5.4 * 3600
+          while time.time() < end:
+              try: jobs = json.loads(get(f"{S}/voice-jobs"))
+              except Exception as e: print("jobs", e); jobs = []
+              for job in jobs:
+                  tok = job["token"]
+                  prog(tok, 5, "מפענח את ההקלטה שלך")
+                  key = job.get("key", "")
+                  heard = hear(tok, key if not key.startswith("voice/") else (job.get("plain") or key))
+                  if heard:
+                      try: get(f"{S}/voice-progress?t={tok}&p=25&s=" + urllib.parse.quote("שמעתי: " + heard) + "&h=" + urllib.parse.quote(heard))
+                      except Exception: pass
+                  note = job.get("note") or ""
+                  # 1 ההערה שלך · 2 מה ששמעתי בהקלטה · 3 לאט / הניקוד הקיים
+                  N, H, K = "מההערה שלך", "ממה ששמעתי בהקלטה", "מהניקוד הקיים"
+                  if note and heard: texts = [{"text": note, "rate": "+12%", "src": N}, {"text": heard, "rate": "+12%", "src": H}, {"text": note, "rate": "+0%", "src": N}]
+                  elif note: texts = [{"text": note, "rate": "+12%", "src": N}, {"text": note, "rate": "+0%", "src": N}, {"text": job.get("nik") or note, "rate": "+12%", "src": K}]
+                  elif heard: texts = [{"text": heard, "rate": "+12%", "src": H}, {"text": heard, "rate": "+0%", "src": H}, {"text": job.get("nik") or heard, "rate": "+12%", "src": K}]
+                  else: texts = [dict(t, src=K) for t in job["texts"]]
+                  n = len(texts)
+                  for i, v in enumerate(texts, 1):
+                      base = int(25 + (i - 1) * 75 / n)
+                      prog(tok, base + 5, f"יוצר גרסה {i} מתוך {n}")
+                      f = f"/tmp/{job['name']}_{i}.mp3"
+                      if not asyncio.run(gen(v["text"], v["rate"], f)): prog(tok, base + 5, f"גרסה {i} נכשלה – מנסה שוב"); continue
+                      prog(tok, int(25 + (i - 0.3) * 75 / n), f"מעלה גרסה {i}")
+                      try: post(f"{S}/voice-upload?t={tok}&v={i}&txt=" + urllib.parse.quote(v["text"] + " · " + v.get("src", "") + ("" if v["rate"] == "+12%" else ", לאט")), open(f, "rb").read()); print(job["name"], i, "ok")
+                      except Exception as e: print("upload", e)
+                  prog(tok, 100, "מוכן")
+              time.sleep(15)
+          P
