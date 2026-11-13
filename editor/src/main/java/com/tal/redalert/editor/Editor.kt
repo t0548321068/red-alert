@@ -106,7 +106,7 @@ object Editor {
             else -> "$cls.page|$title"
         }
     }
-    private fun firstText(v: View): String {
+    fun firstText(v: View): String {
         if (v is Layer || v.visibility != View.VISIBLE) return ""
         if (v is TextView && !v.text.isNullOrBlank()) return v.text.toString().replace('\n', ' ').take(40)
         if (v is ViewGroup) for (i in 0 until v.childCount) firstText(v.getChildAt(i)).let { if (it.isNotEmpty()) return it }
