@@ -154,7 +154,8 @@ internal fun MainActivity.appendRecent(c: LinearLayout, count: Int) {
         val icon = AlertUi.icon(e.title, e.level)
         row.addView(FrameLayout(this).apply {
             background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(col)) }
-            addView(android.widget.ImageView(this@appendRecent).apply { AlertUi.setIcon(this, icon) },
+            addView(android.widget.ImageView(this@appendRecent).apply {
+                AlertUi.setIcon(this, icon); imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE) },   // לבן מלא (מעריכת צופר)
                 FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))
         }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(12) })
         val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }

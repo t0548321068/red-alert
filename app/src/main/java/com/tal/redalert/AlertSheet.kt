@@ -44,7 +44,7 @@ object AlertSheet {
         fun dp(v: Int) = (v * a.resources.displayMetrics.density).toInt()
         val sheetBg = Color.parseColor(if (dark) "#121212" else "#F2F2F7")
         val cardBg = Color.parseColor(if (dark) "#1E1E1E" else "#FFFFFF")
-        val ink = Color.parseColor(if (dark) "#F2F2F7" else "#1C1C1E")
+        val ink = Color.parseColor(if (dark) "#FFFFFF" else "#1C1C1E")
         val muted = Color.parseColor(if (dark) "#A0A0A5" else "#6E6E73")
         val accent = Color.parseColor(MapKit.levelHex(level))
         val dmap = try { AreaData.districtMap(a) } catch (_: Exception) { emptyMap() }

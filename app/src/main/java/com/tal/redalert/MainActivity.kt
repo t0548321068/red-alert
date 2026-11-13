@@ -35,7 +35,7 @@ class MainActivity : Activity() {
             fun c(d: String, l: String) = Color.parseColor(if (dark) d else l)
             BG = c("#000000", "#F2F2F7")
             CHIP = c("#2C2C2E", "#E5E5EA")
-            TEXT = c("#F2F2F2", "#1C1C1E")
+            TEXT = c("#FFFFFF", "#1C1C1E")   // בחשוך לבן מלא בכל האפליקציה (מעריכת צופר)
             MUTED = c("#8E8E93", "#6E6E73")
             GREEN = c("#30D158", "#248A3D")
             OFF = c("#636366", "#8E8E93")

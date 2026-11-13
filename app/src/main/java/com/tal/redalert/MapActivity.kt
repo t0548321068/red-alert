@@ -74,7 +74,7 @@ class MapActivity : Activity() {
         val dark = Prefs.darkTheme(this)
         val bg = Color.parseColor(if (dark) "#000000" else "#F2F2F7")
         val panel = Color.parseColor(if (dark) "#1C1C1E" else "#FFFFFF")
-        val ink = Color.parseColor(if (dark) "#F2F2F7" else "#1C1C1E")
+        val ink = Color.parseColor(if (dark) "#FFFFFF" else "#1C1C1E")
         window.decorView.setBackgroundColor(bg)
 
         // foregroundLoadColor: עד שהסגנון נטען המפה מצוירת בצבע הזה (ברירת המחדל בהירה - הבהוב לבן)
