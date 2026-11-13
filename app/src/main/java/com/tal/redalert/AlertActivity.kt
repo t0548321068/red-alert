@@ -90,7 +90,11 @@ open class AlertActivity : Activity() {
         alertTitle = title
         val pre = level == AlertService.LEVEL_PRE
         val end = level == AlertService.LEVEL_END
-        val (headTitle, headNote) = AlertUi.head(title, level)
+        // מבזק במסך מלא: "מבזק - התקרבו למרחב המוגן", ומתחת "התרעה מקדימה" (מלבנון: "התרעה מקדימה - איום מלבנון")
+        val preFull = pre && !popup
+        val (headTitle, headNote) = if (preFull)
+            "מבזק - התקרבו למרחב המוגן" to (if (title.startsWith("התרעה מקדימה - ")) title else "התרעה מקדימה")
+        else AlertUi.head(title, level)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -114,7 +118,7 @@ open class AlertActivity : Activity() {
                 AlertUi.setIcon(this, AlertUi.stageIcon(title, level, shelterSec, firedAt), big = false); stageIconV = this },
                 LinearLayout.LayoutParams(size, size))
             addView(tv(headTitle, 28f, bold = true))
-            addView(tv(headNote, 20f).apply { setPadding(0, dpx(2), 0, 0) })
+            addView(tv(headNote, if (preFull) 22f else 20f).apply { setPadding(0, dpx(2), 0, 0) })
         }
         root.addView(titleView)
         (if (Prefs.alertMap(this)) miniMap(level, savedInstanceState) else null)?.let { map ->   // אפשר לכבות את המפה בהגדרות
@@ -152,8 +156,10 @@ open class AlertActivity : Activity() {
         if (end && !AlertUi.update(title)) root.addView(tv("ניתן לצאת מהמרחב המוגן", 19f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
         if (pre) {
             // מתחת למפה: נוסח ההתרעה ומה לעשות
-            if (title.isNotBlank() && title != "התרעה מקדימה")
-                root.addView(tv(title, 19f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
+            // במסך מלא - אותו נוסח בכל מבזק (גם מלבנון - המקור כבר למעלה)
+            val body = if (preFull) "בדקות הקרובות צפויות להתקבל התרעות באזורך" else title
+            if (body.isNotBlank() && body != "התרעה מקדימה")
+                root.addView(tv(body, 19f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
             root.addView(tv("במקרה של קבלת התרעה, יש להיכנס למרחב המוגן ולשהות בו עד לקבלת הנחיה מפורשת", 19f)
                 .apply { setPadding(dpx(16), dpx(6), dpx(16), 0) })
         }
