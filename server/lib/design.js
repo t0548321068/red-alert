@@ -19,13 +19,15 @@ const str = (v, max) => String(v == null ? '' : v).replace(/[\u0000-\u0009\u000b
 
 /** פריט אחד מהאפליקציה - רק השדות המוכרים, באורך מוגבל */
 function clean(i) {
-  const o = { screen: str(i.screen, 40), screenName: str(i.screenName, 60), el: str(i.el, 120), label: str(i.label, 120),
+  const o = { screen: str(i.screen, 120), screenName: str(i.screenName, 120), el: str(i.el, 200), label: str(i.label, 120),
     kind: str(i.kind, 4), theme: str(i.theme, 6), changes: {} };
   const c = i.changes || {};
   for (const k of ['color', 'size', 'text', 'radius']) if (c[k] && typeof c[k] === 'object')
     o.changes[k] = { from: str(c[k].from, 400), to: str(c[k].to, 400) };
   if (c.move && typeof c.move === 'object') o.changes.move = { dx: +c.move.dx || 0, dy: +c.move.dy || 0 };
-  if (c.note) o.changes.note = str(c.note, 2000);
+  if (c.note) o.changes.note = str(c.note, 6000);
+  // תמונה קטנה של הרכיב (JPEG ב-base64) - לזיהוי
+  if (typeof i.shot === 'string' && /^[A-Za-z0-9+/=]+$/.test(i.shot) && i.shot.length <= 150000) o.shot = i.shot;
   return o;
 }
 
@@ -37,7 +39,7 @@ function handle(req, res) {
   if (req.method === 'GET') return send(200, view());
   if (req.method !== 'POST') return send(405, {});
   let body = '';
-  req.on('data', d => { body += d; if (body.length > 400000) req.destroy(); });
+  req.on('data', d => { body += d; if (body.length > 8000000) req.destroy(); });
   req.on('end', () => {
     let op; try { op = JSON.parse(body); } catch (_) { return send(400, {}); }
     if (op && op.op === 'send' && Array.isArray(op.items) && op.items.length && op.items.length <= 300) {

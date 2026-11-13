@@ -1,4 +1,4 @@
-package com.tal.tzofareditor
+package com.tal.redalert.editor
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -11,8 +11,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * עדכון אוטומטי כמו בצופר חירום: בכל פתיחה בודק בגיטהאב (גרסה "editor" - "עריכת צופר · 1.0.0"),
- * ואם יש גרסה חדשה - מוריד ומתקין לבד.
+ * עדכון אוטומטי של עריכת צופר: בגיטהאב גרסה "editor" בשם "עריכת צופר · צופר חירום 4.25b · 1.1.12" -
+ * המספר האחרון הוא מספר הבנייה, ומשווים אותו למספר הבנייה המותקן
  */
 object Update {
     private const val API = "https://api.github.com/repos/t0548321068/red-alert/releases/tags/editor"
@@ -20,47 +20,44 @@ object Update {
     @Volatile var busy = false
     @Volatile var needPermission = false
     @Volatile var lastCheck = 0L
-    @Volatile var latestSeen = ""
 
-    fun current(c: Context): String = try { c.packageManager.getPackageInfo(c.packageName, 0).versionName ?: "" } catch (_: Exception) { "" }
+    fun build(c: Context): Long = try { c.packageManager.getPackageInfo(c.packageName, 0).longVersionCode } catch (_: Exception) { 0L }
 
-    private fun parts(v: String) = v.split('.').map { it.toIntOrNull() ?: 0 }
-    private fun newer(a: String, b: String): Boolean {
-        val x = parts(a); val y = parts(b)
-        for (i in 0 until maxOf(x.size, y.size)) { val d = x.getOrElse(i) { 0 } - y.getOrElse(i) { 0 }; if (d != 0) return d > 0 }
-        return false
+    fun maybeCheck(c: Context) {
+        if (System.currentTimeMillis() - lastCheck > 60_000 || (needPermission && c.packageManager.canRequestPackageInstalls())) check(c) { Editor.refreshMenus() }
     }
 
-    private fun latest(): Pair<String, String>? {
+    private fun latest(): Pair<Long, String>? {
         val conn = URL(API).openConnection() as HttpURLConnection
         conn.connectTimeout = 8000; conn.readTimeout = 10000
         conn.setRequestProperty("Accept", "application/vnd.github+json")
         val j = try { if (conn.responseCode != 200) return null; JSONObject(conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }) } finally { conn.disconnect() }
-        val v = Regex("(\\d+(?:\\.\\d+)+)\\s*$").find(j.optString("name"))?.groupValues?.get(1) ?: return null
+        val n = Regex("(\\d+)\\s*$").find(j.optString("name"))?.groupValues?.get(1)?.toLongOrNull() ?: return null
         val a = j.optJSONArray("assets") ?: return null
         val url = (0 until a.length()).map { a.getJSONObject(it).optString("browser_download_url") }.firstOrNull { it.endsWith(".apk") } ?: return null
-        return v to url
+        return n to url
     }
 
     fun check(c: Context, refresh: () -> Unit) {
         if (busy) return
-        busy = true; lastCheck = System.currentTimeMillis(); status = "בודק עדכונים…"; refresh()
+        busy = true; lastCheck = System.currentTimeMillis()
+        val app = c.applicationContext
         Thread {
             try {
                 val l = latest()
                 when {
-                    l == null -> status = "אין חיבור לגיטהאב"
-                    !newer(l.first, current(c)) -> { latestSeen = l.first; status = "" }
-                    !c.packageManager.canRequestPackageInstalls() -> { needPermission = true; status = "יש גרסה ${l.first} – צריך לאשר התקנת עדכונים" }
+                    l == null -> status = ""
+                    l.first <= build(app) -> status = ""
+                    !app.packageManager.canRequestPackageInstalls() -> { needPermission = true; status = "יש גרסה חדשה – צריך לאשר התקנת עדכונים" }
                     else -> {
                         needPermission = false
-                        status = "מוריד גרסה ${l.first}…"; refresh()
-                        val f = File(c.cacheDir, "editor-update.apk")
+                        status = "מוריד גרסה חדשה…"; refresh()
+                        val f = File(app.cacheDir, "editor-update.apk")
                         val conn = URL(l.second).openConnection() as HttpURLConnection
                         conn.connectTimeout = 10000; conn.readTimeout = 30000; conn.instanceFollowRedirects = true
                         try { conn.inputStream.use { inp -> f.outputStream().use { inp.copyTo(it) } } } finally { conn.disconnect() }
-                        status = "מתקין גרסה ${l.first}…"; refresh()
-                        install(c, f)
+                        status = "מתקין…"; refresh()
+                        install(app, f)
                     }
                 }
             } catch (_: Exception) { status = "ההורדה נכשלה" }
@@ -72,7 +69,6 @@ object Update {
         val pi = c.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
             setAppPackageName(c.packageName)
-            // אנדרואיד 12+: עדכון של עצמה בלי לחיצה על "עדכן" (אחרי שהעדכון הראשון אושר)
             if (android.os.Build.VERSION.SDK_INT >= 31) setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
         }
         val id = pi.createSession(params)
@@ -85,7 +81,6 @@ object Update {
     }
 }
 
-/** תוצאת ההתקנה: אם אנדרואיד מבקש אישור - פותחים את מסך האישור; אחרי התקנה - האפליקציה נפתחת מחדש */
 class InstallReceiver : BroadcastReceiver() {
     override fun onReceive(c: Context, i: Intent) {
         when (i.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
@@ -99,10 +94,10 @@ class InstallReceiver : BroadcastReceiver() {
     }
 }
 
-/** אחרי עדכון - פותחים את האפליקציה מחדש */
+/** אחרי עדכון - פותחים מחדש */
 class UpdatedReceiver : BroadcastReceiver() {
     override fun onReceive(c: Context, i: Intent) {
         if (i.action == Intent.ACTION_MY_PACKAGE_REPLACED)
-            try { c.startActivity(Intent(c, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
+            try { c.startActivity(Intent(c, com.tal.redalert.MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
     }
 }
