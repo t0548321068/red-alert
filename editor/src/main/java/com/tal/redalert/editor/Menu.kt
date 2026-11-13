@@ -34,6 +34,8 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
     private var openBatch: JSONObject? = null
     /** "שליחות שבוצעו" נפתח: כל השינויים שבוצעו, לפי שליחה */
     private var doneList: List<JSONObject>? = null
+    /** עמוד העדכונים פתוח */
+    private var updates = false
     private fun pct(b: JSONObject) = when (b.optString("state")) { "done" -> 100; "sent" -> 0; else -> b.optInt("p", 0) }
     /** האחוז האחרון שהוצג לכל שליחה (נשמר בטלפון - גם אחרי סגירה, העיגול ממשיך מאיפה שהיה) */
     private fun sp() = context.getSharedPreferences("editor_rings", android.content.Context.MODE_PRIVATE)
@@ -88,6 +90,7 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
         col.setPadding(0, top, 0, bottom + Ui.dp(30))
         openBatch?.let { showBatch(it); return }
         doneList?.let { showDone(it); return }
+        if (updates) { showUpdates(); return }
         col.addView(LinearLayout(context).apply {
             gravity = Gravity.CENTER_VERTICAL; setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(6))
             addView(Ui.tv(context, "עריכת צופר", 22f, bold = true), LinearLayout.LayoutParams(0, -2, 1f))
@@ -155,6 +158,13 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
             toMain()
         }
         addCard(more)
+
+        // ---- עדכונים ----
+        group("עדכונים")
+        val up = card()
+        row(up, "עדכונים", "עריכת צופר ${Update.current(context)}" + Update.status.takeIf { it.isNotEmpty() }?.let { " · $it" }.orEmpty()) {
+            updates = true; rebuild(); scrollTo(0, 0) }
+        addCard(up)
         col.addView(footer)
         refreshFooter()
     }
@@ -284,6 +294,33 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
         itemCards(b.optJSONArray("items") ?: org.json.JSONArray())
     }
 
+    /** עמוד העדכונים: הגרסה, בדיקת עדכונים, ומה חדש בכל גרסה */
+    private fun showUpdates() {
+        col.addView(Ui.tv(context, "עדכונים", 20f, bold = true).apply { setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(10)) })
+        val c = card()
+        row(c, "גרסה מותקנת", "עריכת צופר ${Update.current(context)} · צופר חירום " +
+            (try { context.packageManager.getPackageInfo(context.packageName, 0).versionName } catch (_: Exception) { "" }), click = null)
+        row(c, if (Update.needPermission) "צריך לאשר התקנת עדכונים" else "בדיקת עדכונים",
+            Update.status.ifEmpty { if (Update.lastCheck > 0) "בדיקה אחרונה: " + java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(java.util.Date(Update.lastCheck)) else "" },
+            if (Update.needPermission) Ui.ORANGE else Color.parseColor("#5AA9FF")) {
+            if (Update.needPermission) context.startActivity(Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                android.net.Uri.parse("package:" + context.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            else Update.check(context) { ui.post { if (updates) rebuild() } }
+        }
+        addCard(c)
+        col.addView(Ui.tv(context, "עריכת צופר מתעדכנת לבד בכל פתיחה", 12f, Ui.GRAY).apply { setPadding(Ui.dp(28), 0, Ui.dp(28), Ui.dp(6)) })
+        group("מה חדש")
+        val log = try { JSONObject(context.assets.open("editor_changelog.json").bufferedReader(Charsets.UTF_8).use { it.readText() }) } catch (_: Exception) { null }
+        if (log != null) {
+            val n = card()
+            log.keys().forEach { v ->
+                val a = log.optJSONArray(v) ?: return@forEach
+                row(n, v + if (v == Update.current(context)) " · מותקנת" else "", (0 until a.length()).joinToString("\n") { "• " + a.getString(it) }, click = null)
+            }
+            addCard(n)
+        }
+    }
+
     /** שליחות שבוצעו: שורה לכל שליחה - לחיצה פותחת את השינויים שלה */
     private fun showDone(list: List<JSONObject>) {
         col.addView(Ui.tv(context, "שליחות שבוצעו", 20f, bold = true).apply { setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(10)) })
@@ -343,7 +380,7 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
         if (e.keyCode != android.view.KeyEvent.KEYCODE_BACK) return super.dispatchKeyEvent(e)
         if (e.action == android.view.KeyEvent.ACTION_UP) {
             // חזרה שלב אחד: שליחה פתוחה ← (שליחות שבוצעו) ← העמוד
-            if (openBatch != null) openBatch = null else if (doneList != null) doneList = null else { layer.closeMenu(); return true }
+            if (openBatch != null) openBatch = null else if (doneList != null) doneList = null else if (updates) updates = false else { layer.closeMenu(); return true }
             rebuild(); scrollTo(0, 0); post { requestFocus() }
         }
         return true
