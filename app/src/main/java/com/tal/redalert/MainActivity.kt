@@ -215,8 +215,9 @@ class MainActivity : Activity() {
 
         // כותרת + גלגל שיניים
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        header.addView(text("צופר חירום", 24f, C.INK, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) })
-        header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+        // כותרת 25 ממורכזת (בכל הכותרות באפליקציה - כמו pageHeader)
+        header.addView(text("צופר חירום", 25f, C.INK, bold = true).apply { gravity = Gravity.CENTER; setPadding(dp(4), 0, dp(4), 0) },
+            LinearLayout.LayoutParams(0, -2, 1f))
         // אייקונים למעלה בשמאל (במקום התפריט התחתון): שעון · התרעות · הגדרות (הגדרות הכי שמאלי)
         fun headerIcon(res: Int, click: () -> Unit) = header.addView(android.widget.ImageView(this).apply {
             setImageResource(res)

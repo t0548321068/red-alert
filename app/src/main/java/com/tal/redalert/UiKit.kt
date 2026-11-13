@@ -20,7 +20,7 @@ internal fun MainActivity.dp(v: Int) = (v * resources.displayMetrics.density).to
 
 // סגנון One UI: כרטיס אפור כהה אחיד עם פינות מעוגלות מאוד
 /**
- * כותרת עמוד אחידה - בדיוק כמו "צופר חירום" במסך הראשי: גודל 24 מודגש, אותו מרחק מהקצה ומלמעלה,
+ * כותרת עמוד אחידה - בדיוק כמו "צופר חירום" במסך הראשי: גודל 25 מודגש וממורכז, אותו מרחק מהקצה ומלמעלה,
  * גובה 46 (כמו האייקונים). אייקוני פעולה נוספים מתווספים לסוף השורה (שמאל), באותו מקום כמו במסך הראשי
  */
 internal fun MainActivity.pageHeader(title: String) = LinearLayout(this).apply {
@@ -28,7 +28,7 @@ internal fun MainActivity.pageHeader(title: String) = LinearLayout(this).apply {
     // כמו במסך הראשי: 10 מלמעלה, ואז שורה בגובה 46 שהכותרת ממורכזת בה (minimumHeight כולל את הריווח)
     minimumHeight = dp(10 + 46 + 12)
     setPadding(dp(16), dp(10), dp(16), dp(12))
-    addView(text(title, 24f, C.TEXT, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) },
+    addView(text(title, 25f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER; setPadding(dp(4), 0, dp(4), 0) },
         LinearLayout.LayoutParams(0, -2, 1f))
 }
 

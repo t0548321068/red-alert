@@ -46,7 +46,7 @@ class ClockActivity : Activity() {
             View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
 
         time = TextView(this).apply {
-            textSize = 84f
+            textSize = 100f
             setTextColor(DIM)
             typeface = Typeface.create("sans-serif", Typeface.BOLD)
             gravity = Gravity.CENTER
