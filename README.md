@@ -44,4 +44,5 @@
 כשטל כותב "תטפל בעריכה": `gh workflow run design-inbox.yml`, קוראים את השליחות מהלוג, מבצעים בקוד של האפליקציה,
 ומעדכנים מצב (`-f id=… -f state=working|done -f msg=…`).
 כשהאפליקציה משתנה בבטא – להריץ את `Build editor APK` ידנית, כדי שהעריכה תהיה זהה.
+בכל פרסום של עריכת צופר: להעלות את `editorVersion` באחד ולהוסיף את מה שהשתנה ל-`editor/src/main/assets/editor_changelog.json` (מוצג בעמוד "עדכונים").
 `editor` לא רשומה ב-`settings.gradle.kts` (שינוי שם בונה את צופר חירום) – הבנייה מוסיפה אותה.
