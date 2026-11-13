@@ -16,7 +16,7 @@ import com.tal.redalert.MainActivity.SameHeight
 // (חלק מהמסך הראשי - MainActivity; המצב עצמו נשמר שם)
 
 /** חיווי: אייקון למעלה, טקסט מתחת */
-internal fun MainActivity.indicator(icon: Int, onClick: (() -> Unit)?) = text("", 12f, C.TEXT).apply {
+internal fun MainActivity.indicator(icon: Int, onClick: (() -> Unit)?) = text("", 12f, C.INK).apply {
     setIndIcon(this, icon)
     maxLines = 1; ellipsize = TextUtils.TruncateAt.END   // 6 חיוויים בשורה - שורה אחת
     // האייקון גדל ב-15%, והרווח שמתחת לו קטן באותה מידה - גובה השורה לא משתנה

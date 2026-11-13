@@ -109,16 +109,15 @@ internal fun MainActivity.renderChips() {
     val nearOn = Prefs.nearMe(this)
     val near = if (nearOn) Prefs.nearbyAreas(this) else emptyList()
     val muted = C.MUTED2
-    val light = C.SOFT
 
     // אזור התרעה (לפי המיקום) - מוצג בכרטיס השעון
     clockArea.removeAllViews()
     val top = clockArea
-    top.addView(text("אזור התרעה", 17f, C.SOFT))
-    top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 26f, C.TEXT, bold = true)
+    top.addView(text("אזור התרעה", 20f, C.INK_SOFT))
+    top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 30f, C.INK, bold = true)
         .apply { setPadding(0, dp(2), 0, 0) })
     val sec = if (nearOn && near.isNotEmpty()) AreaData.shelterSeconds(this, near.take(1)) else null
-    if (sec != null) top.addView(text("⏱ זמן התגוננות: ${AreaData.shelterText(sec)}", 17f, light)
+    if (sec != null) top.addView(text("⏱ זמן התגוננות: ${AreaData.shelterText(sec)}", 20f, C.INK_SOFT)
         .apply { setPadding(0, dp(2), 0, 0) })
     for (i in 0 until top.childCount) (top.getChildAt(i) as? TextView)?.gravity = Gravity.CENTER
     // קו מתחת לאזור ההתרעה - מפריד בינו לבין השעון
@@ -141,7 +140,7 @@ internal fun MainActivity.renderExtraCard() {
         setPadding(0, dp(14), 0, dp(10))
     }
     // תצוגה בלבד - העריכה בהגדרות התרעות → אזורים נוספים
-    card.addView(text("יישובים ואזורים נוספים", 16f, C.TEXT, bold = true).apply { setPadding(dp(18), 0, dp(18), dp(6)) })
+    card.addView(text("יישובים ואזורים נוספים", 20f, C.INK, bold = true).apply { gravity = Gravity.CENTER; setPadding(dp(18), 0, dp(18), dp(6)) })
     val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
     fun row(name: String, sub: String) = list.addView(LinearLayout(this).apply {
         gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(5), dp(18), dp(5))
@@ -158,7 +157,7 @@ internal fun MainActivity.renderExtraCard() {
     section("יישובים", towns) { if (it == AreaData.ALL_COUNTRY) "" else dmap[it] ?: "" }
     section("אזורים", dists) { "" }
     if (towns.isEmpty() && dists.isEmpty())
-        list.addView(text("לא נבחרו", 14f, C.MUTED).apply { setPadding(dp(18), dp(4), dp(18), dp(6)) })
+        list.addView(text("לא נבחרו", 15f, C.MUTED).apply { setPadding(dp(18), dp(4), dp(18), dp(6)) })
     // הרשימה נגללת בתוך הכרטיס כשהיא ארוכה; הכרטיס לא חורג מהמקום שנשאר במסך
     card.addView(ScrollView(this).apply { isVerticalScrollBarEnabled = false; addView(list) },
         LinearLayout.LayoutParams(-1, -2, 1f))

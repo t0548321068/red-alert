@@ -27,6 +27,8 @@ class MainActivity : Activity() {
         var GREEN = 0; var OFF = 0
         var BLUE = 0; var RED = 0; var ORANGE = 0
         var CARD2 = 0; var DIV = 0; var SEPV = 0; var SOFT = 0; var MUTED2 = 0; var LINE2 = 0
+        /** המסך הראשי (מעריכת צופר): בחשוך - לבן מלא, גם לטקסט המשני. בבהיר - כמו TEXT / SOFT */
+        var INK = 0; var INK_SOFT = 0
         var LIGHT = false
 
         fun apply(dark: Boolean) {
@@ -46,6 +48,8 @@ class MainActivity : Activity() {
             SOFT = c("#E6FFFFFF", "#CC1C1C1E")   // טקסט משני רך
             MUTED2 = c("#AAAAAA", "#6E6E73")     // טקסט אפור
             LINE2 = c("#22FFFFFF", "#22000000")
+            INK = c("#FFFFFF", "#1C1C1E")
+            INK_SOFT = c("#FFFFFF", "#CC1C1C1E")
             LIGHT = !dark
         }
     }
@@ -211,12 +215,12 @@ class MainActivity : Activity() {
 
         // כותרת + גלגל שיניים
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        header.addView(text("צופר חירום", 24f, C.TEXT, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) })
+        header.addView(text("צופר חירום", 24f, C.INK, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) })
         header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         // אייקונים למעלה בשמאל (במקום התפריט התחתון): שעון · התרעות · הגדרות (הגדרות הכי שמאלי)
         fun headerIcon(res: Int, click: () -> Unit) = header.addView(android.widget.ImageView(this).apply {
             setImageResource(res)
-            imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT)
+            imageTintList = android.content.res.ColorStateList.valueOf(C.INK)
             setPadding(dp(11), dp(11), dp(11), dp(11))
             background = android.graphics.drawable.RippleDrawable(
                 android.content.res.ColorStateList.valueOf(C.LINE2), null,
@@ -246,11 +250,11 @@ class MainActivity : Activity() {
                 cornerRadius = dp(24).toFloat()
             }
         }
-        val white = C.TEXT
-        val soft = C.SOFT
+        val white = C.INK
+        val soft = C.INK_SOFT
         greeting.setTextColor(soft)
-        clockTime.setTextColor(white); clockTime.textSize = 46f
-        clockDay.setTextColor(soft)
+        clockTime.setTextColor(white); clockTime.textSize = 50f
+        clockDay.setTextColor(soft); clockDay.textSize = 20f
         clockCard.addView(greeting)
         clockCard.addView(clockTime)
         clockCard.addView(clockDay)
@@ -304,7 +308,7 @@ class MainActivity : Activity() {
             if (v.isShown) { val xy = IntArray(2); v.getLocationOnScreen(xy); Prefs.setMiniY(this, xy[1] + v.height); Prefs.setMiniBox(this, xy[0], v.width) }
         }
         applyStatusRow()
-        weatherLine = text("", 19f, C.TEXT).apply {
+        weatherLine = text("", 20f, C.TEXT).apply {
             gravity = Gravity.CENTER
         }
         weatherLine.setTextColor(soft)
@@ -361,12 +365,12 @@ class MainActivity : Activity() {
         // בראש כרטיס השעון: מגן + "מוגן"/"לא מוגן" + עדכון אחרון (מה שהיה בכרטיס מוגן)
         // בראש הכרטיס: מגן בתוך עיגול עם הילה, ומתחתיו "מוגן" / "לא מוגן"
         shieldIcon = android.widget.ImageView(this)
-        circleLabel = text("מוגן", 22f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER }
+        circleLabel = text("מוגן", 27f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER }
         haloOuter = FrameLayout(this)
         haloInner = FrameLayout(this).apply {
             clipToOutline = true   // הפס נחתך לצורת העיגול
             addView(glow, FrameLayout.LayoutParams(dp(40), dp(40), Gravity.CENTER))
-            addView(shieldIcon, FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER))
+            addView(shieldIcon, FrameLayout.LayoutParams(dp(31), dp(31), Gravity.CENTER))
         }
         haloOuter.addView(ring1, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
         haloOuter.addView(haloInner, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
@@ -459,7 +463,7 @@ class MainActivity : Activity() {
                 addView(android.widget.ImageView(this@MainActivity).apply {
                     setImageResource(R.drawable.ic_list_siren)
                     imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
-                }, FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER))
+                }, FrameLayout.LayoutParams(dp(25), dp(25), Gravity.CENTER))
                 setOnClickListener { chooseTest() }
             }
             addView(testFab, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM or Gravity.LEFT).apply {
