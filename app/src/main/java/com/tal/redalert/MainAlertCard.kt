@@ -68,7 +68,16 @@ internal fun MainActivity.updateAlertCard() {
         alertCard.removeAllViews()
         alertCard.background = GradientDrawable().apply {
             setColor(Color.parseColor(AlertUi.color(level))); cornerRadius = dp(28).toFloat() }
-        val (t1, t2) = AlertUi.head(j.optString("title"), level)
+        // התוכן כמו במסך מלא ופופ-אפ (מבזק / סיום ומשפטי ההנחיה), בגדלים ובמבנה של הכרטיס
+        val title = j.optString("title")
+        val pre = level == AlertService.LEVEL_PRE
+        val end = level == AlertService.LEVEL_END && !AlertUi.update(title)
+        val (t1, t2) = when {
+            pre -> "מבזק - התקרבו למרחב המוגן" to (if (title.startsWith("התרעה מקדימה - ")) title else "התרעה מקדימה")
+            end -> "עדכון" to "סיום אירוע"
+            else -> AlertUi.head(title, level)
+        }
+        fun line(s: String) = alertCard.addView(text(s, 17f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER; setPadding(0, dp(6), 0, 0) })
         // אייקון מעל הכותרת לפי סוג ההתרעה
         alertCardIcon = android.widget.ImageView(this)
         alertCardIconRes = 0
@@ -77,12 +86,15 @@ internal fun MainActivity.updateAlertCard() {
             LinearLayout.LayoutParams(dp(34), dp(34)).apply { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dp(2) })
         alertCard.addView(text(t1, 25f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER })
         alertCard.addView(text(t2, 19f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER })
+        if (pre) line("בדקות הקרובות צפויות להתקבל התרעות באזורך")
         val body = j.optString("body")
         if (body.isNotEmpty()) alertCard.addView(text(body, 19f, Color.WHITE, bold = true).apply {
             gravity = Gravity.CENTER; maxLines = 2; ellipsize = TextUtils.TruncateAt.END
             setPadding(dp(16), dp(6), dp(16), dp(6))
             background = GradientDrawable().apply { setColor(Color.parseColor("#33FFFFFF")); cornerRadius = dp(20).toFloat() }
         }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(8); bottomMargin = dp(2) })
+        if (pre) line("במקרה של קבלת התרעה, יש להיכנס למרחב המוגן ולשהות בו עד לקבלת הנחיה מפורשת")
+        if (end) line("האירוע הסתיים\nניתן לצאת מהמרחב המוגן")
         alertCardLabel = null; alertCardTimer = null
         if (level == AlertService.LEVEL_ALERT) {
             alertCardLabel = text("", 13f, Color.parseColor("#E6FFFFFF")).apply { gravity = Gravity.CENTER; setPadding(0, dp(4), 0, 0) }
@@ -99,7 +111,7 @@ internal fun MainActivity.updateAlertCard() {
     AlertUi.stageIcon(j.optString("title"), level, j.optInt("shelter", -1), firedAt).let { r ->
         if (r != alertCardIconRes) { alertCardIconRes = r; AlertUi.setIcon(alertCardIcon, r, big = false) } }
     AlertUi.timer(level, j.optInt("shelter", -1), firedAt, title = j.optString("title"))?.let { (lbl, t) ->
-        alertCardLabel?.text = lbl
+        alertCardLabel?.text = if (lbl.isEmpty()) "" else lbl + ": " + AreaData.shelterText(j.optInt("shelter", -1))
         alertCardLabel?.visibility = if (lbl.isEmpty()) View.GONE else View.VISIBLE
         alertCardTimer?.textSize = if (lbl.isEmpty()) 20f else 38f
         alertCardTimer?.text = t
