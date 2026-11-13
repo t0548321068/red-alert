@@ -113,8 +113,6 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
         layer.refreshPill()
     }
 
-    private val palette = listOf("#FFFFFF", "#F2F2F2", "#E6FFFFFF", "#AAAAAA", "#8E8E93", "#636366", "#30D158", "#69F0AE", "#4CAF50", "#2E7D32",
-        "#0A84FF", "#4C7DFF", "#5AA9FF", "#FF3B30", "#D50000", "#FF9F0A", "#F08C00", "#7E57C2", "#1B1B1D", "#2C2C2E", "#000000", "#00000000")
 
     private fun drawPane() {
         pane.removeAllViews()
@@ -235,5 +233,11 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
             Editor.applyTo(v, e)
         } else if (e.changed()) e.theme = if (com.tal.redalert.Prefs.darkTheme(context)) "dark" else "light"
         if (!e.changed()) Store.edits.remove(e.key)
+    }
+
+    companion object {
+        /** הצבעים לבחירה מהירה (בקומפניון - כדי שיהיו מוכנים כבר בבניית החלון) */
+        private val palette = listOf("#FFFFFF", "#F2F2F2", "#E6FFFFFF", "#AAAAAA", "#8E8E93", "#636366", "#30D158", "#69F0AE", "#4CAF50", "#2E7D32",
+            "#0A84FF", "#4C7DFF", "#5AA9FF", "#FF3B30", "#D50000", "#FF9F0A", "#F08C00", "#7E57C2", "#1B1B1D", "#2C2C2E", "#000000", "#00000000")
     }
 }
