@@ -157,7 +157,8 @@ open class AlertActivity : Activity() {
                 setPadding(dpx(6), 0, dpx(6), 0)
                 addView(chipsScroll, LinearLayout.LayoutParams(-1, -2))
             }
-            root.addView(areaCard, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(10), dpx(10), dpx(10), 0) })
+            // מבזק במסך מלא: האזורים באמצע בין "בדקות הקרובות" ל"במקרה של..." - אותו רווח מעל ומתחת (מעריכת צופר)
+            root.addView(areaCard, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(10), dpx(if (preFull) 12 else 10), dpx(10), 0) })
         }
 
         // סיום במסך מלא: "האירוע הסתיים" ומתחת "ניתן לצאת מהמרחב המוגן", בגודל 20 (מעריכת צופר). פופ-אפ - כמו קודם
@@ -169,7 +170,7 @@ open class AlertActivity : Activity() {
             if (!preFull && title.isNotBlank() && title != "התרעה מקדימה")
                 root.addView(tv(title, 19f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
             root.addView(tv("במקרה של קבלת התרעה, יש להיכנס למרחב המוגן ולשהות בו עד לקבלת הנחיה מפורשת", if (preFull) 20f else 19f)
-                .apply { setPadding(dpx(16), dpx(6), dpx(16), 0) })
+                .apply { setPadding(dpx(16), dpx(if (preFull) 12 else 6), dpx(16), 0) })
         }
 
         // כרטיס הטיימר: זמן התגוננות -> נשארים במרחב המוגן

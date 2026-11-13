@@ -254,7 +254,7 @@ class MainActivity : Activity() {
         val white = C.INK
         val soft = C.INK_SOFT
         greeting.setTextColor(soft)
-        clockTime.setTextColor(white); clockTime.textSize = 50f
+        clockTime.setTextColor(white); clockTime.textSize = 40f
         clockDay.setTextColor(soft); clockDay.textSize = 20f
         clockCard.addView(greeting)
         clockCard.addView(clockTime)
