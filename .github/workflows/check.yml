@@ -25,6 +25,9 @@ jobs:
           gradle :app:compileReleaseKotlin :relay:compileReleaseKotlin :admin:compileReleaseKotlin --rerun-tasks --console=plain 2>&1 | tee compile.log || true
           grep '^w: ' compile.log > warnings.txt || true
           echo "warnings: $(wc -l < warnings.txt)"; sed -E 's#file://.*/red-alert/##' warnings.txt
+      - name: Unit tests
+        run: |
+          gradle :app:testReleaseUnitTest --console=plain > tests.log 2>&1 && echo "TESTS: OK" || { echo "TESTS: FAILED"; grep -E 'FAILED|AssertionError|expected' -A3 tests.log | head -60; }
       - name: Lint
         run: |
           gradle :app:lintRelease :relay:lintRelease :admin:lintRelease --continue --console=plain \

@@ -1461,7 +1461,6 @@
   "t_tsunami": "tsunami",
   "t_hazmat": "hazardous_materials",
   "t_radio": "radiological",
-  "t_nonconv": "nonconventional",
   "t_generic": "red_alert",
   "t_end": "event_ended",
   "t_pre": "early_warning",

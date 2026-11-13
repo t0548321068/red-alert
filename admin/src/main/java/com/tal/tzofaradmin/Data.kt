@@ -166,7 +166,7 @@ object Data {
             t.contains("טילים") || t.contains("רקטות") -> "rockets"; t.contains("כלי טיס") -> "hostile_aircraft"
             t.contains("מחבלים") -> "terrorist_infiltration"; t.contains("רעידת") -> "earthquake"
             t.contains("צונאמי") -> "tsunami"; t.contains("חומרים מסוכנים") -> "hazardous_materials"
-            t.contains("רדיולוג") -> "radiological"; t.contains("קונבנציונלי") -> "nonconventional"
+            t.contains("רדיולוג") -> "radiological"
             else -> "red_alert"
         }
         val out = mutableListOf("voice/phrases/$type.mp3")
@@ -175,7 +175,8 @@ object Data {
         out += shown
         if (files.size > shown.size) out += "voice/phrases/more_areas.mp3"
         val shelter = a.areas.flatMap { match(it) }.mapNotNull { it.shelter }.minOrNull()
-        if (level == LEVEL_ALERT && shelter != null) {
+        // זמן ההגעה מוקרא רק בירי רקטות (וסוג שלא מזוהה) - כמו בצופר חירום
+        if (level == LEVEL_ALERT && shelter != null && type in setOf("rockets", "red_alert")) {
             val s = listOf(0, 15, 30, 45, 60, 90).minByOrNull { Math.abs(it - shelter) }
             out += "voice/phrases/" + when (s) { 0 -> "time_immediate"; 15 -> "time_15s"; 30 -> "time_30s"
                 45 -> "time_45s"; 60 -> "time_1min"; else -> "time_1_5min" } + ".mp3"
@@ -186,7 +187,7 @@ object Data {
     /** קטגוריות במשפטי ההקראה, לפי הסדר */
     val GROUPS = listOf(
         "סוג ההתרעה" to listOf("red_alert", "early_warning", "event_ended", "event_end", "launches_detected", "mivzak_pikud_haoref", "update_pikud_haoref"),
-        "סוג האירוע" to listOf("rockets", "hostile_aircraft", "terrorist_infiltration", "earthquake", "tsunami", "hazardous_materials", "radiological", "nonconventional"),
+        "סוג האירוע" to listOf("rockets", "hostile_aircraft", "terrorist_infiltration", "earthquake", "tsunami", "hazardous_materials", "radiological"),
         "זמן התגוננות" to listOf("time_immediate", "time_15s", "time_30s", "time_45s", "time_1min", "time_1_5min"),
         "אחר" to listOf("all_of_israel", "all_over_the_country", "test_alert", "in_areas", "more_areas", "siren"),
     )
@@ -195,7 +196,7 @@ object Data {
     private val PHRASES = mapOf(
         "red_alert" to "צבע אדום", "rockets" to "ירי רקטות וטילים", "hostile_aircraft" to "חדירת כלי טיס עוין",
         "terrorist_infiltration" to "חדירת מחבלים", "earthquake" to "רעידת אדמה", "tsunami" to "צונאמי",
-        "hazardous_materials" to "חומרים מסוכנים", "radiological" to "אירוע רדיולוגי", "nonconventional" to "אירוע לא קונבנציונלי",
+        "hazardous_materials" to "חומרים מסוכנים", "radiological" to "אירוע רדיולוגי",
         "early_warning" to "התרעה מקדימה", "event_ended" to "האירוע הסתיים", "event_end" to "סיום אירוע",
         "more_areas" to "ואזורים נוספים", "time_immediate" to "זמן להגעה: מיידי", "time_15s" to "זמן להגעה: 15 שניות",
         "time_30s" to "זמן להגעה: 30 שניות", "time_45s" to "זמן להגעה: 45 שניות", "time_1min" to "זמן להגעה: דקה",
