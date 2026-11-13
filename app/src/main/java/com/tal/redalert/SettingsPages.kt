@@ -65,12 +65,13 @@ internal fun MainActivity.showSettings() {
                 row.addView(FrameLayout(this).apply {
                     background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(iconColor(r.icon)) }
                     val res = setIcon(r.icon)
-                    if (res != 0) addView(android.widget.ImageView(this@showSettings).apply { setImageResource(res) },
+                    if (res != 0) addView(android.widget.ImageView(this@showSettings).apply {
+                        setImageResource(res); imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE) },
                         FrameLayout.LayoutParams(dp(20), dp(20), Gravity.CENTER))
                     else addView(text(r.icon, 16f, Color.WHITE).apply { gravity = Gravity.CENTER }, FrameLayout.LayoutParams(-1, -1))
                 }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(14) })
                 val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-                texts.addView(text(r.title, 16f, C.TEXT))
+                texts.addView(text(r.title, 16f, C.INK))
                 row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
                 r.on?.let { isOn ->
                     val on = isOn()
