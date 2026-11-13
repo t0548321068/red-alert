@@ -71,7 +71,7 @@ internal fun MainActivity.showSettings() {
                     else addView(text(r.icon, 16f, Color.WHITE).apply { gravity = Gravity.CENTER }, FrameLayout.LayoutParams(-1, -1))
                 }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(14) })
                 val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-                texts.addView(text(r.title, 16f, C.INK))
+                texts.addView(text(r.title, 18f, C.INK))
                 row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
                 r.on?.let { isOn ->
                     val on = isOn()
