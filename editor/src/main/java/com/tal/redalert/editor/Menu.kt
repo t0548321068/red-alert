@@ -30,6 +30,8 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
     private val sent = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val footer = Ui.tv(context, "", 12f, Ui.GRAY).apply { gravity = Gravity.CENTER; setPadding(0, Ui.dp(16), 0, Ui.dp(10)) }
     private var busy = false
+    /** שליחה קודמת שנפתחה (לחיצה על שורה ב"שליחות קודמות") - העמוד מציג את השינויים שבה */
+    private var openBatch: JSONObject? = null
 
     init {
         setBackgroundColor(Color.BLACK)
@@ -59,6 +61,7 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
         col.removeAllViews()
         val (top, bottom) = layer.insets()
         col.setPadding(0, top, 0, bottom + Ui.dp(30))
+        openBatch?.let { showBatch(it); return }
         col.addView(LinearLayout(context).apply {
             gravity = Gravity.CENTER_VERTICAL; setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(6))
             addView(Ui.tv(context, "עריכת צופר", 22f, bold = true), LinearLayout.LayoutParams(0, -2, 1f))
@@ -210,12 +213,63 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
                 for (i in a.length() - 1 downTo 0) {
                     val b = a.getJSONObject(i); val n = b.optJSONArray("items")?.length() ?: 0
                     val (stName, stColor) = when (b.optString("state")) { "done" -> "בוצע" to Ui.GREEN; "working" -> "בטיפול" to Ui.ORANGE; else -> "נשלח – ממתין לטיפול" to Color.parseColor("#5AA9FF") }
-                    val r2 = row(c, fmt.format(java.util.Date(b.optLong("at"))) + " · " + (if (n == 1) "שינוי אחד" else "$n שינויים"), "", click = null)
+                    val r2 = row(c, fmt.format(java.util.Date(b.optLong("at"))) + " · " + (if (n == 1) "שינוי אחד" else "$n שינויים"), "",
+                        click = { openBatch = b; rebuild(); scrollTo(0, 0) })
+                    r2.addView(Ui.tv(context, "‹", 20f, Ui.GRAY))
                     ((r2.getChildAt(0) as LinearLayout)).addView(Ui.tv(context, stName + b.optString("msg").takeIf { it.isNotEmpty() }?.let { " · $it" }.orEmpty(), 12f, stColor))
                 }
                 sent.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(Ui.dp(16), 0, Ui.dp(16), Ui.dp(10)) })
             }
         }.start()
+    }
+
+    /** עמוד של שליחה קודמת: מתי, מה המצב, וכל השינויים שנשלחו בה (עם התמונה של כל רכיב) */
+    private fun showBatch(b: JSONObject) {
+        val fmt = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.US)
+        col.addView(LinearLayout(context).apply {
+            gravity = Gravity.CENTER_VERTICAL; setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(6))
+            addView(Ui.tv(context, "→", 22f).apply { setPadding(0, 0, Ui.dp(12), 0); setOnClickListener { openBatch = null; rebuild() } })
+            addView(Ui.tv(context, "שליחה מ-" + fmt.format(java.util.Date(b.optLong("at"))), 20f, bold = true), LinearLayout.LayoutParams(0, -2, 1f))
+        })
+        val (stName, stColor) = when (b.optString("state")) { "done" -> "בוצע" to Ui.GREEN; "working" -> "בטיפול" to Ui.ORANGE; else -> "נשלח – ממתין לטיפול" to Color.parseColor("#5AA9FF") }
+        col.addView(Ui.tv(context, stName + b.optString("msg").takeIf { it.isNotEmpty() }?.let { " · $it" }.orEmpty(), 14f, stColor)
+            .apply { setPadding(Ui.dp(28), 0, Ui.dp(28), Ui.dp(6)) })
+        val items = b.optJSONArray("items") ?: org.json.JSONArray()
+        // לפי מסך
+        val byScreen = LinkedHashMap<String, MutableList<JSONObject>>()
+        for (i in 0 until items.length()) items.getJSONObject(i).let { byScreen.getOrPut(it.optString("screenName").ifEmpty { it.optString("screen") }) { mutableListOf() }.add(it) }
+        byScreen.forEach { (screen, list) ->
+            group(screen)
+            val c = card()
+            list.forEach {
+                val r = row(c, it.optString("label"), (if (it.optString("theme") == "light") "בהיר\n" else "") + describeSent(it.optJSONObject("changes") ?: JSONObject()), click = null)
+                it.optString("shot").takeIf { s -> s.isNotEmpty() }?.let { s ->
+                    try {
+                        val bytes = android.util.Base64.decode(s, android.util.Base64.DEFAULT)
+                        r.addView(ImageView(context).apply { setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.size)); adjustViewBounds = true; maxHeight = Ui.dp(44); maxWidth = Ui.dp(90) },
+                            0, LinearLayout.LayoutParams(-2, -2).apply { marginEnd = Ui.dp(10) })
+                    } catch (_: Exception) { }
+                }
+            }
+            addCard(c)
+        }
+    }
+
+    /** תיאור שינוי כמו שנשמר בשרת */
+    private fun describeSent(c: JSONObject): String {
+        val l = mutableListOf<String>()
+        fun ft(k: String, name: String) = c.optJSONObject(k)?.let { l += "$name: \u2066${it.optString("from")}\u2069 ← \u2066${it.optString("to")}\u2069" }
+        ft("color", "צבע"); ft("size", "גודל"); ft("radius", "פינות")
+        c.optJSONObject("text")?.let { l += "טקסט: \"${it.optString("from")}\" ← \"${it.optString("to")}\"" }
+        ft("bold", "גופן"); ft("align", "יישור"); ft("valign", "מרכוז")
+        c.optJSONObject("move")?.let { m ->
+            val dx = m.optDouble("dx"); val dy = m.optDouble("dy")
+            fun f(x: Double) = if (x == Math.floor(x)) x.toInt().toString() else "%.1f".format(x)
+            l += "מיקום: " + listOfNotNull(if (dx != 0.0) f(Math.abs(dx)) + (if (dx > 0) " ימינה" else " שמאלה") else null,
+                if (dy != 0.0) f(Math.abs(dy)) + (if (dy > 0) " למטה" else " למעלה") else null).joinToString(", ")
+        }
+        c.optString("note").takeIf { it.isNotEmpty() }?.let { l += "הערה: " + it.take(300) }
+        return l.joinToString("\n")
     }
 
     private fun toast(s: String) = android.widget.Toast.makeText(context, s, android.widget.Toast.LENGTH_LONG).show()
