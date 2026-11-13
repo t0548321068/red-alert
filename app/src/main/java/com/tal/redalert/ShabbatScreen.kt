@@ -40,7 +40,7 @@ internal class ShabbatScreen(private val a: MainActivity) {
     private val clockBox = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
     private val time = tv(96f, Color.WHITE, bold = true).apply { includeFontPadding = false; letterSpacing = 0.02f }
     private val date = tv(22f, Color.parseColor("#D8D8D8"))
-    private val exit = tv(20f, Color.parseColor("#B0B0B0"))
+    private val exit = tv(22f, Color.parseColor("#B0B0B0"))
     private val status = tv(17f, Color.parseColor("#34C759"), bold = true)
 
     // התרעה
@@ -93,12 +93,13 @@ internal class ShabbatScreen(private val a: MainActivity) {
 
     init {
         clockBox.addView(time)
-        clockBox.addView(date, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(10) })
-        clockBox.addView(exit, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(28) })
+        // התאריך וצאת השבת צמודים (כמו התאריך ומזג האוויר במסך הראשי), ובאמצע בין השעה לשורת "מוגן" - אותו רווח מעל ומתחת
+        clockBox.addView(date, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(35) })
+        clockBox.addView(exit, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(4) })
         clockBox.addView(status.apply {
             setPadding(dp(18), dp(8), dp(18), dp(8))
             background = GradientDrawable().apply { setColor(Color.parseColor("#1A34C759")); cornerRadius = dp(22).toFloat() }
-        }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(36) })
+        }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(35) })
         root.addView(clockBox, FrameLayout.LayoutParams(-1, -1))
 
         alertBox.setPadding(dp(24), 0, dp(24), 0)
