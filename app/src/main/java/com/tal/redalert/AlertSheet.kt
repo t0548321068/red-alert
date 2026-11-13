@@ -40,7 +40,7 @@ object AlertSheet {
 
     @SuppressLint("ClickableViewAccessibility")
     fun build(a: Activity, title: String, level: Int, ts: Long, areas: List<String>, times: Map<String, Long>,
-              dark: Boolean, onPeek: (Int) -> Unit): View {
+              dark: Boolean, src: String = "", onPeek: (Int) -> Unit): View {
         fun dp(v: Int) = (v * a.resources.displayMetrics.density).toInt()
         val sheetBg = Color.parseColor(if (dark) "#121212" else "#F2F2F7")
         val cardBg = Color.parseColor(if (dark) "#1E1E1E" else "#FFFFFF")
@@ -69,6 +69,8 @@ object AlertSheet {
             addView(tv(summary(gs), 19f, ink, bold = true))
             val date = java.text.SimpleDateFormat("EEEE dd/MM/yyyy · HH:mm", java.util.Locale("iw")).format(java.util.Date(ts))
             addView(tv(date, 14f, muted).apply { setPadding(0, dp(2), 0, 0) })
+            // המקור שהתריע בטלפון (כשהטלפון קיבל את ההתרעה)
+            if (src.isNotEmpty()) addView(tv("מקור ההתרעה: $src", 14f, muted).apply { setPadding(0, dp(2), 0, 0) })
         }
         sheet.addView(head)
         val list = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(4), dp(14), dp(24)) }

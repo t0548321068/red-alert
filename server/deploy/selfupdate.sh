@@ -1,6 +1,7 @@
 #!/bin/bash
 # עדכון עצמי של השרת (רץ כל 5 דקות מ-tzofar-update.timer):
-# מושך את ענף server מ-GitHub, בודק שהקוד תקין, מפעיל מחדש - ואם השרת לא עונה, חוזר לגרסה הקודמת.
+# מושך את ענף server מ-GitHub, בודק שהקוד תקין ושהבדיקות האוטומטיות עוברות, מפעיל מחדש -
+# ואם משהו נכשל (או השרת לא עונה), חוזר לגרסה הקודמת ושולח לך התראה.
 cd /home/ubuntu/red-alert || exit 0
 LOG=/home/ubuntu/selfupdate.log
 git fetch -q --depth 1 origin server || exit 0
@@ -17,10 +18,16 @@ back() {
   echo "$NEW" > /home/ubuntu/bad_commit
   git checkout -q -B live "$PREV"; [ "$DEPS_RAN" = 1 ] && npmi; sudo systemctl restart tzofar
   echo "$(date -Is) FAILED ($1) $(git log --oneline -1 "$NEW" 2>/dev/null | head -c 80) - rolled back to $(git log --oneline -1)" >> $LOG
+  # השרת (בגרסה הקודמת) קורא את הקובץ ושולח לך התראה
+  echo "$1" > /home/ubuntu/update_failed
   exit 1
 }
 node --check server/index.js || back "syntax"
 if [ "$PKG_OLD" != "$(git rev-parse HEAD:server/package.json)" ]; then DEPS_RAN=1; npmi || back "npm"; fi
+# הבדיקות האוטומטיות (פענוח המקורות, כפילויות, חלוקה) - לפני שהגרסה החדשה עולה
+if ls server/test/*.test.js >/dev/null 2>&1; then
+  (cd server && timeout 120 node --test test/*.test.js > /home/ubuntu/selftest.log 2>&1) || back "tests"
+fi
 sudo systemctl restart tzofar
 sleep 15
 systemctl is-active -q tzofar || back "not running"

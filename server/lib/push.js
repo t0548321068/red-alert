@@ -5,6 +5,7 @@ const path = require('path');
 const admin = require('firebase-admin');
 const { log } = require('./util');
 const web = require('./web');
+const P = require('./parse');   // כפילויות וחלוקה להודעות (נבדק בבדיקות)
 
 admin.initializeApp({ credential: admin.credential.cert(require(path.join(__dirname, '..', 'service-account.json'))) });
 const TOPIC = 'alerts';
@@ -12,7 +13,7 @@ const TOPIC = 'alerts';
 // ---- מה כבר נשלח: נשמר בקובץ, כך שאחרי הפעלה מחדש (עדכון עצמי) לא שולחים שוב את אותה התרעה ----
 // אותה התרעה מכמה מקורות נשלחת פעם אחת: יישוב שכבר נשלח עם אותה כותרת ב-2 הדקות האחרונות - לא שוב
 const STATE_FILE = path.join(__dirname, '..', 'state.json');
-const DEDUP_MS = 2 * 60 * 1000;
+const DEDUP_MS = P.DEDUP_MS;
 const sentAt = new Map();
 const state = { orefId: '' };   // מזהה ההתרעה האחרונה בקובץ החי של פיקוד העורף
 try {
@@ -59,27 +60,13 @@ function sendResult(ok) {
 const lastEid = new Map();
 async function send(title, areas, src, at = Date.now(), eid = '') {
   const now = Date.now();
-  for (const [k, t] of sentAt) if (now - t > DEDUP_MS) { sentAt.delete(k); lastEid.delete(k); }
-  areas = [...new Set(areas.map(a => String(a).trim()).filter(Boolean))].filter(a => {
-    const k = title + '|' + a;
-    if (!sentAt.has(k)) return true;
-    if (!eid) return false;
-    // כבר נשלח ממקור אחר (בלי מזהה) - זה אותו אירוע; זוכרים את המזהה שלו למטח הבא
-    if (!lastEid.has(k)) { lastEid.set(k, eid); return false; }
-    return lastEid.get(k) !== eid;
-  });
+  // רק יישובים שעוד לא נשלחו (או מטח חדש) - ומסמנים אותם בזיכרון מיד; בקובץ רק אחרי שליחה מוצלחת
+  areas = P.fresh(sentAt, lastEid, title, areas, eid, now);
   if (!areas.length) return;
   const keys = areas.map(a => title + '|' + a);
   web.broadcast({ title, areas, src, at, sent: now });   // לאתר - בזמן אמת
-  for (const k of keys) sentAt.set(k, now);   // בזיכרון מיד; בקובץ רק אחרי שליחה מוצלחת
-  if (eid) for (const k of keys) lastEid.set(k, eid);
-  const chunks = [];
-  let cur = [];
-  for (const a of areas) {
-    if (Buffer.byteLength(JSON.stringify([...cur, a])) > 3000) { chunks.push(cur); cur = []; }
-    cur.push(a);
-  }
-  if (cur.length) chunks.push(cur);
+  require('./archive').addLive(title, areas, +at || now, src);   // גם להתרעות האחרונות (יישובים שחסרים בארכיון של פיקוד העורף)
+  const chunks = P.chunks(areas);
   const msgs = chunks.map(part => ({
     topic: TOPIC,
     data: { type: 'alert', title, areas: part.join('|'), src, at: String(at), eid: String(eid || '') },

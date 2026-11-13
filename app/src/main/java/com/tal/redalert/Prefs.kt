@@ -541,7 +541,7 @@ object Prefs {
         return all.map { e ->
             val m = mine.firstOrNull { it.level == e.level && it.title == e.title && e.ts > 0 && it.ts > 0 && Math.abs(it.ts - e.ts) < DUP_MS }
             if (m == null) e else e.copy(body = mergeBody(e.body, m.body.split(",").map { it.trim() }.filter { it.isNotEmpty() }),
-                times = HashMap(areaTimes(m)).apply { putAll(areaTimes(e)) })
+                times = HashMap(areaTimes(m)).apply { putAll(areaTimes(e)) }, src = e.src.ifEmpty { m.src })   // המקור - של השרת; אין - מה שהתריע אצלי
         }
     }
 

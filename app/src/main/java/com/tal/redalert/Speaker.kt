@@ -142,7 +142,15 @@ class Speaker(private val c: Context) {
     /** סוג → אזורים (עד 4, ואם יש עוד "ואזורים נוספים") → זמן להגעה */
     private fun clipsFor(title: String, areas: List<String>, shelter: Int?): List<String> {
         val level = AlertService.levelOf(title)
-        if (AlertUi.update(title)) return emptyList()   // עדכון עם נוסח משלו - אין הקלטה, מוקרא בקול המובנה כמו שהגיע
+        // עדכון (כמו "רעידת אדמה - הנחיות חזרה למבנים"): מההקלטות - "עדכון פיקוד העורף. סיום אירוע. האירוע הסתיים. באזורים: ..."
+        if (AlertUi.update(title)) {
+            val files = areas.mapNotNull { raw -> index[raw] ?: AreaData.match(c, raw).firstNotNullOfOrNull { index[it] } }.distinct()
+            if (files.any { !has(it) }) return emptyList()   // הקלטה של יישוב שעוד לא ירדה - הכל בקול המובנה
+            val shown = if (files.size <= 5) files else files.take(4)
+            val out = listOf("voice/extra/update_pikud_haoref.mp3", "voice/extra/event_end.mp3", "voice/extra/event_ended.mp3",
+                "voice/extra/in_areas.mp3") + shown + (if (files.size > shown.size) listOf("voice/phrases/more_areas.mp3") else emptyList())
+            return if (out.all { has(it) }) out else emptyList()
+        }
         val t = when {
             level == AlertService.LEVEL_END -> "event_ended"
             level == AlertService.LEVEL_PRE -> "early_warning"
