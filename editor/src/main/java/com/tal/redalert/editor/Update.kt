@@ -10,10 +10,7 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
-/**
- * עדכון אוטומטי של עריכת צופר: בגיטהאב גרסה "editor" בשם "עריכת צופר · צופר חירום 4.25b · 1.1.12" -
- * המספר האחרון הוא מספר הבנייה, ומשווים אותו למספר הבנייה המותקן
- */
+/** עדכון אוטומטי של עריכת צופר: בגיטהאב גרסה "editor" בשם "עריכת צופר · 1.0.2" - משווים לגרסה המותקנת */
 object Update {
     private const val API = "https://api.github.com/repos/t0548321068/red-alert/releases/tags/editor"
     @Volatile var status = ""
@@ -21,18 +18,24 @@ object Update {
     @Volatile var needPermission = false
     @Volatile var lastCheck = 0L
 
-    fun build(c: Context): Long = try { c.packageManager.getPackageInfo(c.packageName, 0).longVersionCode } catch (_: Exception) { 0L }
+    fun current(c: Context): String = c.getString(com.tal.redalert.R.string.editor_version)
+    private fun parts(v: String) = v.split('.').map { it.toIntOrNull() ?: 0 }
+    private fun newer(a: String, b: String): Boolean {
+        val x = parts(a); val y = parts(b)
+        for (i in 0 until maxOf(x.size, y.size)) { val d = x.getOrElse(i) { 0 } - y.getOrElse(i) { 0 }; if (d != 0) return d > 0 }
+        return false
+    }
 
     fun maybeCheck(c: Context) {
         if (System.currentTimeMillis() - lastCheck > 60_000 || (needPermission && c.packageManager.canRequestPackageInstalls())) check(c) { Editor.refreshMenus() }
     }
 
-    private fun latest(): Pair<Long, String>? {
+    private fun latest(): Pair<String, String>? {
         val conn = URL(API).openConnection() as HttpURLConnection
         conn.connectTimeout = 8000; conn.readTimeout = 10000
         conn.setRequestProperty("Accept", "application/vnd.github+json")
         val j = try { if (conn.responseCode != 200) return null; JSONObject(conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }) } finally { conn.disconnect() }
-        val n = Regex("(\\d+)\\s*$").find(j.optString("name"))?.groupValues?.get(1)?.toLongOrNull() ?: return null
+        val n = Regex("(\\d+(?:\\.\\d+)+)\\s*$").find(j.optString("name"))?.groupValues?.get(1) ?: return null
         val a = j.optJSONArray("assets") ?: return null
         val url = (0 until a.length()).map { a.getJSONObject(it).optString("browser_download_url") }.firstOrNull { it.endsWith(".apk") } ?: return null
         return n to url
@@ -47,7 +50,7 @@ object Update {
                 val l = latest()
                 when {
                     l == null -> status = ""
-                    l.first <= build(app) -> status = ""
+                    !newer(l.first, current(app)) -> status = ""
                     !app.packageManager.canRequestPackageInstalls() -> { needPermission = true; status = "יש גרסה חדשה – צריך לאשר התקנת עדכונים" }
                     else -> {
                         needPermission = false

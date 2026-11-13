@@ -5,6 +5,8 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// הגרסה של עריכת צופר: עולה באחד בכל פרסום (1.0.1, 1.0.2...) - ידנית, כאן
+val editorVersion = "1.0.1"
 // הגרסה של צופר חירום שהעריכה בנויה ממנה (מוצגת בשורת החיוויים כמו באפליקציה)
 val appVersion = Regex("versionName = \"([^\"]+)\"").find(file("../app/build.gradle.kts").readText())?.groupValues?.get(1) ?: "0"
 
@@ -16,9 +18,10 @@ android {
         applicationId = "com.tal.tzofareditor"
         minSdk = 26
         targetSdk = 35
-        // העדכון האוטומטי של עריכת צופר משווה לפי מספר הבנייה
-        versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
-        versionName = appVersion
+        // 1.0.1 = 10001 (תמיד גדול מהקודם)
+        versionCode = editorVersion.split('.').map { it.toInt() }.let { it[0] * 1_000_000 + it[1] * 1000 + it[2] } + 10_000
+        versionName = appVersion   // בשורת החיוויים - כמו באפליקציה
+        resValue("string", "editor_version", editorVersion)
         resValue("string", "build_number", System.getenv("GITHUB_RUN_NUMBER") ?: "0")
         resValue("bool", "is_beta", "true")
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
