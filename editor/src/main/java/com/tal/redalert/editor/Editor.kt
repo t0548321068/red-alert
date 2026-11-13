@@ -15,6 +15,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.TypedValue
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
@@ -158,7 +159,7 @@ object Editor {
         val o = JSONObject()
         when (v) {
             is TextView -> o.put("color", hex(v.currentTextColor)).put("size", r1(v.textSize / sd).toDouble()).put("text", v.text.toString())
-                .put("bold", v.typeface?.isBold == true)
+                .put("bold", v.typeface?.isBold == true).put("align", alignOf(v))
             is ImageView -> o.put("color", v.imageTintList?.defaultColor?.let { hex(it) } ?: "מקורי").put("size", r1(v.width / d).toDouble())
             else -> {
                 val bg = v.background
@@ -174,6 +175,12 @@ object Editor {
         return o
     }
 
+    /** היישור בפועל של טקסט (ימין / מרכז / שמאל) */
+    fun alignOf(v: TextView): String {
+        val h = Gravity.getAbsoluteGravity(v.gravity, v.layoutDirection) and Gravity.HORIZONTAL_GRAVITY_MASK
+        return when (h) { Gravity.CENTER_HORIZONTAL -> "center"; Gravity.LEFT -> "left"; else -> "right" }
+    }
+
     private fun parse(c: String?): Int? = try { if (c == null || c[0] != '#') null else Color.parseColor(c) } catch (_: Exception) { null }
 
     /** מחיל שינוי על הרכיב (רק מה שבאמת שונה - בלי לצייר מחדש סתם) */
@@ -184,6 +191,8 @@ object Editor {
                 if (color != null && v.currentTextColor != color) v.setTextColor(color)
                 e.size?.let { if (abs(v.textSize - it * sd) > 0.5f) v.setTextSize(TypedValue.COMPLEX_UNIT_SP, it) }
                 e.text?.let { if (v.text.toString() != it) v.text = it }
+                e.align?.let { val g = when (it) { "right" -> Gravity.RIGHT; "left" -> Gravity.LEFT; else -> Gravity.CENTER_HORIZONTAL }
+                    if (alignOf(v) != it) { v.textAlignment = View.TEXT_ALIGNMENT_GRAVITY; v.gravity = (v.gravity and Gravity.HORIZONTAL_GRAVITY_MASK.inv() and Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK.inv()) or g } }
                 e.bold?.let { if ((v.typeface?.isBold == true) != it) v.setTypeface(android.graphics.Typeface.create(v.typeface, if (it) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)) }
             }
             is ImageView -> {
@@ -215,6 +224,7 @@ object Editor {
             if (want("radius")) radius = b.optDouble("radius", Double.NaN).takeIf { !it.isNaN() }?.toFloat()
             if (want("text")) text = if (b.has("text")) b.optString("text") else null
             if (want("bold") && b.has("bold")) bold = b.optBoolean("bold")
+            if (want("align") && b.has("align")) align = b.optString("align")
             if (!want("move")) { dx = e.dx; dy = e.dy }
         }
         applyTo(v, back)
