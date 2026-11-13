@@ -255,6 +255,9 @@ object Prefs {
     /** הקראה גם בהתרעת בדיקה */
     fun testSpeak(c: Context) = sp(c).getBoolean("testSpeak", true)
     fun setTestSpeak(c: Context, v: Boolean) = sp(c).edit().putBoolean("testSpeak", v).commit()
+    /** בדיקת אירוע מלא: המבזק, ההתרעה והסיום שנבחרו (הכותרת שנשלחת) */
+    fun testSeq(c: Context, stage: String, def: String) = sp(c).getString("testSeq_$stage", def) ?: def
+    fun setTestSeq(c: Context, stage: String, v: String) = sp(c).edit().putString("testSeq_$stage", v).commit()
     fun shabbatMode(c: Context) = sp(c).getInt("shabbatMode", Shabbat.OFF)
     /** מסך שבת: שעון במסך (המסך נשאר דלוק). כבוי - המסך נכבה ונדלק רק בהתרעה */
     fun shabbatClock(c: Context) = sp(c).getBoolean("shabbatClock", false)

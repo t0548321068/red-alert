@@ -147,55 +147,92 @@ internal fun MainActivity.chooseTest() = ouiPage("בדיקת התרעה") { body
     ouiRow(spk, "הקראה בבדיקה", on = spkOn) { Prefs.setTestSpeak(this, !spkOn); rebuild() }   // כל השורה מדליקה/מכבה - בלי קו
     ouiAdd(body, spk)
     ouiNote(body, "רק בהתרעות בדיקה – בהתרעה אמיתית ההקראה לפי ההגדרות")
-    // אירוע מלא: התרעה מקדימה, ירי וסיום - ברצף, כמו אירוע אמיתי (מקוצר)
-    val seq = ouiCard()
-    ouiRow(seq, "אירוע מלא", sub = "מקדימה ← ירי ← סיום") {
+    // ארבעה חלקים: מבזק · התרעה · סיום - כל אחד עם המסכים שלו, ואירוע מלא שבוחרים בו מה יוצג בכל שלב
+    fun header(t: String) = body.addView(text(t, 13f, C.MUTED2).apply { setPadding(dp(PAGE_SIDE + 16), dp(6), dp(PAGE_SIDE + 16), dp(6)) })
+    fun send(title: String) {
+        val level = AlertService.levelOf(title)
         Prefs.setEnabled(this, true)
-        AlertService.startTestSequence(this)
+        AlertService.start(this, testTitle = title)
+        if (level != AlertService.LEVEL_ALERT && Prefs.isQuietNow(this)) {
+            android.widget.Toast.makeText(this, "שעות שקט פעילות – ההתרעה נשלחה בשקט, בלי צליל ומסך מלא",
+                android.widget.Toast.LENGTH_LONG).show()
+        }
+        closePagesForCard(level)
+    }
+    fun section(name: String, list: List<Pair<String, String>>) {
+        header(name)
+        val c = ouiCard()
+        list.forEachIndexed { i, (label, title) -> if (i > 0) ouiDivider(c); testRow(c, label, title) { send(title) } }
+        ouiAdd(body, c)
+    }
+    section("1 · מבזק", TEST_PRE)
+    section("2 · התרעה", TEST_ALERT)
+    section("3 · סיום", TEST_END)
+
+    // 4 · אירוע מלא: בוחרים מבזק, התרעה וסיום, והם נשלחים ברצף
+    header("4 · אירוע מלא")
+    val seq = ouiCard()
+    fun stage(key: String, name: String, list: List<Pair<String, String>>) {
+        val cur = Prefs.testSeq(this, key, list[0].second)
+        ouiRow(seq, name, sub = list.firstOrNull { it.second == cur }?.first ?: list[0].first) {
+            ouiPage(name) { b2, rebuild2 ->
+                val c = ouiCard()
+                val sel = Prefs.testSeq(this, key, list[0].second)
+                list.forEachIndexed { i, (label, title) ->
+                    if (i > 0) ouiDivider(c)
+                    testRow(c, label, title, selected = sel == title) { Prefs.setTestSeq(this, key, title); rebuild2() }
+                }
+                ouiAdd(b2, c)
+            }
+        }
+        ouiDivider(seq)
+    }
+    stage("pre", "מבזק", TEST_PRE)
+    stage("alert", "התרעה", TEST_ALERT)
+    stage("end", "סיום", TEST_END)
+    ouiRow(seq, "הפעלת האירוע המלא", sub = "מבזק ← התרעה ← סיום") {
+        Prefs.setEnabled(this, true)
+        AlertService.startTestSequence(this, Prefs.testSeq(this, "pre", TEST_PRE[0].second),
+            Prefs.testSeq(this, "alert", TEST_ALERT[0].second), Prefs.testSeq(this, "end", TEST_END[0].second))
         closePagesForCard(AlertService.LEVEL_PRE)
     }
     ouiAdd(body, seq)
-    ouiNote(body, "ירי אחרי 15 שניות, וסיום 20 שניות אחרי שנגמר הזמן להגעה למרחב המוגן")
-    // כל סוגי ההתרעה של פיקוד העורף - כל שורה עם האייקון של הסוג בצבע הרמה
-    val tests = listOf(
-        "התרעה מקדימה" to "בדקות הקרובות צפויות להתקבל התרעות באזורך",
-        "ירי רקטות וטילים" to "ירי רקטות וטילים",
-        "חדירת כלי טיס עוין" to "חדירת כלי טיס עוין",
-        "חדירת מחבלים" to "חדירת מחבלים",
-        "רעידת אדמה" to "רעידת אדמה",
-        "צונאמי" to "צונאמי",
-        "אירוע רדיולוגי" to "אירוע רדיולוגי",
-        "חומרים מסוכנים" to "חומרים מסוכנים",
-        "האירוע הסתיים" to "האירוע הסתיים")
-    val c = ouiCard()
-    tests.forEachIndexed { i, (label, title) ->
-        if (i > 0) ouiDivider(c)
-        val level = AlertService.levelOf(title)
-        c.addView(LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(18), 0, dp(18), 0)
-            addView(FrameLayout(this@chooseTest).apply {
-                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(AlertUi.color(level))) }
-                addView(android.widget.ImageView(this@chooseTest).apply {
-                    AlertUi.setIcon(this, AlertUi.icon(title, level))
-                    imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
-                }, FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))   // כמו בהתרעות אחרונות
-            }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(14) })
-            addView(text(label, 16f, C.TEXT), LinearLayout.LayoutParams(0, -2, 1f))
-            setOnClickListener {
-                Prefs.setEnabled(this@chooseTest, true)
-                AlertService.start(this@chooseTest, testTitle = title)
-                if (level != AlertService.LEVEL_ALERT && Prefs.isQuietNow(this@chooseTest)) {
-                    android.widget.Toast.makeText(this@chooseTest,
-                        "שעות שקט פעילות – ההתרעה נשלחה בשקט, בלי צליל ומסך מלא",
-                        android.widget.Toast.LENGTH_LONG).show()
-                }
-                closePagesForCard(level)
-            }
-        }, LinearLayout.LayoutParams(-1, dp(ROW_H)))
-    }
-    ouiAdd(body, c)
-    ouiNote(body, "ההתרעה נשלחת מיד, בדיוק כמו התרעה אמיתית")
+    ouiNote(body, "התרעה 15 שניות אחרי המבזק, וסיום 20 שניות אחרי שנגמר הזמן להגעה למרחב המוגן. ההתרעות נשלחות מיד, בדיוק כמו התרעה אמיתית")
+}
+
+/** המסכים לבדיקה: (מה שכתוב בשורה, הכותרת שנשלחת - כמו שהיא מגיעה מהמקור) */
+private val TEST_PRE = listOf(
+    "מבזק כללי" to "בדקות הקרובות צפויות להתקבל התרעות באזורך",
+    "מבזק – איום מלבנון" to "איום מלבנון")
+private val TEST_ALERT = listOf(
+    "ירי רקטות וטילים" to "ירי רקטות וטילים",
+    "חדירת כלי טיס עוין" to "חדירת כלי טיס עוין",
+    "חדירת מחבלים" to "חדירת מחבלים",
+    "רעידת אדמה" to "רעידת אדמה",
+    "צונאמי" to "צונאמי",
+    "אירוע רדיולוגי" to "אירוע רדיולוגי",
+    "חומרים מסוכנים" to "חומרים מסוכנים")
+private val TEST_END = listOf(
+    "האירוע הסתיים" to "האירוע הסתיים",
+    "עדכון – הנחיות חזרה למבנים" to "רעידת אדמה - הנחיות חזרה למבנים")
+
+/** שורת בדיקה: אייקון הסוג בעיגול בצבע הרמה (כמו בהתרעות אחרונות), שם, ובבחירה - כפתור בחירה */
+private fun MainActivity.testRow(c: LinearLayout, label: String, title: String, selected: Boolean? = null, click: () -> Unit) {
+    val level = AlertService.levelOf(title)
+    c.addView(LinearLayout(this).apply {
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(18), 0, dp(18), 0)
+        addView(FrameLayout(this@testRow).apply {
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(AlertUi.color(level))) }
+            addView(android.widget.ImageView(this@testRow).apply {
+                AlertUi.setIcon(this, AlertUi.icon(title, level))
+                imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+            }, FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))
+        }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(14) })
+        addView(text(label, 16f, C.TEXT), LinearLayout.LayoutParams(0, -2, 1f))
+        if (selected != null) addView(ouiRadio(selected), LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginStart = dp(10) })
+        setOnClickListener { click() }
+    }, LinearLayout.LayoutParams(-1, dp(ROW_H)))
 }
 
 /**
@@ -238,14 +275,19 @@ internal fun MainActivity.previewAlertStyle(level: Int = AlertService.LEVEL_ALER
         }
         else -> {
             // ממוזער - בתוך המסך הראשי (במקום הכרטיס), כמו בהתרעה אמיתית: מסתירים את ההגדרות ומחזירים בסיום
+            // בזמן התצוגה המקדימה המסך הראשי מציג רק אותה: כרטיס של התרעה אחרת (למשל בדיקה) מוסתר, וחוזר בסיום
+            previewAlert = org.json.JSONObject().put("title", title).put("body", body).put("level", level)
+                .put("shelter", shelter).put("firedAt", now).put("source", src).put("mapAreas", body)
             pages.forEach { it.hide() }
-            fun back() { if (MiniOverlay.hostedIn(miniHost)) MiniOverlay.hide(this); miniHost.visibility = View.GONE; pages.forEach { it.show() }; updateAlertCard() }
+            fun back() { previewAlert = null; if (MiniOverlay.hostedIn(miniHost)) MiniOverlay.hide(this); miniHost.visibility = View.GONE; pages.forEach { it.show() }; updateAlertCard() }
             ui.post {
                 MiniOverlay.show(this, full, into = miniHost, inline = true) { back() }
                 miniHost.visibility = View.VISIBLE
+                updateAlertCard()
             }
             // אחרי 20 שניות חוזרים להגדרות בכל מקרה (גם אם בינתיים החלון הוחלף / נסגר)
             ui.postDelayed({
+                if (previewAlert?.optLong("firedAt") == now) previewAlert = null
                 if (MiniOverlay.lastFull?.getStringExtra("source") == "תצוגה מקדימה") MiniOverlay.hide(this)
                 miniHost.visibility = View.GONE; pages.forEach { it.show() }; updateAlertCard()
             }, 20_000L)

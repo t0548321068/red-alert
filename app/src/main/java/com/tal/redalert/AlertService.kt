@@ -296,9 +296,11 @@ class AlertService : Service() {
         }
 
         /** בדיקת אירוע מלא: התרעה מקדימה, אחרי 15 שניות ירי, ובסוף "האירוע הסתיים" */
-        fun startTestSequence(c: Context) {
+        /** אירוע מלא לבדיקה: המבזק, ההתרעה והסיום שנבחרו - ברצף */
+        fun startTestSequence(c: Context, pre: String, alert: String, end: String) {
             clearOff(c)
-            c.startForegroundService(Intent(c, AlertService::class.java).putExtra("manual", true).setAction(ACTION_TEST_SEQ))
+            c.startForegroundService(Intent(c, AlertService::class.java).putExtra("manual", true).setAction(ACTION_TEST_SEQ)
+                .putExtra("pre", pre).putExtra("alert", alert).putExtra("end", end))
         }
 
         fun stop(c: Context) {
@@ -549,7 +551,9 @@ class AlertService : Service() {
         }
         if (intent?.action == ACTION_TEST_SEQ) {
             main.removeCallbacks(seqAlert); main.removeCallbacks(seqEnd)
-            testFire("בדקות הקרובות צפויות להתקבל התרעות באזורך")
+            seqAlertTitle = intent.getStringExtra("alert") ?: "ירי רקטות וטילים"
+            seqEndTitle = intent.getStringExtra("end") ?: "האירוע הסתיים"
+            testFire(intent.getStringExtra("pre") ?: "בדקות הקרובות צפויות להתקבל התרעות באזורך")
             main.postDelayed(seqAlert, 15_000)
             return START_STICKY
         }
@@ -560,10 +564,12 @@ class AlertService : Service() {
     }
 
     /** שלבי בדיקת האירוע המלא */
-    internal val seqEnd = Runnable { testFire("האירוע הסתיים") }
+    internal var seqAlertTitle = "ירי רקטות וטילים"; internal var seqEndTitle = "האירוע הסתיים"
+    internal val seqEnd = Runnable { testFire(seqEndTitle) }
     internal val seqAlert = Runnable {
-        val shelter = testFire("ירי רקטות וטילים")
-        main.postDelayed(seqEnd, shelter * 1000L + 20_000)
+        val shelter = testFire(seqAlertTitle)
+        // סיום 20 שניות אחרי שנגמר הזמן להגעה (סוג בלי זמן הגעה - 20 שניות אחרי ההתרעה)
+        main.postDelayed(seqEnd, (if (AlertUi.noShelter(seqAlertTitle)) 0 else shelter) * 1000L + 20_000)
     }
 
     /** התראת בדיקה (מחזירה את זמן ההגעה למרחב המוגן בשניות) */
@@ -573,7 +579,8 @@ class AlertService : Service() {
         // ואז הבדיקה דילגה ישר ל"נשארים במרחב המוגן" ולא הראתה את אייקון סוג ההתרעה). לפחות 15 שניות
         val shelter = (AreaData.shelterSeconds(this, Prefs.nearbyAreas(this))
             ?: AreaData.shelterSeconds(this, mine) ?: 15).coerceAtLeast(15)
-        fire(title, listOf(body), forceScreen = true, test = true,
+        // כמו התרעה אמיתית: "איום מלבנון" -> "התרעה מקדימה - איום מלבנון", סיום -> "האירוע הסתיים"
+        fire(displayTitle(title), listOf(body), forceScreen = true, test = true,
             shelter = shelter, mapAreas = mine)
         return shelter
     }
