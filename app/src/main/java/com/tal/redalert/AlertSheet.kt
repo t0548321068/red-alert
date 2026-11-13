@@ -66,11 +66,17 @@ object AlertSheet {
             setPadding(dp(20), dp(10), dp(20), dp(10))
             addView(View(a).apply { background = GradientDrawable().apply { setColor(muted); cornerRadius = dp(2).toFloat() }; alpha = 0.5f },
                 LinearLayout.LayoutParams(dp(40), dp(4)).apply { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dp(12) })
-            addView(tv(summary(gs), 19f, ink, bold = true))
-            val date = java.text.SimpleDateFormat("EEEE dd/MM/yyyy · HH:mm", java.util.Locale("iw")).format(java.util.Date(ts))
-            addView(tv(date, 14f, muted).apply { setPadding(0, dp(2), 0, 0) })
+            // כותרת ההתרעה (גם ארוכה - יורדת שורה), מתחתיה האזורים, ואז התאריך והשעה צמודים - בצד שמאל
+            addView(tv(title, 19f, ink, bold = true))
+            addView(tv(summary(gs), 16f, ink).apply { setPadding(0, dp(4), 0, 0) })
+            val day = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US).format(java.util.Date(ts))
+            val hour = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(java.util.Date(ts))
+            addView(tv("$day  $hour", 14f, muted).apply {
+                textDirection = View.TEXT_DIRECTION_LTR; gravity = Gravity.LEFT; setPadding(0, dp(4), 0, 0) },
+                LinearLayout.LayoutParams(-1, -2))
             // המקור שהתריע בטלפון (כשהטלפון קיבל את ההתרעה)
-            if (src.isNotEmpty()) addView(tv("מקור ההתרעה: $src", 14f, muted).apply { setPadding(0, dp(2), 0, 0) })
+            if (src.isNotEmpty()) addView(tv("מקור ההתרעה: $src", 14f, muted).apply { gravity = Gravity.CENTER; setPadding(0, dp(6), 0, 0) },
+                LinearLayout.LayoutParams(-1, -2))
         }
         sheet.addView(head)
         val list = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(4), dp(14), dp(24)) }
@@ -124,7 +130,26 @@ object AlertSheet {
         return sheet
     }
 
+    /** מה שמוצג בשורת הכותרת: "מבזק - התרעה מקדימה" / "עדכון - סיום אירוע", ובאדום - סוג האירוע (ירי רקטות וטילים...) */
+    fun kind(level: Int, title: String) = when (level) {
+        AlertService.LEVEL_PRE -> "מבזק - התרעה מקדימה"
+        AlertService.LEVEL_END -> "עדכון - סיום אירוע"
+        else -> title
+    }
+
+    /**
+     * הכותרת במסך התחתון: הנוסח שהגיע. מבזק: "התקרבו למרחב המוגן" (פיקוד העורף: "לשפר את המיקום למיגון המיטבי"),
+     * ועם מקור האיום - לפניו: "איום מלבנון - התקרבו למרחב המוגן"
+     */
+    fun sheetTitle(level: Int, title: String) = when {
+        level != AlertService.LEVEL_PRE -> title
+        title.startsWith("התרעה מקדימה - ") && title.length > "התרעה מקדימה - ".length ->
+            title.removePrefix("התרעה מקדימה - ") + " - התקרבו למרחב המוגן"
+        else -> "התקרבו למרחב המוגן"
+    }
+
     /** שורת הכותרת: בצבע של סוג ההתרעה */
+
     fun bar(a: Activity, title: String, level: Int): View {
         fun dp(v: Int) = (v * a.resources.displayMetrics.density).toInt()
         return LinearLayout(a).apply {

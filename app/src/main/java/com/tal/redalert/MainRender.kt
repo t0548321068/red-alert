@@ -1,25 +1,10 @@
 package com.tal.redalert
 import com.tal.redalert.MainActivity.C
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.NotificationManager
-import android.content.Context
-import android.content.Intent
 import android.graphics.Color
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.PowerManager
-import android.provider.Settings
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
-import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -88,7 +73,6 @@ internal fun MainActivity.setSweep(on: Boolean) {
 internal fun MainActivity.refresh() {
     val sched = Prefs.enabled(this) && Prefs.scheduleOffNow(this)   // פעיל, אבל עכשיו מחוץ לתזמון
     val on = Prefs.enabled(this) && !sched
-    val color = if (on) C.GREEN else C.OFF
     // כרטיס כהה, מסגרת ירוקה כשמוגן / אפורה כשלא
     // מוגן: רקע ירוק כהה (בבהיר - ירוק בהיר) עם מסגרת ירוקה; לא מוגן - הכרטיס הרגיל עם מסגרת אפורה
     // מוגן אבל אין אינטרנט: כרטיס כתום - ההתרעות לא יגיעו עד שהרשת תחזור

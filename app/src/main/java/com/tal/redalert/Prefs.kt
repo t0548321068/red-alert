@@ -30,7 +30,6 @@ object Prefs {
         sp(c).edit().putString("cities", JSONArray(list.distinct()).toString()).commit()
 
     fun enabled(c: Context) = sp(c).getBoolean("enabled", false)
-    /** כפתור צף לבדיקת התראה במסך הראשי */
     /** מצב הכפתור הצף: כמו שורת החיוויים (קבוע / לא מוצג / לפי זמן). מגרסה קודמת: מתג מופעל/כבוי */
     fun testFabMode(c: Context) = sp(c).getInt("testFabMode", if (sp(c).getBoolean("testFab", true)) STATUS_ALWAYS else STATUS_HIDDEN)
     fun setTestFabMode(c: Context, v: Int) = sp(c).edit().putInt("testFabMode", v).apply()
@@ -262,7 +261,6 @@ object Prefs {
     fun setShabbatClock(c: Context, v: Boolean) = sp(c).edit().putBoolean("shabbatClock", v).commit()
     fun shabbatSeconds(c: Context) = sp(c).getBoolean("shabbatSec", false)
     fun setShabbatSeconds(c: Context, v: Boolean) = sp(c).edit().putBoolean("shabbatSec", v).commit()
-    /** "יציאה" ממסך השבת - עד מתי (סוף השבת הנוכחית) */
     /** הפעלה מהירה מכפתור השעון: המצב שהיה לפני (-1 = לא בהפעלה מהירה). ביציאה חוזרים אליו */
     fun shabbatQuick(c: Context) = sp(c).getInt("shabbatQuick", -1)
     fun setShabbatQuick(c: Context, prev: Int) = sp(c).edit().putInt("shabbatQuick", prev).commit()
@@ -332,8 +330,10 @@ object Prefs {
     fun setCountdown(c: Context, until: Long, title: String) =
         sp(c).edit().putLong("cdUntil", until).putString("cdTitle", title).commit()
 
-    // ---- טיימר שהייה במרחב המוגן (10 דקות אחרי ירי) ----
-    const val STAY_MS = 10 * 60 * 1000L
+    // ---- אירוע ירי פעיל: מהירי עד הודעת הסיום (רשת ביטחון - שעה, אם הסיום לא הגיע) ----
+    const val STAY_MS = 60 * 60 * 1000L
+    /** התרעת בדיקה: ההתראה הנוספת נעלמת אחרי 10 דקות (אין הודעת סיום בבדיקה) */
+    const val TEST_STAY_MS = 10 * 60 * 1000L
     fun stayUntil(c: Context) = sp(c).getLong("stayUntil", 0L)
     fun setStayUntil(c: Context, v: Long) = sp(c).edit().putLong("stayUntil", v).commit()
 
@@ -341,7 +341,6 @@ object Prefs {
     fun dndOverride(c: Context) = sp(c).getBoolean("dndOverride", true)
     fun setDndOverride(c: Context, v: Boolean) = sp(c).edit().putBoolean("dndOverride", v).commit()
 
-    /** ערכת נושא: true = כהה (ברירת מחדל), false = בהירה */
     /** ערכת צבעים: 0 כהה, 1 בהירה, 2 לפי המערכת */
     fun themeMode(c: Context) = sp(c).getInt("themeMode", if (sp(c).getBoolean("dark", true)) 0 else 1)
     fun setThemeMode(c: Context, v: Int) = sp(c).edit().putInt("themeMode", v).commit()
@@ -433,7 +432,6 @@ object Prefs {
         else -> true
     }
 
-    /** אפשרות הבטא נפתחה (7 לחיצות על מספר הגרסה) */
     /**
      * בטא רק למכשירים שברשימה (לפי מזהה המכשיר). רשימה ריקה = בלי הגבלה.
      * בכל מכשיר אחר הבטא כבויה ומוסתרת, גם אם הופעלה בעבר.
@@ -484,7 +482,6 @@ object Prefs {
     fun setSkippedVersion(c: Context, v: String) = sp(c).edit().putString("skipVer", v).commit()
     /** גרסה שכבר נשלחה עליה התראה ברקע */
     fun notifiedVersion(c: Context) = sp(c).getString("notifVer", "") ?: ""
-    /** הגרסה החדשה שנמצאה בבדיקה האחרונה (ריק = אין) ומספר הבנייה שלה (בבטא) */
     /** מתי נבדק לאחרונה אם יש גרסה חדשה (גם בבדיקה האוטומטית) */
     fun lastUpdateCheck(c: Context) = sp(c).getLong("lastUpdCheck", 0L)
     fun setLastUpdateCheck(c: Context) = sp(c).edit().putLong("lastUpdCheck", System.currentTimeMillis()).apply()
@@ -531,7 +528,6 @@ object Prefs {
             .let { collapse(it) }
     }
 
-    /** מוסיף יישובים לשורת ההתראה האחרונה (בלי כפילויות) */
     /**
      * "הכול" משלים ממה שהטלפון קיבל: שורה מהארכיון שיש לה שורה תואמת ב"שלי" (אותו סוג וכותרת, עד 5 דקות) -
      * הסדר של השרת (סדר ההגעה בזמן אמת, לכל הטלפונים), ואחריו יישובים שהגיעו לטלפון ואין בשרת

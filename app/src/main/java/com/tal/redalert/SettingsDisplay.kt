@@ -1,33 +1,16 @@
 package com.tal.redalert
 
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.NotificationManager
-import android.content.Context
-import android.content.Intent
 import android.graphics.Color
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
 import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.PowerManager
-import android.provider.Settings
-import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
-import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import com.tal.redalert.MainActivity.C
-import com.tal.redalert.MainActivity.Row
-import com.tal.redalert.MainActivity.Perm
-import com.tal.redalert.MainActivity.SameHeight
 
 // (חלק מהמסך הראשי - MainActivity; המצב עצמו נשמר שם)
 
@@ -76,7 +59,6 @@ internal fun MainActivity.showDisplay() {
     // קו מפריד עם שוליים מהצדדים (לא מקצה לקצה), כמו בהגדרות של סמסונג
     fun divider(c: LinearLayout) = c.addView(View(this).apply { setBackgroundColor(C.DIV) },
         LinearLayout.LayoutParams(-1, dp(1)).apply { setMargins(dp(18), 0, dp(18), 0) })
-    /** שורה: שם, מצב בכחול, ומתג (אם יש) */
     /** שורה: שם + מצב בכחול + מתג. open = לחיצה על השם פותחת הגדרה נוספת (והמתג לבד מדליק/מכבה) */
     fun row(c: LinearLayout, title: String, sub: String = "", on: Boolean? = null, sep: Boolean = true,
             open: (() -> Unit)? = null, click: () -> Unit) {
@@ -221,7 +203,6 @@ internal fun MainActivity.chooseDayStyle(done: () -> Unit) = ouiPage("תאריך
     ouiAdd(body, styles)
 }
 
-/** עמוד מזג אוויר: הצגה + תדירות עדכון */
 /** עמוד פיד ארצי: כמה זמן אחורה להציג - מ-30 דקות ועד 24 שעות */
 internal fun MainActivity.chooseFeedWindow(done: () -> Unit) = ouiPage("פיד ארצי", onClose = done) { body, rebuild ->
     val opts = ouiCard()

@@ -160,14 +160,13 @@ class MapActivity : Activity() {
         }
         val level = intent.getIntExtra("focusLevel", -1)
         val rawTitle = intent.getStringExtra("focusTitle") ?: ""
-        val barTitle = if (level == AlertService.LEVEL_PRE && !rawTitle.startsWith("התרעה מקדימה")) "התרעה מקדימה" else rawTitle
         if (sheet) {
             val areas = (intent.getStringExtra("focus") ?: "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
             val tArr = intent.getLongArrayExtra("focusTimes")
             val times = if (tArr != null && tArr.size == areas.size) areas.indices.associate { areas[it] to tArr[it] } else emptyMap()
             val shownAreas = areas.map { it.replace("ברחבי הארץ", AreaData.ALL_COUNTRY) }
             val shownTimes = times.mapKeys { it.key.replace("ברחבי הארץ", AreaData.ALL_COUNTRY) }
-            sheetView = AlertSheet.build(this, barTitle, level, intent.getLongExtra("focusTs", 0L), shownAreas, shownTimes, dark,
+            sheetView = AlertSheet.build(this, AlertSheet.sheetTitle(level, rawTitle), level, intent.getLongExtra("focusTs", 0L), shownAreas, shownTimes, dark,
                 intent.getStringExtra("focusSrc") ?: "") { peek ->
                 sheetPeek = peek; if (lastPts.isNotEmpty() && !showAll) fit(lastPts, 60, 14.0)
             }
@@ -177,7 +176,7 @@ class MapActivity : Activity() {
         val root: View = if (sheet) LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.parseColor(AlertUi.color(level)))
-            addView(AlertSheet.bar(this@MapActivity, barTitle, level), LinearLayout.LayoutParams(-1, dp(60)))
+            addView(AlertSheet.bar(this@MapActivity, AlertSheet.kind(level, rawTitle), level), LinearLayout.LayoutParams(-1, dp(60)))
             addView(frame, LinearLayout.LayoutParams(-1, 0, 1f))
         } else frame
         root.setOnApplyWindowInsetsListener { v, insets ->

@@ -115,7 +115,7 @@ class Speaker(private val c: Context) {
                 else c.assets.openFd(clips[i]).use { fd -> setDataSource(fd.fileDescriptor, fd.startOffset, fd.length) }
                 setOnCompletionListener { it.release(); if (player === it) player = null; playClips(clips, i + 1) }
                 setOnErrorListener { mp, _, _ -> mp.release(); if (player === mp) player = null; playClips(clips, i + 1); true }
-                if (preferSpeaker) AlertService.builtinSpeaker(c)?.let { setPreferredDevice(it) }
+                if (preferSpeaker && android.os.Build.VERSION.SDK_INT >= 28) AlertService.builtinSpeaker(c)?.let { setPreferredDevice(it) }
                 prepare()
             }
             player = mp
@@ -161,11 +161,15 @@ class Speaker(private val c: Context) {
             title.contains("צונאמי") -> "tsunami"
             title.contains("חומרים מסוכנים") -> "hazardous_materials"
             title.contains("רדיולוג") -> "radiological"
-            title.contains("קונבנציונלי") -> "nonconventional"
             else -> "red_alert"
         }
         val first = "voice/phrases/$t.mp3"
-        val out = mutableListOf(first)
+        // מקדימה / סיום: פותחים ב"מבזק פיקוד העורף" / "עדכון פיקוד העורף" (על המסך - רק "מבזק" / "עדכון")
+        val out = when (level) {
+            AlertService.LEVEL_PRE -> mutableListOf("voice/extra/mivzak_pikud_haoref.mp3", first)
+            AlertService.LEVEL_END -> mutableListOf("voice/extra/update_pikud_haoref.mp3", first)
+            else -> mutableListOf(first)
+        }
         val files = areas.mapNotNull { raw -> index[raw] ?: AreaData.match(c, raw).firstNotNullOfOrNull { index[it] } }.distinct()
         // הקלטה של יישוב שעוד לא ירדה מהשרת - הכל בקול המובנה של הטלפון (שלא יוקרא סוג ההתרעה בלי היישוב)
         if (files.any { !has(it) }) return emptyList()
@@ -177,7 +181,7 @@ class Speaker(private val c: Context) {
             out += "voice/phrases/" + when (s) { 0 -> "time_immediate"; 15 -> "time_15s"; 30 -> "time_30s"
                 45 -> "time_45s"; 60 -> "time_1min"; else -> "time_1_5min" } + ".mp3"
         }
-        return out.filter { has(it) }.takeIf { it.isNotEmpty() && it.first() == first } ?: emptyList()
+        return out.filter { has(it) }.takeIf { it.isNotEmpty() && it.first() == out.first() } ?: emptyList()
     }
 
     private fun ttsFile() = java.io.File(c.cacheDir, "tts_alert.wav")
@@ -194,7 +198,7 @@ class Speaker(private val c: Context) {
                 setAudioAttributes(AudioAttributes.Builder().setUsage(usage)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
                 setDataSource(ttsFile().path)
-                AlertService.builtinSpeaker(c)?.let { setPreferredDevice(it) }
+                if (android.os.Build.VERSION.SDK_INT >= 28) AlertService.builtinSpeaker(c)?.let { setPreferredDevice(it) }
                 setOnCompletionListener { it.release(); if (player === it) player = null; finish() }
                 setOnErrorListener { m, _, _ -> m.release(); if (player === m) player = null; finish(); true }
                 prepare()
@@ -216,8 +220,8 @@ class Speaker(private val c: Context) {
             val list = if (names.size <= 5) names.joinToString(", ")
                        else names.take(4).joinToString(", ") + ", ועוד ${names.size - 4} אזורים"
             return when {
-                title.contains("הסתיים") -> "האירוע הסתיים. $list."
-                title.contains("בדקות הקרובות") -> "התרעה מקדימה. בדקות הקרובות צפויות התרעות. $list."
+                title.contains("הסתיים") -> "עדכון פיקוד העורף. האירוע הסתיים. $list."
+                title.contains("בדקות הקרובות") -> "מבזק פיקוד העורף. התרעה מקדימה. בדקות הקרובות צפויות התרעות. $list."
                 else -> buildString {
                     append("$title. $list.")
                     if (shelter != null) append(" זמן להגעה למרחב המוגן: ${AreaData.shelterText(shelter)}.")
