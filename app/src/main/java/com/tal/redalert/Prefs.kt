@@ -330,8 +330,10 @@ object Prefs {
     fun setCountdown(c: Context, until: Long, title: String) =
         sp(c).edit().putLong("cdUntil", until).putString("cdTitle", title).commit()
 
-    // ---- טיימר שהייה במרחב המוגן (10 דקות אחרי ירי) ----
-    const val STAY_MS = 10 * 60 * 1000L
+    // ---- אירוע ירי פעיל: מהירי עד הודעת הסיום (רשת ביטחון - שעה, אם הסיום לא הגיע) ----
+    const val STAY_MS = 60 * 60 * 1000L
+    /** התרעת בדיקה: ההתראה הנוספת נעלמת אחרי 10 דקות (אין הודעת סיום בבדיקה) */
+    const val TEST_STAY_MS = 10 * 60 * 1000L
     fun stayUntil(c: Context) = sp(c).getLong("stayUntil", 0L)
     fun setStayUntil(c: Context, v: Long) = sp(c).edit().putLong("stayUntil", v).commit()
 

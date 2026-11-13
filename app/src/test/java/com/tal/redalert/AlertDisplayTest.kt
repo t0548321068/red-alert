@@ -94,15 +94,27 @@ class AlertDisplayTest {
         assertFalse(AlertUi.closeToMini(1, true, false, true))     // ההתרעה כבר נגמרה
     }
 
-    // ---- רעידת אדמה: בלי זמן התגוננות ובלי "נשארים במרחב המוגן" ----
-    @Test fun quakeHasNoShelterStages() {
-        val q = "רעידת אדמה"
-        assertEquals("צאו לשטח פתוח", AlertUi.head(q, AlertService.LEVEL_ALERT).second)
-        assertEquals("" to "ממתינים להודעת סיום אירוע", AlertUi.timer(AlertService.LEVEL_ALERT, -1, 1000L, 1000L, q))
-        assertEquals("התרחקו מחוף הים", AlertUi.head("חשש לצונאמי", AlertService.LEVEL_ALERT).second)
-        assertEquals("" to "ממתינים להודעת סיום אירוע", AlertUi.timer(AlertService.LEVEL_ALERT, -1, 1000L, 1000L, "חשש לצונאמי"))
-        assertEquals("היכנסו למרחב המוגן", AlertUi.head("ירי רקטות וטילים", AlertService.LEVEL_ALERT).second)
-        assertEquals("נשארים במרחב המוגן", AlertUi.timer(AlertService.LEVEL_ALERT, 0, 1000L, 1000L, "ירי רקטות וטילים")?.first)
+    // ---- הנחיה וזמן לפי סוג ההתרעה (הנוסח של פיקוד העורף) ----
+    @Test fun instructionAndStagesByType() {
+        val A = AlertService.LEVEL_ALERT
+        // ירי: זמן הגעה לפי האזור, ואחריו "נשארים במרחב המוגן עד הודעה" (בלי 10 דקות)
+        assertEquals("היכנסו למרחב המוגן", AlertUi.head("ירי רקטות וטילים", A).second)
+        assertEquals("זמן התגוננות" to "1:30", AlertUi.timer(A, 90, 1000L, 1000L, "ירי רקטות וטילים"))
+        assertEquals("" to AlertUi.STAY_TEXT, AlertUi.timer(A, 90, 1000L, 1000L + 91_000L, "ירי רקטות וטילים"))
+        assertEquals("" to AlertUi.STAY_TEXT, AlertUi.timer(A, 90, 1000L, 1000L + 60 * 60_000L, "ירי רקטות וטילים"))
+        // כלי טיס: בלי זמן הגעה, ישר "נשארים במרחב המוגן עד הודעה"
+        assertEquals("היכנסו מייד למרחב המוגן", AlertUi.head("חדירת כלי טיס עוין", A).second)
+        assertEquals("" to AlertUi.STAY_TEXT, AlertUi.timer(A, 90, 1000L, 1000L, "חדירת כלי טיס עוין"))
+        // בלי זמן הגעה - ממתינים להודעת סיום
+        mapOf("חדירת מחבלים" to "היכנסו מייד למרחב המוגן", "אירוע חומרים מסוכנים" to "הסתגרו מייד במבנה",
+            "אירוע רדיולוגי" to "היכנסו למבנה וסגרו את הדלתות והחלונות", "רעידת אדמה" to "צאו לשטח פתוח",
+            "חשש לצונאמי" to "התרחקו מייד מחוף הים").forEach { (t, h) ->
+            assertEquals(h, AlertUi.head(t, A).second)
+            assertTrue(AlertUi.noShelter(t))
+            assertEquals("" to AlertUi.WAIT_TEXT, AlertUi.timer(A, 90, 1000L, 1000L, t))
+        }
+        assertFalse(AlertUi.noShelter("ירי רקטות וטילים"))
+        assertTrue(AlertUi.noShelter("חדירת כלי טיס עוין"))
     }
 
     // ---- עדכון "הנחיות חזרה למבנים": ירוק, עם הנוסח המלא (לפי ההגדרות שבאפליקציה) ----

@@ -95,7 +95,7 @@ internal fun MainActivity.updateAlertCard() {
         alertWrap.visibility = View.VISIBLE
         setScrollMode(true)
     }
-    // האייקון לפי השלב (היכנסו → נשארים במרחב המוגן → ממתינים לסיום)
+    // האייקון לפי השלב: בירי - סוג ההתרעה בזמן ההגעה, ואחריו בית (נשארים במרחב המוגן עד הודעה)
     AlertUi.stageIcon(j.optString("title"), level, j.optInt("shelter", -1), firedAt).let { r ->
         if (r != alertCardIconRes) { alertCardIconRes = r; AlertUi.setIcon(alertCardIcon, r, big = false) } }
     AlertUi.timer(level, j.optInt("shelter", -1), firedAt, title = j.optString("title"))?.let { (lbl, t) ->

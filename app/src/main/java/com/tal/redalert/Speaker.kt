@@ -161,7 +161,6 @@ class Speaker(private val c: Context) {
             title.contains("צונאמי") -> "tsunami"
             title.contains("חומרים מסוכנים") -> "hazardous_materials"
             title.contains("רדיולוג") -> "radiological"
-            title.contains("קונבנציונלי") -> "nonconventional"
             else -> "red_alert"
         }
         val first = "voice/phrases/$t.mp3"

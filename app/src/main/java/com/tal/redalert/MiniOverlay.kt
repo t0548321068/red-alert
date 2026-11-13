@@ -175,24 +175,24 @@ object MiniOverlay {
             override fun run() {
                 val now = System.currentTimeMillis()
                 val enterEnd = firedAt + shelter.coerceAtLeast(0) * 1000L
-                val stayEnd = enterEnd + AlertUi.stayMs(title)
-                // ספירה לכניסה -> שהייה במרחב המוגן -> ממתינים לסיום: הכל באדום. ירוק רק בהודעת סיום
+                // ספירה לכניסה (רק בירי) -> "נשארים במרחב המוגן עד הודעה" / "ממתינים להודעת סיום": הכל באדום. ירוק רק בהודעת סיום
                 when {
                     // מקדימה / סיום: כיתוב קצר וקבוע במקום הנוסח המלא
                     level == AlertService.LEVEL_END && AlertUi.update(title) -> { label.text = "עדכון פיקוד העורף"; timerLabel.text = ""; timer.textSize = 12f; timer.text = title.replace(" - ", "\n") }
                     level == AlertService.LEVEL_PRE -> { label.text = "התרעה מקדימה"; timerLabel.text = ""; timer.textSize = 12f; timer.text = "בדקות הקרובות צפויות\nלהתקבל התרעות באזורך" }
                     level == AlertService.LEVEL_END -> { label.text = "האירוע הסתיים"; timerLabel.text = ""; timer.textSize = 12f; timer.text = "ניתן לצאת\nמהמרחב המוגן" }
                     level != AlertService.LEVEL_ALERT -> { label.text = title; timer.text = ""; timerLabel.text = "" }
-                    shelter > 0 && now < enterEnd -> { label.text = title; timerLabel.text = "זמן התגוננות"; timer.textSize = 19f; timer.text = mmss(enterEnd - now); bg?.setColor(Color.parseColor(RED)) }
-                    now < stayEnd -> { label.text = title; timerLabel.text = "נשארים במרחב המוגן"; timer.textSize = 19f; timer.text = mmss(stayEnd - now); bg?.setColor(Color.parseColor(RED)) }
-                    // אחרי 10 הדקות: "ממתינים להודעת סיום" בצד שמאל, במקום הטיימר
-                    else -> { label.text = title; timerLabel.text = ""; timer.textSize = 14f; timer.text = "ממתינים להודעת סיום"; bg?.setColor(Color.parseColor(RED)) }
+                    !AlertUi.noShelter(title) && shelter > 0 && now < enterEnd -> { label.text = title; timerLabel.text = "זמן התגוננות"; timer.textSize = 19f; timer.text = mmss(enterEnd - now); bg?.setColor(Color.parseColor(RED)) }
+                    // אחרי זמן ההגעה (או מההתחלה כשאין זמן הגעה): בצד שמאל, במקום הטיימר
+                    else -> { label.text = title; timerLabel.text = ""; timer.textSize = 14f
+                        timer.text = if (AlertUi.staysInShelter(title)) "נשארים במרחב\nהמוגן עד הודעה" else "ממתינים להודעת סיום"
+                        bg?.setColor(Color.parseColor(RED)) }
                 }
                 AlertUi.setIcon(icon, AlertUi.stageIcon(title, level, shelter, firedAt, now), big = false)
                 timerBox.visibility = if (timer.text.isEmpty()) View.GONE else View.VISIBLE
                 // כיתוב ריק תופס שורה ודוחף את המלל למטה - מסתירים אותו כדי שהמלל יהיה באמצע הגובה
                 timerLabel.visibility = if (timerLabel.text.isEmpty()) View.GONE else View.VISIBLE
-                if (level == AlertService.LEVEL_ALERT && now < stayEnd) ui.postDelayed(this, 500)
+                if (level == AlertService.LEVEL_ALERT && !AlertUi.noShelter(title) && now < enterEnd + 1000) ui.postDelayed(this, 500)
             }
         }
         tick = t

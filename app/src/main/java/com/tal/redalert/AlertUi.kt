@@ -12,11 +12,18 @@ object AlertUi {
     fun head(title: String, level: Int): Pair<String, String> = when (level) {
         AlertService.LEVEL_PRE -> "מבזק פיקוד העורף" to (if (title.startsWith("התרעה מקדימה - ")) title else "התרעה מקדימה")
         AlertService.LEVEL_END -> "עדכון פיקוד העורף" to (if (update(title)) title else "האירוע הסתיים")
-        else -> title to when {
-            title.contains("רעידת אדמה") -> "צאו לשטח פתוח"
-            title.contains("צונאמי") -> "התרחקו מחוף הים"
-            else -> "היכנסו למרחב המוגן"
-        }
+        else -> title to instruction(title)
+    }
+
+    /** ההנחיה לפי סוג ההתרעה - הנוסח של יישומון פיקוד העורף (alertsTranslation.json באתר שלהם) */
+    fun instruction(title: String) = when {
+        title.contains("כלי טיס") -> "היכנסו מייד למרחב המוגן"
+        title.contains("מחבלים") -> "היכנסו מייד למרחב המוגן"
+        title.contains("חומרים מסוכנים") -> "הסתגרו מייד במבנה"
+        title.contains("רדיולוגי") -> "היכנסו למבנה וסגרו את הדלתות והחלונות"
+        title.contains("רעידת אדמה") -> "צאו לשטח פתוח"
+        title.contains("צונאמי") -> "התרחקו מייד מחוף הים"
+        else -> "היכנסו למרחב המוגן"
     }
 
     /** כותרת קצרה ברשימות ובהתראות: מקדימה = "התרעה מקדימה" (אלא אם כבר עם הקידומת) */
@@ -25,9 +32,18 @@ object AlertUi {
     /** עדכון עם נוסח משלו - מוצג כמו שהגיע */
     fun update(title: String) = Config.updateWords.any { title.contains(it) }
 
-    /** רעידת אדמה / צונאמי: בלי זמן התגוננות ובלי "נשארים במרחב המוגן" - ישר "ממתינים להודעת סיום" */
-    fun noShelter(title: String) = title.contains("רעידת אדמה") || title.contains("צונאמי")
-    fun stayMs(title: String) = if (noShelter(title)) 0L else Prefs.STAY_MS
+    /**
+     * זמן הגעה לפי האזור - רק בירי רקטות וטילים (וסוג שלא מזוהה). בשאר הסוגים פיקוד העורף מנחה "מייד",
+     * בלי זמן התגוננות: בלי ספירה לאחור ובלי הקראת הזמן
+     */
+    fun noShelter(title: String) = title.contains("כלי טיס") || title.contains("מחבלים") || title.contains("חומרים מסוכנים") ||
+        title.contains("רדיולוגי") || title.contains("רעידת אדמה") || title.contains("צונאמי")
+    /** ירי וכלי טיס: נשארים במרחב המוגן עד הודעה (בלי 10 דקות - פיקוד העורף: "עד לקבלת הנחיה מפורשת"). השאר - ממתינים להודעת סיום */
+    fun staysInShelter(title: String) = !noShelter(title) || title.contains("כלי טיס")
+    const val STAY_TEXT = "נשארים במרחב המוגן עד הודעה"
+    const val WAIT_TEXT = "ממתינים להודעת סיום אירוע"
+    /** הכיתוב אחרי זמן ההגעה (או מההתחלה, כשאין זמן הגעה) */
+    fun afterText(title: String) = if (staysInShelter(title)) STAY_TEXT else WAIT_TEXT
 
     /** אייקון לפי סוג ההתרעה: מקדימה / סיום, ובאדום - לפי סוג האיום. לא מזוהה: צופר */
     fun icon(title: String, level: Int): Int = when {
@@ -57,28 +73,22 @@ object AlertUi {
     }
 
     /**
-     * אייקון לפי השלב: בירי - סוג ההתרעה בזמן ההתגוננות, בית בזמן "נשארים במרחב המוגן",
-     * שעון חול ב"ממתינים להודעת סיום". בשאר הרמות - כמו icon()
+     * אייקון לפי השלב: בירי - סוג ההתרעה בזמן ההתגוננות, ואחריו בית ("נשארים במרחב המוגן עד הודעה").
+     * סוג בלי זמן הגעה - האייקון של הסוג כל הזמן. בשאר הרמות - כמו icon()
      */
     fun stageIcon(title: String, level: Int, shelter: Int, firedAt: Long, now: Long = System.currentTimeMillis()): Int {
         if (level != AlertService.LEVEL_ALERT || noShelter(title)) return icon(title, level)
-        val enterEnd = firedAt + shelter.coerceAtLeast(0) * 1000L
-        return when {
-            now < enterEnd -> icon(title, level)
-            now < enterEnd + Prefs.STAY_MS -> R.drawable.ic_stage_stay
-            else -> R.drawable.ic_stage_wait
-        }
+        return if (now < firedAt + shelter.coerceAtLeast(0) * 1000L) icon(title, level) else R.drawable.ic_stage_stay
     }
 
     private fun mmss(s: Int) = "%d:%02d".format(s / 60, s % 60)
 
-    /** (כיתוב, טיימר) לרמת "ירי": זמן התגוננות -> נשארים במרחב המוגן -> ממתינים לסיום. null לשאר הרמות */
+    /** (כיתוב, טיימר) לרמת "ירי": זמן התגוננות -> נשארים במרחב המוגן עד הודעה / ממתינים להודעת סיום. null לשאר הרמות */
     fun timer(level: Int, shelter: Int, firedAt: Long, now: Long = System.currentTimeMillis(), title: String = ""): Pair<String, String>? {
         if (level != AlertService.LEVEL_ALERT) return null
         val enterEnd = firedAt + shelter.coerceAtLeast(0) * 1000L
-        if (now < enterEnd) return "זמן התגוננות" to mmss(((enterEnd - now + 999) / 1000).toInt())
-        val left = ((enterEnd + stayMs(title) - now + 999) / 1000).toInt()
-        return if (left > 0) "נשארים במרחב המוגן" to mmss(left) else "" to "ממתינים להודעת סיום אירוע"
+        if (!noShelter(title) && now < enterEnd) return "זמן התגוננות" to mmss(((enterEnd - now + 999) / 1000).toInt())
+        return "" to afterText(title)
     }
 
     /**

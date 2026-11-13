@@ -751,8 +751,10 @@ class AlertService : Service() {
         }
         // בהצטרפות - בהתראה כל היישובים של האירוע
         val shown = if (join) Prefs.activeAlert(this)?.optString("body")?.takeIf { it.isNotEmpty() } ?: body else body
-        val text = if (shelterSec != null && level == LEVEL_ALERT)
-            "$shown · זמן למרחב מוגן: ${AreaData.shelterText(shelterSec)}" else shown
+        // ירי: זמן ההגעה של האזור. סוג בלי זמן הגעה: ההנחיה שלו (היכנסו מייד / צאו לשטח פתוח...)
+        val text = if (level != LEVEL_ALERT) shown
+            else if (shelterSec != null) "$shown · זמן למרחב מוגן: ${AreaData.shelterText(shelterSec)}"
+            else "$shown · ${AlertUi.instruction(title)}"
         val nb = Notification.Builder(this, channel)
             .setSmallIcon(R.drawable.ic_stat_siren)
             .setLargeIcon(android.graphics.drawable.Icon.createWithResource(this, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
@@ -808,20 +810,19 @@ class AlertService : Service() {
             }
         }
 
-        // ספירה לאחור בווידג'ט הגדול
-        // אחרי שנגמר הזמן להגעה - ההתראה עוברת לספירת השהייה (10 דקות)
+        // אחרי שנגמר הזמן להגעה (כלי טיס - מיד) ההתראה עוברת ל"נשארים במרחב המוגן עד הודעה" - עד הודעת הסיום
         if (level == LEVEL_ALERT && !test) {
             main.removeCallbacks(stayNotif)
-            if (!AlertUi.noShelter(title)) {
-            stayNotifPi = fullPi; stayTitle = title; stayBody = shown; stayEnd = System.currentTimeMillis() + (shelterSec ?: 0).coerceAtLeast(0) * 1000L + Prefs.STAY_MS
+            if (AlertUi.staysInShelter(title)) {
+            stayNotifPi = fullPi; stayTitle = title; stayBody = shown; stayEnd = System.currentTimeMillis() + (shelterSec ?: 0).coerceAtLeast(0) * 1000L + 60 * 60_000L
             main.postDelayed(stayNotif, ((shelterSec ?: 0).coerceAtLeast(0) * 1000L) + 500)
             }
         } else if (level == LEVEL_END) main.removeCallbacks(stayNotif)
-        // התראה נוספת עם ספירה לאחור: זמן התגוננות -> נשארים במרחב המוגן -> ממתינים לסיום
+        // התראה נוספת: זמן התגוננות (רק בירי) -> נשארים במרחב המוגן עד הודעה / ממתינים להודעת סיום
         if (level == LEVEL_ALERT) {
             countTitle = title; countBody = shown; countPi = fullPi; countTest = test
             countEnter = System.currentTimeMillis() + (shelterSec ?: 0).coerceAtLeast(0) * 1000L
-            countStayEnd = countEnter + AlertUi.stayMs(title)
+            countStayEnd = countEnter + Prefs.TEST_STAY_MS   // בבדיקה בלבד: ההתראה נעלמת אחרי 10 דקות (באמיתית - בהודעת הסיום)
             main.removeCallbacks(countNotif); main.post(countNotif)
         } else if (level == LEVEL_END) cancelCount()
 
@@ -831,14 +832,13 @@ class AlertService : Service() {
             main.postDelayed({ AlertWidget.updateAll(this) }, shelterSec * 1000L + 500)
         } else if (level == LEVEL_END) Prefs.setCountdown(this, 0, "")
 
-        // טיימר שהייה במרחב המוגן: 10 דקות מהירי, "הסתיים" מבטל אותו
+        // אירוע ירי פעיל: עד הודעת הסיום ("הסתיים" מבטל), רשת ביטחון - שעה
         if (!test) main.removeCallbacks(stayDone)
         if (test) { }
         else if (level == LEVEL_ALERT) {
-            // 10 הדקות מתחילות אחרי שנגמר הזמן להגעה למרחב המוגן
             val enterMs = (shelterSec ?: 0).coerceAtLeast(0) * 1000L
-            Prefs.setStayUntil(this, System.currentTimeMillis() + enterMs + AlertUi.stayMs(title))
-            main.postDelayed(stayDone, enterMs + AlertUi.stayMs(title))
+            Prefs.setStayUntil(this, System.currentTimeMillis() + enterMs + Prefs.STAY_MS)
+            main.postDelayed(stayDone, enterMs + Prefs.STAY_MS)
         } else if (level == LEVEL_END) {
             Prefs.setStayUntil(this, 0)
         }
@@ -922,7 +922,7 @@ class AlertService : Service() {
         }
     }
 
-    /** ההתראה בשורת ההתראות: ספירת שהייה במרחב המוגן, לחיצה פותחת את מסך הספירה */
+    /** ההתראה בשורת ההתראות: "נשארים במרחב המוגן עד הודעה" (עד הודעת הסיום; רשת ביטחון - שעה), לחיצה פותחת את מסך ההתרעה */
     internal var stayNotifPi: PendingIntent? = null
     internal var stayTitle = ""; internal var stayBody = ""; internal var stayEnd = 0L
     internal val stayNotif = Runnable {
@@ -931,7 +931,7 @@ class AlertService : Service() {
             .setSmallIcon(R.drawable.ic_stat_siren)
             .setLargeIcon(android.graphics.drawable.Icon.createWithResource(this, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
             .setColor(0xFFD50000.toInt())
-            .setContentTitle("⏳ נשארים במרחב המוגן")
+            .setContentTitle("⏳ " + AlertUi.STAY_TEXT)
             .setContentText("$stayTitle · $stayBody")
             .setOnlyAlertOnce(true)
             .setContentIntent(stayNotifPi)
@@ -966,11 +966,7 @@ class AlertService : Service() {
     internal var countEnter = 0L; internal var countStayEnd = 0L; internal var countTest = false
     internal val countNotif: Runnable = Runnable {
         val now = System.currentTimeMillis()
-        val (label, until) = when {
-            now < countEnter -> "זמן התגוננות" to countEnter
-            now < countStayEnd -> "נשארים במרחב המוגן" to countStayEnd
-            else -> "ממתינים להודעת סיום אירוע" to 0L
-        }
+        val (label, until) = if (now < countEnter) "זמן התגוננות" to countEnter else AlertUi.afterText(countTitle) to 0L
         // בדיקה: נעלמת בסוף השהייה; אמיתית - בהודעת הסיום (רשת ביטחון: שעה)
         val gone = if (countTest) countStayEnd else countEnter + 60 * 60_000L
         if (now >= gone) { cancelCount(); return@Runnable }
@@ -992,7 +988,7 @@ class AlertService : Service() {
         try { (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(ID_COUNT) } catch (_: Exception) { }
     }
 
-    /** עברו 10 הדקות - רק מעדכנים תצוגה. "ניתן לצאת" רק בהודעת סיום אירוע */
+    /** עברה שעה בלי הודעת סיום (רשת ביטחון) - רק מעדכנים תצוגה. "ניתן לצאת" רק בהודעת סיום אירוע */
     internal val stayDone = Runnable {
         Prefs.setStayUntil(this, 0)
         AlertWidget.updateAll(this)
