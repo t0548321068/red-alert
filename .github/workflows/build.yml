@@ -3,8 +3,8 @@ name: Build APK
 on:
   push:
     branches: [main, beta, 'pending-*']
-    # יצירת הגרסאות בקול אבר (voice-auto.yml) - לא בונה את האפליקציה
-    paths-ignore: ['.github/workflows/voice-auto.yml']
+    # נבנית רק כשהאפליקציה עצמה משתנה - שינוי בשרת, בממסר, ב-Cloudflare או בניהול צופר לא בונה ולא משחרר גרסה
+    paths: ['app/**', 'build.gradle.kts', 'gradle.properties', 'settings.gradle.kts', '.github/workflows/build.yml']
   workflow_dispatch:
 
 permissions:

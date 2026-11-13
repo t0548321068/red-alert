@@ -10,25 +10,23 @@ const ARCH_FILE = path.join(__dirname, '..', 'archive.json');
 // הארכיון החדש של פיקוד העורף (נובמבר 2026; alerts-history הישן מפנה לדף האתר). period: lastDay / lastWeek / lastMonth
 const ARCH_BASE = 'https://www.oref.org.il/api/v1/AlertHistory/heb?period=';
 // התשובה החדשה (מקובצת לפי תאריך) -> שורות בפורמט הישן: data, category_desc, alertDate עם שניות, date, time
-function convert(t) {
-  if (!t.startsWith('{')) return null;
-  const rows = [];
-  for (const day of JSON.parse(t).alarmsGroupedByDate || []) for (const o of day.value || []) {
-    const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(String(o.date || '')), tm = String(o.time || '');
-    rows.push({ data: o.data, category_desc: o.category_Desc, date: o.date, time: o.time,
-      alertDate: m && tm.length >= 8 ? `${m[3]}-${m[2]}-${m[1]}T${tm.slice(0, 8)}` : o.dateTime });
-  }
-  return rows;
-}
+const convert = require('./parse').archiveRows;   // נבדק בבדיקות
+const { NOT_AREA } = require('./parse');
 const YEAR = 366 * 24 * 3600 * 1000;
-const arch = new Map();   // "כותרת|דקה" -> { t, ts, b: Set }
-try { for (const e of JSON.parse(fs.readFileSync(ARCH_FILE, 'utf8'))) arch.set(e.k, { t: e.t, ts: e.ts, b: new Set(e.b) }); } catch (_) {}
+const arch = new Map();   // "כותרת|דקה" -> { t, ts, b: Set, a: { יישוב: מתי הגיע } }
+try { for (const e of JSON.parse(fs.readFileSync(ARCH_FILE, 'utf8'))) arch.set(e.k, { t: e.t, ts: e.ts, b: new Set(e.b), a: e.a || {}, src: e.src || '' }); } catch (_) {}
+const setTime = (e, area, ts) => { if (!e.a) e.a = {}; if (!(e.a[area] <= ts)) { e.a[area] = ts; return 1; } return 0; };
 
 // הרשימה המוכנה לשליחה - נבנית מחדש רק כשהארכיון השתנה (לא בכל בקשה)
 let cache = null;
 function sorted() {
   if (!cache) {
-    const list = [...arch.values()].sort((a, b) => b.ts - a.ts).map(e => ({ t: e.t, b: [...e.b].join(', '), ts: e.ts }));
+    // s: לכל יישוב (באותו סדר כמו b) - כמה שניות אחרי תחילת השורה הוא הגיע
+    const list = [...arch.values()].sort((a, b) => b.ts - a.ts).map(e => {
+      const b = [...e.b].filter(x => !NOT_AREA.test(x));   // שורות שנשמרו לפני התיקון - בלי חתימת ערוץ
+      // src: המקור הראשון שהתריע בזמן אמת ("archive" - הגיע רק מהארכיון של פיקוד העורף; ריק - שורה ישנה, לא ידוע)
+      return { t: e.t, b: b.join(', '), ts: e.ts, src: e.src || '', s: b.map(x => e.a && e.a[x] ? Math.max(0, Math.round((e.a[x] - e.ts) / 1000)) : 0) };
+    });
     const body = Buffer.from(JSON.stringify(list));
     cache = { list, body, gz: zlib.gzipSync(body) };
   }
@@ -48,9 +46,10 @@ function addRows(rows) {
     const minute = String(o.alertDate || '').replace('T', ' ').slice(0, 16);
     const ts = rowTime(o); if (!ts || !minute) continue;
     const k = title + '|' + minute;
-    let e = arch.get(k); if (!e) { e = { t: title, ts, b: new Set() }; arch.set(k, e); added++; }
+    let e = arch.get(k); if (!e) { e = { t: title, ts, b: new Set(), a: {}, src: 'archive' }; arch.set(k, e); added++; }
     if (ts < e.ts) { e.ts = ts; added++; }
     if (o.data && !e.b.has(o.data)) { e.b.add(o.data); added++; }
+    if (o.data) added += setTime(e, o.data, ts);
   }
   if (added) cache = null;
   return added;
@@ -62,7 +61,7 @@ function save() {
   saving = true;
   const cut = Date.now() - YEAR;
   for (const [k, e] of arch) if (e.ts < cut) { arch.delete(k); cache = null; }
-  const data = JSON.stringify([...arch].map(([k, e]) => ({ k, t: e.t, ts: e.ts, b: [...e.b] })));
+  const data = JSON.stringify([...arch].map(([k, e]) => ({ k, t: e.t, ts: e.ts, b: [...e.b], a: e.a || {}, src: e.src || '' })));
   const done = () => { saving = false; if (pending) { pending = false; save(); } };
   fs.writeFile(ARCH_FILE + '.tmp', data, err => { if (err) return done(); fs.rename(ARCH_FILE + '.tmp', ARCH_FILE, done); });
 }
@@ -72,9 +71,39 @@ async function backfill() {
   try { addRows(await fetchRows('lastMonth')); } catch (_) {}
   save(); log('archive backfill', arch.size + ' events');
 }
+// התרעות שנשלחו בזמן אמת: יישובים שהגיעו בזמן אמת ולא נכנסו לארכיון של פיקוד העורף (למשל רעידת אדמה:
+// "בחלק מהאזורים בארץ" בארכיון, ואילת והערבה רק בזמן אמת) מצטרפים לשורה של אותו סוג באותו זמן (עד דקה וחצי).
+// אין שורה כזו בארכיון (עדיין) - מחכים לה עד 10 דקות; כותרת אחרת (כמו "האירוע הסתיים" במקום הנוסח המלא) לא יוצרת שורה
+const LIVE_WAIT = 10 * 60 * 1000, LIVE_NEAR = 90 * 1000;
+let live = [];
+function joinLive() {
+  if (!live.length) return 0;
+  const now = Date.now();
+  let added = 0;
+  live = live.filter(l => {
+    let best = null;
+    for (const e of arch.values()) if (e.t === l.t && Math.abs(e.ts - l.at) <= LIVE_NEAR && (!best || Math.abs(e.ts - l.at) < Math.abs(best.ts - l.at))) best = e;
+    if (!best) return now - l.at < LIVE_WAIT;
+    // הסדר - כמו שהגיעו בזמן אמת (קודם היישובים שהגיעו בזמן אמת, אחריהם מה שיש רק בארכיון)
+    const arr = [...best.b], nl = best.nl || 0, head = arr.slice(0, nl);
+    const add = l.areas.filter(a => !head.includes(a));
+    const order = [...head, ...add, ...arr.slice(nl).filter(a => !add.includes(a))];
+    if (order.join('|') !== arr.join('|')) { best.b = new Set(order); added++; }
+    for (const a of l.areas) added += setTime(best, a, l.at);
+    // המקור - הראשון שהתריע בזמן אמת (גובר על "archive")
+    if (l.src && (!best.src || best.src === 'archive')) { best.src = l.src; added++; }
+    best.nl = head.length + add.length;
+    return false;
+  });
+  if (added) cache = null;
+  return added;
+}
+function addLive(title, areas, at, src = '') {
+  try { live.push({ t: title, areas, at: at || Date.now(), src }); if (joinLive()) save(); } catch (_) {}
+}
 /** שורות שהגיעו ממקור אחר (הממסר בבית) */
-function ingest(rows) { try { if (addRows(rows)) save(); } catch (_) {} }
-async function poll() { try { if (addRows(await fetchRows('lastDay'))) save(); } catch (_) {} }
+function ingest(rows) { try { if (addRows(rows) + joinLive()) save(); } catch (_) {} }
+async function poll() { try { if (addRows(await fetchRows('lastDay')) + joinLive()) save(); } catch (_) {} }
 
 function serve(req, res, since) {
   const c = sorted();
@@ -93,4 +122,4 @@ function start() {
   setInterval(poll, 60 * 1000);
 }
 
-module.exports = { start, serve, convert, ARCH_BASE, ingest };
+module.exports = { start, serve, convert, ARCH_BASE, ingest, addLive };

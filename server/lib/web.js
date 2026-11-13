@@ -122,6 +122,13 @@ function handle(req, res, u, state) {
     sendFile(res, path.join(WEB_DIR, 'm', p.slice(5)), !p.endsWith('.js')); return true;
   }
   if (p === '/app') { res.writeHead(301, { Location: '/app/' }); res.end(); return true; }
+  // קישור חד-פעמי להקלטת הגייה (לגיטהאב) - בלי כניסה, תקף 15 דקות להורדה אחת
+  // יצירת גרסאות בקול אבר (בנייה מתוזמנת בגיטהאב): רשימת עבודות והעלאת קבצים - עם מפתח חד-פעמי לכל הקלטה
+  if (p === '/voice-jobs') { require('./review').jobs(res); return true; }
+  if (p === '/voice-rec') { require('./review').recFor(res, u); return true; }
+  if (p === '/voice-progress') { require('./review').progress(res, u); return true; }
+  if (p === '/voice-upload') { require('./review').upload(req, res, u); return true; }
+  if (p.startsWith('/rec-pub/')) { require('./review').pub(res, p.slice(9).replace(/[^0-9a-f]/g, '')); return true; }
   const isWeb = p === '/' || p.startsWith('/app/') || p.startsWith('/api/') || p.startsWith('/assets/') || p.startsWith('/w/');
   if (!isWeb) return false;
   if (!loggedIn(req)) {
@@ -139,6 +146,8 @@ function handle(req, res, u, state) {
   if (p === '/api/drill' && req.method === 'POST') { require('./chain').drill(res, u.searchParams.get('kind')); return true; }
   if (p === '/api/message' && req.method === 'POST') { devices.sendMessage(req, res); return true; }
   if (p === '/api/relay') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(require('./relay').status())); return true; }
+  // אפליקציית "ניהול צופר": סימונים, הערות והצעות שינוי ליישובים
+  if (p.startsWith('/api/review')) { require('./review').handle(req, res, u); return true; }
   if (p === '/api/devices') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(devices.list())); return true; }
   if (p === '/api/logout') {
     res.writeHead(302, { Location: u.searchParams.get('to') === 'app' ? '/app/' : '/', 'Set-Cookie': 'tz=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict' }); res.end(); return true;

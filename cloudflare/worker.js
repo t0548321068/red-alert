@@ -1,4 +1,4 @@
-// השרת המשני (Cloudflare Worker "oref-proxy"). שני תפקידים:
+// השרת המשני (Cloudflare Worker "oref-proxy"). שני תפקידים (ועוד: זמני שבת מעתים לבינה לשרת הראשי, /itim):
 // 1. מעבר לפיקוד העורף בשביל השרת הראשי (/live /history /archive /home) - פיקוד העורף חוסם את Oracle מנובמבר 2026.
 // 2. גיבוי מלא: פעם בדקה בודק שהשרת הראשי חי. אם לא ענה פעמיים ברצף - בודק את המקורות בעצמו ושולח לטלפונים
 //    התרעות וסימני חיים דרך Firebase (כך הטלפונים לא עוברים לבדוק בעצמם ולא צורכים סוללה). כשהראשי חוזר - חוזר להמתנה.
@@ -31,6 +31,16 @@ export default {
     if (kind === 'state') {
       if (!keyOk(req, env)) return new Response('unauthorized', { status: 401 });
       return env.BACKUP.get(env.BACKUP.idFromName('main')).fetch('https://do/state');
+    }
+    // זמני שבת מ"עתים לבינה" בשביל השרת הראשי (פעם בשבוע) - רק נתיב הזמנים, ורק עם המפתח
+    if (kind === 'itim') {
+      if (!keyOk(req, env)) return new Response('unauthorized', { status: 401 });
+      const p = new URL(req.url).searchParams.get('p') || '';
+      if (!/^times\/bydatesrange\/[\w%,:. \/-]+$/.test(p)) return new Response('bad path', { status: 400 });
+      const r = await fetch('https://itimlabina.co.il/api/' + p.replace(/ /g, '%20'), {
+        headers: { Accept: 'application/json', 'User-Agent': OREF_H['User-Agent'], Referer: 'https://itimlabina.co.il/' },
+      });
+      return new Response(await r.arrayBuffer(), { status: r.status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
     }
     if (!OREF[kind]) return new Response('not found', { status: 404 });
     if (!keyOk(req, env)) return new Response('unauthorized', { status: 401 });

@@ -16,11 +16,12 @@ const fixAll = s => String(s).replace(/ברחבי הארץ/g, ALL_COUNTRY);
 
 // ---- רמות וכותרות - אותם כללים כמו באפליקציה (מהשרת) ----
 const PRE = 1, ALERT = 2, END = 3;
-let CFG = { end: ['הסתיים', 'הוסר', 'ניתן לצאת'], pre: ['בדקות הקרובות', 'צפויות', 'מקדימה', 'איום', 'התקרבו'], endDisplay: 'האירוע הסתיים', prePrefix: null };
-const levelOf = t => CFG.end.some(w => t.includes(w)) ? END : CFG.pre.some(w => t.includes(w)) ? PRE : ALERT;
+let CFG = { end: ['הסתיים', 'הוסר', 'ניתן לצאת'], pre: ['בדקות הקרובות', 'צפויות', 'מקדימה', 'איום', 'התקרבו'], endDisplay: 'האירוע הסתיים', prePrefix: null, update: [] };
+const isUpdate = t => (CFG.update || []).some(w => t.includes(w));
+const levelOf = t => CFG.end.some(w => t.includes(w)) || isUpdate(t) ? END : CFG.pre.some(w => t.includes(w)) ? PRE : ALERT;
 function showTitle(t) {
   const l = levelOf(t);
-  if (l === END) return CFG.endDisplay || t;
+  if (l === END) return isUpdate(t) ? t : CFG.endDisplay || t;
   const p = CFG.prePrefix;
   if (l === PRE && p && p.contains.some(w => t.includes(w)) && !t.startsWith(p.prefix)) return p.prefix + t;
   return t;
@@ -28,7 +29,7 @@ function showTitle(t) {
 const COLOR = { [PRE]: '#F08C00', [END]: '#2E7D32', [ALERT]: '#D50000' };
 function head(title, lvl) {
   if (lvl === PRE) { const t = showTitle(title); return ['מבזק פיקוד העורף', t.startsWith('התרעה מקדימה - ') ? t : 'התרעה מקדימה']; }
-  if (lvl === END) return ['עדכון פיקוד העורף', 'האירוע הסתיים'];
+  if (lvl === END) return ['עדכון פיקוד העורף', isUpdate(title) ? title : 'האירוע הסתיים'];
   return [title, 'היכנסו למרחב המוגן'];
 }
 function alertIcon(title, lvl) {
@@ -286,7 +287,7 @@ function feedItems() {
   return recent.filter(e => e.ts >= since).slice(0, 30);
 }
 function feedHtml(e) {
-  const lvl = levelOf(e.t), t = lvl === END ? 'האירוע הסתיים' : e.t.includes('בדקות הקרובות') ? 'מקדימה' : e.t;
+  const lvl = levelOf(e.t), t = lvl === END ? showTitle(e.t) : e.t.includes('בדקות הקרובות') ? 'מקדימה' : e.t;
   const n = alertIcon(e.t, lvl), i = `<i class="ic fi" style="--i:url(/app/ic/${n}.svg);color:${COLOR[lvl]};transform:scale(${iconScale(n)})"></i>`;
   return `${hm(new Date(e.ts))}:${pad(new Date(e.ts).getSeconds())}\n${i} ${esc(t)} ${i}\n<span class="ar">${esc(fixAll(e.b))}</span>`;
 }

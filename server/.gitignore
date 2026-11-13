@@ -8,3 +8,8 @@ web_auth.json
 devices.json
 relay.key
 shabbat_week.json
+tilecache/
+review.json
+recordings/
+voice-overrides/
+voice-history/

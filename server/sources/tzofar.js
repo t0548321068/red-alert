@@ -6,9 +6,8 @@ const { log } = require('../lib/util');
 const { send } = require('../lib/push');
 const { setTzofar } = require('../lib/health');
 
-const THREATS = { 0: 'ירי רקטות וטילים', 1: 'אירוע חומרים מסוכנים', 2: 'חדירת מחבלים', 3: 'רעידת אדמה', 4: 'חשש לצונאמי',
-  5: 'חדירת כלי טיס עוין', 6: 'חשש לאירוע רדיולוגי', 7: 'חשש לאירוע כימי', 8: 'התרעות פיקוד העורף' };
-const PRE = 'בדקות הקרובות צפויות להתקבל התרעות באזורך', END = 'האירוע הסתיים';
+const P = require('../lib/parse');   // הפענוח עצמו (נבדק בבדיקות)
+const { PRE, END } = P;
 
 // מזהה עיר של צופר -> שם אזור של פיקוד העורף
 const cityIds = {};
@@ -34,12 +33,8 @@ function connect() {
       const m = JSON.parse(buf.toString()); const d = m.data; if (!d) return;
       const id = m.type + '_' + d.notificationId; if (seen.has(id)) return; seen.add(id);
       if (seen.size > 500) seen.delete(seen.values().next().value);
-      if (m.type === 'ALERT' && !d.isDrill && THREATS[d.threat ?? 0] && Array.isArray(d.cities)) {
-        send(THREATS[d.threat ?? 0], d.cities, 'tzofar');
-      } else if (m.type === 'SYSTEM_MESSAGE' && (d.instructionType === 0 || d.instructionType === 1)) {
-        const areas = (d.citiesIds || []).map(i => cityIds[i]).filter(Boolean);
-        if (areas.length) send(d.instructionType === 0 ? PRE : END, areas, 'tzofar');
-      }
+      const a = P.tzofar(m, cityIds);
+      if (a) send(a.title, a.areas, 'tzofar');
     } catch (_) {}
   });
   let closed = false;

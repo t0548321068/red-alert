@@ -1,0 +1,58 @@
+name: Build admin APK
+
+# ניהול צופר: אפליקציה נפרדת לבדיקת היישובים, ההקראה והצלילים. נבנית ומתפרסמת (גרסה "admin") מענף admin
+on:
+  push:
+    branches: [admin]
+    paths: ['admin/**', 'app/src/main/assets/**', 'app/src/main/res/raw/**', '.github/workflows/admin.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.3
+      - name: Build
+        run: |
+          set -o pipefail
+          gradle :admin:assembleRelease --console=plain 2>&1 | tee build.log || {
+            grep -E '^e: |error:|Lint found|What went wrong' -A2 build.log | head -30 | sed 's/^/::error::/'
+            exit 1
+          }
+      - name: Sign
+        env:
+          SIGNING_PASS: ${{ secrets.SIGNING_PASS }}
+        run: |
+          set -e
+          B=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)
+          W=$(mktemp -d)
+          git fetch -q origin signing
+          git show FETCH_HEAD:signing.enc | openssl enc -d -aes-256-cbc -pbkdf2 -iter 300000 -pass env:SIGNING_PASS | tar -x -C $W
+          $B/zipalign -f -p 4 admin/build/outputs/apk/release/admin-release-unsigned.apk $W/aligned.apk
+          $B/apksigner sign --ks $W/new.ks --ks-key-alias redalert2 --ks-pass env:SIGNING_PASS --key-pass env:SIGNING_PASS \
+            --out tzofar-admin.apk $W/aligned.apk
+          rm -rf $W
+          $B/apksigner verify tzofar-admin.apk
+      - name: Publish
+        if: github.ref == 'refs/heads/admin'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          R=${{ github.repository }}
+          if gh release view admin --repo $R >/dev/null 2>&1; then
+            gh release upload admin tzofar-admin.apk --clobber --repo $R
+            gh release edit admin --repo $R --title "ניהול צופר · 1.0.32" --prerelease --draft=false
+          else
+            gh release create admin tzofar-admin.apk --repo $R --prerelease --latest=false --target ${{ github.sha }} \
+              --title "ניהול צופר · 1.0.32" --notes "בדיקת היישובים, ההקראה והצלילים של צופר חירום"
+          fi
