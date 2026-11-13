@@ -32,7 +32,7 @@ function clean(i) {
 }
 
 /** מה שהאפליקציה מקבלת: השליחות האחרונות, בלי המפתח */
-const view = () => ({ batches: data.batches.slice(-10).map(({ tok, ...b }) => b) });
+const view = () => ({ batches: data.batches.slice(-30).map(({ tok, ...b }) => b) });
 
 function handle(req, res) {
   const send = (code, o) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); };

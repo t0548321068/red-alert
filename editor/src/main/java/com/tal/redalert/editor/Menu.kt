@@ -32,6 +32,8 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
     private var busy = false
     /** שליחה קודמת שנפתחה (לחיצה על שורה ב"שליחות קודמות") - העמוד מציג את השינויים שבה */
     private var openBatch: JSONObject? = null
+    /** "שליחות שבוצעו" נפתח: כל השינויים שבוצעו, לפי שליחה */
+    private var doneList: List<JSONObject>? = null
     private fun pct(b: JSONObject) = when (b.optString("state")) { "done" -> 100; "sent" -> 0; else -> b.optInt("p", 0) }
     private fun ringFor(b: JSONObject) = Ring(context, pct(b), if (b.optString("state") == "done") Ui.GREEN else Ui.BLUE)
 
@@ -74,6 +76,7 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
         val (top, bottom) = layer.insets()
         col.setPadding(0, top, 0, bottom + Ui.dp(30))
         openBatch?.let { showBatch(it); return }
+        doneList?.let { showDone(it); return }
         col.addView(LinearLayout(context).apply {
             gravity = Gravity.CENTER_VERTICAL; setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(6))
             addView(Ui.tv(context, "עריכת צופר", 22f, bold = true), LinearLayout.LayoutParams(0, -2, 1f))
@@ -222,11 +225,15 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
                 openBatch?.let { ob -> (0 until a.length()).map { a.getJSONObject(it) }.firstOrNull { it.optString("id") == ob.optString("id") }
                     ?.let { nb -> if (nb.optString("state") != ob.optString("state") || nb.optInt("p") != ob.optInt("p") || nb.optString("msg") != ob.optString("msg")) { openBatch = nb; rebuild() } }
                     return@post }
+                if (doneList != null) return@post
+                val all = (0 until a.length()).map { a.getJSONObject(it) }.reversed()
+                val open = all.filter { it.optString("state") != "done" }
+                val done = all.filter { it.optString("state") == "done" }
                 sent.addView(Ui.tv(context, "שליחות קודמות", 13f, Color.parseColor("#AAAAAA")).apply { setPadding(Ui.dp(28), Ui.dp(14), Ui.dp(28), Ui.dp(6)) })
                 val c = card()
                 val fmt = java.text.SimpleDateFormat("dd/MM HH:mm", java.util.Locale.US)
-                for (i in a.length() - 1 downTo 0) {
-                    val b = a.getJSONObject(i); val n = b.optJSONArray("items")?.length() ?: 0
+                for (b in open) {
+                    val n = b.optJSONArray("items")?.length() ?: 0
                     val (stName, stColor) = when (b.optString("state")) { "done" -> "בוצע" to Ui.GREEN; "working" -> "בטיפול" to Ui.ORANGE; else -> "נשלח – ממתין לטיפול" to Color.parseColor("#5AA9FF") }
                     val r2 = row(c, fmt.format(java.util.Date(b.optLong("at"))) + " · " + (if (n == 1) "שינוי אחד" else "$n שינויים"), "",
                         click = { openBatch = b; rebuild(); scrollTo(0, 0) })
@@ -234,6 +241,14 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
                     (r2.getChildAt(0) as LinearLayout).addView(Ui.tv(context, stName + b.optString("msg").takeIf { it.isNotEmpty() }?.let { " · $it" }.orEmpty(), 12f, stColor))
                     r2.addView(ringFor(b), 0, LinearLayout.LayoutParams(Ui.dp(40), Ui.dp(40)).apply { marginEnd = Ui.dp(12) })
                     r2.addView(Ui.tv(context, "‹", 20f, Ui.GRAY))
+                }
+                // שליחות שבוצעו - שורה אחת בסוף, פותחת עמוד עם כל השינויים שבוצעו
+                if (done.isNotEmpty()) {
+                    val n = done.sumOf { it.optJSONArray("items")?.length() ?: 0 }
+                    val r3 = row(c, "שליחות שבוצעו (${done.size})", "", click = { doneList = done; rebuild(); scrollTo(0, 0) })
+                    (r3.getChildAt(0) as LinearLayout).addView(Ui.tv(context, if (n == 1) "שינוי אחד" else "$n שינויים", 12f, Ui.GREEN))
+                    r3.addView(Ring(context, 100, Ui.GREEN), 0, LinearLayout.LayoutParams(Ui.dp(40), Ui.dp(40)).apply { marginEnd = Ui.dp(12) })
+                    r3.addView(Ui.tv(context, "‹", 20f, Ui.GRAY))
                 }
                 sent.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(Ui.dp(16), 0, Ui.dp(16), Ui.dp(10)) })
             }
@@ -253,7 +268,24 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
             addView(ringFor(b), LinearLayout.LayoutParams(Ui.dp(56), Ui.dp(56)).apply { marginEnd = Ui.dp(14) })
             addView(Ui.tv(context, stName + b.optString("msg").takeIf { it.isNotEmpty() }?.let { "\n$it" }.orEmpty(), 14f, stColor), LinearLayout.LayoutParams(0, -2, 1f))
         })
-        val items = b.optJSONArray("items") ?: org.json.JSONArray()
+        itemCards(b.optJSONArray("items") ?: org.json.JSONArray())
+    }
+
+    /** כל השינויים שבוצעו: לכל שליחה - התאריך, ומתחת השינויים שלה לפי מסך */
+    private fun showDone(list: List<JSONObject>) {
+        col.addView(Ui.tv(context, "שליחות שבוצעו", 20f, bold = true).apply { setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(6)) })
+        val fmt = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.US)
+        list.forEach { b ->
+            val n = b.optJSONArray("items")?.length() ?: 0
+            col.addView(Ui.tv(context, fmt.format(java.util.Date(b.optLong("at"))) + " · " + (if (n == 1) "שינוי אחד" else "$n שינויים") +
+                b.optString("msg").takeIf { it.isNotEmpty() }?.let { " · $it" }.orEmpty(), 15f, Ui.GREEN, bold = true)
+                .apply { setPadding(Ui.dp(24), Ui.dp(18), Ui.dp(24), 0) })
+            itemCards(b.optJSONArray("items") ?: org.json.JSONArray())
+        }
+    }
+
+    /** השינויים של שליחה, בכרטיס לכל מסך */
+    private fun itemCards(items: org.json.JSONArray) {
         // לפי מסך
         val byScreen = LinkedHashMap<String, MutableList<JSONObject>>()
         for (i in 0 until items.length()) items.getJSONObject(i).let { byScreen.getOrPut(it.optString("screenName").ifEmpty { it.optString("screen") }) { mutableListOf() }.add(it) }
@@ -294,7 +326,7 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
     override fun dispatchKeyEvent(e: android.view.KeyEvent): Boolean {
         if (e.keyCode != android.view.KeyEvent.KEYCODE_BACK) return super.dispatchKeyEvent(e)
         if (e.action == android.view.KeyEvent.ACTION_UP) {
-            if (openBatch != null) { openBatch = null; rebuild(); scrollTo(0, 0); post { requestFocus() } } else layer.closeMenu()
+            if (openBatch != null || doneList != null) { openBatch = null; doneList = null; rebuild(); scrollTo(0, 0); post { requestFocus() } } else layer.closeMenu()
         }
         return true
     }
