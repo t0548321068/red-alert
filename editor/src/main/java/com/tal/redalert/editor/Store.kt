@@ -16,18 +16,20 @@ class Edit(val screen: String, val path: String, val cls: String, var label: Str
     var bold: Boolean? = null
     /** יישור טקסט: right / center / left */
     var align: String? = null
+    /** מרכוז אנכי: top / center / bottom */
+    var valign: String? = null
     var dx = 0f
     var dy = 0f
     var note = ""
     var shot: String? = null
     var theme = ""
 
-    fun changed() = color != null || size != null || bold != null || align != null || radius != null || text != null || dx != 0f || dy != 0f || note.isNotBlank()
+    fun changed() = color != null || size != null || bold != null || align != null || valign != null || radius != null || text != null || dx != 0f || dy != 0f || note.isNotBlank()
     fun copy() = fromJson(toJson())
 
     fun toJson(): JSONObject = JSONObject().put("screen", screen).put("path", path).put("cls", cls).put("label", label)
         .put("kind", kind).put("base", base).put("color", color).put("size", size?.toDouble()).put("radius", radius?.toDouble())
-        .put("text", text).put("bold", bold).put("align", align).put("dx", dx.toDouble()).put("dy", dy.toDouble()).put("note", note).put("shot", shot).put("theme", theme)
+        .put("text", text).put("bold", bold).put("align", align).put("valign", valign).put("dx", dx.toDouble()).put("dy", dy.toDouble()).put("note", note).put("shot", shot).put("theme", theme)
 
     /** מה שנשלח לשרת */
     fun toSend(): JSONObject {
@@ -39,6 +41,8 @@ class Edit(val screen: String, val path: String, val cls: String, var label: Str
         text?.let { c.put("text", JSONObject().put("from", base.optString("text")).put("to", it)) }
         align?.let { fun n(a: String) = if (a == "right") "ימין" else if (a == "left") "שמאל" else "מרכז"
             c.put("align", JSONObject().put("from", n(base.optString("align"))).put("to", n(it))) }
+        valign?.let { fun n(a: String) = if (a == "top") "למעלה" else if (a == "bottom") "למטה" else "מרכז"
+            c.put("valign", JSONObject().put("from", n(base.optString("valign"))).put("to", n(it))) }
         bold?.let { c.put("bold", JSONObject().put("from", if (base.optBoolean("bold")) "מודגש" else "רגיל").put("to", if (it) "מודגש" else "רגיל")) }
         if (dx != 0f || dy != 0f) c.put("move", JSONObject().put("dx", dx.toDouble()).put("dy", dy.toDouble()))
         if (note.isNotBlank()) c.put("note", note.trim())
@@ -55,6 +59,7 @@ class Edit(val screen: String, val path: String, val cls: String, var label: Str
             text = if (o.isNull("text")) null else o.optString("text")
             bold = if (o.isNull("bold") || !o.has("bold")) null else o.optBoolean("bold")
             align = o.optString("align").takeIf { it in setOf("right", "center", "left") }
+            valign = o.optString("valign").takeIf { it in setOf("top", "center", "bottom") }
             dx = o.optDouble("dx", 0.0).toFloat(); dy = o.optDouble("dy", 0.0).toFloat()
             note = o.optString("note"); shot = o.optString("shot").takeIf { it.isNotEmpty() && it != "null" }
             theme = o.optString("theme")
