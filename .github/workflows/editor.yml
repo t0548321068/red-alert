@@ -27,7 +27,7 @@ jobs:
         run: |
           set -o pipefail
           # עריכת צופר = הקוד של צופר חירום מענף beta (מה שמותקן אצל טל) + שכבת העריכה
-          git fetch -q --depth=1 origin beta && git checkout FETCH_HEAD -- app
+          git fetch -q --depth=1 origin refs/heads/beta && rm -rf app && git checkout FETCH_HEAD -- app
           # לא רשומה ב-settings.gradle.kts (שינוי שם בונה ומשחרר את צופר חירום) - נוספת כאן, רק לבנייה הזו
           echo 'include(":editor")' >> settings.gradle.kts
           V=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
