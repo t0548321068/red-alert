@@ -639,7 +639,8 @@ class AlertService : Service() {
         val now = System.currentTimeMillis()
         // בלי כפילויות בתוך ההודעה עצמה
         // "ברחבי הארץ" מאוחד ל"כל הארץ" - בכל מקום שמוצג (פיד, התרעות אחרונות, מסך ההתרעה)
-        val areas = rawAreas.map { it.trim() }.filter { it.isNotBlank() }.map { AreaData.unify(it) }
+        // חתימת ערוץ ("צופר - צבע אדום") אינה יישוב - לא מוצגת ולא נשמרת
+        val areas = rawAreas.map { it.trim() }.filter { it.isNotBlank() && !AreaData.notArea(it) }.map { AreaData.unify(it) }
             .distinct()   // לפי השם המלא - "ירושלים - מרכז" ו"ירושלים - צפון" נשארים שניהם
 
         // פיד ארצי: כל ההתראות, לפני הסינון לפי אזורים (בלי צליל)

@@ -192,4 +192,10 @@ class AlertDisplayTest {
         assertEquals(t + 4000, Prefs.rowTime(e) { it != "בחלק מהאזורים בארץ" })
         assertEquals(t, Prefs.rowTime(Prefs.Entry("", "x", "בחלק מהאזורים בארץ", 0, t)) { false })   // אין יישובים - השעה של השורה
     }
+
+    // ---- חתימת ערוץ טלגרם היא לא יישוב ----
+    @Test fun channelSignatureIsNotArea() {
+        assertTrue(AreaData.notArea("צופר - צבע אדום"))
+        assertFalse(AreaData.notArea("שדרות"))
+    }
 }
