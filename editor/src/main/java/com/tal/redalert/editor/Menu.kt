@@ -230,9 +230,10 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
                     val (stName, stColor) = when (b.optString("state")) { "done" -> "בוצע" to Ui.GREEN; "working" -> "בטיפול" to Ui.ORANGE; else -> "נשלח – ממתין לטיפול" to Color.parseColor("#5AA9FF") }
                     val r2 = row(c, fmt.format(java.util.Date(b.optLong("at"))) + " · " + (if (n == 1) "שינוי אחד" else "$n שינויים"), "",
                         click = { openBatch = b; rebuild(); scrollTo(0, 0) })
+                    // קודם הכיתוב (בתוך עמודת הטקסט), ורק אחר כך העיגול לפניה
+                    (r2.getChildAt(0) as LinearLayout).addView(Ui.tv(context, stName + b.optString("msg").takeIf { it.isNotEmpty() }?.let { " · $it" }.orEmpty(), 12f, stColor))
                     r2.addView(ringFor(b), 0, LinearLayout.LayoutParams(Ui.dp(40), Ui.dp(40)).apply { marginEnd = Ui.dp(12) })
                     r2.addView(Ui.tv(context, "‹", 20f, Ui.GRAY))
-                    ((r2.getChildAt(0) as LinearLayout)).addView(Ui.tv(context, stName + b.optString("msg").takeIf { it.isNotEmpty() }?.let { " · $it" }.orEmpty(), 12f, stColor))
                 }
                 sent.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(Ui.dp(16), 0, Ui.dp(16), Ui.dp(10)) })
             }
