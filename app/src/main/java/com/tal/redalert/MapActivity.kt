@@ -167,7 +167,8 @@ class MapActivity : Activity() {
             val times = if (tArr != null && tArr.size == areas.size) areas.indices.associate { areas[it] to tArr[it] } else emptyMap()
             val shownAreas = areas.map { it.replace("ברחבי הארץ", AreaData.ALL_COUNTRY) }
             val shownTimes = times.mapKeys { it.key.replace("ברחבי הארץ", AreaData.ALL_COUNTRY) }
-            sheetView = AlertSheet.build(this, barTitle, level, intent.getLongExtra("focusTs", 0L), shownAreas, shownTimes, dark) { peek ->
+            sheetView = AlertSheet.build(this, barTitle, level, intent.getLongExtra("focusTs", 0L), shownAreas, shownTimes, dark,
+                intent.getStringExtra("focusSrc") ?: "") { peek ->
                 sheetPeek = peek; if (lastPts.isNotEmpty() && !showAll) fit(lastPts, 60, 14.0)
             }
             frame.addView(sheetView, FrameLayout.LayoutParams(-1, -1))
