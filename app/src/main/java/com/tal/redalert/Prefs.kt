@@ -264,6 +264,9 @@ object Prefs {
     fun setShabbatClock(c: Context, v: Boolean) = sp(c).edit().putBoolean("shabbatClock", v).commit()
     fun shabbatSeconds(c: Context) = sp(c).getBoolean("shabbatSec", false)
     fun setShabbatSeconds(c: Context, v: Boolean) = sp(c).edit().putBoolean("shabbatSec", v).commit()
+    /** מסך שבת: נקודתיים מהבהבות בשעון */
+    fun shabbatBlink(c: Context) = sp(c).getBoolean("shabbatBlink", false)
+    fun setShabbatBlink(c: Context, v: Boolean) = sp(c).edit().putBoolean("shabbatBlink", v).commit()
     /** הפעלה מהירה מכפתור השעון: המצב שהיה לפני (-1 = לא בהפעלה מהירה). ביציאה חוזרים אליו */
     fun shabbatQuick(c: Context) = sp(c).getInt("shabbatQuick", -1)
     fun setShabbatQuick(c: Context, prev: Int) = sp(c).edit().putInt("shabbatQuick", prev).commit()

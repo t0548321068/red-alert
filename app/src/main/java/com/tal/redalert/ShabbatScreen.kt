@@ -194,7 +194,11 @@ internal class ShabbatScreen(private val a: MainActivity) {
         exitBtn.visibility = View.VISIBLE
         breathing(clockOn())
         if (!clockOn()) return
-        time.text = android.text.format.DateFormat.format(if (Prefs.shabbatSeconds(a)) "HH:mm:ss" else "HH:mm", now)
+        val hm = android.text.format.DateFormat.format(if (Prefs.shabbatSeconds(a)) "HH:mm:ss" else "HH:mm", now).toString()
+        // נקודתיים מהבהבות (אם נבחר): חצי שנייה מוצגות, חצי שנייה שקופות - בלי שהשעה זזה
+        time.text = if (!Prefs.shabbatBlink(a) || now % 1000 < 500) hm else android.text.SpannableString(hm).apply {
+            hm.forEachIndexed { i, ch -> if (ch == ':') setSpan(android.text.style.ForegroundColorSpan(Color.TRANSPARENT), i, i + 1, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE) }
+        }
         time.textSize = if (Prefs.shabbatSeconds(a)) 72f else 96f
         // התאריך של היום עצמו: בליל שבת - של יום שישי, ומ-00:00 - של שבת
         val cal = Calendar.getInstance(TimeZone.getTimeZone("Asia/Jerusalem")).apply { timeInMillis = now }

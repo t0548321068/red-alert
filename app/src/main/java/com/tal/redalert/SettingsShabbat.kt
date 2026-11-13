@@ -34,6 +34,9 @@ internal fun MainActivity.chooseShabbat() = ouiPage("מצב שבת") { body, reb
         ouiDivider(scr)
         val sec = Prefs.shabbatSeconds(this)
         ouiRow(scr, "שניות", sub = onOff(sec), on = sec) { Prefs.setShabbatSeconds(this, !sec); rebuild() }
+        ouiDivider(scr)
+        val blink = Prefs.shabbatBlink(this)
+        ouiRow(scr, "נקודתיים מהבהבות", sub = onOff(blink), on = blink) { Prefs.setShabbatBlink(this, !blink); rebuild() }
     }
     ouiAdd(body, scr)
     ouiNote(body, "בזמן מצב שבת המסך לא מגיב לנגיעות. יציאה – לחיצה ארוכה של 5 שניות על הכפתור בתחתית")
