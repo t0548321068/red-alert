@@ -1,0 +1,60 @@
+name: Build editor APK
+
+# עריכת צופר: אפליקציה נפרדת לעריכת הנראות של צופר חירום. נבנית ומתפרסמת (גרסה "editor") מענף editor
+on:
+  push:
+    branches: [editor]
+    paths: ['editor/**', '.github/workflows/editor.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.3
+      - name: Build
+        run: |
+          set -o pipefail
+          # עריכת צופר לא רשומה ב-settings.gradle.kts (שינוי שם בונה ומשחרר את צופר חירום) - נוספת כאן, רק לבנייה הזו
+          echo 'include(":editor")' >> settings.gradle.kts
+          gradle :editor:assembleRelease --console=plain 2>&1 | tee build.log || {
+            grep -E '^e: |error:|Lint found|What went wrong' -A2 build.log | head -30 | sed 's/^/::error::/'
+            exit 1
+          }
+      - name: Sign
+        env:
+          SIGNING_PASS: ${{ secrets.SIGNING_PASS }}
+        run: |
+          set -e
+          B=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)
+          W=$(mktemp -d)
+          git fetch -q origin signing
+          git show FETCH_HEAD:signing.enc | openssl enc -d -aes-256-cbc -pbkdf2 -iter 300000 -pass env:SIGNING_PASS | tar -x -C $W
+          $B/zipalign -f -p 4 editor/build/outputs/apk/release/editor-release-unsigned.apk $W/aligned.apk
+          $B/apksigner sign --ks $W/new.ks --ks-key-alias redalert2 --ks-pass env:SIGNING_PASS --key-pass env:SIGNING_PASS \
+            --out tzofar-editor.apk $W/aligned.apk
+          rm -rf $W
+          $B/apksigner verify tzofar-editor.apk
+      - name: Publish
+        if: github.ref == 'refs/heads/editor'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          R=${{ github.repository }}
+          if gh release view editor --repo $R >/dev/null 2>&1; then
+            gh release upload editor tzofar-editor.apk --clobber --repo $R
+            gh release edit editor --repo $R --title "עריכת צופר · 1.0.0" --prerelease --draft=false
+          else
+            gh release create editor tzofar-editor.apk --repo $R --prerelease --latest=false --target ${{ github.sha }} \
+              --title "עריכת צופר · 1.0.0" --notes "עריכת הנראות של צופר חירום ושליחת השינויים"
+          fi

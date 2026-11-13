@@ -31,8 +31,8 @@ object Update {
         return false
     }
 
-    private fun latest(): Pair<String, String>? {
-        val conn = URL(API).openConnection() as HttpURLConnection
+    private fun latest(api: String = API): Pair<String, String>? {
+        val conn = URL(api).openConnection() as HttpURLConnection
         conn.connectTimeout = 8000; conn.readTimeout = 10000
         conn.setRequestProperty("Accept", "application/vnd.github+json")
         val j = try { if (conn.responseCode != 200) return null; JSONObject(conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }) } finally { conn.disconnect() }
@@ -68,6 +68,45 @@ object Update {
         }.start()
     }
 
+    // ---- עריכת צופר: התקנה מכאן (אפליקציה נפרדת, גרסה "editor" בגיטהאב). אחרי ההתקנה היא מתעדכנת לבד ----
+    const val EDITOR = "com.tal.tzofareditor"
+    private const val EDITOR_API = "https://api.github.com/repos/t0548321068/red-alert/releases/tags/editor"
+    @Volatile var editorStatus = ""
+    @Volatile var editorBusy = false
+
+    fun editorInstalled(c: Context) = try { c.packageManager.getPackageInfo(EDITOR, 0); true } catch (_: Exception) { false }
+
+    /** מוריד את עריכת צופר ומתקין. בהתקנה הראשונה אנדרואיד שואל פעם אחת "להתקין?" */
+    fun installEditor(c: Context, refresh: () -> Unit) {
+        if (editorBusy) return
+        if (!c.packageManager.canRequestPackageInstalls()) { needPermission = true; editorStatus = "צריך לאשר התקנת אפליקציות"; refresh(); return }
+        editorBusy = true; editorStatus = "בודק…"; refresh()
+        Thread {
+            try {
+                val l = latest(EDITOR_API)
+                if (l == null) editorStatus = "אין חיבור לגיטהאב"
+                else {
+                    editorStatus = "מוריד גרסה ${l.first}…"; refresh()
+                    val f = File(c.cacheDir, "editor.apk")
+                    val conn = URL(l.second).openConnection() as HttpURLConnection
+                    conn.connectTimeout = 10000; conn.readTimeout = 30000; conn.instanceFollowRedirects = true
+                    try { conn.inputStream.use { inp -> f.outputStream().use { inp.copyTo(it) } } } finally { conn.disconnect() }
+                    editorStatus = "מתקין…"; refresh()
+                    val pi = c.packageManager.packageInstaller
+                    val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply { setAppPackageName(EDITOR) }
+                    val id = pi.createSession(params)
+                    pi.openSession(id).use { s ->
+                        s.openWrite("editor.apk", 0, f.length()).use { out -> f.inputStream().use { it.copyTo(out) }; s.fsync(out) }
+                        val intent = PendingIntent.getBroadcast(c, id, Intent(c, InstallReceiver::class.java).putExtra("editor", true),
+                            PendingIntent.FLAG_UPDATE_CURRENT or (if (android.os.Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0))
+                        s.commit(intent.intentSender)
+                    }
+                }
+            } catch (_: Exception) { editorStatus = "ההורדה נכשלה" }
+            editorBusy = false; refresh()
+        }.start()
+    }
+
     private fun install(c: Context, f: File) {
         val pi = c.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
@@ -93,8 +132,8 @@ class InstallReceiver : BroadcastReceiver() {
                 @Suppress("DEPRECATION")
                 (i.getParcelableExtra<Intent>(Intent.EXTRA_INTENT))?.let { c.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             }
-            PackageInstaller.STATUS_SUCCESS -> Unit
-            else -> Update.status = "ההתקנה בוטלה"
+            PackageInstaller.STATUS_SUCCESS -> if (i.getBooleanExtra("editor", false)) Update.editorStatus = ""
+            else -> if (i.getBooleanExtra("editor", false)) Update.editorStatus = "ההתקנה בוטלה" else Update.status = "ההתקנה בוטלה"
         }
     }
 }

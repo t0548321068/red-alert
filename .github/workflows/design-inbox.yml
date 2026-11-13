@@ -1,0 +1,37 @@
+name: Design inbox
+
+# עריכת צופר: מציג את השליחות שעוד לא בוצעו (שינויי נראות), ומעדכן מצב של שליחה.
+# מופעל ידנית (workflow_dispatch) - לא בונה ולא משנה כלום באפליקציה
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: 'מזהה שליחה לעדכון (ריק = רק הצגה)'
+        required: false
+      state:
+        description: 'working / done'
+        required: false
+      msg:
+        description: 'הודעה קצרה לשליחה'
+        required: false
+
+jobs:
+  inbox:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inbox
+        env:
+          ID: ${{ inputs.id }}
+          STATE: ${{ inputs.state }}
+          MSG: ${{ inputs.msg }}
+        run: |
+          S=https://tzofar-app.duckdns.org
+          J=$(curl -sf "$S/design-inbox")
+          echo "$J" | python3 -c 'import json,sys; [print("BATCH", b["id"], b["state"], len(b["items"])) for b in json.load(sys.stdin)]'
+          echo "=====JSON"
+          echo "$J" | python3 -c 'import json,sys; print(json.dumps([{k:v for k,v in b.items() if k!="tok"} for b in json.load(sys.stdin)], ensure_ascii=False, indent=1))'
+          echo "=====END"
+          if [ -n "$ID" ] && [ -n "$STATE" ]; then
+            T=$(echo "$J" | python3 -c "import json,sys; print(next(b['tok'] for b in json.load(sys.stdin) if b['id']=='$ID'))")
+            curl -sf -X POST "$S/design-state?id=$ID&t=$T&state=$STATE&msg=$(python3 -c 'import urllib.parse,os; print(urllib.parse.quote(os.environ["MSG"]))')" && echo "STATE UPDATED"
+          fi

@@ -383,6 +383,18 @@ class MainActivity : Activity() {
             nav(this, 0, "בלי מחוז", noDistrict.toString(), if (noDistrict == 0) GREEN else ORANGE, noDistrict > 0) { areasWith(1) }
             nav(this, 0, "הקלטה בלי יישוב", orphans.toString(), if (orphans == 0) GREEN else ORANGE, orphans > 0) { go(Page.ORPHANS) }
         }, lp())
+        // עריכת צופר: התקנה מכאן, ואחרי שמותקנת - פתיחה
+        root.addView(card().apply {
+            val inst = Update.editorInstalled(this@MainActivity)
+            val st = Update.editorStatus
+            nav(this, R.drawable.ic_edit, if (inst) "עריכת צופר" else "התקנת עריכת צופר",
+                st.ifEmpty { if (inst) "פתיחה" else "הורדה והתקנה" }, if (st.isNotEmpty()) ORANGE else if (inst) GREEN else BLUE) {
+                if (inst && !Update.editorBusy) packageManager.getLaunchIntentForPackage(Update.EDITOR)?.let { startActivity(it) }
+                else if (Update.needPermission && !packageManager.canRequestPackageInstalls())
+                    startActivity(Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                else Update.installEditor(this@MainActivity) { ui.post { if (page == Page.MAIN) main() } }
+            }
+        }, lp())
         root.addView(text("גרסה ${Update.current(this)}" + when {
                 Update.busy -> " · בודק עדכונים…"
                 Update.latestSeen.isNotEmpty() -> " · מעודכן · בדיקה אחרונה ${ago(Update.lastCheck)}"
