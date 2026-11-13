@@ -11,6 +11,8 @@ const decodeHtml = h => h.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '')
   .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n)).replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
   .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
 const SECONDS_RE = /\(\s*[\d\s]*(שניות|דקות|מיידי)[^)]*\)/g, DATE_RE = /\(\d{1,2}\/\d{1,2}\/\d{4}\).*$/, ENDED_IN_RE = /הסתיים ב(.+)/;
+// מילים שמופיעות רק בחתימה / בכותרת של ערוץ ("צופר - צבע אדום", "רדאר 📡") - אף פעם לא ביישוב
+const NOT_AREA = /צבע אדום|רדאר|כומתה|פיקוד העורף|התרעה|התראה|יישובים|ישובים|טלגרם/;
 const skip = l => l.startsWith('אזור') || /מרחב המוגן|השוהים|הסתיים|בדקות הקרובות|\.|היכנסו|בהמשך ל|נעלו|הישארו|\|/.test(l) ||
   l.startsWith('עדכון') || l.startsWith('על תושבי');
 
@@ -38,7 +40,7 @@ function telegram(text) {
     if (bullet) { under = true; return []; }
     if (i > 0 && (!hasBullets || under) && !skip(l)) return l.split(',');
     return [];
-  }).map(a => a.replace(SECONDS_RE, '').trim().replace(/\.+$/, '')).filter(a => a && a.length <= 40);
+  }).map(a => a.replace(SECONDS_RE, '').trim().replace(/\.+$/, '')).filter(a => a && a.length <= 40 && !NOT_AREA.test(a));
   return areas.length ? { title, areas } : null;
 }
 
