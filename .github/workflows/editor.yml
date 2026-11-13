@@ -7,6 +7,10 @@ on:
     paths: ['editor/**', '.github/workflows/editor.yml']
   # כשצופר חירום משתנה (בטא) - להריץ ידנית, כדי שהעריכה תהיה זהה
   workflow_dispatch:
+    inputs:
+      app_branch:
+        description: 'מאיזה ענף לקחת את צופר חירום (beta, או ענף pending-* עם שינויים שעוד לא בבטא)'
+        default: beta
 
 permissions:
   contents: write
@@ -26,8 +30,8 @@ jobs:
       - name: Build
         run: |
           set -o pipefail
-          # עריכת צופר = הקוד של צופר חירום מענף beta (מה שמותקן אצל טל) + שכבת העריכה
-          git fetch -q --depth=1 origin refs/heads/beta && rm -rf app && git checkout FETCH_HEAD -- app
+          # עריכת צופר = הקוד של צופר חירום מענף beta (או הענף שנבחר בהפעלה ידנית) + שכבת העריכה
+          git fetch -q --depth=1 origin "refs/heads/${{ inputs.app_branch || 'beta' }}" && rm -rf app && git checkout FETCH_HEAD -- app
           # לא רשומה ב-settings.gradle.kts (שינוי שם בונה ומשחרר את צופר חירום) - נוספת כאן, רק לבנייה הזו
           echo 'include(":editor")' >> settings.gradle.kts
           E=$(grep -oP 'editorVersion = "\K[^"]+' editor/build.gradle.kts)
