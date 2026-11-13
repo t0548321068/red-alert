@@ -159,7 +159,7 @@ object Editor {
         val o = JSONObject()
         when (v) {
             is TextView -> o.put("color", hex(v.currentTextColor)).put("size", r1(v.textSize / sd).toDouble()).put("text", v.text.toString())
-                .put("bold", v.typeface?.isBold == true).put("align", alignOf(v))
+                .put("bold", v.typeface?.isBold == true).put("align", alignOf(v)).put("valign", valignOf(v))
             is ImageView -> o.put("color", v.imageTintList?.defaultColor?.let { hex(it) } ?: "מקורי").put("size", r1(v.width / d).toDouble())
             else -> {
                 val bg = v.background
@@ -181,6 +181,10 @@ object Editor {
         return when (h) { Gravity.CENTER_HORIZONTAL -> "center"; Gravity.LEFT -> "left"; else -> "right" }
     }
 
+    /** המרכוז האנכי בפועל (למעלה / מרכז / למטה) */
+    fun valignOf(v: TextView): String = when (v.gravity and Gravity.VERTICAL_GRAVITY_MASK) {
+        Gravity.CENTER_VERTICAL -> "center"; Gravity.BOTTOM -> "bottom"; else -> "top" }
+
     private fun parse(c: String?): Int? = try { if (c == null || c[0] != '#') null else Color.parseColor(c) } catch (_: Exception) { null }
 
     /** מחיל שינוי על הרכיב (רק מה שבאמת שונה - בלי לצייר מחדש סתם) */
@@ -193,6 +197,8 @@ object Editor {
                 e.text?.let { if (v.text.toString() != it) v.text = it }
                 e.align?.let { val g = when (it) { "right" -> Gravity.RIGHT; "left" -> Gravity.LEFT; else -> Gravity.CENTER_HORIZONTAL }
                     if (alignOf(v) != it) { v.textAlignment = View.TEXT_ALIGNMENT_GRAVITY; v.gravity = (v.gravity and Gravity.HORIZONTAL_GRAVITY_MASK.inv() and Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK.inv()) or g } }
+                e.valign?.let { val g = when (it) { "top" -> Gravity.TOP; "bottom" -> Gravity.BOTTOM; else -> Gravity.CENTER_VERTICAL }
+                    if (valignOf(v) != it) v.gravity = (v.gravity and Gravity.VERTICAL_GRAVITY_MASK.inv()) or g }
                 e.bold?.let { if ((v.typeface?.isBold == true) != it) v.setTypeface(android.graphics.Typeface.create(v.typeface, if (it) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)) }
             }
             is ImageView -> {
@@ -225,6 +231,7 @@ object Editor {
             if (want("text")) text = if (b.has("text")) b.optString("text") else null
             if (want("bold") && b.has("bold")) bold = b.optBoolean("bold")
             if (want("align") && b.has("align")) align = b.optString("align")
+            if (want("valign") && b.has("valign")) valign = b.optString("valign")
             if (!want("move")) { dx = e.dx; dy = e.dy }
         }
         applyTo(v, back)

@@ -150,6 +150,8 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
         e.text?.let { l += "טקסט: \"${b.optString("text")}\" ← \"$it\"" }
         e.align?.let { fun n(a: String) = if (a == "right") "ימין" else if (a == "left") "שמאל" else "מרכז"
             l += "יישור: " + n(b.optString("align")) + " ← " + n(it) }
+        e.valign?.let { fun n(a: String) = if (a == "top") "למעלה" else if (a == "bottom") "למטה" else "מרכז"
+            l += "מרכוז: " + n(b.optString("valign")) + " ← " + n(it) }
         e.bold?.let { l += "גופן: " + (if (b.optBoolean("bold")) "מודגש" else "רגיל") + " ← " + (if (it) "מודגש" else "רגיל") }
         if (e.dx != 0f || e.dy != 0f) l += "מיקום: " + listOfNotNull(
             if (e.dx != 0f) "${f(kotlin.math.abs(e.dx))} " + (if (e.dx > 0) "ימינה" else "שמאלה") else null,
