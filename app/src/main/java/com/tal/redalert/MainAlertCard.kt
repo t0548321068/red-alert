@@ -1,29 +1,12 @@
 package com.tal.redalert
 import com.tal.redalert.MainActivity.C
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.NotificationManager
-import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.PowerManager
-import android.provider.Settings
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
-import android.widget.EditText
-import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
 
 // המסך הראשי: כרטיס ההתרעה מעל השעון וצביעת הרקע לפי ההתרעה
 
@@ -56,7 +39,7 @@ internal fun MainActivity.updateAlertCard() {
     val wantMini = j != null && previewAlert == null && !shab &&
         !AlertUi.expired(level, firedAt) && Prefs.alertDismissed(this) != firedAt && AlertActivity.open == 0 &&
         (st == 3 || (st in 0..1 && Prefs.afterClose(this) == 1 && AlertActivity.shownFiredAt == firedAt))
-    if (wantMini && !MiniOverlay.hostedIn(miniHost) && j != null) {
+    if (wantMini && !MiniOverlay.hostedIn(miniHost)) {
         val f = Intent().putExtra("title", j.optString("title")).putExtra("body", j.optString("body"))
             .putExtra("level", level).putExtra("shelter", j.optInt("shelter", -1)).putExtra("firedAt", firedAt)
             .putExtra("source", j.optString("source")).putExtra("mapAreas", j.optString("mapAreas"))

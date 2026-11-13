@@ -1,33 +1,17 @@
 package com.tal.redalert
 
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.NotificationManager
-import android.content.Context
-import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
 import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.PowerManager
-import android.provider.Settings
-import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import com.tal.redalert.MainActivity.C
-import com.tal.redalert.MainActivity.Row
-import com.tal.redalert.MainActivity.Perm
-import com.tal.redalert.MainActivity.SameHeight
 
 // ערכת בנייה משותפת לכל המסכים: עמודים, כרטיסים, שורות, חלונות תחתונים, טקסט וצבעים
 // (חלק מהמסך הראשי - MainActivity; המצב עצמו נשמר שם)
@@ -410,6 +394,5 @@ internal fun MainActivity.iconColor(icon: String) = Color.parseColor(when (icon)
     else -> "#546E7A"
 })
 
-/** הגדרות: מגירה שנפתחת מצד ימין, כל קטגוריה נפתחת/נסגרת במקום */
 // ---- עמודי הגדרות בסגנון One UI - אותם רכיבים כמו בעמוד "תצוגה" ----
 internal val MainActivity.OUI_BLUE get() = Color.parseColor("#5AA9FF")

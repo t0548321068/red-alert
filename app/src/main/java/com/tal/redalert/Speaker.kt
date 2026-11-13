@@ -115,7 +115,7 @@ class Speaker(private val c: Context) {
                 else c.assets.openFd(clips[i]).use { fd -> setDataSource(fd.fileDescriptor, fd.startOffset, fd.length) }
                 setOnCompletionListener { it.release(); if (player === it) player = null; playClips(clips, i + 1) }
                 setOnErrorListener { mp, _, _ -> mp.release(); if (player === mp) player = null; playClips(clips, i + 1); true }
-                if (preferSpeaker) AlertService.builtinSpeaker(c)?.let { setPreferredDevice(it) }
+                if (preferSpeaker && android.os.Build.VERSION.SDK_INT >= 28) AlertService.builtinSpeaker(c)?.let { setPreferredDevice(it) }
                 prepare()
             }
             player = mp
@@ -194,7 +194,7 @@ class Speaker(private val c: Context) {
                 setAudioAttributes(AudioAttributes.Builder().setUsage(usage)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
                 setDataSource(ttsFile().path)
-                AlertService.builtinSpeaker(c)?.let { setPreferredDevice(it) }
+                if (android.os.Build.VERSION.SDK_INT >= 28) AlertService.builtinSpeaker(c)?.let { setPreferredDevice(it) }
                 setOnCompletionListener { it.release(); if (player === it) player = null; finish() }
                 setOnErrorListener { m, _, _ -> m.release(); if (player === m) player = null; finish(); true }
                 prepare()

@@ -10,15 +10,12 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
 import android.media.Ringtone
-import android.media.RingtoneManager
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 
 class AlertService : Service() {
 
@@ -142,7 +139,6 @@ class AlertService : Service() {
          */
         /** מתי הגיע סימן החיים האחרון מהשרת (0 = עוד לא) */
         fun serverHbAt(c: Context): Long = c.getSharedPreferences("server", Context.MODE_PRIVATE).getLong("hb", 0L)
-        /** השרת עלה לאחרונה והמקורות שלו עוד מתחברים (לפי סימן החיים האחרון, לכל היותר 11 דקות) */
         /** שרשרת הגיבוי מסימן החיים האחרון: (מי שלח, מצב המשני, מצב הממסר) */
         fun chain(c: Context): Triple<String, String, String> {
             val sp = c.getSharedPreferences("server", Context.MODE_PRIVATE)
@@ -888,16 +884,16 @@ class AlertService : Service() {
             // עוצמת השעון המעורר למקסימום למשך הצליל, ואחר כך חוזרת למה שהיה
             val loud = !muted && Prefs.loudSound(this)
             val loudMs = if (level == LEVEL_ALERT) 15000L else 4000L
-            if (loud) { boostAlarmVolume(loudMs); playAlarm(level, RingtoneManager.TYPE_ALARM, loudMs) }
-            else if (bypass && snd) playAlarm(level, RingtoneManager.TYPE_ALARM, if (level == LEVEL_ALERT) 15000 else 3000,
+            if (loud) { boostAlarmVolume(loudMs); playAlarm(level, loudMs) }
+            else if (bypass && snd) playAlarm(level, if (level == LEVEL_ALERT) 15000 else 3000,
                 if (viaNotif) AudioAttributes.USAGE_NOTIFICATION else AudioAttributes.USAGE_ALARM)
             else if (PHONE_DEFAULTS) Unit   // הטלפון משמיע את צליל ההתראה בעצמו
             else when {
                 quiet || !snd -> main.post { ringtone?.stop() }
-                level == LEVEL_ALERT -> playAlarm(level, RingtoneManager.TYPE_ALARM, 15000)
-                level == LEVEL_PRE -> playAlarm(level, RingtoneManager.TYPE_NOTIFICATION, 3000)
+                level == LEVEL_ALERT -> playAlarm(level, 15000)
+                level == LEVEL_PRE -> playAlarm(level, 3000)
                 Sounds.effective(this, level) != Sounds.SILENT ->
-                    playAlarm(level, RingtoneManager.TYPE_NOTIFICATION, 3000)   // סיום - רק אם נבחר צליל
+                    playAlarm(level, 3000)   // סיום - רק אם נבחר צליל
                 else -> main.post { ringtone?.stop() }
             }
             Unit
@@ -1007,7 +1003,6 @@ class AlertService : Service() {
 
     /** מדליק את המסך כשהוא כבוי - שההתראה תופיע מיד גם על מסך הנעילה */
     @Suppress("DEPRECATION")
-    /** צליל בערוץ "שעון מעורר" - נשמע גם במצב שקט */
     /** עוצמת ערוץ השעון המעורר למקסימום לזמן מוגבל, ואז מחזירים את העוצמה הקודמת */
     internal var savedAlarmVol = -1
     internal val restoreAlarmVol = Runnable { synchronized(audioLock) {
