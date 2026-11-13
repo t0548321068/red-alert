@@ -147,6 +147,8 @@ open class AlertActivity : Activity() {
         val srcView = intent.getStringExtra("source")?.takeIf { it.isNotEmpty() }?.let { src ->
             tv("מקור ההתרעה: $src", 13f).apply { setTextColor(Color.parseColor("#E6FFFFFF")); setPadding(0, dpx(6), 0, 0) }
         }
+        // מבזק במסך מלא: "בדקות הקרובות..." מעל האזורים (מעריכת צופר), בגודל 20
+        if (preFull) root.addView(tv("בדקות הקרובות צפויות להתקבל התרעות באזורך", 20f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
         if (chips.childCount > 0) {
             val areaCard = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -160,11 +162,10 @@ open class AlertActivity : Activity() {
         if (end && !AlertUi.update(title)) root.addView(tv("ניתן לצאת מהמרחב המוגן", 19f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
         if (pre) {
             // מתחת למפה: נוסח ההתרעה ומה לעשות
-            // במסך מלא - אותו נוסח בכל מבזק (גם מלבנון - המקור כבר למעלה)
-            val body = if (preFull) "בדקות הקרובות צפויות להתקבל התרעות באזורך" else title
-            if (body.isNotBlank() && body != "התרעה מקדימה")
-                root.addView(tv(body, 19f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
-            root.addView(tv("במקרה של קבלת התרעה, יש להיכנס למרחב המוגן ולשהות בו עד לקבלת הנחיה מפורשת", 19f)
+            // במסך מלא - "בדקות הקרובות..." כבר מעל האזורים (אותו נוסח בכל מבזק, גם מלבנון - המקור כבר למעלה)
+            if (!preFull && title.isNotBlank() && title != "התרעה מקדימה")
+                root.addView(tv(title, 19f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
+            root.addView(tv("במקרה של קבלת התרעה, יש להיכנס למרחב המוגן ולשהות בו עד לקבלת הנחיה מפורשת", if (preFull) 20f else 19f)
                 .apply { setPadding(dpx(16), dpx(6), dpx(16), 0) })
         }
 
