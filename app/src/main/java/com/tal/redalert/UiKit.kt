@@ -35,7 +35,7 @@ internal fun MainActivity.pageHeader(title: String) = LinearLayout(this).apply {
 /** אייקון בראש העמוד - כמו האייקונים במסך הראשי: 46, בלי רקע, רק הבהוב בלחיצה */
 internal fun MainActivity.headerIcon(res: Int, click: () -> Unit) = android.widget.ImageView(this).apply {
     setImageResource(res)
-    imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT)
+    imageTintList = android.content.res.ColorStateList.valueOf(C.INK)
     setPadding(dp(11), dp(11), dp(11), dp(11))
     background = android.graphics.drawable.RippleDrawable(
         android.content.res.ColorStateList.valueOf(C.LINE2), null,

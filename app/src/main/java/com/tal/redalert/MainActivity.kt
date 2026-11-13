@@ -366,7 +366,7 @@ class MainActivity : Activity() {
         // בראש כרטיס השעון: מגן + "מוגן"/"לא מוגן" + עדכון אחרון (מה שהיה בכרטיס מוגן)
         // בראש הכרטיס: מגן בתוך עיגול עם הילה, ומתחתיו "מוגן" / "לא מוגן"
         shieldIcon = android.widget.ImageView(this)
-        circleLabel = text("מוגן", 27f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER }
+        circleLabel = text("אתה מוגן", 27f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER }
         haloOuter = FrameLayout(this)
         haloInner = FrameLayout(this).apply {
             clipToOutline = true   // הפס נחתך לצורת העיגול
