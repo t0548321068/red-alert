@@ -51,10 +51,11 @@ open class AlertActivity : Activity() {
             val cd = countdown ?: return
             val t = AlertUi.timer(level, shelterSec, firedAt, title = alertTitle) ?: return
             // מסך מלא: "זמן התגוננות:" מימין והזמן משמאל, בשורה אחת. בלי ספירה - הכיתוב במרכז
-            cdLabel?.text = if (t.first.isNotEmpty() && !popup) t.first + ":" else t.first
+            // מסך מלא: "זמן התגוננות: דקה וחצי" (הזמן של האזור במילים) מימין, והספירה משמאל - באותו גודל
+            cdLabel?.text = if (t.first.isNotEmpty() && !popup) t.first + ": " + AreaData.shelterText(shelterSec) else t.first
             cdLabel?.visibility = if (t.first.isEmpty()) View.GONE else View.VISIBLE
             cdGap?.visibility = if (t.first.isEmpty()) View.GONE else View.VISIBLE
-            cd.textSize = if (t.first.isEmpty()) 20f else if (popup) 38f else 36f
+            cd.textSize = if (t.first.isEmpty()) 20f else if (popup) 38f else 22f
             cd.text = t.second
             if (t.first.isNotEmpty()) ui.postDelayed(this, 250)
         }
@@ -179,7 +180,7 @@ open class AlertActivity : Activity() {
                 setPadding(dpx(if (popup) 12 else 20), 0, dpx(if (popup) 12 else 20), 0)
             }
             cdLabel = tv("", if (popup) 13f else 22f)
-            countdown = tv("", if (popup) 38f else 36f).apply {
+            countdown = tv("", if (popup) 38f else 22f).apply {
                 typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
                 includeFontPadding = false
             }
