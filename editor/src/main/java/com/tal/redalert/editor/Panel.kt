@@ -44,6 +44,9 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
         layoutDirection = View.LAYOUT_DIRECTION_RTL
         isClickable = true
         elevation = Ui.dp(16).toFloat()
+        // כפתור חזרה של הטלפון: סוגר את חלון העריכה (השינוי נשמר)
+        isFocusableInTouchMode = true
+        post { requestFocus() }
         setPadding(Ui.dp(14), Ui.dp(12), Ui.dp(14), Ui.dp(14))
         v.overlay.add(sel); sel.setBounds(0, 0, v.width, v.height)
 
@@ -273,6 +276,12 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
     private fun reset() {
         e.color = null; e.size = null; e.radius = null; e.text = null; e.bold = null; e.align = null; e.valign = null; e.dx = 0f; e.dy = 0f; e.note = ""
         live(); drawPane()
+    }
+
+    override fun dispatchKeyEvent(e: android.view.KeyEvent): Boolean {
+        if (e.keyCode != android.view.KeyEvent.KEYCODE_BACK) return super.dispatchKeyEvent(e)
+        if (e.action == android.view.KeyEvent.ACTION_UP) layer.closePanel(save = true)
+        return true
     }
 
     /** סגירה: שמירה (עם תמונה קטנה של הרכיב לזיהוי) או ביטול */

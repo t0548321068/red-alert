@@ -45,6 +45,9 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
     init {
         setBackgroundColor(Color.BLACK)
         isClickable = true
+        // כפתור חזרה של הטלפון: מהשליחה הפתוחה - לרשימה, ומהרשימה - סגירה (בלי ✕ / חץ על המסך, כמו באפליקציה)
+        isFocusableInTouchMode = true
+        post { requestFocus() }
         layoutDirection = View.LAYOUT_DIRECTION_RTL
         addView(col)
     }
@@ -74,7 +77,6 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
         col.addView(LinearLayout(context).apply {
             gravity = Gravity.CENTER_VERTICAL; setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(6))
             addView(Ui.tv(context, "עריכת צופר", 22f, bold = true), LinearLayout.LayoutParams(0, -2, 1f))
-            addView(Ui.tv(context, "✕", 22f).apply { setPadding(Ui.dp(12), 0, Ui.dp(4), 0); setOnClickListener { layer.closeMenu() } })
         })
         col.addView(Ui.tv(context, "✎ כחול = מצב עריכה: לוחצים על רכיב ומשנים אותו. ✎ אפור = האפליקציה עובדת רגיל (מעבר בין מסכים). גרירה מזיזה את הכפתור הצף",
             12f, Ui.GRAY).apply { setPadding(Ui.dp(28), 0, Ui.dp(28), Ui.dp(4)) })
@@ -242,7 +244,6 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
         val fmt = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.US)
         col.addView(LinearLayout(context).apply {
             gravity = Gravity.CENTER_VERTICAL; setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(6))
-            addView(Ui.tv(context, "→", 22f).apply { setPadding(0, 0, Ui.dp(12), 0); setOnClickListener { openBatch = null; rebuild() } })
             addView(Ui.tv(context, "שליחה מ-" + fmt.format(java.util.Date(b.optLong("at"))), 20f, bold = true), LinearLayout.LayoutParams(0, -2, 1f))
         })
         val (stName, stColor) = when (b.optString("state")) { "done" -> "בוצע" to Ui.GREEN; "working" -> "בטיפול" to Ui.ORANGE; else -> "נשלח – ממתין לטיפול" to Color.parseColor("#5AA9FF") }
@@ -287,6 +288,14 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
         }
         c.optString("note").takeIf { it.isNotEmpty() }?.let { l += "הערה: " + it.take(300) }
         return l.joinToString("\n")
+    }
+
+    override fun dispatchKeyEvent(e: android.view.KeyEvent): Boolean {
+        if (e.keyCode != android.view.KeyEvent.KEYCODE_BACK) return super.dispatchKeyEvent(e)
+        if (e.action == android.view.KeyEvent.ACTION_UP) {
+            if (openBatch != null) { openBatch = null; rebuild(); scrollTo(0, 0); post { requestFocus() } } else layer.closeMenu()
+        }
+        return true
     }
 
     private fun toast(s: String) = android.widget.Toast.makeText(context, s, android.widget.Toast.LENGTH_LONG).show()
