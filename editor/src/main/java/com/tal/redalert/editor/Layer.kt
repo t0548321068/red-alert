@@ -122,10 +122,13 @@ class Layer(val root: FrameLayout) : FrameLayout(root.context) {
     // ---- בחירת רכיב: לחיצה קצרה בוחרת, גרירה גוללת את התוכן ----
     private var target: View? = null
     private var downX = 0f; private var downY = 0f; private var moved = false
+    /** עמוד "בדיקת התרעה" (לא במצב עריכה): הלחיצות עוברות לעמוד, ובשורת בדיקה - מפעילים את ההתרעה מכאן */
+    private var testPage = false
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(ev: MotionEvent): Boolean {
-        if (!Editor.on || menu != null) return false
+        if (ev.actionMasked == MotionEvent.ACTION_DOWN) testPage = !Editor.on && screen.endsWith("|בדיקת התרעה")
+        if ((!Editor.on && !testPage) || menu != null) return false
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> { downX = ev.x; downY = ev.y; moved = false; target = Editor.forward(root, this, ev, null) }
             MotionEvent.ACTION_MOVE -> {
@@ -133,7 +136,10 @@ class Layer(val root: FrameLayout) : FrameLayout(root.context) {
                 Editor.forward(root, this, ev, target)
             }
             MotionEvent.ACTION_UP -> {
-                if (moved) Editor.forward(root, this, ev, target)
+                if (testPage) {
+                    Editor.forward(root, this, ev, target)
+                    if (!moved) testTap(ev)
+                } else if (moved) Editor.forward(root, this, ev, target)
                 else {
                     val c = MotionEvent.obtain(ev); c.action = MotionEvent.ACTION_CANCEL
                     Editor.forward(root, this, c, target); c.recycle()
@@ -145,6 +151,15 @@ class Layer(val root: FrameLayout) : FrameLayout(root.context) {
             MotionEvent.ACTION_CANCEL -> { Editor.forward(root, this, ev, target); target = null }
         }
         return true
+    }
+
+    private fun testTap(ev: MotionEvent) {
+        val loc = IntArray(2); getLocationOnScreen(loc)
+        var v: View? = Editor.hit(root, (loc[0] + ev.x).toInt(), (loc[1] + ev.y).toInt())
+        while (v != null && v !== root && !v.hasOnClickListeners()) v = v.parent as? View
+        if (v == null || v === root) return
+        val label = Editor.firstText(v)
+        postDelayed({ TestFire.tap(context, label) }, 150)
     }
 
     /** בחירת רכיב: יוצרים את השינוי שלו (עם הערכים המקוריים) ופותחים את חלון העריכה */
