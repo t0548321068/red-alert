@@ -6,6 +6,11 @@
     <!-- אנדרואיד 12+: עדכון של עצמה בלי לחיצה על "עדכן" -->
     <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 
+    <!-- לבדוק אם עריכת צופר מותקנת ולפתוח אותה -->
+    <queries>
+        <package android:name="com.tal.tzofareditor" />
+    </queries>
+
     <application
         android:label="ניהול צופר"
         android:icon="@mipmap/ic_launcher"
