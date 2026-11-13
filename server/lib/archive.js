@@ -13,7 +13,7 @@ const ARCH_BASE = 'https://www.oref.org.il/api/v1/AlertHistory/heb?period=';
 const convert = require('./parse').archiveRows;   // נבדק בבדיקות
 const YEAR = 366 * 24 * 3600 * 1000;
 const arch = new Map();   // "כותרת|דקה" -> { t, ts, b: Set, a: { יישוב: מתי הגיע } }
-try { for (const e of JSON.parse(fs.readFileSync(ARCH_FILE, 'utf8'))) arch.set(e.k, { t: e.t, ts: e.ts, b: new Set(e.b), a: e.a || {} }); } catch (_) {}
+try { for (const e of JSON.parse(fs.readFileSync(ARCH_FILE, 'utf8'))) arch.set(e.k, { t: e.t, ts: e.ts, b: new Set(e.b), a: e.a || {}, src: e.src || '' }); } catch (_) {}
 const setTime = (e, area, ts) => { if (!e.a) e.a = {}; if (!(e.a[area] <= ts)) { e.a[area] = ts; return 1; } return 0; };
 
 // הרשימה המוכנה לשליחה - נבנית מחדש רק כשהארכיון השתנה (לא בכל בקשה)
@@ -23,7 +23,8 @@ function sorted() {
     // s: לכל יישוב (באותו סדר כמו b) - כמה שניות אחרי תחילת השורה הוא הגיע
     const list = [...arch.values()].sort((a, b) => b.ts - a.ts).map(e => {
       const b = [...e.b];
-      return { t: e.t, b: b.join(', '), ts: e.ts, s: b.map(x => e.a && e.a[x] ? Math.max(0, Math.round((e.a[x] - e.ts) / 1000)) : 0) };
+      // src: המקור הראשון שהתריע בזמן אמת ("archive" - הגיע רק מהארכיון של פיקוד העורף; ריק - שורה ישנה, לא ידוע)
+      return { t: e.t, b: b.join(', '), ts: e.ts, src: e.src || '', s: b.map(x => e.a && e.a[x] ? Math.max(0, Math.round((e.a[x] - e.ts) / 1000)) : 0) };
     });
     const body = Buffer.from(JSON.stringify(list));
     cache = { list, body, gz: zlib.gzipSync(body) };
@@ -44,7 +45,7 @@ function addRows(rows) {
     const minute = String(o.alertDate || '').replace('T', ' ').slice(0, 16);
     const ts = rowTime(o); if (!ts || !minute) continue;
     const k = title + '|' + minute;
-    let e = arch.get(k); if (!e) { e = { t: title, ts, b: new Set(), a: {} }; arch.set(k, e); added++; }
+    let e = arch.get(k); if (!e) { e = { t: title, ts, b: new Set(), a: {}, src: 'archive' }; arch.set(k, e); added++; }
     if (ts < e.ts) { e.ts = ts; added++; }
     if (o.data && !e.b.has(o.data)) { e.b.add(o.data); added++; }
     if (o.data) added += setTime(e, o.data, ts);
@@ -59,7 +60,7 @@ function save() {
   saving = true;
   const cut = Date.now() - YEAR;
   for (const [k, e] of arch) if (e.ts < cut) { arch.delete(k); cache = null; }
-  const data = JSON.stringify([...arch].map(([k, e]) => ({ k, t: e.t, ts: e.ts, b: [...e.b], a: e.a || {} })));
+  const data = JSON.stringify([...arch].map(([k, e]) => ({ k, t: e.t, ts: e.ts, b: [...e.b], a: e.a || {}, src: e.src || '' })));
   const done = () => { saving = false; if (pending) { pending = false; save(); } };
   fs.writeFile(ARCH_FILE + '.tmp', data, err => { if (err) return done(); fs.rename(ARCH_FILE + '.tmp', ARCH_FILE, done); });
 }
@@ -88,14 +89,16 @@ function joinLive() {
     const order = [...head, ...add, ...arr.slice(nl).filter(a => !add.includes(a))];
     if (order.join('|') !== arr.join('|')) { best.b = new Set(order); added++; }
     for (const a of l.areas) added += setTime(best, a, l.at);
+    // המקור - הראשון שהתריע בזמן אמת (גובר על "archive")
+    if (l.src && (!best.src || best.src === 'archive')) { best.src = l.src; added++; }
     best.nl = head.length + add.length;
     return false;
   });
   if (added) cache = null;
   return added;
 }
-function addLive(title, areas, at) {
-  try { live.push({ t: title, areas, at: at || Date.now() }); if (joinLive()) save(); } catch (_) {}
+function addLive(title, areas, at, src = '') {
+  try { live.push({ t: title, areas, at: at || Date.now(), src }); if (joinLive()) save(); } catch (_) {}
 }
 /** שורות שהגיעו ממקור אחר (הממסר בבית) */
 function ingest(rows) { try { if (addRows(rows) + joinLive()) save(); } catch (_) {} }
