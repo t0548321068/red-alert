@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- צליל + רטט: הרמקול, ומימין ומשמאל זיגזג רטט -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-    <group android:pivotX="12" android:pivotY="12" android:scaleX="0.74" android:scaleY="0.74" android:translateX="-0.4">
-        <path android:fillColor="#FFFFFFFF" android:pathData="M3,9.5h4l5,-4.5v14l-5,-4.5H3z"/>
-        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.5" android:strokeLineCap="round" android:fillColor="#00000000" android:pathData="M15.5,9a4.2,4.2 0,0 1,0 6M18.3,6.3a8,8 0,0 1,0 11.4"/>
-    </group>
-    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.7" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="#00000000" android:pathData="M0.9,7.5L2.4,9.6L0.9,11.8L2.4,14L0.9,16.5M23.1,7.5L21.6,9.6L23.1,11.8L21.6,14L23.1,16.5"/>
-</vector>

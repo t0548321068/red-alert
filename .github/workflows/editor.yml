@@ -5,6 +5,7 @@ on:
   push:
     branches: [editor]
     paths: ['editor/**', '.github/workflows/editor.yml']
+  # כשצופר חירום משתנה (בטא) - להריץ ידנית, כדי שהעריכה תהיה זהה
   workflow_dispatch:
 
 permissions:
@@ -25,8 +26,12 @@ jobs:
       - name: Build
         run: |
           set -o pipefail
-          # עריכת צופר לא רשומה ב-settings.gradle.kts (שינוי שם בונה ומשחרר את צופר חירום) - נוספת כאן, רק לבנייה הזו
+          # עריכת צופר = הקוד של צופר חירום מענף beta (מה שמותקן אצל טל) + שכבת העריכה
+          git fetch -q --depth=1 origin beta && git checkout FETCH_HEAD -- app
+          # לא רשומה ב-settings.gradle.kts (שינוי שם בונה ומשחרר את צופר חירום) - נוספת כאן, רק לבנייה הזו
           echo 'include(":editor")' >> settings.gradle.kts
+          V=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          echo "TITLE=עריכת צופר · צופר חירום $V · 1.1.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV   # בסוף: מספר עם נקודות (ניהול צופר ו-1.0.0 קוראים אותו), והמספר האחרון = הבנייה
           gradle :editor:assembleRelease --console=plain 2>&1 | tee build.log || {
             grep -E '^e: |error:|Lint found|What went wrong' -A2 build.log | head -30 | sed 's/^/::error::/'
             exit 1
@@ -53,8 +58,8 @@ jobs:
           R=${{ github.repository }}
           if gh release view editor --repo $R >/dev/null 2>&1; then
             gh release upload editor tzofar-editor.apk --clobber --repo $R
-            gh release edit editor --repo $R --title "עריכת צופר · 1.0.0" --prerelease --draft=false
+            gh release edit editor --repo $R --title "$TITLE" --prerelease --draft=false
           else
             gh release create editor tzofar-editor.apk --repo $R --prerelease --latest=false --target ${{ github.sha }} \
-              --title "עריכת צופר · 1.0.0" --notes "עריכת הנראות של צופר חירום ושליחת השינויים"
+              --title "$TITLE" --notes "עריכת הנראות של צופר חירום ושליחת השינויים"
           fi
