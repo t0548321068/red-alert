@@ -1,0 +1,59 @@
+name: Code check
+
+# בדיקת קוד בלבד (קוד מת, אזהרות, משאבים לא בשימוש) - לא בונה גרסה ולא מפרסם כלום.
+# רצה כשהקובץ הזה משתנה ב-main, או ידנית.
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/check.yml']
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.3
+      - name: Compile warnings
+        run: |
+          gradle :app:compileReleaseKotlin :relay:compileReleaseKotlin :admin:compileReleaseKotlin --rerun-tasks --console=plain 2>&1 | tee compile.log || true
+          grep '^w: ' compile.log > warnings.txt || true
+          echo "warnings: $(wc -l < warnings.txt)"
+      - name: Lint
+        run: |
+          gradle :app:lintRelease :relay:lintRelease :admin:lintRelease --continue --console=plain \
+            -Pandroid.lint.checkDependencies=false 2>&1 | tail -20 || true
+      - name: Detekt (unused)
+        run: |
+          curl -sSL -o detekt.jar https://github.com/detekt/detekt/releases/download/v1.23.7/detekt-cli-1.23.7-all.jar
+          cat > detekt.yml <<'Y'
+          style:
+            active: true
+            UnusedPrivateMember: { active: true }
+            UnusedPrivateClass: { active: true }
+            UnusedPrivateProperty: { active: true }
+            UnusedParameter: { active: true }
+            UnusedImports: { active: true }
+          Y
+          java -jar detekt.jar --input app/src/main/java,relay/src/main/java,admin/src/main/java \
+            --config detekt.yml --build-upon-default-config=false --all-rules=false \
+            --report txt:detekt.txt || true
+          grep -E 'Unused' detekt.txt > detekt-unused.txt || true
+          echo "unused: $(wc -l < detekt-unused.txt)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: code-check
+          path: |
+            warnings.txt
+            detekt-unused.txt
+            detekt.txt
+            compile.log
+            app/build/reports/lint-results-release.*
+            relay/build/reports/lint-results-release.*
+            admin/build/reports/lint-results-release.*
