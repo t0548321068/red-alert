@@ -32,6 +32,15 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
     private var busy = false
     /** שליחה קודמת שנפתחה (לחיצה על שורה ב"שליחות קודמות") - העמוד מציג את השינויים שבה */
     private var openBatch: JSONObject? = null
+    private fun pct(b: JSONObject) = when (b.optString("state")) { "done" -> 100; "sent" -> 0; else -> b.optInt("p", 0) }
+    private fun ringFor(b: JSONObject) = Ring(context, pct(b), if (b.optString("state") == "done") Ui.GREEN else Ui.BLUE)
+
+    /** לייב: כל 5 שניות - ההתקדמות של השליחות (רק כשהעמוד פתוח) */
+    private val live = object : Runnable {
+        override fun run() { if (!isAttachedToWindow) return; loadSent(); ui.postDelayed(this, 5000) }
+    }
+    override fun onAttachedToWindow() { super.onAttachedToWindow(); ui.removeCallbacks(live); ui.postDelayed(live, 5000) }
+    override fun onDetachedFromWindow() { ui.removeCallbacks(live); super.onDetachedFromWindow() }
 
     init {
         setBackgroundColor(Color.BLACK)
@@ -207,6 +216,10 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
                 sent.removeAllViews()
                 val a = r.optJSONArray("batches") ?: return@post
                 if (a.length() == 0) return@post
+                // שליחה פתוחה - מתעדכנת במקום
+                openBatch?.let { ob -> (0 until a.length()).map { a.getJSONObject(it) }.firstOrNull { it.optString("id") == ob.optString("id") }
+                    ?.let { nb -> if (nb.optString("state") != ob.optString("state") || nb.optInt("p") != ob.optInt("p") || nb.optString("msg") != ob.optString("msg")) { openBatch = nb; rebuild() } }
+                    return@post }
                 sent.addView(Ui.tv(context, "שליחות קודמות", 13f, Color.parseColor("#AAAAAA")).apply { setPadding(Ui.dp(28), Ui.dp(14), Ui.dp(28), Ui.dp(6)) })
                 val c = card()
                 val fmt = java.text.SimpleDateFormat("dd/MM HH:mm", java.util.Locale.US)
@@ -215,6 +228,7 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
                     val (stName, stColor) = when (b.optString("state")) { "done" -> "בוצע" to Ui.GREEN; "working" -> "בטיפול" to Ui.ORANGE; else -> "נשלח – ממתין לטיפול" to Color.parseColor("#5AA9FF") }
                     val r2 = row(c, fmt.format(java.util.Date(b.optLong("at"))) + " · " + (if (n == 1) "שינוי אחד" else "$n שינויים"), "",
                         click = { openBatch = b; rebuild(); scrollTo(0, 0) })
+                    r2.addView(ringFor(b), 0, LinearLayout.LayoutParams(Ui.dp(40), Ui.dp(40)).apply { marginEnd = Ui.dp(12) })
                     r2.addView(Ui.tv(context, "‹", 20f, Ui.GRAY))
                     ((r2.getChildAt(0) as LinearLayout)).addView(Ui.tv(context, stName + b.optString("msg").takeIf { it.isNotEmpty() }?.let { " · $it" }.orEmpty(), 12f, stColor))
                 }
@@ -232,8 +246,11 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
             addView(Ui.tv(context, "שליחה מ-" + fmt.format(java.util.Date(b.optLong("at"))), 20f, bold = true), LinearLayout.LayoutParams(0, -2, 1f))
         })
         val (stName, stColor) = when (b.optString("state")) { "done" -> "בוצע" to Ui.GREEN; "working" -> "בטיפול" to Ui.ORANGE; else -> "נשלח – ממתין לטיפול" to Color.parseColor("#5AA9FF") }
-        col.addView(Ui.tv(context, stName + b.optString("msg").takeIf { it.isNotEmpty() }?.let { " · $it" }.orEmpty(), 14f, stColor)
-            .apply { setPadding(Ui.dp(28), 0, Ui.dp(28), Ui.dp(6)) })
+        col.addView(LinearLayout(context).apply {
+            gravity = Gravity.CENTER_VERTICAL; setPadding(Ui.dp(24), Ui.dp(4), Ui.dp(24), Ui.dp(8))
+            addView(ringFor(b), LinearLayout.LayoutParams(Ui.dp(56), Ui.dp(56)).apply { marginEnd = Ui.dp(14) })
+            addView(Ui.tv(context, stName + b.optString("msg").takeIf { it.isNotEmpty() }?.let { "\n$it" }.orEmpty(), 14f, stColor), LinearLayout.LayoutParams(0, -2, 1f))
+        })
         val items = b.optJSONArray("items") ?: org.json.JSONArray()
         // לפי מסך
         val byScreen = LinkedHashMap<String, MutableList<JSONObject>>()

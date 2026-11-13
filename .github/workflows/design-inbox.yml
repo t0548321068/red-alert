@@ -14,6 +14,9 @@ on:
       msg:
         description: 'הודעה קצרה לשליחה'
         required: false
+      p:
+        description: 'אחוז התקדמות (0-100) לעיגול בעריכת צופר'
+        required: false
 
 jobs:
   inbox:
@@ -24,6 +27,7 @@ jobs:
           ID: ${{ inputs.id }}
           STATE: ${{ inputs.state }}
           MSG: ${{ inputs.msg }}
+          P: ${{ inputs.p }}
         run: |
           S=https://tzofar-app.duckdns.org
           J=$(curl -sf "$S/design-inbox")
@@ -33,5 +37,5 @@ jobs:
           echo "=====END"
           if [ -n "$ID" ] && [ -n "$STATE" ]; then
             T=$(echo "$J" | python3 -c "import json,sys; print(next(b['tok'] for b in json.load(sys.stdin) if b['id']=='$ID'))")
-            curl -sf -X POST "$S/design-state?id=$ID&t=$T&state=$STATE&msg=$(python3 -c 'import urllib.parse,os; print(urllib.parse.quote(os.environ["MSG"]))')" && echo "STATE UPDATED"
+            curl -sf -X POST "$S/design-state?id=$ID&t=$T&state=$STATE&p=$P&msg=$(python3 -c 'import urllib.parse,os; print(urllib.parse.quote(os.environ["MSG"]))')" && echo "STATE UPDATED"
           fi

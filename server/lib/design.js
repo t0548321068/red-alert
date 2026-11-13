@@ -44,7 +44,7 @@ function handle(req, res) {
     let op; try { op = JSON.parse(body); } catch (_) { return send(400, {}); }
     if (op && op.op === 'send' && Array.isArray(op.items) && op.items.length && op.items.length <= 300) {
       data.batches.push({ id: crypto.randomBytes(4).toString('hex'), tok: crypto.randomBytes(12).toString('hex'),
-        at: Date.now(), state: 'sent', msg: '', items: op.items.map(clean) });
+        at: Date.now(), state: 'sent', msg: '', p: 0, items: op.items.map(clean) });
       data.batches = data.batches.slice(-50);
       save(); log('design: שליחה חדשה - ' + op.items.length + ' שינויים');
       return send(200, view());
@@ -59,7 +59,7 @@ function inbox(res) {
   res.end(JSON.stringify(data.batches.filter(b => b.state !== 'done'), null, 1));
 }
 
-/** עדכון מצב שליחה: ?id=&t=&state=working|done&msg= */
+/** עדכון מצב שליחה: ?id=&t=&state=working|done&msg=&p= (p = אחוז התקדמות לעיגול באפליקציה) */
 function setState(req, res, u) {
   const b = data.batches.find(x => x.id === str(u.searchParams.get('id'), 20));
   const st = u.searchParams.get('state');
@@ -67,6 +67,8 @@ function setState(req, res, u) {
     res.writeHead(404); return res.end();
   }
   b.state = st; b.msg = str(u.searchParams.get('msg'), 300); if (st === 'done') b.doneAt = Date.now();
+  const p = parseInt(u.searchParams.get('p'), 10);
+  b.p = st === 'done' ? 100 : st === 'sent' ? 0 : (isNaN(p) ? (b.p || 0) : Math.max(0, Math.min(100, p)));
   save(); log('design: שליחה ' + b.id + ' - ' + st);
   res.writeHead(200); res.end('ok');
 }
