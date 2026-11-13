@@ -158,6 +158,7 @@ object Editor {
         val o = JSONObject()
         when (v) {
             is TextView -> o.put("color", hex(v.currentTextColor)).put("size", r1(v.textSize / sd).toDouble()).put("text", v.text.toString())
+                .put("bold", v.typeface?.isBold == true)
             is ImageView -> o.put("color", v.imageTintList?.defaultColor?.let { hex(it) } ?: "מקורי").put("size", r1(v.width / d).toDouble())
             else -> {
                 val bg = v.background
@@ -183,6 +184,7 @@ object Editor {
                 if (color != null && v.currentTextColor != color) v.setTextColor(color)
                 e.size?.let { if (abs(v.textSize - it * sd) > 0.5f) v.setTextSize(TypedValue.COMPLEX_UNIT_SP, it) }
                 e.text?.let { if (v.text.toString() != it) v.text = it }
+                e.bold?.let { if ((v.typeface?.isBold == true) != it) v.setTypeface(android.graphics.Typeface.create(v.typeface, if (it) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)) }
             }
             is ImageView -> {
                 if (color != null && v.imageTintList?.defaultColor != color) v.imageTintList = ColorStateList.valueOf(color)
@@ -212,6 +214,7 @@ object Editor {
             if (want("size")) size = b.optDouble("size", Double.NaN).takeIf { !it.isNaN() }?.toFloat()
             if (want("radius")) radius = b.optDouble("radius", Double.NaN).takeIf { !it.isNaN() }?.toFloat()
             if (want("text")) text = if (b.has("text")) b.optString("text") else null
+            if (want("bold") && b.has("bold")) bold = b.optBoolean("bold")
             if (!want("move")) { dx = e.dx; dy = e.dy }
         }
         applyTo(v, back)
