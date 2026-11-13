@@ -65,7 +65,7 @@ async function send(title, areas, src, at = Date.now(), eid = '') {
   if (!areas.length) return;
   const keys = areas.map(a => title + '|' + a);
   web.broadcast({ title, areas, src, at, sent: now });   // לאתר - בזמן אמת
-  require('./archive').addLive(title, areas, +at || now);   // גם להתרעות האחרונות (יישובים שחסרים בארכיון של פיקוד העורף)
+  require('./archive').addLive(title, areas, +at || now, src);   // גם להתרעות האחרונות (יישובים שחסרים בארכיון של פיקוד העורף)
   const chunks = P.chunks(areas);
   const msgs = chunks.map(part => ({
     topic: TOPIC,
