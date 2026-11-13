@@ -24,11 +24,15 @@ jobs:
         run: |
           gradle :app:compileReleaseKotlin :relay:compileReleaseKotlin :admin:compileReleaseKotlin --rerun-tasks --console=plain 2>&1 | tee compile.log || true
           grep '^w: ' compile.log > warnings.txt || true
-          echo "warnings: $(wc -l < warnings.txt)"
+          echo "warnings: $(wc -l < warnings.txt)"; sed -E 's#file://.*/red-alert/##' warnings.txt
       - name: Lint
         run: |
           gradle :app:lintRelease :relay:lintRelease :admin:lintRelease --continue --console=plain \
-            -Pandroid.lint.checkDependencies=false 2>&1 | tail -20 || true
+            -Pandroid.lint.checkDependencies=false > lint.log 2>&1 || true
+          for m in app relay admin; do
+            f=$m/build/intermediates/lint_intermediate_text_report/release/lintReportRelease/lint-results-release.txt
+            echo "===== LINT $m"; [ -f $f ] && grep -E '^[^ ].*: (Error|Warning): ' $f | sed -E 's#^.*/(src/main/)#\1#' || echo "(no report)"
+          done
       - name: Detekt (unused)
         run: |
           curl -sSL -o detekt.jar https://github.com/detekt/detekt/releases/download/v1.23.7/detekt-cli-1.23.7-all.jar
@@ -42,10 +46,12 @@ jobs:
             UnusedImports: { active: true }
           Y
           java -jar detekt.jar --input app/src/main/java,relay/src/main/java,admin/src/main/java \
-            --config detekt.yml --build-upon-default-config=false --all-rules=false \
-            --report txt:detekt.txt || true
+            --config detekt.yml --build-upon-default-config \
+            --report txt:detekt.txt > detekt.log 2>&1 || true
+          tail -5 detekt.log
           grep -E 'Unused' detekt.txt > detekt-unused.txt || true
           echo "unused: $(wc -l < detekt-unused.txt)"
+          sed -E 's#^.*/red-alert/##' detekt-unused.txt
       - uses: actions/upload-artifact@v4
         with:
           name: code-check
