@@ -27,7 +27,9 @@ object OrefArchive {
                     val s = o.optJSONArray("s")
                     val times = if (s == null || s.length() != areas.size) emptyMap()
                         else areas.indices.associate { areas[it] to ts + s.optLong(it) * 1000 }
-                    Prefs.Entry("", AlertService.displayTitle(t), o.optString("b"), AlertService.levelOf(t), ts, times = times)
+                    // src: המקור הראשון שהתריע בשרת (כמו אצל כל הטלפונים)
+                    val src = o.optString("src").let { if (it.isEmpty()) "" else SourceHealth.name(it) }
+                    Prefs.Entry("", AlertService.displayTitle(t), o.optString("b"), AlertService.levelOf(t), ts, src = src, times = times)
                 }
             }
         } finally { conn.disconnect() }
@@ -85,7 +87,7 @@ object OrefArchive {
             // הסוג מחושב מחדש מהכותרת (לא מה שנשמר) - כך תיקוני סיווג חלים גם על התרעות ישנות
             val t = o.getString("t")
             val a = o.optJSONObject("a")
-            Prefs.Entry("", AlertService.displayTitle(t), o.optString("b"), AlertService.levelOf(t), o.getLong("ts"),
+            Prefs.Entry("", AlertService.displayTitle(t), o.optString("b"), AlertService.levelOf(t), o.getLong("ts"), src = o.optString("src"),
                 times = a?.keys()?.asSequence()?.associateWith { a.optLong(it) } ?: emptyMap())
         }
     } catch (_: Exception) { emptyList() }
@@ -93,7 +95,8 @@ object OrefArchive {
     private fun save(c: android.content.Context, list: List<Prefs.Entry>) = try {
         val arr = JSONArray()
         list.forEach { e -> arr.put(org.json.JSONObject().put("t", e.title).put("b", e.body).put("l", e.level).put("ts", e.ts)
-            .apply { if (e.times.isNotEmpty()) put("a", org.json.JSONObject().also { o -> e.times.forEach { (k, v) -> o.put(k, v) } }) }) }
+            .apply { if (e.times.isNotEmpty()) put("a", org.json.JSONObject().also { o -> e.times.forEach { (k, v) -> o.put(k, v) } }) }
+            .apply { if (e.src.isNotEmpty()) put("src", e.src) }) }
         val tmp = java.io.File(c.filesDir, "archive.json.tmp")
         tmp.writeText(arr.toString()); tmp.renameTo(file(c))
     } catch (_: Exception) { false }
