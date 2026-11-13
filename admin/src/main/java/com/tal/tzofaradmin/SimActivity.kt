@@ -31,7 +31,6 @@ class SimActivity : Activity() {
     private var cdLabel: TextView? = null
     private var shelter = 0
     private var title = ""
-    private val STAY_MS = 10 * 60 * 1000L
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     private fun tv(t: String, size: Float, bold: Boolean = false) = TextView(this).apply {
@@ -40,7 +39,9 @@ class SimActivity : Activity() {
     }
     private fun card(color: String, r: Int) = GradientDrawable().apply { setColor(Color.parseColor(color)); cornerRadius = dp(r).toFloat() }
 
-    private fun noShelter(t: String) = t.contains("רעידת אדמה") || t.contains("צונאמי")
+    // כמו בצופר חירום: זמן הגעה רק בירי רקטות; אחריו (ובכלי טיס - מההתחלה) "נשארים במרחב המוגן עד הודעה"
+    private fun noShelter(t: String) = listOf("כלי טיס", "מחבלים", "חומרים מסוכנים", "רדיולוגי", "רעידת אדמה", "צונאמי").any { t.contains(it) }
+    private fun after(t: String) = if (!noShelter(t) || t.contains("כלי טיס")) "נשארים במרחב המוגן עד הודעה" else "ממתינים להודעת סיום אירוע"
     private fun mmss(s: Int) = "%d:%02d".format(s / 60, s % 60)
 
     private val tick = object : Runnable {
@@ -48,12 +49,9 @@ class SimActivity : Activity() {
             val cd = countdown ?: return
             val now = System.currentTimeMillis()
             val enterEnd = firedAt + shelter * 1000L
-            val stay = if (noShelter(title)) 0L else STAY_MS
-            val (label, value) = when {
-                now < enterEnd -> "זמן התגוננות" to mmss(((enterEnd - now + 999) / 1000).toInt())
-                now < enterEnd + stay -> "נשארים במרחב המוגן" to mmss(((enterEnd + stay - now + 999) / 1000).toInt())
-                else -> "" to "ממתינים להודעת סיום אירוע"
-            }
+            val (label, value) =
+                if (!noShelter(title) && now < enterEnd) "זמן התגוננות" to mmss(((enterEnd - now + 999) / 1000).toInt())
+                else "" to after(title)
             cdLabel?.text = label; cdLabel?.visibility = if (label.isEmpty()) View.GONE else View.VISIBLE
             cd.textSize = if (label.isEmpty()) 20f else 38f
             cd.text = value
@@ -74,9 +72,17 @@ class SimActivity : Activity() {
         @Suppress("DEPRECATION") window.navigationBarColor = bg
         val update = Data.isUpdate(a.raw)
         val (head, note) = when (level) {
-            1 -> "מבזק פיקוד העורף" to (if (title.startsWith("התרעה מקדימה - ")) title else "התרעה מקדימה")
-            2 -> "עדכון פיקוד העורף" to (if (update) a.raw else "האירוע הסתיים")
-            else -> title to when { title.contains("רעידת אדמה") -> "צאו לשטח פתוח"; title.contains("צונאמי") -> "התרחקו מחוף הים"; else -> "היכנסו למרחב המוגן" }
+            // כמו בצופר חירום: "מבזק" / "עדכון" על המסך, וההנחיה לפי סוג ההתרעה
+            1 -> "מבזק" to (if (title.startsWith("התרעה מקדימה - ")) title else "התרעה מקדימה")
+            2 -> "עדכון" to (if (update) a.raw else "האירוע הסתיים")
+            else -> title to when {
+                title.contains("כלי טיס") || title.contains("מחבלים") -> "היכנסו מייד למרחב המוגן"
+                title.contains("חומרים מסוכנים") -> "הסתגרו מייד במבנה"
+                title.contains("רדיולוגי") -> "היכנסו למבנה וסגרו את הדלתות והחלונות"
+                title.contains("רעידת אדמה") -> "צאו לשטח פתוח"
+                title.contains("צונאמי") -> "התרחקו מייד מחוף הים"
+                else -> "היכנסו למרחב המוגן"
+            }
         }
         val icon = when {
             level == 1 -> R.drawable.ic_list_pre; level == 2 -> R.drawable.ic_list_end

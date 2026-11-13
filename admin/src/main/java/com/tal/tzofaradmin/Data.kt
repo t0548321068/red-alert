@@ -169,7 +169,12 @@ object Data {
             t.contains("רדיולוג") -> "radiological"
             else -> "red_alert"
         }
-        val out = mutableListOf("voice/phrases/$type.mp3")
+        // מקדימה / סיום: פותחים ב"מבזק פיקוד העורף" / "עדכון פיקוד העורף" - כמו בצופר חירום
+        val out = when (level) {
+            LEVEL_PRE -> mutableListOf("voice/extra/mivzak_pikud_haoref.mp3", "voice/phrases/$type.mp3")
+            LEVEL_END -> mutableListOf("voice/extra/update_pikud_haoref.mp3", "voice/phrases/$type.mp3")
+            else -> mutableListOf("voice/phrases/$type.mp3")
+        }
         val files = a.areas.mapNotNull { r -> match(r).firstOrNull { it.voiceOk }?.voice }.distinct()
         val shown = if (files.size <= 5) files else files.take(4)
         out += shown
