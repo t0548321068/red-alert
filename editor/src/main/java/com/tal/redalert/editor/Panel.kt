@@ -25,7 +25,7 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
     /** שדות ששונו בחלון הזה - רק אותם מחזירים למקור כשמבטלים שינוי */
     private val touched = HashSet<String>().apply {
         if (e.color != null) add("color"); if (e.size != null) add("size"); if (e.radius != null) add("radius")
-        if (e.text != null) add("text"); if (e.dx != 0f || e.dy != 0f) add("move") }
+        if (e.text != null) add("text"); if (e.bold != null) add("bold"); if (e.dx != 0f || e.dy != 0f) add("move") }
     private val sel = GradientDrawable().apply {
         setStroke(Ui.dp(2), Ui.BLUE, Ui.dp(5).toFloat(), Ui.dp(3).toFloat()); setColor(Color.TRANSPARENT) }
     private var tab = "color"
@@ -34,7 +34,7 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
     private val d = context.resources.displayMetrics.density
 
     private val tabList = when (e.kind) {
-        "t" -> listOf("color" to "צבע", "size" to "גודל", "text" to "טקסט", "move" to "מיקום", "note" to "הערה")
+        "t" -> listOf("color" to "צבע", "size" to "גופן", "text" to "טקסט", "move" to "מיקום", "note" to "הערה")
         "i" -> listOf("color" to "צבע", "size" to "גודל", "move" to "מיקום", "note" to "הערה")
         else -> listOf("color" to "רקע", "radius" to "פינות", "move" to "מיקום", "note" to "הערה")
     }
@@ -82,7 +82,7 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
     }
 
     private fun modified(k: String) = when (k) {
-        "color" -> e.color != null; "size" -> e.size != null; "radius" -> e.radius != null; "text" -> e.text != null
+        "color" -> e.color != null; "size" -> e.size != null || e.bold != null; "radius" -> e.radius != null; "text" -> e.text != null
         "move" -> e.dx != 0f || e.dy != 0f; else -> e.note.isNotBlank()
     }
     private fun drawTabs() {
@@ -101,11 +101,12 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
         if (e.size != null && e.size == e.base.optDouble("size", -1.0).toFloat()) e.size = null
         if (e.radius != null && e.radius == e.base.optDouble("radius", -1.0).toFloat()) e.radius = null
         if (e.text != null && e.text == e.base.optString("text")) e.text = null
+        if (e.bold != null && e.bold == e.base.optBoolean("bold")) e.bold = null
         if (e.color != null && e.color.equals(e.base.optString("color"), true)) e.color = null
         if (e.color != null) touched += "color"; if (e.size != null) touched += "size"; if (e.radius != null) touched += "radius"
-        if (e.text != null) touched += "text"; if (e.dx != 0f || e.dy != 0f) touched += "move"
+        if (e.text != null) touched += "text"; if (e.bold != null) touched += "bold"; if (e.dx != 0f || e.dy != 0f) touched += "move"
         val back = touched.filter { f -> when (f) { "color" -> e.color == null; "size" -> e.size == null; "radius" -> e.radius == null
-            "text" -> e.text == null; else -> e.dx == 0f && e.dy == 0f } }.toSet()
+            "text" -> e.text == null; "bold" -> e.bold == null; else -> e.dx == 0f && e.dy == 0f } }.toSet()
         if (back.isNotEmpty()) Editor.restore(v, e, back)
         Editor.applyTo(v, e)
         sel.setBounds(0, 0, v.width, v.height)
@@ -169,6 +170,23 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
                 bar.layoutDirection = View.LAYOUT_DIRECTION_LTR
                 col.addView(bar, LayoutParams(-1, -2).apply { topMargin = Ui.dp(8) })
                 col.addView(hint("מקורי: ${fmt(base)} · " + when { k == "radius" -> "עיגול הפינות"; e.kind == "t" -> "גודל הגופן"; else -> "רוחב וגובה" }))
+                // טקסט: רגיל / מודגש
+                if (e.kind == "t") {
+                    val baseBold = b.optBoolean("bold")
+                    fun drawBold(row: LinearLayout) {
+                        row.removeAllViews()
+                        val cur = e.bold ?: baseBold
+                        listOf(false to "רגיל", true to "מודגש").forEachIndexed { i, (bb, name) ->
+                            row.addView(Ui.tv(context, name, 14f, if (cur == bb) Color.WHITE else Ui.TEXT, bold = bb).apply {
+                                gravity = Gravity.CENTER; setPadding(0, Ui.dp(9), 0, Ui.dp(9))
+                                background = Ui.round(if (cur == bb) Ui.BLUE else Ui.CARD, 10)
+                                setOnClickListener { e.bold = bb; live(); drawBold(row) }
+                            }, LayoutParams(0, -2, 1f).apply { if (i > 0) marginStart = Ui.dp(8) })
+                        }
+                    }
+                    col.addView(LinearLayout(context).also { drawBold(it) }, LayoutParams(-1, -2).apply { topMargin = Ui.dp(12) })
+                    col.addView(hint("מקורי: " + if (baseBold) "מודגש" else "רגיל"))
+                }
             }
             "text" -> {
                 val t = edit(e.text ?: b.optString("text"), true)
@@ -219,7 +237,7 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
     }
 
     private fun reset() {
-        e.color = null; e.size = null; e.radius = null; e.text = null; e.dx = 0f; e.dy = 0f; e.note = ""
+        e.color = null; e.size = null; e.radius = null; e.text = null; e.bold = null; e.dx = 0f; e.dy = 0f; e.note = ""
         live(); drawPane()
     }
 
@@ -227,7 +245,7 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
     fun finish(save: Boolean) {
         v.overlay.remove(sel)
         if (!save) {
-            e.color = before.color; e.size = before.size; e.radius = before.radius; e.text = before.text
+            e.color = before.color; e.size = before.size; e.radius = before.radius; e.text = before.text; e.bold = before.bold
             e.dx = before.dx; e.dy = before.dy; e.note = before.note
             if (touched.isNotEmpty()) Editor.restore(v, e, touched)
             Editor.applyTo(v, e)
