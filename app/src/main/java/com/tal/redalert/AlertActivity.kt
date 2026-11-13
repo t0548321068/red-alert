@@ -98,6 +98,7 @@ open class AlertActivity : Activity() {
         val preFull = pre && !popup
         val (headTitle, headNote) = if (preFull)
             "מבזק - התקרבו למרחב המוגן" to (if (title.startsWith("התרעה מקדימה - ")) title else "התרעה מקדימה")
+        else if (end && !popup && !AlertUi.update(title)) "עדכון" to "סיום אירוע"   // סיום במסך מלא (מעריכת צופר)
         else AlertUi.head(title, level)
 
         val root = LinearLayout(this).apply {
@@ -159,7 +160,9 @@ open class AlertActivity : Activity() {
             root.addView(areaCard, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(10), dpx(10), dpx(10), 0) })
         }
 
-        if (end && !AlertUi.update(title)) root.addView(tv("ניתן לצאת מהמרחב המוגן", 19f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
+        // סיום במסך מלא: "האירוע הסתיים" ומתחת "ניתן לצאת מהמרחב המוגן", בגודל 20 (מעריכת צופר). פופ-אפ - כמו קודם
+        if (end && !AlertUi.update(title)) root.addView(tv(if (popup) "ניתן לצאת מהמרחב המוגן" else "האירוע הסתיים\nניתן לצאת מהמרחב המוגן",
+            if (popup) 19f else 20f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
         if (pre) {
             // מתחת למפה: נוסח ההתרעה ומה לעשות
             // במסך מלא - "בדקות הקרובות..." כבר מעל האזורים (אותו נוסח בכל מבזק, גם מלבנון - המקור כבר למעלה)
