@@ -6,7 +6,7 @@ plugins {
 }
 
 // הגרסה של עריכת צופר: עולה באחד בכל פרסום (1.1.4, 1.1.5...) - ידנית, כאן
-val editorVersion = "1.1.30"
+val editorVersion = "1.1.31"
 // הגרסה של צופר חירום שהעריכה בנויה ממנה (מוצגת בשורת החיוויים כמו באפליקציה)
 val appVersion = Regex("versionName = \"([^\"]+)\"").find(file("../app/build.gradle.kts").readText())?.groupValues?.get(1) ?: "0"
 
