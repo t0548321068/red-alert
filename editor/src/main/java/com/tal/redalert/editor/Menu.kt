@@ -133,7 +133,7 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
 
     fun refreshFooter() {
         val ver = try { context.packageManager.getPackageInfo(context.packageName, 0).versionName } catch (_: Exception) { "" }
-        footer.text = "עריכת צופר · צופר חירום $ver · בנייה ${Update.build(context)}" + Update.status.takeIf { it.isNotEmpty() }?.let { "\n$it" }.orEmpty()
+        footer.text = "עריכת צופר ${Update.current(context)} · צופר חירום $ver" + Update.status.takeIf { it.isNotEmpty() }?.let { "\n$it" }.orEmpty()
         footer.setOnClickListener {
             if (Update.needPermission) context.startActivity(Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                 android.net.Uri.parse("package:" + context.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

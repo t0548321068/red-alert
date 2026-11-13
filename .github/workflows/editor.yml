@@ -30,8 +30,8 @@ jobs:
           git fetch -q --depth=1 origin refs/heads/beta && rm -rf app && git checkout FETCH_HEAD -- app
           # לא רשומה ב-settings.gradle.kts (שינוי שם בונה ומשחרר את צופר חירום) - נוספת כאן, רק לבנייה הזו
           echo 'include(":editor")' >> settings.gradle.kts
-          V=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
-          echo "TITLE=עריכת צופר · צופר חירום $V · 1.1.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV   # בסוף: מספר עם נקודות (ניהול צופר ו-1.0.0 קוראים אותו), והמספר האחרון = הבנייה
+          E=$(grep -oP 'editorVersion = "\K[^"]+' editor/build.gradle.kts)
+          echo "TITLE=עריכת צופר · $E" >> $GITHUB_ENV
           gradle :editor:assembleRelease --console=plain 2>&1 | tee build.log || {
             grep -E '^e: |error:|Lint found|What went wrong' -A2 build.log | head -30 | sed 's/^/::error::/'
             exit 1
