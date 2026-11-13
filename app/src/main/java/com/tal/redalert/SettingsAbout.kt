@@ -1,11 +1,33 @@
 package com.tal.redalert
 
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.app.NotificationManager
+import android.content.Context
+import android.content.Intent
+import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.PowerManager
+import android.provider.Settings
+import android.text.TextUtils
 import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
 import com.tal.redalert.MainActivity.C
+import com.tal.redalert.MainActivity.Row
+import com.tal.redalert.MainActivity.Perm
+import com.tal.redalert.MainActivity.SameHeight
 
 // (חלק מהמסך הראשי - MainActivity; המצב עצמו נשמר שם)
 
@@ -63,6 +85,7 @@ internal fun MainActivity.showUpdates() = ouiPage("עדכונים",
     ouiAdd(body, news)
 }
 
+/** עמוד אודות: אייקון, שם וגרסה, מקורות, רישיונות והבהרה */
 /** נוסח ההבהרה - בעמוד האודות ובחלון שקופץ אחרי התקנה חדשה */
 internal const val DISCLAIMER = "צופר חירום היא אפליקציה פרטית ולא רשמית שפותחה באופן עצמאי, והיא אינה קשורה לפיקוד העורף, לצה\"ל, למשרד הביטחון או לכל גוף ממשלתי אחר. " +
     "המידע על ההתרעות נאסף ממקורות ציבוריים – אתר פיקוד העורף, שירותי התרעה וערוצי טלגרם – ומוצג כפי שהתקבל. " +

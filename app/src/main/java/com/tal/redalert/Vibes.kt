@@ -3,6 +3,7 @@ package com.tal.redalert
 import android.content.Context
 import android.os.Build
 
+/** סוגי רטט לבחירה, לכל סוג התראה בנפרד */
 /** עצירת רטט של התראה (כפתור "השתק") - הרטט עצמו לפי ערוץ ההתראה של הטלפון */
 object Vibes {
     private fun vibrator(c: Context): android.os.Vibrator =

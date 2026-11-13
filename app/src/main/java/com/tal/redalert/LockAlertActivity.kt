@@ -40,9 +40,7 @@ class LockAlertActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // מעל מסך הנעילה ומדליק את המסך (Android 8.0 - בדגלים הישנים, כמו במסך ההתרעה)
-        if (android.os.Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true) }
-        else @Suppress("DEPRECATION") window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+        setShowWhenLocked(true); setTurnScreenOn(true)
         // חלון בגובה התוכן בלבד, בראש המסך: מגע מחוץ לו עובר למסך הנעילה (החלקה לפתיחה וכו')
         window.setLayout(-1, -2)
         window.setGravity(Gravity.TOP)

@@ -32,19 +32,21 @@ class AlertWidgetLarge : AppWidgetProvider() {
             v.setTextColor(R.id.wl_status, Color.parseColor(if (on) "#30D158" else "#8E8E93"))
 
             // התרעה פעילה: כרטיס כמו בכתום - אייקון, כותרת, שורה מתחתיה, מיקום.
-            // באדום: ירי - ספירה לכניסה ואחריה "נשארים במרחב המוגן עד הודעה". סוג בלי זמן הגעה - ההנחיה שלו (הכל באדום)
+            // באדום: ספירה לכניסה -> נשארים במרחב המוגן -> ממתינים להודעת סיום (הכל באדום)
             val act = AlertWidget.activeAny(c)
             AlertWidget.setAlertBox(v, act, R.id.wl_pre_box, R.id.wl_pre_icon, R.id.wl_pre_title, R.id.wl_pre_note, R.id.wl_pre_area)
-            val left = Prefs.countdownUntil(c) - System.currentTimeMillis()
-            val actTitle = act?.optString("title") ?: ""
-            if (act != null && act.optInt("level") == AlertService.LEVEL_ALERT && !AlertUi.noShelter(actTitle) && left > 0) {
-                v.setTextViewText(R.id.wl_pre_note, AlertUi.instruction(actTitle))
+            val now = System.currentTimeMillis()
+            val left = Prefs.countdownUntil(c) - now
+            val stayLeft = Prefs.stayUntil(c) - now
+            if (act != null && act.optInt("level") == AlertService.LEVEL_ALERT && (left > 0 || stayLeft > 0)) {
+                val inStay = left <= 0
+                v.setTextViewText(R.id.wl_pre_note, if (inStay) "נשארים במרחב המוגן" else "היכנסו למרחב המוגן")
                 v.setViewVisibility(R.id.wl_pre_cd, View.VISIBLE)
-                v.setChronometer(R.id.wl_pre_cd, SystemClock.elapsedRealtime() + left, null, true)
+                v.setChronometer(R.id.wl_pre_cd, SystemClock.elapsedRealtime() + if (inStay) stayLeft else left, null, true)
                 v.setChronometerCountDown(R.id.wl_pre_cd, true)
             } else {
                 if (act != null && act.optInt("level") == AlertService.LEVEL_ALERT)
-                    v.setTextViewText(R.id.wl_pre_note, if (AlertUi.noShelter(actTitle)) AlertUi.instruction(actTitle) else AlertUi.STAY_TEXT)
+                    v.setTextViewText(R.id.wl_pre_note, "ממתינים להודעת סיום")
                 v.setChronometer(R.id.wl_pre_cd, SystemClock.elapsedRealtime(), null, false)
                 v.setViewVisibility(R.id.wl_pre_cd, View.GONE)
             }

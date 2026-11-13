@@ -1,15 +1,32 @@
 package com.tal.redalert
 
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.PowerManager
 import android.provider.Settings
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import com.tal.redalert.MainActivity.C
+import com.tal.redalert.MainActivity.Row
+import com.tal.redalert.MainActivity.Perm
 import com.tal.redalert.MainActivity.SameHeight
 
 // שורת החיוויים במסך הראשי (מוגן, צלילים, רשת, מיקום, מקורות, גרסה), הפיד הארצי ועמוד המקורות
@@ -66,9 +83,7 @@ internal fun MainActivity.network(): Pair<String, Boolean>? {
 
 internal fun MainActivity.locationOn(): Boolean {
     val lm = getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
-    return hasLocationPerm() && (if (android.os.Build.VERSION.SDK_INT >= 28) lm.isLocationEnabled
-        else lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER) ||
-            lm.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER))   // Android 8.x
+    return hasLocationPerm() && lm.isLocationEnabled
 }
 
 /** הטקסט של פריט בפיד, עם אייקון סוג ההתרעה (בצבע הרמה) במקום תווי המקום */
@@ -255,6 +270,7 @@ internal fun MainActivity.onLocationIndicator() {
     }
 }
 
+/** עמוד מקורות ההתרעה: כמה מחוברים, ומצב כל מקור - מתעדכן כל שנייה */
 /** "לפני X שניות / דקות / שעות" */
 internal fun MainActivity.agoText(t: Long): String {
     if (t <= 0) return "עוד לא"

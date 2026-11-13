@@ -79,12 +79,12 @@ object AreaData {
         }.also { keysCache = it }
     }
 
+    /** האם זה שם של יישוב/אזור אמיתי (ולא שורת כותרת או תאריך מהודעת טלגרם) */
     /** מילים שמופיעות רק בכותרות של ערוצים ("צופר - צבע אדום", "רדאר 📡") - אף פעם לא ביישוב */
     private val NOT_AREA = listOf("צבע אדום", "רדאר", "כומתה", "פיקוד העורף", "התרעה", "התראה", "יישובים", "ישובים", "טלגרם")
 
     fun notArea(raw: String) = NOT_AREA.any { raw.contains(it) }
 
-    /** האם זה שם של יישוב/אזור אמיתי (ולא שורת כותרת או תאריך מהודעת טלגרם) */
     fun isKnown(c: Context, raw: String): Boolean {
         if (notArea(raw)) return false
         val k = Prefs.areaKey(raw.trim())

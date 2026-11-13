@@ -113,7 +113,7 @@ object OrefArchive {
         val text = try {
             val b = conn.inputStream.use { it.readBytes() }
             // לפעמים עם BOM
-            String(b, Charsets.UTF_8).trimStart('\uFEFF').trim()
+            String(b, Charsets.UTF_8).trimStart('﻿').trim()
         } finally { conn.disconnect() }
         val rows = convert(text)
         if (!rows.startsWith("[")) return emptyList()

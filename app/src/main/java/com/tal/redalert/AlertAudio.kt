@@ -3,9 +3,25 @@ package com.tal.redalert
 import com.tal.redalert.AlertService.Companion.HEADSETS
 import com.tal.redalert.AlertService.Companion.LEVEL_ALERT
 import com.tal.redalert.AlertService.Companion.builtinSpeaker
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
 import android.content.Context
+import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
+import android.media.Ringtone
 import android.media.RingtoneManager
+import android.os.Build
+import android.os.Handler
+import android.os.IBinder
+import android.os.Looper
+import android.os.PowerManager
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 // שירות ההתרעות: צליל, עוצמה, מצב שקט / נא לא להפריע, אוזניות ושיחה
 
@@ -51,7 +67,7 @@ internal fun AlertService.ringerToNormal(ms: Long): Boolean = synchronized(audio
     } catch (_: Exception) { restoreRinger.run(); false }
 }
 
-internal fun AlertService.playAlarm(level: Int, durationMs: Long, usage: Int = AudioAttributes.USAGE_ALARM) {
+internal fun AlertService.playAlarm(level: Int, type: Int, durationMs: Long, usage: Int = AudioAttributes.USAGE_ALARM) {
     val uri = Sounds.uri(this, Sounds.effective(this, level), level) ?: return
     main.post {
         ringtone?.stop()
@@ -96,10 +112,10 @@ internal fun AlertService.playOnSpeaker(level: Int, durationMs: Long, usage: Int
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
                 setDataSource(this@playOnSpeaker, uri)
                 isLooping = level == LEVEL_ALERT
-                if (android.os.Build.VERSION.SDK_INT >= 28) builtinSpeaker(this@playOnSpeaker)?.let { setPreferredDevice(it) }
+                builtinSpeaker(this@playOnSpeaker)?.let { setPreferredDevice(it) }
                 prepare(); start()
             }
-        } catch (_: Exception) { stopSpeaker(); playAlarm(level, durationMs, usage) }
+        } catch (_: Exception) { stopSpeaker(); playAlarm(level, RingtoneManager.TYPE_ALARM, durationMs, usage) }
         val p = spk
         main.postDelayed({ if (spk === p) stopSpeaker() }, durationMs)
     }

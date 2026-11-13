@@ -2,18 +2,24 @@ package com.tal.redalert
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
+import android.provider.Settings
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -623,12 +629,18 @@ class MainActivity : Activity() {
     /** נטען פעם אחת לכל פתיחה של האפליקציה */
     internal var archiveCache: List<Prefs.Entry>? = null
 
+    /** עיגול בחירה כמו בבחירת קבצים בסמסונג: טבעת, ובנבחר עיגול כחול מלא עם וי */
+
     /** on != null - השורה מציגה מתג (לחיצה על השורה מדליקה/מכבה) */
     internal class Row(val icon: String, val title: String,
                       val on: (() -> Boolean)? = null, val toggle: (() -> Unit)? = null, val action: () -> Unit)
 
+    /** קטגוריה פתוחה במגירת ההגדרות (נשמרת בין פתיחות) */
+    internal var openCat = -1
+
     /** מסך מצב שבת: בחירת מצב, עיר וזמני כניסה ויציאה, והסבר מה המצב עושה */
     internal var shabbatLocAsked = 0L
+    /** עמוד בדיקת התראה: שורה לכל סוג, לחיצה שולחת התראת בדיקה */
     /** הכפתור הצף מוצג / מוסתר לפי ההגדרה; כשמוצג - מקום בתחתית המסך כדי שלא יסתיר כרטיסים */
     internal val hideTestFab = Runnable { if (Prefs.testFabMode(this) == Prefs.STATUS_TIMED) testFab.visibility = View.GONE }
     /** כל העמודים הפתוחים (הגדרות, תת-עמודים, התרעות) - כדי שהתפריט התחתון יסגור את כולם במעבר */
