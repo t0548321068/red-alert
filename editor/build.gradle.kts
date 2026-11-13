@@ -5,8 +5,8 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-// הגרסה של עריכת צופר: עולה באחד בכל פרסום (1.0.1, 1.0.2...) - ידנית, כאן
-val editorVersion = "1.0.1"
+// הגרסה של עריכת צופר: עולה באחד בכל פרסום (1.1.4, 1.1.5...) - ידנית, כאן
+val editorVersion = "1.1.4"
 // הגרסה של צופר חירום שהעריכה בנויה ממנה (מוצגת בשורת החיוויים כמו באפליקציה)
 val appVersion = Regex("versionName = \"([^\"]+)\"").find(file("../app/build.gradle.kts").readText())?.groupValues?.get(1) ?: "0"
 
