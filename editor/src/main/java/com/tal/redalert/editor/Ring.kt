@@ -8,8 +8,20 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.view.View
 
-/** עיגול התקדמות (כמו בניהול צופר): טבעת שמתמלאת לפי האחוז, והאחוז באמצע */
-class Ring(c: Context, var percent: Int, var color: Int) : View(c) {
+/**
+ * עיגול התקדמות (כמו בניהול צופר): טבעת שמתמלאת לפי האחוז, והאחוז באמצע.
+ * from: מאיזה אחוז להתחיל - המספר עולה אחד-אחד עד האחוז (בלי קפיצות)
+ */
+class Ring(c: Context, private val target: Int, var color: Int, from: Int = target) : View(c) {
+    private var percent = from.coerceIn(0, 100)
+    private val anim: android.animation.ValueAnimator? = if (from == target) null else
+        android.animation.ValueAnimator.ofInt(percent, target.coerceIn(0, 100)).apply {
+            duration = (kotlin.math.abs(target - from) * 40L).coerceIn(300L, 3000L)   // 40ms לכל אחוז
+            interpolator = android.view.animation.LinearInterpolator()
+            addUpdateListener { percent = it.animatedValue as Int; invalidate() }
+        }
+    override fun onAttachedToWindow() { super.onAttachedToWindow(); anim?.start() }
+    override fun onDetachedFromWindow() { anim?.cancel(); super.onDetachedFromWindow() }
     private val d = resources.displayMetrics.density
     private val track = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 4 * d; this.color = Color.parseColor("#2C2C2E") }
     private val arc = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 4 * d; strokeCap = Paint.Cap.ROUND }

@@ -35,7 +35,18 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
     /** "שליחות שבוצעו" נפתח: כל השינויים שבוצעו, לפי שליחה */
     private var doneList: List<JSONObject>? = null
     private fun pct(b: JSONObject) = when (b.optString("state")) { "done" -> 100; "sent" -> 0; else -> b.optInt("p", 0) }
-    private fun ringFor(b: JSONObject) = Ring(context, pct(b), if (b.optString("state") == "done") Ui.GREEN else Ui.BLUE)
+    /** האחוז האחרון שהוצג לכל שליחה (נשמר בטלפון - גם אחרי סגירה, העיגול ממשיך מאיפה שהיה) */
+    private fun sp() = context.getSharedPreferences("editor_rings", android.content.Context.MODE_PRIVATE)
+    private fun shownOf(id: String): Int? = sp().getInt(id, -1).takeIf { it >= 0 }
+    private fun setShown(id: String, p: Int) { sp().edit().putInt(id, p).apply() }
+
+    /** העיגול מתחיל מהאחוז שכבר הוצג לשליחה הזו, ועולה אחד-אחד עד החדש */
+    private fun ringFor(b: JSONObject): Ring {
+        val id = b.optString("id"); val to = pct(b)
+        val from = shownOf(id) ?: if (b.optString("state") == "sent") 0 else to
+        setShown(id, to)
+        return Ring(context, to, if (b.optString("state") == "done") Ui.GREEN else Ui.BLUE, minOf(from, to))
+    }
 
     /** לייב: כל 5 שניות - ההתקדמות של השליחות (רק כשהעמוד פתוח) */
     private val live = object : Runnable {
@@ -227,8 +238,10 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
                     return@post }
                 if (doneList != null) return@post
                 val all = (0 until a.length()).map { a.getJSONObject(it) }.reversed()
-                val open = all.filter { it.optString("state") != "done" }
-                val done = all.filter { it.optString("state") == "done" }
+                // שליחה שזה עתה בוצעה נשארת פעם אחת ברשימה - כדי לראות את העיגול עולה עד 100 - ואז עוברת ל"שליחות שבוצעו"
+                fun justDone(b: JSONObject) = b.optString("state") == "done" && (shownOf(b.optString("id")) ?: 100) < 100
+                val open = all.filter { it.optString("state") != "done" || justDone(it) }
+                val done = all.filter { it.optString("state") == "done" && !justDone(it) }
                 sent.addView(Ui.tv(context, "שליחות קודמות", 13f, Color.parseColor("#AAAAAA")).apply { setPadding(Ui.dp(28), Ui.dp(14), Ui.dp(28), Ui.dp(6)) })
                 val c = card()
                 val fmt = java.text.SimpleDateFormat("dd/MM HH:mm", java.util.Locale.US)
