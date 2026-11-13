@@ -32,6 +32,7 @@ open class AlertActivity : Activity() {
     private val ui = Handler(Looper.getMainLooper())
     private var countdown: TextView? = null
     private var cdLabel: TextView? = null
+    private var cdGap: View? = null
     private var shelterSec = -1
     private var firedAt = 0L
     private var level = AlertService.LEVEL_ALERT
@@ -49,9 +50,11 @@ open class AlertActivity : Activity() {
                 if (r != stageRes) { stageRes = r; AlertUi.setIcon(stageIconV, r, big = false) } }
             val cd = countdown ?: return
             val t = AlertUi.timer(level, shelterSec, firedAt, title = alertTitle) ?: return
-            cdLabel?.text = t.first
+            // מסך מלא: "זמן התגוננות:" מימין והזמן משמאל, בשורה אחת. בלי ספירה - הכיתוב במרכז
+            cdLabel?.text = if (t.first.isNotEmpty() && !popup) t.first + ":" else t.first
             cdLabel?.visibility = if (t.first.isEmpty()) View.GONE else View.VISIBLE
-            cd.textSize = if (t.first.isEmpty()) 20f else 38f
+            cdGap?.visibility = if (t.first.isEmpty()) View.GONE else View.VISIBLE
+            cd.textSize = if (t.first.isEmpty()) 20f else if (popup) 38f else 36f
             cd.text = t.second
             if (t.first.isNotEmpty()) ui.postDelayed(this, 250)
         }
@@ -118,7 +121,7 @@ open class AlertActivity : Activity() {
                 AlertUi.setIcon(this, AlertUi.stageIcon(title, level, shelterSec, firedAt), big = false); stageIconV = this },
                 LinearLayout.LayoutParams(size, size))
             addView(tv(headTitle, 28f, bold = true))
-            addView(tv(headNote, if (preFull) 22f else 20f).apply { setPadding(0, dpx(2), 0, 0) })
+            addView(tv(headNote, if (popup) 20f else 22f).apply { setPadding(0, dpx(2), 0, 0) })   // מסך מלא: גדול יותר
         }
         root.addView(titleView)
         (if (Prefs.alertMap(this)) miniMap(level, savedInstanceState) else null)?.let { map ->   // אפשר לכבות את המפה בהגדרות
@@ -168,17 +171,20 @@ open class AlertActivity : Activity() {
         var timerCard: LinearLayout? = null
         if (level == AlertService.LEVEL_ALERT) {
             timerCard = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
+                // מסך מלא: שורה אחת - "זמן התגוננות:" מימין, הזמן משמאל. פופ-אפ: הכיתוב מעל הזמן
+                orientation = if (popup) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+                layoutDirection = View.LAYOUT_DIRECTION_RTL
                 gravity = Gravity.CENTER
                 // בלי כרטיס - הטיימר ישירות על הרקע
-                setPadding(dpx(12), 0, dpx(12), 0)
+                setPadding(dpx(if (popup) 12 else 20), 0, dpx(if (popup) 12 else 20), 0)
             }
-            cdLabel = tv("", 13f)
-            countdown = tv("", 38f).apply {
+            cdLabel = tv("", if (popup) 13f else 22f)
+            countdown = tv("", if (popup) 38f else 36f).apply {
                 typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
                 includeFontPadding = false
             }
             timerCard.addView(cdLabel)
+            if (!popup) View(this).also { cdGap = it; timerCard.addView(it, LinearLayout.LayoutParams(0, 1, 1f)) }
             timerCard.addView(countdown)
             root.addView(timerCard, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(10), dpx(4), dpx(10), 0) })
         }
