@@ -52,10 +52,10 @@ open class AlertActivity : Activity() {
             val t = AlertUi.timer(level, shelterSec, firedAt, title = alertTitle) ?: return
             // מסך מלא: "זמן התגוננות:" מימין והזמן משמאל, בשורה אחת. בלי ספירה - הכיתוב במרכז
             // מסך מלא: "זמן התגוננות: דקה וחצי" (הזמן של האזור במילים) מימין, והספירה משמאל - באותו גודל
-            cdLabel?.text = if (t.first.isNotEmpty() && !popup) t.first + ": " + AreaData.shelterText(shelterSec) else t.first
+            cdLabel?.text = if (t.first.isNotEmpty()) t.first + ": " + AreaData.shelterText(shelterSec) else t.first
             cdLabel?.visibility = if (t.first.isEmpty()) View.GONE else View.VISIBLE
             cdGap?.visibility = if (t.first.isEmpty()) View.GONE else View.VISIBLE
-            cd.textSize = if (t.first.isEmpty()) 20f else if (popup) 38f else 22f
+            cd.textSize = if (t.first.isEmpty()) 20f else 22f
             cd.text = t.second
             if (t.first.isNotEmpty()) ui.postDelayed(this, 250)
         }
@@ -94,11 +94,11 @@ open class AlertActivity : Activity() {
         alertTitle = title
         val pre = level == AlertService.LEVEL_PRE
         val end = level == AlertService.LEVEL_END
-        // מבזק במסך מלא: "מבזק - התקרבו למרחב המוגן", ומתחת "התרעה מקדימה" (מלבנון: "התרעה מקדימה - איום מלבנון")
-        val preFull = pre && !popup
-        val (headTitle, headNote) = if (preFull)
+        // מבזק: "מבזק - התקרבו למרחב המוגן", ומתחת "התרעה מקדימה" (מלבנון: "התרעה מקדימה - איום מלבנון").
+        // פופ-אפ באותו סגנון בדיוק כמו מסך מלא (מעריכת צופר) - רק המסגרת שונה
+        val (headTitle, headNote) = if (pre)
             "מבזק - התקרבו למרחב המוגן" to (if (title.startsWith("התרעה מקדימה - ")) title else "התרעה מקדימה")
-        else if (end && !popup && !AlertUi.update(title)) "עדכון" to "סיום אירוע"   // סיום במסך מלא (מעריכת צופר)
+        else if (end && !AlertUi.update(title)) "עדכון" to "סיום אירוע"   // סיום - מסך מלא ופופ-אפ (מעריכת צופר)
         else AlertUi.head(title, level)
 
         val root = LinearLayout(this).apply {
@@ -123,7 +123,7 @@ open class AlertActivity : Activity() {
                 AlertUi.setIcon(this, AlertUi.stageIcon(title, level, shelterSec, firedAt), big = false); stageIconV = this },
                 LinearLayout.LayoutParams(size, size))
             addView(tv(headTitle, 28f, bold = true))
-            addView(tv(headNote, if (popup) 20f else 22f).apply { setPadding(0, dpx(2), 0, 0) })   // מסך מלא: גדול יותר
+            addView(tv(headNote, 22f).apply { setPadding(0, dpx(2), 0, 0) })
         }
         root.addView(titleView)
         (if (Prefs.alertMap(this)) miniMap(level, savedInstanceState) else null)?.let { map ->   // אפשר לכבות את המפה בהגדרות
@@ -149,7 +149,7 @@ open class AlertActivity : Activity() {
             tv("מקור ההתרעה: $src", 13f).apply { setTextColor(Color.parseColor("#E6FFFFFF")); setPadding(0, dpx(6), 0, 0) }
         }
         // מבזק במסך מלא: "בדקות הקרובות..." מעל האזורים (מעריכת צופר), בגודל 20
-        if (preFull) root.addView(tv("בדקות הקרובות צפויות להתקבל התרעות באזורך", 20f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
+        if (pre) root.addView(tv("בדקות הקרובות צפויות להתקבל התרעות באזורך", 20f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
         if (chips.childCount > 0) {
             val areaCard = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -158,39 +158,36 @@ open class AlertActivity : Activity() {
                 addView(chipsScroll, LinearLayout.LayoutParams(-1, -2))
             }
             // מבזק במסך מלא: האזורים באמצע בין "בדקות הקרובות" ל"במקרה של..." - אותו רווח מעל ומתחת (מעריכת צופר)
-            root.addView(areaCard, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(10), dpx(if (preFull) 12 else 10), dpx(10), 0) })
+            root.addView(areaCard, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(10), dpx(if (pre) 12 else 10), dpx(10), 0) })
         }
 
-        // סיום במסך מלא: "האירוע הסתיים" ומתחת "ניתן לצאת מהמרחב המוגן", בגודל 20 (מעריכת צופר). פופ-אפ - כמו קודם
-        if (end && !AlertUi.update(title)) root.addView(tv(if (popup) "ניתן לצאת מהמרחב המוגן" else "האירוע הסתיים\nניתן לצאת מהמרחב המוגן",
-            if (popup) 19f else 20f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
+        // סיום במסך מלא: "האירוע הסתיים" ומתחת "ניתן לצאת מהמרחב המוגן", בגודל 20 (מעריכת צופר), גם בפופ-אפ
+        if (end && !AlertUi.update(title)) root.addView(tv("האירוע הסתיים\nניתן לצאת מהמרחב המוגן", 20f)
+            .apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
         if (pre) {
-            // מתחת למפה: נוסח ההתרעה ומה לעשות
-            // במסך מלא - "בדקות הקרובות..." כבר מעל האזורים (אותו נוסח בכל מבזק, גם מלבנון - המקור כבר למעלה)
-            if (!preFull && title.isNotBlank() && title != "התרעה מקדימה")
-                root.addView(tv(title, 19f).apply { setPadding(dpx(16), dpx(14), dpx(16), 0) })
-            root.addView(tv("במקרה של קבלת התרעה, יש להיכנס למרחב המוגן ולשהות בו עד לקבלת הנחיה מפורשת", if (preFull) 20f else 19f)
-                .apply { setPadding(dpx(16), dpx(if (preFull) 12 else 6), dpx(16), 0) })
+            // מתחת לאזורים: מה לעשות ("בדקות הקרובות..." כבר מעל האזורים - אותו נוסח בכל מבזק, גם מלבנון)
+            root.addView(tv("במקרה של קבלת התרעה, יש להיכנס למרחב המוגן ולשהות בו עד לקבלת הנחיה מפורשת", 20f)
+                .apply { setPadding(dpx(16), dpx(12), dpx(16), 0) })
         }
 
         // כרטיס הטיימר: זמן התגוננות -> נשארים במרחב המוגן
         var timerCard: LinearLayout? = null
         if (level == AlertService.LEVEL_ALERT) {
             timerCard = LinearLayout(this).apply {
-                // מסך מלא: שורה אחת - "זמן התגוננות:" מימין, הזמן משמאל. פופ-אפ: הכיתוב מעל הזמן
-                orientation = if (popup) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+                // שורה אחת - "זמן התגוננות: דקה וחצי" מימין, הספירה משמאל (גם בפופ-אפ)
+                orientation = LinearLayout.HORIZONTAL
                 layoutDirection = View.LAYOUT_DIRECTION_RTL
                 gravity = Gravity.CENTER
                 // בלי כרטיס - הטיימר ישירות על הרקע
-                setPadding(dpx(if (popup) 12 else 20), 0, dpx(if (popup) 12 else 20), 0)
+                setPadding(dpx(20), 0, dpx(20), 0)
             }
-            cdLabel = tv("", if (popup) 13f else 22f)
-            countdown = tv("", if (popup) 38f else 22f).apply {
+            cdLabel = tv("", 22f)
+            countdown = tv("", 22f).apply {
                 typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
                 includeFontPadding = false
             }
             timerCard.addView(cdLabel)
-            if (!popup) View(this).also { cdGap = it; timerCard.addView(it, LinearLayout.LayoutParams(0, 1, 1f)) }
+            View(this).also { cdGap = it; timerCard.addView(it, LinearLayout.LayoutParams(0, 1, 1f)) }
             timerCard.addView(countdown)
             root.addView(timerCard, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dpx(10), dpx(4), dpx(10), 0) })
         }
