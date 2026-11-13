@@ -22,7 +22,7 @@ function clean(i) {
   const o = { screen: str(i.screen, 120), screenName: str(i.screenName, 120), el: str(i.el, 200), label: str(i.label, 120),
     kind: str(i.kind, 4), theme: str(i.theme, 6), changes: {} };
   const c = i.changes || {};
-  for (const k of ['color', 'size', 'text', 'radius', 'bold']) if (c[k] && typeof c[k] === 'object')
+  for (const k of ['color', 'size', 'text', 'radius', 'bold', 'align']) if (c[k] && typeof c[k] === 'object')
     o.changes[k] = { from: str(c[k].from, 400), to: str(c[k].to, 400) };
   if (c.move && typeof c.move === 'object') o.changes.move = { dx: +c.move.dx || 0, dy: +c.move.dy || 0 };
   if (c.note) o.changes.note = str(c.note, 6000);
