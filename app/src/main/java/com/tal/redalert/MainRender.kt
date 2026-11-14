@@ -120,7 +120,12 @@ internal fun MainActivity.renderChips() {
                     setImageResource(R.drawable.ic_area_pin_line)
                     imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT)
                 }, FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER))
-            } else text(emoji, 30f, C.TEXT).apply { gravity = Gravity.CENTER; includeFontPadding = false },
+            } else text(emoji, 30f, C.TEXT).apply {
+                gravity = Gravity.CENTER; includeFontPadding = false
+                // ⏱ של המערכת יוצא קטן מהסיכה (22dp): מגדילים את הגופן עד שגובה הציור עצמו = 22dp
+                val b = android.graphics.Rect(); paint.getTextBounds(emoji, 0, emoji.length, b)
+                if (b.height() > 0) textSize = 30f * dp(22) / b.height()
+            },
             LinearLayout.LayoutParams(dp(44), dp(44)))
         addView(text(title, 14f, C.MUTED).apply { gravity = Gravity.CENTER; setSingleLine() },
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
