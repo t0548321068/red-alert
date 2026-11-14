@@ -52,7 +52,7 @@ open class AlertActivity : Activity() {
             val t = AlertUi.timer(level, shelterSec, firedAt, title = alertTitle) ?: return
             // מסך מלא: "זמן התגוננות:" מימין והזמן משמאל, בשורה אחת. בלי ספירה - הכיתוב במרכז
             // מסך מלא: "זמן התגוננות: דקה וחצי" (הזמן של האזור במילים) מימין, והספירה משמאל - באותו גודל
-            cdLabel?.text = if (t.first.isNotEmpty()) t.first + ": " + AreaData.shelterText(shelterSec) else t.first
+            cdLabel?.text = if (t.first.isNotEmpty()) "⏱ " + t.first + ": " + AreaData.shelterText(shelterSec) else t.first   // ⏱ כמו בכרטיס ובכרטיס השעון
             cdLabel?.visibility = if (t.first.isEmpty()) View.GONE else View.VISIBLE
             cdGap?.visibility = if (t.first.isEmpty()) View.GONE else View.VISIBLE
             cd.textSize = 22f   // גם "נשארים במרחב המוגן עד הודעה" - 22 (מעריכת צופר)
