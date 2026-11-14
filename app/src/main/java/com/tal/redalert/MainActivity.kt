@@ -238,7 +238,7 @@ class MainActivity : Activity() {
         headerIcon(R.drawable.ic_nav_clock) { chooseClock() }
         headerIcon(R.drawable.ic_nav_alerts) { showRecent() }
         headerIcon(R.drawable.ic_gear) { showSettings() }
-        col.addView(header, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+        // הכותרת והכפתורים: קבועים בראש המסך (נכנסים מעל המסך הנגלל, למטה)
 
         // שעון
         clockTime = text("", 44f, C.TEXT).apply {
@@ -482,6 +482,7 @@ class MainActivity : Activity() {
             // שורת החיוויים: קבועה בתחתית המסך, מעל שורת הניווט של הטלפון - לא נגללת עם המסך
             addView(LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.VERTICAL
+                addView(header, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(16), dp(10), dp(16), 0) })
                 addView(mainScroll, LinearLayout.LayoutParams(-1, 0, 1f))
                 addView(status, LinearLayout.LayoutParams(-1, -2).apply {
                     setMargins(dp(16), dp(8), dp(16), dp(10)) })
