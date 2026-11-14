@@ -457,8 +457,9 @@ class MainActivity : Activity() {
         areasCard.addView(shelterLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         // המסך לא נגלל: אזורי ההתרעה תופסים את מה שנשאר (לכל היותר), והרשימה שבתוכם נגללת
         // כרטיס האזורים לא מוצג במסך הראשי (אזורים נוספים עברו להגדרות) - המקום נשאר ריק כדי שהפיד יישב למטה
-        areasSlot = FrameLayout(this)
-        col.addView(areasSlot, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(GAP) })
+        // לא מוצג (המסך נגלל - אין מקום ריק למלא). מוסתר, כדי שלא יוסיף רווח בין כרטיס 4 לכרטיס 5
+        areasSlot = FrameLayout(this).apply { visibility = View.GONE }
+        col.addView(areasSlot, LinearLayout.LayoutParams(-1, -2))
 
         historyBox = LinearLayout(this)   // לא מוצג - נשאר לשימוש פנימי
         // הכפתור עבר לתפריט הצידי
