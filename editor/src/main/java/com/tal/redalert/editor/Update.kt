@@ -27,7 +27,7 @@ object Update {
     }
 
     fun maybeCheck(c: Context) {
-        if (System.currentTimeMillis() - lastCheck > 60_000 || (needPermission && c.packageManager.canRequestPackageInstalls())) check(c) { Editor.refreshMenus() }
+        if (System.currentTimeMillis() - lastCheck > 60_000 || (needPermission && c.packageManager.canRequestPackageInstalls())) check(c) { }
     }
 
     private fun latest(): Pair<String, String>? {
