@@ -307,6 +307,8 @@ internal fun MainActivity.endCardPreview() {
 }
 
 private val STYLE_NAMES = listOf("מסך מלא", "פופ-אפ", "כרטיס", "ממוזער")
+/** הסוגים שנשארו לבחירה: מסך מלא וכרטיס (פופ-אפ וממוזער ירדו) */
+private val STYLES = listOf(0, 2)
 private val TOPICS = listOf(AlertService.LEVEL_ALERT to "התרעות", AlertService.LEVEL_PRE to "מבזקים והנחיות", AlertService.LEVEL_END to "עדכונים")
 
 /** השורה בהגדרות: הבחירה הכללית, ואילו נושאים שונים ממנה */
@@ -319,7 +321,7 @@ internal fun MainActivity.styleSummary(): String {
 internal fun MainActivity.showCustomStyles() = ouiPage("סגנון התרעה") { body, rebuild ->
     val all = ouiCard()
     val opts = LinearLayout(this).apply { setPadding(dp(6), dp(20), dp(6), dp(16)) }   // בלי כותרת - ההדמיות בראש הכרטיס
-    STYLE_NAMES.forEachIndexed { i, label ->
+    STYLES.forEach { i -> val label = STYLE_NAMES[i]
         opts.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
@@ -352,38 +354,12 @@ internal fun MainActivity.showCustomStyles() = ouiPage("סגנון התרעה") 
     ouiAdd(body, c)
     ouiNote(body, if (custom) "התרעות – אדום · מבזקים והנחיות – כתום · עדכונים – ירוק\nבמצב שבת כל ההתרעות במסך מלא"
         else "כשמופעל – הסימון למעלה מתבטל, ולכל נושא בוחרים סגנון משלו")
-    // מה מוצג אחרי שסוגרים מסך מלא / פופ-אפ
-    val ac = ouiCard()
-    ouiRow(ac, "אחרי סגירה", sub = if (Prefs.afterClose(this) == 1) "ממוזער" else "כרטיס") { chooseAfterClose { rebuild() } }
-    ouiAdd(body, ac)
-    ouiNote(body, "מה מוצג כשסוגרים התרעה במסך מלא או בפופ-אפ")
+    // אחרי סגירת מסך מלא - תמיד כרטיס במסך הראשי (הבחירה "אחרי סגירה" ירדה יחד עם הממוזער)
     // המפה במסך ההתרעה (הועבר מעמוד ההתרעות)
     val m = ouiCard()
     ouiRow(m, "הצג מפה", on = Prefs.alertMap(this)) { Prefs.setAlertMap(this, !Prefs.alertMap(this)); rebuild() }
     ouiAdd(body, m)
-    ouiNote(body, "המפה מוצגת במסך מלא ובפופ-אפ")
-}
-
-/** אחרי סגירה: כרטיס במסך הראשי או החלון הקטן למעלה */
-private fun MainActivity.chooseAfterClose(done: () -> Unit) = ouiPage("אחרי סגירה", onClose = done) { body, rebuild ->
-    val cur = Prefs.afterClose(this)
-    val c = ouiCard()
-    c.addView(LinearLayout(this).apply {
-        setPadding(dp(6), dp(20), dp(6), dp(16))
-        listOf(2 to "כרטיס", 3 to "ממוזער").forEachIndexed { i, (kind, label) ->
-            addView(LinearLayout(this@chooseAfterClose).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER_HORIZONTAL
-                addView(alertStylePreview(kind), LinearLayout.LayoutParams(dp(58), dp(116)))
-                addLabelRadio(this, label, cur == i)
-                setOnClickListener { Prefs.setAfterClose(this@chooseAfterClose, i); rebuild() }
-            }, LinearLayout.LayoutParams(0, -2, 1f))
-        }
-    })
-    ouiAdd(body, c)
-    ouiNote(body, if (cur == 1 && !android.provider.Settings.canDrawOverlays(this))
-        "ממוזער צריך הרשאת \"הצגה מעל אפליקציות\" – בלעדיה יוצג כרטיס"
-        else "כרטיס – במסך הראשי, מעל השעון\nממוזער – חלון קטן בראש המסך, מעל כל אפליקציה")
+    ouiNote(body, "המפה מוצגת במסך מלא")
 }
 
 /** בחירת סוג התצוגה לנושא: אותן הדמיות כמו בסוג התצוגה הכללי, בצבע הנושא */
@@ -393,7 +369,7 @@ private fun MainActivity.chooseTopicStyle(level: Int, name: String, done: () -> 
     val c = ouiCard()
     c.addView(text("סוג תצוגה", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
     val opts = LinearLayout(this).apply { setPadding(dp(6), dp(10), dp(6), dp(16)) }
-    STYLE_NAMES.forEachIndexed { i, label ->
+    STYLES.forEach { i -> val label = STYLE_NAMES[i]
         opts.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL

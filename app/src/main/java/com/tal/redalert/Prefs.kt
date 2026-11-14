@@ -351,10 +351,11 @@ object Prefs {
     fun themeMode(c: Context) = sp(c).getInt("themeMode", if (sp(c).getBoolean("dark", true)) 0 else 1)
     fun setThemeMode(c: Context, v: Int) = sp(c).edit().putInt("themeMode", v).commit()
 
-    /** סוג תצוגת התרעה: 0 מסך מלא · 1 פופ-אפ · 2 כרטיס מעל השעון · 3 ממוזער */
-    fun alertStyle(c: Context) = sp(c).getInt("alertStyle", 0)
+    /** סוג תצוגת התרעה: 0 מסך מלא · 2 כרטיס מעל השעון. פופ-אפ (1) וממוזער (3) ירדו - בחירה ישנה עוברת לקרוב אליה */
+    private fun twoStyles(v: Int) = when (v) { 1 -> 0; 3 -> 2; else -> v }
+    fun alertStyle(c: Context) = twoStyles(sp(c).getInt("alertStyle", 0))
     /** התאמה אישית לכל נושא (0 התרעות · 1 מבזקים והנחיות · 2 עדכונים): -1 = לפי סוג התצוגה הכללי */
-    fun topicStyle(c: Context, level: Int) = sp(c).getInt("alertStyle_$level", -1)
+    fun topicStyle(c: Context, level: Int) = twoStyles(sp(c).getInt("alertStyle_$level", -1))
     fun setTopicStyle(c: Context, level: Int, v: Int) = sp(c).edit().putInt("alertStyle_$level", v).apply()
     /** סוג התצוגה בפועל לנושא: ההתאמה האישית, ואם אין - הכללי */
     fun alertStyleFor(c: Context, level: Int) = resolveStyle(customStyles(c), topicStyle(c, level), alertStyle(c))
@@ -364,7 +365,7 @@ object Prefs {
     fun customStyles(c: Context) = sp(c).getBoolean("customStyles", (0..2).any { topicStyle(c, it) in 0..3 })
     fun setCustomStyles(c: Context, v: Boolean) = sp(c).edit().putBoolean("customStyles", v).apply()
     /** אחרי סגירת מסך מלא / פופ-אפ: 0 = כרטיס במסך הראשי, 1 = ממוזער (החלון הקטן למעלה) */
-    fun afterClose(c: Context) = sp(c).getInt("afterClose", 0)
+    @Suppress("UNUSED_PARAMETER") fun afterClose(c: Context) = 0   // ממוזער ירד - אחרי סגירה תמיד כרטיס
     /** מסך התרעה נפתח - רק כדי שהמסך הראשי (שמאזין לשינויים) יתעדכן */
     fun markAlertScreen(c: Context) = sp(c).edit().putLong("alertScreenAt", System.currentTimeMillis()).apply()
     /** איפה נגמרת שורת החיוויים במסך הראשי (פיקסלים מראש המסך) - החלון הממוזער מתחתיה. 0 = לא ידוע */
