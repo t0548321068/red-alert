@@ -111,13 +111,12 @@ internal fun MainActivity.renderChips() {
     val time = if (sec != null) AreaData.shelterText(sec) else "—"
     // שתי עמודות (אייקון, כותרת, ערך) וקו באמצע. בתוך LinearLayout אופקי הקו מקבל בדיוק את גובה העמודות
     // (FrameLayout עם קו MATCH_PARENT בתוך מסך נגלל מתח את הכרטיס עד סוף המסך)
-    // iconRes = 0: האימוג'י ⏱ (כמו שהיה) במקום אייקון מצויר, באותו גודל
-    fun column(iconRes: Int, title: String, v: String) = LinearLayout(this).apply {
+    // האייקון: אימוג'י של המערכת (📍 / ⏱ - כמו שהיה), באותו גודל בשני הצדדים
+    fun column(emoji: String, title: String, v: String) = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER_HORIZONTAL
-        addView(if (iconRes != 0) android.widget.ImageView(this@renderChips).apply { setImageResource(iconRes) }
-            else text("⏱", 30f, C.TEXT).apply { gravity = Gravity.CENTER; includeFontPadding = false },
-            LinearLayout.LayoutParams(dp(40), dp(44)))
+        addView(text(emoji, 30f, C.TEXT).apply { gravity = Gravity.CENTER; includeFontPadding = false },
+            LinearLayout.LayoutParams(dp(44), dp(44)))
         addView(text(title, 14f, C.MUTED).apply { gravity = Gravity.CENTER; setSingleLine() },
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
         addView(text(v, 21f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER },
@@ -125,10 +124,10 @@ internal fun MainActivity.renderChips() {
     }
     clockArea.addView(LinearLayout(this).apply {
         isBaselineAligned = false
-        addView(column(R.drawable.ic_area_pin, "אזור התרעה", area), LinearLayout.LayoutParams(0, -2, 1f))
+        addView(column("📍", "אזור התרעה", area), LinearLayout.LayoutParams(0, -2, 1f))
         addView(View(this@renderChips).apply { setBackgroundColor(C.DIV) },
             LinearLayout.LayoutParams(dp(1), -1).apply { marginStart = dp(10); marginEnd = dp(10) })
-        addView(column(0, "זמן התגוננות", time), LinearLayout.LayoutParams(0, -2, 1f))
+        addView(column("⏱", "זמן התגוננות", time), LinearLayout.LayoutParams(0, -2, 1f))
     }, LinearLayout.LayoutParams(-1, -2))
 
     shelterLine.visibility = View.GONE   // הזמן מוצג עכשיו בפס המיקום
