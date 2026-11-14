@@ -86,9 +86,10 @@ internal fun MainActivity.refresh() {
             on -> setColor(Color.parseColor(if (dark) "#12301A" else "#E3F4E5"))
         }
         setStroke(dp(2), Color.parseColor(if (noNet) "#FF9F0A" else if (on) "#4CAF50" else if (off) "#FF453A" else "#555555")) }
-    // מוגן: מגן ירוק עם וי. לא מוגן: מגן אדום עם איקס (מעריכת צופר). אין רשת / לפי תזמון: מגן ריק
-    shieldIcon.setImageResource(if (on && !noNet) R.drawable.ic_shield_green else if (off) R.drawable.ic_shield_x else R.drawable.ic_shield_outline)
-    shieldIcon.imageTintList = if (noNet) android.content.res.ColorStateList.valueOf(Color.parseColor("#FF9F0A")) else null
+    // מוגן: מגן ירוק עם וי. לא מוגן: מגן אדום עם איקס. אין רשת: מגן כתום עם סימן קריאה (מעריכת צופר). לפי תזמון: מגן ריק
+    shieldIcon.setImageResource(if (on && !noNet) R.drawable.ic_shield_green else if (noNet) R.drawable.ic_shield_alert
+        else if (off) R.drawable.ic_shield_x else R.drawable.ic_shield_outline)
+    shieldIcon.imageTintList = null
     haloOuter.background = GradientDrawable().apply { shape = GradientDrawable.OVAL
         setColor(Color.parseColor(if (noNet) "#0FFF9F0A" else if (on) "#0F69F0AE" else if (off) "#0FFF453A" else "#00000000")) }
     haloInner.background = GradientDrawable().apply { shape = GradientDrawable.OVAL

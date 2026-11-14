@@ -55,7 +55,7 @@ open class AlertActivity : Activity() {
             cdLabel?.text = if (t.first.isNotEmpty()) t.first + ": " + AreaData.shelterText(shelterSec) else t.first
             cdLabel?.visibility = if (t.first.isEmpty()) View.GONE else View.VISIBLE
             cdGap?.visibility = if (t.first.isEmpty()) View.GONE else View.VISIBLE
-            cd.textSize = if (t.first.isEmpty()) 20f else 22f
+            cd.textSize = 22f   // גם "נשארים במרחב המוגן עד הודעה" - 22 (מעריכת צופר)
             cd.text = t.second
             if (t.first.isNotEmpty()) ui.postDelayed(this, 250)
         }
