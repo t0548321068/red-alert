@@ -111,11 +111,16 @@ internal fun MainActivity.renderChips() {
     val time = if (sec != null) AreaData.shelterText(sec) else "—"
     // שתי עמודות (אייקון, כותרת, ערך) וקו באמצע. בתוך LinearLayout אופקי הקו מקבל בדיוק את גובה העמודות
     // (FrameLayout עם קו MATCH_PARENT בתוך מסך נגלל מתח את הכרטיס עד סוף המסך)
-    // האייקון: אימוג'י של המערכת (📍 / ⏱ - כמו שהיה), באותו גודל בשני הצדדים
+    // האייקון: ⏱ של המערכת (כמו שהיה), וסיכה מצוירת בקו דק באותו סגנון - שניהם באותו גובה
     fun column(emoji: String, title: String, v: String) = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER_HORIZONTAL
-        addView(text(emoji, 30f, C.TEXT).apply { gravity = Gravity.CENTER; includeFontPadding = false },
+        addView(if (emoji.isEmpty()) FrameLayout(this@renderChips).apply {
+                addView(android.widget.ImageView(this@renderChips).apply {
+                    setImageResource(R.drawable.ic_area_pin_line)
+                    imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT)
+                }, FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER))
+            } else text(emoji, 30f, C.TEXT).apply { gravity = Gravity.CENTER; includeFontPadding = false },
             LinearLayout.LayoutParams(dp(44), dp(44)))
         addView(text(title, 14f, C.MUTED).apply { gravity = Gravity.CENTER; setSingleLine() },
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
@@ -124,7 +129,7 @@ internal fun MainActivity.renderChips() {
     }
     clockArea.addView(LinearLayout(this).apply {
         isBaselineAligned = false
-        addView(column("📍", "אזור התרעה", area), LinearLayout.LayoutParams(0, -2, 1f))
+        addView(column("", "אזור התרעה", area), LinearLayout.LayoutParams(0, -2, 1f))
         addView(View(this@renderChips).apply { setBackgroundColor(C.DIV) },
             LinearLayout.LayoutParams(dp(1), -1).apply { marginStart = dp(10); marginEnd = dp(10) })
         addView(column("⏱", "זמן התגוננות", time), LinearLayout.LayoutParams(0, -2, 1f))
