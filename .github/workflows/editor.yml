@@ -1,16 +1,21 @@
 name: Build editor APK
 
-# עריכת צופר: אפליקציה נפרדת לעריכת הנראות של צופר חירום. נבנית ומתפרסמת (גרסה "editor") מענף editor
+# עריכת צופר 2.0: תצוגה בלבד של העיצוב מחדש של צופר חירום. נבנית ומתפרסמת (גרסה "editor"):
+# - מענף editor (שינוי באפליקציית התצוגה עצמה) - עם האפליקציה מענף pending-redesign
+# - מענף pending-redesign (כל שינוי בעיצוב) - עם התיקייה editor/ מענף editor. כך כל שינוי מגיע לתצוגה לבד
 on:
   push:
-    branches: [editor]
-    paths: ['editor/**', '.github/workflows/editor.yml']
-  # כשצופר חירום משתנה (בטא) - להריץ ידנית, כדי שהעריכה תהיה זהה
+    branches: [editor, pending-redesign]
+    paths: ['editor/**', 'app/**', '.github/workflows/editor.yml']
   workflow_dispatch:
     inputs:
       app_branch:
-        description: 'מאיזה ענף לקחת את צופר חירום (beta, או ענף pending-* עם שינויים שעוד לא בבטא)'
-        default: beta
+        description: 'מאיזה ענף לקחת את צופר חירום (בהפעלה מענף editor)'
+        default: pending-redesign
+
+concurrency:
+  group: editor
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -28,13 +33,26 @@ jobs:
         with:
           gradle-version: 8.14.3
       - name: Build
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -o pipefail
-          # עריכת צופר = הקוד של צופר חירום מענף beta (או הענף שנבחר בהפעלה ידנית) + שכבת העריכה
-          git fetch -q --depth=1 origin "refs/heads/${{ inputs.app_branch || 'beta' }}" && rm -rf app && git checkout FETCH_HEAD -- app
+          # עריכת צופר = הקוד של צופר חירום מענף העיצוב מחדש + התיקייה editor/
+          if [ "${{ github.ref_name }}" = pending-redesign ]; then
+            git fetch -q --depth=1 origin refs/heads/editor && rm -rf editor && git checkout FETCH_HEAD -- editor
+          else
+            git fetch -q --depth=1 origin "refs/heads/${{ inputs.app_branch || 'pending-redesign' }}" && rm -rf app && git checkout FETCH_HEAD -- app
+          fi
           # לא רשומה ב-settings.gradle.kts (שינוי שם בונה ומשחרר את צופר חירום) - נוספת כאן, רק לבנייה הזו
           echo 'include(":editor")' >> settings.gradle.kts
-          E=$(grep -oP 'editorVersion = "\K[^"]+' editor/build.gradle.kts)
+          # הגרסה: אחת יותר מהגרסה שפורסמה אחרונה (2.0.0 -> 2.0.1). אם נקודת ההתחלה ב-build.gradle.kts גבוהה יותר - ממנה
+          BASE=$(grep -oP 'editorBase = "\K[^"]+' editor/build.gradle.kts)
+          LAST=$(gh release view editor --repo ${{ github.repository }} --json name -q .name 2>/dev/null | grep -oP '\d+(\.\d+)+(?=\s*$)' || true)
+          E=$(python3 -c "import sys
+          b=[int(x) for x in sys.argv[1].split('.')]; l=[int(x) for x in sys.argv[2].split('.')] if sys.argv[2] else [0]
+          print('.'.join(map(str, b if l[:2]!=b[:2] or l<b else l[:2]+[l[2]+1])))" "$BASE" "$LAST")
+          echo "EDITOR_VERSION=$E" >> $GITHUB_ENV
+          export EDITOR_VERSION=$E
           echo "TITLE=עריכת צופר · $E" >> $GITHUB_ENV
           gradle :editor:assembleRelease --console=plain 2>&1 | tee build.log || {
             grep -E '^e: |error:|Lint found|What went wrong' -A2 build.log | head -30 | sed 's/^/::error::/'
@@ -55,7 +73,7 @@ jobs:
           rm -rf $W
           $B/apksigner verify tzofar-editor.apk
       - name: Publish
-        if: github.ref == 'refs/heads/editor'
+        if: github.ref == 'refs/heads/editor' || github.ref == 'refs/heads/pending-redesign'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -65,7 +83,7 @@ jobs:
             gh release edit editor --repo $R --title "$TITLE" --prerelease --draft=false
           else
             gh release create editor tzofar-editor.apk --repo $R --prerelease --latest=false --target ${{ github.sha }} \
-              --title "$TITLE" --notes "עריכת הנראות של צופר חירום ושליחת השינויים"
+              --title "$TITLE" --notes "תצוגה של העיצוב מחדש של צופר חירום"
           fi
           # עדכון מיידי: עריכות צופר המותקנות מחוברות לנושא הזה ב-ntfy.sh ומתעדכנות לבד (חייב להיות זהה ל-UpdateListener.TOPIC)
           curl -s -H "Title: Editor" -d "editor" https://ntfy.sh/redalert-tal-editor-7f3k9q || true

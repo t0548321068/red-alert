@@ -1,12 +1,14 @@
-// עריכת צופר: אותו קוד בדיוק כמו צופר חירום (app/ - מועתק מענף beta בזמן הבנייה), עם שכבת עריכה מעל.
-// המסכים הם המסכים האמיתיים - אחד לאחד. רק בלי שירות ההתרעות, בלי Firebase ובלי ווידג'טים
+// עריכת צופר 2.0: תצוגה בלבד של העיצוב מחדש. אותו קוד בדיוק כמו צופר חירום (app/ - מועתק מענף pending-redesign
+// בזמן הבנייה), בלי שכבת עריכה. המסכים הם המסכים האמיתיים - בלי שירות ההתרעות, בלי Firebase ובלי ווידג'טים
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
 
-// הגרסה של עריכת צופר: עולה באחד בכל פרסום (1.1.4, 1.1.5...) - ידנית, כאן
-val editorVersion = "1.1.47"
+// הגרסה של עריכת צופר: כל בנייה עולה באחד לבד (2.0.0, 2.0.1, 2.0.2...) - הבנייה ב-GitHub מחשבת אותה מהגרסה
+// שפורסמה אחרונה ומעבירה ב-EDITOR_VERSION. כאן: נקודת ההתחלה (לשנות רק כדי לקפוץ, למשל ל-2.1.0)
+val editorBase = "2.0.0"
+val editorVersion = System.getenv("EDITOR_VERSION") ?: editorBase
 // הגרסה של צופר חירום שהעריכה בנויה ממנה (מוצגת בתוך המסכים - בשורת החיוויים, בהגדרות - כמו באפליקציה)
 val appVersion = Regex("versionName = \"([^\"]+)\"").find(file("../app/build.gradle.kts").readText())?.groupValues?.get(1) ?: "0"
 
@@ -18,7 +20,7 @@ android {
         applicationId = "com.tal.tzofareditor"
         minSdk = 26
         targetSdk = 35
-        // 1.0.1 = 10001 (תמיד גדול מהקודם)
+        // 2.0.1 = 2010001 (תמיד גדול מהקודם)
         versionCode = editorVersion.split('.').map { it.toInt() }.let { it[0] * 1_000_000 + it[1] * 1000 + it[2] } + 10_000
         versionName = editorVersion   // בפרטי היישום בטלפון - הגרסה של עריכת צופר
         resValue("string", "app_version", appVersion)   // בתוך המסכים: הגרסה של צופר חירום (EditorApp מכניס אותה)
