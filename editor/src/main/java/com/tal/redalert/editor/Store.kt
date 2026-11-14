@@ -136,6 +136,9 @@ object Store {
         } catch (_: Exception) { null } finally { conn.disconnect() }
     }
 
+    /** ביטול שליחה שעוד לא בוצעה: יוצאת מהתור בשרת. מחזיר JSON, "login", או null אם נכשל / כבר בוצעה */
+    fun cancel(c: Context, id: String): Any? = call(c, JSONObject().put("op", "cancel").put("id", id))
+
     /** שליחת כל השינויים (וקריסה, אם הייתה) */
     fun send(c: Context): Any? {
         val items = JSONArray()
