@@ -88,7 +88,7 @@ internal fun MainActivity.loadWeather(loc: android.location.Location) = Thread {
         val hint = if (hasPrecise()) "" else " (לחץ למיקום מדויק)"
         weatherLine.text = listOf("$icon ${w.temp}°", w.place)
             .filter { it.isNotBlank() }.joinToString(" · ") + hint
-        weatherLine.setTextColor(C.SOFT)
+        weatherLine.setTextColor(C.TEXT)   // מעריכת צופר: לבן מלא (במקום E6FFFFFF)
         weatherShown = true
     }
     // אחרי לחיצה על חיווי המיקום - "מאתר מיקום מדויק…" נשאר לפחות 2 שניות (שיהיה ברור שמשהו קורה)

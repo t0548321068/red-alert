@@ -127,7 +127,8 @@ internal fun MainActivity.renderChips() {
                 if (b.height() > 0) textSize = 30f * dp(22) / b.height()
             },
             LinearLayout.LayoutParams(dp(44), dp(44)))
-        addView(text(title, 14f, C.MUTED).apply { gravity = Gravity.CENTER; setSingleLine() },
+        // מעריכת צופר: בכהה AAAAAA (בהיר יותר מהאפור הרגיל)
+        addView(text(title, 14f, if (Prefs.darkTheme(this@renderChips)) Color.parseColor("#AAAAAA") else C.MUTED).apply { gravity = Gravity.CENTER; setSingleLine() },
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
         addView(text(v, 21f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER },
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })

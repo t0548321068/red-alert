@@ -377,13 +377,13 @@ class MainActivity : Activity() {
         haloInner = FrameLayout(this).apply {
             clipToOutline = true   // הפס נחתך לצורת העיגול
             addView(glow, FrameLayout.LayoutParams(dp(40), dp(40), Gravity.CENTER))
-            addView(shieldIcon, FrameLayout.LayoutParams(dp(46), dp(46), Gravity.CENTER))   // רק המגן - גדול יותר
+            addView(shieldIcon, FrameLayout.LayoutParams(dp(40), dp(40), Gravity.CENTER))   // רק המגן (מעריכת צופר: 40)
         }
         haloOuter.addView(ring1, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
         haloOuter.addView(haloInner, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.CENTER))
         // העיצוב מחדש (כמו פיקוד העורף): ארבעה כרטיסים, הכל ממורכז.
         // 1 ברכה · מגן · "אתה מוגן" · אזור התרעה | זמן התגוננות   2 שעה · תאריך · מזג אוויר   3 אזורים נוספים   4 התרעות אחרונות
-        greeting.textSize = 16f; greeting.setTextColor(C.MUTED)
+        greeting.textSize = 16f; greeting.setTextColor(C.TEXT)   // מעריכת צופר: לבן (במקום אפור)
         circleLabel.textSize = 22f
         card1 = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
