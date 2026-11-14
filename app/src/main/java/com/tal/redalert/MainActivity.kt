@@ -493,9 +493,9 @@ class MainActivity : Activity() {
                 background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(C.CHIP) }
                 elevation = dp(6).toFloat()
                 addView(android.widget.ImageView(this@MainActivity).apply {
-                    setImageResource(R.drawable.ic_list_siren)
+                    setImageResource(R.drawable.ic_test_bell)   // פעמון מצלצל
                     imageTintList = android.content.res.ColorStateList.valueOf(C.RED)
-                }, FrameLayout.LayoutParams(dp(25), dp(25), Gravity.CENTER))
+                }, FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER))
                 setOnClickListener { chooseTest() }
             }
             addView(testFab, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM or Gravity.LEFT).apply {
