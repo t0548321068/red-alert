@@ -85,6 +85,22 @@ class Layer(val root: FrameLayout) : FrameLayout(root.context) {
         pill.translationX = pillX; pill.translationY = pillY
     }
 
+    /** הכפתור הצף נשאר כולו בתוך המסך (אי אפשר לגרור אותו החוצה / מתחת לשורות הקבועות ולא להצליח להחזיר) */
+    private fun keepPillInside() {
+        if (width == 0 || pill.width == 0) return
+        val m = Ui.dp(8).toFloat()
+        val minX = m - pill.left; val maxX = width - m - pill.right
+        val minY = m - pill.top; val maxY = height - m - pill.bottom
+        pill.translationX = pill.translationX.coerceIn(minOf(minX, 0f), maxOf(maxX, 0f))
+        pill.translationY = pill.translationY.coerceIn(minOf(minY, 0f), maxOf(maxY, 0f))
+        pillX = pill.translationX; pillY = pill.translationY
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        super.onLayout(changed, l, t, r, b)
+        keepPillInside()   // גם אחרי סיבוב מסך / חזרה לחלון - אם נשאר בחוץ, חוזר פנימה
+    }
+
     /** הכפתור הצף: לחיצה על ✎ = מצב עריכה, על הרשימה = עמוד עריכת צופר. גרירה = הזזה */
     @SuppressLint("ClickableViewAccessibility")
     private fun dragPill() {
@@ -94,7 +110,7 @@ class Layer(val root: FrameLayout) : FrameLayout(root.context) {
                 MotionEvent.ACTION_DOWN -> { sx = e.rawX; sy = e.rawY; tx = pill.translationX; ty = pill.translationY; moved = false }
                 MotionEvent.ACTION_MOVE -> {
                     if (abs(e.rawX - sx) > Editor.touchSlop || abs(e.rawY - sy) > Editor.touchSlop) moved = true
-                    if (moved) { pill.translationX = tx + e.rawX - sx; pill.translationY = ty + e.rawY - sy; pillX = pill.translationX; pillY = pill.translationY }
+                    if (moved) { pill.translationX = tx + e.rawX - sx; pill.translationY = ty + e.rawY - sy; keepPillInside() }
                 }
                 MotionEvent.ACTION_UP -> if (!moved) { if (v === penBtn) toggle() else openMenu() }
             }
