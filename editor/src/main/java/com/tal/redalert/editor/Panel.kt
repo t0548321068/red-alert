@@ -50,10 +50,18 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
         setPadding(Ui.dp(14), Ui.dp(12), Ui.dp(14), Ui.dp(14))
         v.overlay.add(sel); sel.setBounds(0, 0, v.width, v.height)
 
+        // ידית גרירה: מזיזים את החלון כדי לראות מה שמתחתיו (גם הכותרת גוררת)
+        val grip = FrameLayout(context).apply {
+            addView(View(context).apply { background = Ui.round(Color.parseColor("#8E8E93"), 3) },
+                FrameLayout.LayoutParams(Ui.dp(40), Ui.dp(5), Gravity.CENTER))
+        }
+        addView(grip, LayoutParams(-1, Ui.dp(22)))
+        drag(grip)
         // כותרת: שם הרכיב, סוג ומסך, ו"רכיב מעל"
         addView(LinearLayout(context).apply {
             gravity = Gravity.TOP
             addView(LinearLayout(context).apply {
+                drag(this)
                 orientation = VERTICAL
                 addView(Ui.tv(context, e.label, 16f, bold = true).apply { maxLines = 2 })
                 addView(Ui.tv(context, (when (e.kind) { "t" -> "טקסט"; "i" -> "אייקון"; else -> "מסגרת / רקע" }) + " · " + e.screen.substringAfter('|'), 12f, Ui.GRAY))
@@ -72,16 +80,40 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
         drawTabs(); drawPane(); place()
     }
 
-    /** למעלה או למטה - שלא יסתיר את הרכיב. בטקסט והערה תמיד למעלה (המקלדת עולה מלמטה) */
+    /** חלון צף ושקוף למחצה. בפעם הראשונה: למעלה או למטה - שלא יסתיר את הרכיב (בטקסט והערה למעלה - המקלדת עולה מלמטה).
+     *  אחרי שגוררים - נשאר במקום שבחרת, גם ברכיב הבא */
     private fun place() {
         val (top, bottom) = layer.insets()
+        background = Ui.round(Color.parseColor("#B31C1C1E"), 22)   // שקוף: רואים את המסך מתחת
+        setPadding(Ui.dp(14), Ui.dp(2), Ui.dp(14), Ui.dp(14))
+        val m = Ui.dp(10)
+        if (posY >= 0) {
+            layoutParams = FrameLayout.LayoutParams(-1, -2, Gravity.TOP).apply { setMargins(m, posY, m, 0) }
+            translationX = posX; translationY = 0f
+            return
+        }
         val loc = IntArray(2); v.getLocationOnScreen(loc)
         val up = tab == "text" || tab == "note" || loc[1] + v.height / 2 > layer.height / 2
-        val r = Ui.dp(22).toFloat()
-        background = GradientDrawable().apply { setColor(Ui.BG)
-            cornerRadii = if (up) floatArrayOf(0f, 0f, 0f, 0f, r, r, r, r) else floatArrayOf(r, r, r, r, 0f, 0f, 0f, 0f) }
-        setPadding(Ui.dp(14), Ui.dp(12) + (if (up) top else 0), Ui.dp(14), Ui.dp(14) + (if (up) 0 else bottom))
         layoutParams = FrameLayout.LayoutParams(-1, -2, if (up) Gravity.TOP else Gravity.BOTTOM)
+            .apply { setMargins(m, if (up) top + Ui.dp(8) else 0, m, if (up) 0 else bottom + Ui.dp(8)) }
+    }
+
+    /** גרירת החלון: בזמן הגרירה זז, ובסוף נשמר המיקום (בתוך גבולות המסך) */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun drag(h: View) {
+        var sx = 0f; var sy = 0f; var tx = 0f; var ty = 0f
+        h.setOnTouchListener { _, ev ->
+            when (ev.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> { sx = ev.rawX; sy = ev.rawY; tx = translationX; ty = translationY }
+                android.view.MotionEvent.ACTION_MOVE -> { translationX = tx + ev.rawX - sx; translationY = ty + ev.rawY - sy }
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                    val y = (top + translationY).toInt().coerceIn(0, maxOf(0, layer.height - height))
+                    posX = translationX.coerceIn(-width / 2f, width / 2f); posY = y
+                    place()
+                }
+            }
+            true
+        }
     }
 
     private fun modified(k: String) = when (k) {
@@ -297,6 +329,8 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
     }
 
     companion object {
+        /** המיקום שהחלון נגרר אליו - משותף לכל הרכיבים (-1 = עוד לא נגרר) */
+        var posX = 0f; var posY = -1
         /** הצבעים לבחירה מהירה (בקומפניון - כדי שיהיו מוכנים כבר בבניית החלון) */
         private val palette = listOf("#FFFFFF", "#F2F2F2", "#E6FFFFFF", "#AAAAAA", "#8E8E93", "#636366", "#30D158", "#69F0AE", "#4CAF50", "#2E7D32",
             "#0A84FF", "#4C7DFF", "#5AA9FF", "#FF3B30", "#D50000", "#FF9F0A", "#F08C00", "#7E57C2", "#1B1B1D", "#2C2C2E", "#000000", "#00000000")
