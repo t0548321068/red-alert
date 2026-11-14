@@ -131,6 +131,10 @@ private fun MainActivity.closePagesForCard(level: Int) {
 }
 
 internal fun MainActivity.chooseTest() = ouiPage("בדיקת התרעה") { body, rebuild ->
+    // סוג המסך - אותה בחירה כמו בעמוד ההתרעות, כדי לבדוק כל סגנון בלי לצאת מכאן
+    val st = ouiCard()
+    ouiRow(st, "סגנון התרעה", sub = styleSummary()) { showCustomStyles() }
+    ouiAdd(body, st)
     val fab = ouiCard()
     val fm = Prefs.testFabMode(this)
     ouiRow(fab, "כפתור צף במסך הראשי", sub = showModeLabel(fm, Prefs.testFabSeconds(this)), on = fm != Prefs.STATUS_HIDDEN,
