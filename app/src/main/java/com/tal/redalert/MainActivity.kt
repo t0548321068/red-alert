@@ -57,8 +57,7 @@ class MainActivity : Activity() {
     internal lateinit var circle: FrameLayout
     internal var cardMap: AlertMap? = null      // המפה בכרטיס ההתרעה (כשהכרטיס מוצג והמפה מופעלת)
     internal var cardResumed = false
-    internal lateinit var card1: LinearLayout   // כרטיס 1: ברכה, מגן, אתה מוגן
-    internal lateinit var card2: LinearLayout   // כרטיס 2: אזור התרעה | זמן התגוננות
+    internal lateinit var card1: LinearLayout   // כרטיס 1: ברכה, מגן, אתה מוגן, אזור התרעה | זמן התגוננות
     internal lateinit var shieldIcon: android.widget.ImageView
     internal lateinit var circleLabel: TextView
     internal lateinit var haloOuter: FrameLayout
@@ -382,8 +381,8 @@ class MainActivity : Activity() {
         }
         haloOuter.addView(ring1, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
         haloOuter.addView(haloInner, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.CENTER))
-        // העיצוב מחדש (כמו פיקוד העורף): חמישה כרטיסים, הכל ממורכז.
-        // 1 ברכה · מגן · "אתה מוגן"   2 אזור התרעה | זמן התגוננות   3 שעה · תאריך · מזג אוויר   4 אזורים נוספים   5 התרעות אחרונות
+        // העיצוב מחדש (כמו פיקוד העורף): ארבעה כרטיסים, הכל ממורכז.
+        // 1 ברכה · מגן · "אתה מוגן" · אזור התרעה | זמן התגוננות   2 שעה · תאריך · מזג אוויר   3 אזורים נוספים   4 התרעות אחרונות
         greeting.textSize = 16f; greeting.setTextColor(C.MUTED)
         circleLabel.textSize = 22f
         card1 = LinearLayout(this).apply {
@@ -394,15 +393,11 @@ class MainActivity : Activity() {
             addView(greeting, LinearLayout.LayoutParams(-1, -2))
             addView(haloOuter, LinearLayout.LayoutParams(dp(56), dp(56)).apply { topMargin = dp(10); bottomMargin = dp(6) })
             addView(circleLabel, LinearLayout.LayoutParams(-1, -2))
+            // אזור התרעה | זמן התגוננות - באותו כרטיס, בלי קו מפריד מעליהם (רק רווח)
+            addView(clockArea, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
         }
-        card2 = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(16), dp(18), dp(16))
-            background = graphite(26)
-            addView(clockArea, LinearLayout.LayoutParams(-1, -2))
-        }
-        clockCard.background = graphite(26)   // כרטיס 3
-        extraBox = LinearLayout(this).apply {   // כרטיס 4
+        clockCard.background = graphite(26)   // כרטיס 2
+        extraBox = LinearLayout(this).apply {   // כרטיס 3
             orientation = LinearLayout.VERTICAL; layoutDirection = View.LAYOUT_DIRECTION_RTL
             setPadding(dp(18), dp(16), dp(18), dp(14))
             background = graphite(26)
@@ -442,8 +437,8 @@ class MainActivity : Activity() {
         // החלון הממוזער בתוך המסך הראשי - במקום הכרטיס, וזז עם המסך כמו כרטיס
         miniHost = FrameLayout(this).apply { visibility = View.GONE }
         col.addView(miniHost, col.indexOfChild(alertWrap), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
-        // כרטיסים 1-4 (כרטיס 5 - הפיד - בהמשך)
-        for (card in listOf<View>(card1, card2, clockCard, extraBox))
+        // כרטיסים 1-3 (כרטיס 4 - הפיד - בהמשך)
+        for (card in listOf<View>(card1, clockCard, extraBox))
             col.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
 
         // האזורים שלי
@@ -459,7 +454,7 @@ class MainActivity : Activity() {
         areasCard.addView(shelterLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         // המסך לא נגלל: אזורי ההתרעה תופסים את מה שנשאר (לכל היותר), והרשימה שבתוכם נגללת
         // כרטיס האזורים לא מוצג במסך הראשי (אזורים נוספים עברו להגדרות) - המקום נשאר ריק כדי שהפיד יישב למטה
-        // לא מוצג (המסך נגלל - אין מקום ריק למלא). מוסתר, כדי שלא יוסיף רווח בין כרטיס 4 לכרטיס 5
+        // לא מוצג (המסך נגלל - אין מקום ריק למלא). מוסתר, כדי שלא יוסיף רווח בין כרטיס 3 לכרטיס 4
         areasSlot = FrameLayout(this).apply { visibility = View.GONE }
         col.addView(areasSlot, LinearLayout.LayoutParams(-1, -2))
 
