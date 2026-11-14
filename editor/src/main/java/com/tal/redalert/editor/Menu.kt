@@ -321,7 +321,7 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
         col.addView(Ui.tv(context, "עדכונים", 20f, bold = true).apply { setPadding(Ui.dp(16), Ui.dp(14), Ui.dp(16), Ui.dp(10)) })
         val c = card()
         row(c, "גרסה מותקנת", "עריכת צופר ${Update.current(context)} · צופר חירום " +
-            (try { context.packageManager.getPackageInfo(context.packageName, 0).versionName } catch (_: Exception) { "" }), click = null)
+            context.getString(com.tal.redalert.R.string.app_version), click = null)
         row(c, if (Update.needPermission) "צריך לאשר התקנת עדכונים" else "בדיקת עדכונים",
             Update.status.ifEmpty { if (Update.lastCheck > 0) "בדיקה אחרונה: " + java.text.SimpleDateFormat("HH:mm", java.util.Locale.US).format(java.util.Date(Update.lastCheck)) else "" },
             if (Update.needPermission) Ui.ORANGE else Color.parseColor("#5AA9FF")) {
@@ -330,7 +330,7 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
             else Update.check(context) { ui.post { if (updates) rebuild() } }
         }
         addCard(c)
-        col.addView(Ui.tv(context, "עריכת צופר מתעדכנת לבד בכל פתיחה", 12f, Ui.GRAY).apply { setPadding(Ui.dp(28), 0, Ui.dp(28), Ui.dp(6)) })
+        col.addView(Ui.tv(context, "עריכת צופר מתעדכנת לבד – בכל פתיחה, וגם ברקע בלי לפתוח", 12f, Ui.GRAY).apply { setPadding(Ui.dp(28), 0, Ui.dp(28), Ui.dp(6)) })
         group("מה חדש")
         val log = try { JSONObject(context.assets.open("editor_changelog.json").bufferedReader(Charsets.UTF_8).use { it.readText() }) } catch (_: Exception) { null }
         if (log != null) {
