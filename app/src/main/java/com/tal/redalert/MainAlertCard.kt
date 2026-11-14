@@ -99,11 +99,12 @@ internal fun MainActivity.updateAlertCard() {
         }
         // המפה - כמו במסך מלא ("הצג מפה" ← "מפה בכרטיס" בהגדרות)
         if (Prefs.alertMapCard(this)) cardMapView(j, level)?.let { mv ->
+            // מקצה לקצה של הכרטיס (על הריפוד שלו), בלי פינות מעוגלות
             alertCard.addView(FrameLayout(this).apply {
-                background = GradientDrawable().apply { setColor(Color.BLACK); cornerRadius = dp(20).toFloat() }
-                clipToOutline = true
+                setBackgroundColor(Color.BLACK)
                 addView(mv, FrameLayout.LayoutParams(-1, -1))
-            }, LinearLayout.LayoutParams(-1, dp(200)).apply { topMargin = dp(10) })
+            }, LinearLayout.LayoutParams(-1, dp(200)).apply {
+                topMargin = dp(10); marginStart = -alertCard.paddingStart; marginEnd = -alertCard.paddingEnd })
         }
         val src = j.optString("source")
         if (src.isNotEmpty()) alertCard.addView(text("מקור ההתרעה: $src", 12f, Color.parseColor("#E6FFFFFF"))
