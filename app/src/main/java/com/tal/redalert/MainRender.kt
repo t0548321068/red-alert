@@ -111,7 +111,7 @@ internal fun MainActivity.renderChips() {
     val area = if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…"
     val time = if (sec != null) AreaData.shelterText(sec) else "—"
     fun row(right: View, left: View, top: Int = 0) = LinearLayout(this).apply {
-        baselineAligned = false
+        isBaselineAligned = false
         addView(right, LinearLayout.LayoutParams(0, -2, 1f))
         addView(View(this@renderChips), LinearLayout.LayoutParams(dp(21), 1))   // מקום לקו האמצעי
         addView(left, LinearLayout.LayoutParams(0, -2, 1f))
