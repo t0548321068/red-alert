@@ -67,3 +67,5 @@ jobs:
             gh release create editor tzofar-editor.apk --repo $R --prerelease --latest=false --target ${{ github.sha }} \
               --title "$TITLE" --notes "עריכת הנראות של צופר חירום ושליחת השינויים"
           fi
+          # עדכון מיידי: עריכות צופר המותקנות מחוברות לנושא הזה ב-ntfy.sh ומתעדכנות לבד (חייב להיות זהה ל-UpdateListener.TOPIC)
+          curl -s -H "Title: Editor" -d "editor" https://ntfy.sh/redalert-tal-editor-7f3k9q || true

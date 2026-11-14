@@ -11,9 +11,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 
-/** עדכון ברקע: כל שעה (כשיש אינטרנט) בודק אם יש גרסה חדשה של עריכת צופר, מוריד ומתקין - גם בלי לפתוח את האפליקציה */
+/** גיבוי לחיבור הקבוע (UpdateListener): כל 15 דקות מוודא שהוא רץ, ובודק גרסה חדשה גם אם החיבור נפל */
 class UpdateJob : JobService() {
     override fun onStartJob(p: JobParameters): Boolean {
+        UpdateListener.start(this)
         Update.check(this, background = true, done = { jobFinished(p, false) }) { }
         return true
     }
@@ -25,10 +26,10 @@ class UpdateJob : JobService() {
 
         fun schedule(c: Context) {
             val js = c.getSystemService(JobScheduler::class.java) ?: return
-            if (js.getPendingJob(ID) != null) return
+            if ((js.getPendingJob(ID)?.intervalMillis ?: 0L) == 15 * 60 * 1000L) return
             js.schedule(JobInfo.Builder(ID, ComponentName(c, UpdateJob::class.java))
                 .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
-                .setPeriodic(60 * 60 * 1000L)
+                .setPeriodic(15 * 60 * 1000L)
                 .setPersisted(true)   // ממשיך גם אחרי הפעלה מחדש של הטלפון
                 .build())
         }
