@@ -19,8 +19,10 @@ class EditorApp : Application() {
             try { Store.saveCrash(this, android.util.Log.getStackTraceString(e)) } catch (_: Exception) { }
             prev?.uncaughtException(t, e)
         }
+        appVersion()
         DataFiles.init(this)
         seed()
+        UpdateJob.schedule(this)   // הורדה והתקנה של גרסה חדשה גם בלי לפתוח את עריכת צופר
         MainActivity.lockAsked = true
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityResumed(a: Activity) { Editor.scanSoon(); if (a is MainActivity) Update.maybeCheck(a) }
@@ -34,11 +36,17 @@ class EditorApp : Application() {
         Editor.start(this)
     }
 
+    /** בפרטי היישום בטלפון מופיעה הגרסה של עריכת צופר; בתוך המסכים - הגרסה של צופר חירום, כמו באפליקציה */
+    private fun appVersion() = try {
+        com.tal.redalert.Updater::class.java.getDeclaredField("curVer").apply { isAccessible = true }
+            .set(com.tal.redalert.Updater, getString(com.tal.redalert.R.string.app_version))
+    } catch (_: Exception) { }
+
     /** בכל פתיחה: בלי הבהרה ובלי "מה חדש". בפעם הראשונה: הגדרות כמו בטלפון של טל */
     private fun seed() {
         val pi = packageManager.getPackageInfo(packageName, 0)
         Prefs.setDisclaimerFor(this, pi.firstInstallTime)
-        Prefs.setSeenVersion(this, pi.versionName ?: "")
+        Prefs.setSeenVersion(this, getString(com.tal.redalert.R.string.app_version))
         Prefs.setAutoUpdate(this, false)   // עדכון של צופר חירום לא שייך לכאן
         val sp = getSharedPreferences("editor_seed", MODE_PRIVATE)
         if (sp.getBoolean("done", false)) return

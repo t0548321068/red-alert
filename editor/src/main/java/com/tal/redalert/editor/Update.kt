@@ -41,10 +41,12 @@ object Update {
         return n to url
     }
 
-    fun check(c: Context, refresh: () -> Unit) {
-        if (busy) return
+    /** background = מהבדיקה ברקע: בלי לפתוח את האפליקציה אחרי ההתקנה. done - בסוף (גם כשאין עדכון) */
+    fun check(c: Context, background: Boolean = false, done: (() -> Unit)? = null, refresh: () -> Unit) {
+        if (busy) { done?.invoke(); return }
         busy = true; lastCheck = System.currentTimeMillis()
         val app = c.applicationContext
+        app.getSharedPreferences("editor_update", Context.MODE_PRIVATE).edit().putBoolean("reopen", !background).apply()
         Thread {
             try {
                 val l = latest()
@@ -64,7 +66,7 @@ object Update {
                     }
                 }
             } catch (_: Exception) { status = "ההורדה נכשלה" }
-            busy = false; refresh()
+            busy = false; refresh(); done?.invoke()
         }.start()
     }
 
@@ -89,7 +91,10 @@ class InstallReceiver : BroadcastReceiver() {
         when (i.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 @Suppress("DEPRECATION")
-                (i.getParcelableExtra<Intent>(Intent.EXTRA_INTENT))?.let { c.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                val confirm = (i.getParcelableExtra<Intent>(Intent.EXTRA_INTENT))?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) ?: return
+                // ברקע אי אפשר לפתוח מסך - התראה: לחיצה פותחת את אישור ההתקנה
+                if (!c.getSharedPreferences("editor_update", Context.MODE_PRIVATE).getBoolean("reopen", true)) UpdateJob.notify(c, confirm)
+                else try { c.startActivity(confirm) } catch (_: Exception) { UpdateJob.notify(c, confirm) }
             }
             PackageInstaller.STATUS_SUCCESS -> Unit
             else -> Update.status = "ההתקנה בוטלה"
@@ -100,7 +105,8 @@ class InstallReceiver : BroadcastReceiver() {
 /** אחרי עדכון - פותחים מחדש */
 class UpdatedReceiver : BroadcastReceiver() {
     override fun onReceive(c: Context, i: Intent) {
-        if (i.action == Intent.ACTION_MY_PACKAGE_REPLACED)
+        // עדכון שהתחיל ברקע - לא פותחים את האפליקציה באמצע מה שעושים בטלפון
+        if (i.action == Intent.ACTION_MY_PACKAGE_REPLACED && c.getSharedPreferences("editor_update", Context.MODE_PRIVATE).getBoolean("reopen", true))
             try { c.startActivity(Intent(c, com.tal.redalert.MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
     }
 }

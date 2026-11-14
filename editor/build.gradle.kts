@@ -6,8 +6,8 @@ plugins {
 }
 
 // הגרסה של עריכת צופר: עולה באחד בכל פרסום (1.1.4, 1.1.5...) - ידנית, כאן
-val editorVersion = "1.1.40"
-// הגרסה של צופר חירום שהעריכה בנויה ממנה (מוצגת בשורת החיוויים כמו באפליקציה)
+val editorVersion = "1.1.41"
+// הגרסה של צופר חירום שהעריכה בנויה ממנה (מוצגת בתוך המסכים - בשורת החיוויים, בהגדרות - כמו באפליקציה)
 val appVersion = Regex("versionName = \"([^\"]+)\"").find(file("../app/build.gradle.kts").readText())?.groupValues?.get(1) ?: "0"
 
 android {
@@ -20,7 +20,8 @@ android {
         targetSdk = 35
         // 1.0.1 = 10001 (תמיד גדול מהקודם)
         versionCode = editorVersion.split('.').map { it.toInt() }.let { it[0] * 1_000_000 + it[1] * 1000 + it[2] } + 10_000
-        versionName = appVersion   // בשורת החיוויים - כמו באפליקציה
+        versionName = editorVersion   // בפרטי היישום בטלפון - הגרסה של עריכת צופר
+        resValue("string", "app_version", appVersion)   // בתוך המסכים: הגרסה של צופר חירום (EditorApp מכניס אותה)
         resValue("string", "editor_version", editorVersion)
         resValue("string", "build_number", System.getenv("GITHUB_RUN_NUMBER") ?: "0")
         resValue("bool", "is_beta", "true")
