@@ -137,17 +137,14 @@ internal fun MainActivity.renderChips() {
     renderExtraCard()
 }
 
-/** בתחתית כרטיס השעון: היישובים והאזורים הנוספים (תצוגה בלבד). קודם היה כרטיס נפרד מתחת - הוכנס לכרטיס השעון מעריכת צופר */
+/** כרטיס 4: היישובים והאזורים הנוספים (תצוגה בלבד) */
 internal fun MainActivity.renderExtraCard() {
     areasSlot.removeAllViews()   // המקום נשאר ריק כדי שהפיד יישב למטה
     extraBox.removeAllViews()
     val (towns, dists) = extraSelection()
     val dmap = AreaData.districtMap(this)
-    // קו מפריד - כמו הקו שמתחת לאזור ההתרעה
-    extraBox.addView(View(this).apply { setBackgroundColor(Color.parseColor("#33FFFFFF")) },
-        LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(12); bottomMargin = dp(12) })
     // תצוגה בלבד - העריכה בהגדרות התרעות → אזורים נוספים
-    extraBox.addView(text("יישובים ואזורים נוספים", 20f, C.INK, bold = true).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(6)) })
+    extraBox.addView(text("יישובים ואזורים נוספים", 17f, C.INK, bold = true).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(6)) })
     val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
     fun row(name: String, sub: String) = list.addView(LinearLayout(this).apply {
         gravity = Gravity.CENTER_VERTICAL; setPadding(dp(2), dp(5), dp(2), dp(5))
