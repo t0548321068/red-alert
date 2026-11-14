@@ -6,6 +6,7 @@ import android.graphics.drawable.GradientDrawable
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 
 // המסך הראשי: כרטיס ההתרעה מעל השעון וצביעת הרקע לפי ההתרעה
@@ -57,6 +58,7 @@ internal fun MainActivity.updateAlertCard() {
     if (!v.first) {
         applyMainTint(if (v.second) level else null)
         if (alertWrap.visibility != View.GONE) alertWrap.visibility = View.GONE
+        endCardMap()
         setScrollMode(false)
         alertCardKey = ""; return
     }
@@ -65,6 +67,7 @@ internal fun MainActivity.updateAlertCard() {
     val key = j.toString()
     if (key != alertCardKey) {
         alertCardKey = key
+        endCardMap()
         alertCard.removeAllViews()
         alertCard.background = GradientDrawable().apply {
             setColor(Color.parseColor(AlertUi.color(level))); cornerRadius = dp(28).toFloat() }
@@ -94,6 +97,14 @@ internal fun MainActivity.updateAlertCard() {
             row.addView(alertCardTimer)
             alertCard.addView(row, LinearLayout.LayoutParams(-1, -2))
         }
+        // המפה - כמו במסך מלא (לפי "הצג מפה" בהגדרות)
+        if (Prefs.alertMap(this)) cardMapView(j, level)?.let { mv ->
+            alertCard.addView(FrameLayout(this).apply {
+                background = GradientDrawable().apply { setColor(Color.BLACK); cornerRadius = dp(20).toFloat() }
+                clipToOutline = true
+                addView(mv, FrameLayout.LayoutParams(-1, -1))
+            }, LinearLayout.LayoutParams(-1, dp(200)).apply { topMargin = dp(10) })
+        }
         val src = j.optString("source")
         if (src.isNotEmpty()) alertCard.addView(text("מקור ההתרעה: $src", 12f, Color.parseColor("#E6FFFFFF"))
             .apply { gravity = Gravity.CENTER; setPadding(0, dp(5), 0, 0) })
@@ -112,3 +123,23 @@ internal fun MainActivity.updateAlertCard() {
     }
 }
 
+
+/** המפה בכרטיס ההתרעה: האזורים של ההתרעה, כמו במסך מלא. null - אין אזורים מוכרים */
+internal fun MainActivity.cardMapView(j: org.json.JSONObject, level: Int): View? {
+    val names = (j.optString("mapAreas").ifEmpty { j.optString("body") }).split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        .flatMap { raw -> try { AreaData.match(this, raw) } catch (_: Exception) { emptyList() } }.distinct()
+    if (names.isEmpty()) return null
+    val me = try { Weather.lastLocation(this) } catch (_: Exception) { null }
+    val m = try { AlertMap(this, null, names, level, me?.latitude, me?.longitude, Prefs.darkTheme(this)) } catch (_: Exception) { return null }
+    cardMap = m
+    m.onStart(); if (cardResumed) m.onResume()
+    // גרירה על המפה מזיזה את המפה, לא את המסך
+    m.view.setOnTouchListener { v, _ -> v.parent?.requestDisallowInterceptTouchEvent(true); false }
+    return m.view
+}
+
+/** סגירת המפה של הכרטיס (הכרטיס נבנה מחדש / נעלם / המסך נסגר) */
+internal fun MainActivity.endCardMap() {
+    cardMap?.let { if (cardResumed) it.onPause(); it.onStop(); it.onDestroy() }
+    cardMap = null
+}

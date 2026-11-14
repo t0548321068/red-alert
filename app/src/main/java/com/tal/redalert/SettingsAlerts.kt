@@ -359,7 +359,7 @@ internal fun MainActivity.showCustomStyles() = ouiPage("סגנון התרעה") 
     val m = ouiCard()
     ouiRow(m, "הצג מפה", on = Prefs.alertMap(this)) { Prefs.setAlertMap(this, !Prefs.alertMap(this)); rebuild() }
     ouiAdd(body, m)
-    ouiNote(body, "המפה מוצגת במסך מלא")
+    ouiNote(body, "המפה מוצגת במסך מלא ובכרטיס")
 }
 
 /** בחירת סוג התצוגה לנושא: אותן הדמיות כמו בסוג התצוגה הכללי, בצבע הנושא */

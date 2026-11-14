@@ -55,6 +55,8 @@ class MainActivity : Activity() {
     }
 
     internal lateinit var circle: FrameLayout
+    internal var cardMap: AlertMap? = null      // המפה בכרטיס ההתרעה (כשהכרטיס מוצג והמפה מופעלת)
+    internal var cardResumed = false
     internal lateinit var card1: LinearLayout   // כרטיס 1: ברכה, מגן, אתה מוגן
     internal lateinit var card2: LinearLayout   // כרטיס 2: אזור התרעה | זמן התגוננות
     internal lateinit var shieldIcon: android.widget.ImageView
@@ -557,6 +559,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         shown = this
+        cardResumed = true; cardMap?.onResume()
         if (::statusRow.isInitialized) { applyStatusRow(); applyTestFab() }
         // הכרטיס והצבע - לפני שהמסך מצויר (בחזרה ממסך ההתרעה הם כבר שם, לא קופצים אחרי רגע)
         if (::alertWrap.isInitialized) updateAlertCard()
@@ -615,6 +618,7 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         if (shown === this) shown = null
+        cardResumed = false; cardMap?.onPause()
         // יוצאים מהאפליקציה אחרי שההתרעה כבר נראתה בה: החלון הממוזער לא ממשיך לצוף מעל שאר הטלפון
         if (::miniHost.isInitialized && MiniOverlay.hostedIn(miniHost)) {
             MiniOverlay.hide(this); miniHost.visibility = View.GONE
@@ -629,6 +633,7 @@ class MainActivity : Activity() {
     /** המסך נסגר / נבנה מחדש (סיבוב, החלפת ערכת צבעים) - סוגרים עמודים וטיימרים שלא יישארו תלויים */
     override fun onDestroy() {
         Prefs.unlisten(this, alertListener)
+        endCardMap()
         // בלי להפעיל את פעולות הסגירה של העמודים (למשל טעינה מחדש אחרי החלפת ערכת צבעים)
         pages.toList().forEach { try { it.setOnDismissListener(null); it.dismiss() } catch (_: Exception) { } }
         pages.clear()
