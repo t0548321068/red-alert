@@ -8,18 +8,23 @@ import com.tal.redalert.Prefs
 
 /**
  * צופר חירום 2 (עריכת צופר): צופר חירום עצמה (App - אותה הפעלה בדיוק), עם העיצוב מחדש.
- * בנוסף: העדכון העצמי של צופר חירום 2, והגרסה שלה בתוך המסכים
+ * בנוסף: שכבת העריכה (✎ ≡ - עריכה ושליחת שינויים), העדכון העצמי של צופר חירום 2, והגרסה שלה בתוך המסכים
  */
 class EditorApp : App() {
     override fun onCreate() {
         super.onCreate()
+        val prev = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            try { Store.saveCrash(this, android.util.Log.getStackTraceString(e)) } catch (_: Exception) { }
+            prev?.uncaughtException(t, e)
+        }
         appVersion()
         Prefs.setAutoUpdate(this, false)   // העדכון של צופר חירום לא שייך לכאן - צופר חירום 2 מתעדכנת לבד
         // עדכון: מחובר כל הזמן ומתקין ברגע שגרסה מתפרסמת - בלי לפתוח (והבדיקה התקופתית - גיבוי)
         UpdateListener.start(this)
         UpdateJob.schedule(this)
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
-            override fun onActivityResumed(a: Activity) { if (a is MainActivity) { Update.maybeCheck(a); askBattery(a) } }
+            override fun onActivityResumed(a: Activity) { Editor.scanSoon(); if (a is MainActivity) { Update.maybeCheck(a); askBattery(a) } }
             override fun onActivityCreated(a: Activity, b: Bundle?) {}
             override fun onActivityStarted(a: Activity) {}
             override fun onActivityPaused(a: Activity) {}
@@ -27,6 +32,7 @@ class EditorApp : App() {
             override fun onActivitySaveInstanceState(a: Activity, b: Bundle) {}
             override fun onActivityDestroyed(a: Activity) {}
         })
+        Editor.start(this)
     }
 
     /** פעם אחת: לבקש שהטלפון לא יעצור את צופר חירום 2 ברקע - אחרת העדכון האוטומטי לא יגיע */
