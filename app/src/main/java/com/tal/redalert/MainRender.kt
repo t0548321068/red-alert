@@ -110,27 +110,23 @@ internal fun MainActivity.renderChips() {
     val sec = if (nearOn && near.isNotEmpty()) AreaData.shelterSeconds(this, near.take(1)) else null
     val area = if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…"
     val time = if (sec != null) AreaData.shelterText(sec) else "—"
-    fun row(right: View, left: View, top: Int = 0) = LinearLayout(this).apply {
-        isBaselineAligned = false
-        addView(right, LinearLayout.LayoutParams(0, -2, 1f))
-        addView(View(this@renderChips), LinearLayout.LayoutParams(dp(21), 1))   // מקום לקו האמצעי
-        addView(left, LinearLayout.LayoutParams(0, -2, 1f))
-        setPadding(0, top, 0, 0)
-    }
-    fun icon(res: Int) = android.widget.ImageView(this).apply {
-        setImageResource(res); layoutParams = LinearLayout.LayoutParams(dp(40), dp(44))
-    }.let { FrameLayout(this).apply { addView(it, FrameLayout.LayoutParams(dp(40), dp(44), Gravity.CENTER)) } }
-    fun label(t: String) = text(t, 12f, C.MUTED).apply { gravity = Gravity.CENTER }
-    fun value(t: String) = text(t, 15f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER_HORIZONTAL or Gravity.TOP }
-    val grid = LinearLayout(this).apply {
+    // שתי עמודות (אייקון, כותרת, ערך) וקו באמצע. בתוך LinearLayout אופקי הקו מקבל בדיוק את גובה העמודות
+    // (FrameLayout עם קו MATCH_PARENT בתוך מסך נגלל מתח את הכרטיס עד סוף המסך)
+    fun column(iconRes: Int, title: String, v: String) = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        addView(row(icon(R.drawable.ic_area_pin), icon(R.drawable.ic_shelter_timer)))
-        addView(row(label("אזור התרעה"), label("זמן התגוננות"), dp(4)))
-        addView(row(value(area), value(time), dp(2)))
+        gravity = Gravity.CENTER_HORIZONTAL
+        addView(android.widget.ImageView(this@renderChips).apply { setImageResource(iconRes) }, LinearLayout.LayoutParams(dp(40), dp(44)))
+        addView(text(title, 12f, C.MUTED).apply { gravity = Gravity.CENTER; setSingleLine() },
+            LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        addView(text(v, 15f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER },
+            LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
     }
-    clockArea.addView(FrameLayout(this).apply {
-        addView(grid, FrameLayout.LayoutParams(-1, -2))
-        addView(View(this@renderChips).apply { setBackgroundColor(C.DIV) }, FrameLayout.LayoutParams(dp(1), -1, Gravity.CENTER_HORIZONTAL))
+    clockArea.addView(LinearLayout(this).apply {
+        isBaselineAligned = false
+        addView(column(R.drawable.ic_area_pin, "אזור התרעה", area), LinearLayout.LayoutParams(0, -2, 1f))
+        addView(View(this@renderChips).apply { setBackgroundColor(C.DIV) },
+            LinearLayout.LayoutParams(dp(1), -1).apply { marginStart = dp(10); marginEnd = dp(10) })
+        addView(column(R.drawable.ic_shelter_timer, "זמן התגוננות", time), LinearLayout.LayoutParams(0, -2, 1f))
     }, LinearLayout.LayoutParams(-1, -2))
 
     shelterLine.visibility = View.GONE   // הזמן מוצג עכשיו בפס המיקום
