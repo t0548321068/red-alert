@@ -170,7 +170,7 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
     }
 
     fun refreshFooter() {
-        val ver = try { context.packageManager.getPackageInfo(context.packageName, 0).versionName } catch (_: Exception) { "" }
+        val ver = context.getString(com.tal.redalert.R.string.app_version)   // הגרסה של צופר חירום (בפרטי היישום - של עריכת צופר)
         footer.text = "עריכת צופר ${Update.current(context)} · צופר חירום $ver" + Update.status.takeIf { it.isNotEmpty() }?.let { "\n$it" }.orEmpty()
         footer.setOnClickListener {
             if (Update.needPermission) context.startActivity(Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
