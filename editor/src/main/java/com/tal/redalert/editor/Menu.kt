@@ -247,7 +247,9 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
                     ?.let { nb -> if (nb.optString("state") != ob.optString("state") || nb.optInt("p") != ob.optInt("p") || nb.optString("msg") != ob.optString("msg")) { openBatch = nb; rebuild() } }
                     return@post }
                 if (doneList != null) return@post
-                val all = (0 until a.length()).map { a.getJSONObject(it) }.reversed()
+                // שליחה שבוטלה לא מוצגת
+                val all = (0 until a.length()).map { a.getJSONObject(it) }.filter { it.optString("state") != "cancelled" }.reversed()
+                if (all.isEmpty()) return@post
                 // שליחה שזה עתה בוצעה נשארת פעם אחת ברשימה - כדי לראות את העיגול עולה עד 100 - ואז עוברת ל"שליחות שבוצעו"
                 fun justDone(b: JSONObject) = b.optString("state") == "done" && (shownOf(b.optString("id")) ?: 100) < 100
                 val open = all.filter { it.optString("state") != "done" || justDone(it) }
@@ -291,6 +293,26 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
             addView(ringFor(b), LinearLayout.LayoutParams(Ui.dp(56), Ui.dp(56)).apply { marginEnd = Ui.dp(14) })
             addView(Ui.tv(context, stName + b.optString("msg").takeIf { it.isNotEmpty() }?.let { "\n$it" }.orEmpty(), 14f, stColor), LinearLayout.LayoutParams(0, -2, 1f))
         })
+        // ביטול השליחה - רק כל עוד לא בוצעה. לחיצה ראשונה מבקשת אישור, השנייה מבטלת
+        if (b.optString("state") == "sent" || b.optString("state") == "working") {
+            val c = card()
+            var sure = false
+            lateinit var r: LinearLayout
+            r = row(c, "ביטול השליחה", "השינויים לא יבוצעו", Ui.RED) {
+                if (!sure) { sure = true; ((r.getChildAt(0) as LinearLayout).getChildAt(0) as TextView).text = "לחץ שוב לאישור הביטול"; return@row }
+                Thread {
+                    val res = Store.cancel(context, b.optString("id"))
+                    ui.post {
+                        when (res) {
+                            is JSONObject -> { toast("השליחה בוטלה"); openBatch = null; rebuild(); loadSent() }
+                            "login" -> toast("צריך להיכנס שוב")
+                            else -> { toast("אי אפשר לבטל – אולי כבר בוצעה, או שאין חיבור"); loadSent() }
+                        }
+                    }
+                }.start()
+            }
+            addCard(c)
+        }
         itemCards(b.optJSONArray("items") ?: org.json.JSONArray())
     }
 
