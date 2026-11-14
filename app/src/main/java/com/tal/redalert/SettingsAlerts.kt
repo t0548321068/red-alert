@@ -357,9 +357,20 @@ internal fun MainActivity.showCustomStyles() = ouiPage("סגנון התרעה") 
     // אחרי סגירת מסך מלא - תמיד כרטיס במסך הראשי (הבחירה "אחרי סגירה" ירדה יחד עם הממוזער)
     // המפה במסך ההתרעה (הועבר מעמוד ההתרעות)
     val m = ouiCard()
-    ouiRow(m, "הצג מפה", on = Prefs.alertMap(this)) { Prefs.setAlertMap(this, !Prefs.alertMap(this)); rebuild() }
+    val full = Prefs.alertMap(this); val card = Prefs.alertMapCard(this)
+    ouiRow(m, "הצג מפה", sub = when { full && card -> "מסך מלא וכרטיס"; full -> "מסך מלא"; card -> "כרטיס"; else -> "כבוי" }) {
+        chooseAlertMap { rebuild() } }
     ouiAdd(body, m)
-    ouiNote(body, "המפה מוצגת במסך מלא ובכרטיס")
+}
+
+/** הצג מפה: בנפרד למסך מלא ולכרטיס */
+private fun MainActivity.chooseAlertMap(done: () -> Unit) = ouiPage("הצג מפה", onClose = done) { body, rebuild ->
+    val c = ouiCard()
+    ouiRow(c, "מפה במסך מלא", on = Prefs.alertMap(this)) { Prefs.setAlertMap(this, !Prefs.alertMap(this)); rebuild() }
+    ouiDivider(c)
+    ouiRow(c, "מפה בכרטיס", on = Prefs.alertMapCard(this)) { Prefs.setAlertMapCard(this, !Prefs.alertMapCard(this)); rebuild() }
+    ouiAdd(body, c)
+    ouiNote(body, "המפה מציגה את האזורים של ההתרעה")
 }
 
 /** בחירת סוג התצוגה לנושא: אותן הדמיות כמו בסוג התצוגה הכללי, בצבע הנושא */

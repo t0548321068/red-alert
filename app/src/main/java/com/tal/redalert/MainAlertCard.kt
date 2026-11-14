@@ -97,8 +97,8 @@ internal fun MainActivity.updateAlertCard() {
             row.addView(alertCardTimer)
             alertCard.addView(row, LinearLayout.LayoutParams(-1, -2))
         }
-        // המפה - כמו במסך מלא (לפי "הצג מפה" בהגדרות)
-        if (Prefs.alertMap(this)) cardMapView(j, level)?.let { mv ->
+        // המפה - כמו במסך מלא ("הצג מפה" ← "מפה בכרטיס" בהגדרות)
+        if (Prefs.alertMapCard(this)) cardMapView(j, level)?.let { mv ->
             alertCard.addView(FrameLayout(this).apply {
                 background = GradientDrawable().apply { setColor(Color.BLACK); cornerRadius = dp(20).toFloat() }
                 clipToOutline = true
