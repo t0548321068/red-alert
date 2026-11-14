@@ -330,7 +330,7 @@ class Menu(private val layer: Layer) : ScrollView(layer.context) {
             else Update.check(context) { ui.post { if (updates) rebuild() } }
         }
         addCard(c)
-        col.addView(Ui.tv(context, "עריכת צופר מתעדכנת לבד – בכל פתיחה, וגם ברקע בלי לפתוח", 12f, Ui.GRAY).apply { setPadding(Ui.dp(28), 0, Ui.dp(28), Ui.dp(6)) })
+        col.addView(Ui.tv(context, "עריכת צופר מתעדכנת לבד ברגע שגרסה חדשה מתפרסמת – בלי לפתוח", 12f, Ui.GRAY).apply { setPadding(Ui.dp(28), 0, Ui.dp(28), Ui.dp(6)) })
         group("מה חדש")
         val log = try { JSONObject(context.assets.open("editor_changelog.json").bufferedReader(Charsets.UTF_8).use { it.readText() }) } catch (_: Exception) { null }
         if (log != null) {

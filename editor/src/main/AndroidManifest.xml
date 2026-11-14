@@ -15,7 +15,8 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
-    <!-- עדכון ברקע: בדיקה כל שעה גם בלי לפתוח (וממשיך אחרי הפעלה מחדש), והתראה אם צריך לאשר -->
+    <!-- עדכון ברקע כמו בצופר חירום: מחובר כל הזמן, מתקין ברגע שגרסה מתפרסמת (וממשיך אחרי הפעלה מחדש) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -43,6 +44,15 @@
         <receiver android:name=".editor.InstallReceiver" android:exported="false" />
         <service android:name=".editor.UpdateJob" android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
+        <service android:name=".editor.UpdateListener" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="self-update: instant install when a new version is published" />
+        </service>
+        <receiver android:name=".editor.BootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
         <receiver android:name=".editor.UpdatedReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
