@@ -1,5 +1,5 @@
 // "עריכת צופר": שינויי נראות ששלחת מהאפליקציה (צבע, גודל, טקסט, מיקום, הערה לכל רכיב).
-// כל שליחה = batch אחד. מצבים: sent (נשלח) → working (בטיפול) → done (בוצע).
+// כל שליחה = batch אחד. מצבים: sent (נשלח) → working (בטיפול) → done (בוצע), או cancelled (בוטל מהאפליקציה לפני שבוצע).
 // GET/POST /api/design - מהאפליקציה (עם הכניסה של האתר).
 // GET /design-inbox - לבנייה בגיטהאב (רק קריאה של מה שעוד לא בוצע), POST /design-state - עדכון מצב עם המפתח של השליחה
 const fs = require('fs');
@@ -49,6 +49,14 @@ function handle(req, res) {
       save(); log('design: שליחה חדשה - ' + op.items.length + ' שינויים');
       return send(200, view());
     }
+    // ביטול שליחה שעוד לא בוצעה - יוצאת מהתור (לא נמחקת)
+    if (op && op.op === 'cancel') {
+      const b = data.batches.find(x => x.id === str(op.id, 20));
+      if (!b || b.state === 'done') return send(409, view());
+      b.state = 'cancelled'; b.p = 0; b.msg = ''; b.cancelAt = Date.now();
+      save(); log('design: שליחה ' + b.id + ' בוטלה');
+      return send(200, view());
+    }
     return send(400, {});
   });
 }
@@ -56,14 +64,14 @@ function handle(req, res) {
 /** לגיטהאב: כל השליחות שעוד לא בוצעו, עם המפתח לעדכון המצב */
 function inbox(res) {
   res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-  res.end(JSON.stringify(data.batches.filter(b => b.state !== 'done'), null, 1));
+  res.end(JSON.stringify(data.batches.filter(b => b.state !== 'done' && b.state !== 'cancelled'), null, 1));
 }
 
 /** עדכון מצב שליחה: ?id=&t=&state=working|done&msg=&p= (p = אחוז התקדמות לעיגול באפליקציה) */
 function setState(req, res, u) {
   const b = data.batches.find(x => x.id === str(u.searchParams.get('id'), 20));
   const st = u.searchParams.get('state');
-  if (req.method !== 'POST' || !b || u.searchParams.get('t') !== b.tok || !['sent', 'working', 'done'].includes(st)) {
+  if (req.method !== 'POST' || !b || b.state === 'cancelled' || u.searchParams.get('t') !== b.tok || !['sent', 'working', 'done'].includes(st)) {
     res.writeHead(404); return res.end();
   }
   b.state = st; b.msg = str(u.searchParams.get('msg'), 300); if (st === 'done') b.doneAt = Date.now();
