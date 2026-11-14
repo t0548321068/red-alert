@@ -77,15 +77,9 @@ internal fun MainActivity.refresh() {
     // מוגן: רקע ירוק כהה (בבהיר - ירוק בהיר) עם מסגרת ירוקה; לא מוגן - הכרטיס הרגיל עם מסגרת אפורה
     // מוגן אבל אין אינטרנט: כרטיס כתום - ההתרעות לא יגיעו עד שהרשת תחזור
     val noNet = on && network()?.second != true
-    val dark = Prefs.darkTheme(this@refresh)
     val off = !Prefs.enabled(this)   // כבוי לגמרי (לא לפי תזמון): כרטיס אדום
-    circle.background = graphite(24).apply {
-        when {
-            noNet -> setColor(Color.parseColor(if (dark) "#33240A" else "#FDEFD9"))
-            off -> setColor(Color.parseColor(if (dark) "#3A1214" else "#FBE3E4"))
-            on -> setColor(Color.parseColor(if (dark) "#12301A" else "#E3F4E5"))
-        }
-        setStroke(dp(2), Color.parseColor(if (noNet) "#FF9F0A" else if (on) "#4CAF50" else if (off) "#FF453A" else "#555555")) }
+    // מצב ההגנה מוצג בכרטיס 1 (מגן + כיתוב). כרטיס השעון - כרטיס רגיל
+    circle.background = graphite(26)
     // מוגן: מגן ירוק עם וי. לא מוגן: מגן אדום עם איקס. אין רשת: מגן כתום עם סימן קריאה (מעריכת צופר). לפי תזמון: מגן ריק
     shieldIcon.setImageResource(if (on && !noNet) R.drawable.ic_shield_green else if (noNet) R.drawable.ic_shield_alert
         else if (off) R.drawable.ic_shield_x else R.drawable.ic_shield_outline)
@@ -95,7 +89,7 @@ internal fun MainActivity.refresh() {
     haloInner.background = GradientDrawable().apply { shape = GradientDrawable.OVAL
         setColor(Color.parseColor(if (noNet) "#24FF9F0A" else if (on) "#2469F0AE" else if (off) "#24FF453A" else "#10FFFFFF")) }
     circleLabel.text = if (noNet) "אין רשת – התרעות לא יגיעו" else if (on) "אתה מוגן" else if (sched) "כבוי לפי תזמון" else "לא מוגן"
-    circleLabel.setTextColor(Color.parseColor(if (noNet) "#FF9F0A" else if (on) "#69F0AE" else if (off) "#FF453A" else "#AAAAAA"))
+    circleLabel.setTextColor(if (noNet) C.ORANGE else if (on) C.TEXT else if (off) C.RED else C.MUTED)
     setSweep(on && !noNet)
     updateIndicators()
 
@@ -111,19 +105,33 @@ internal fun MainActivity.renderChips() {
     val near = if (nearOn) Prefs.nearbyAreas(this) else emptyList()
     val muted = C.MUTED2
 
-    // אזור התרעה (לפי המיקום) - מוצג בכרטיס השעון
+    // כרטיס 1: אזור התרעה (ימין) | זמן התגוננות (שמאל). שלוש שורות - אייקונים, כותרות, ערכים - כל שורה באותו גובה בשני הצדדים
     clockArea.removeAllViews()
-    val top = clockArea
-    top.addView(text("אזור התרעה", 20f, C.INK_SOFT))
-    top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 30f, C.INK, bold = true)
-        .apply { setPadding(0, dp(2), 0, 0) })
     val sec = if (nearOn && near.isNotEmpty()) AreaData.shelterSeconds(this, near.take(1)) else null
-    if (sec != null) top.addView(text("⏱ זמן התגוננות: ${AreaData.shelterText(sec)}", 20f, C.INK_SOFT)
-        .apply { setPadding(0, dp(2), 0, 0) })
-    for (i in 0 until top.childCount) (top.getChildAt(i) as? TextView)?.gravity = Gravity.CENTER
-    // קו מתחת לאזור ההתרעה - מפריד בינו לבין השעון
-    clockArea.addView(View(this).apply { setBackgroundColor(Color.parseColor("#33FFFFFF")) },
-        LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(10) })
+    val area = if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…"
+    val time = if (sec != null) AreaData.shelterText(sec) else "—"
+    fun row(right: View, left: View, top: Int = 0) = LinearLayout(this).apply {
+        baselineAligned = false
+        addView(right, LinearLayout.LayoutParams(0, -2, 1f))
+        addView(View(this@renderChips), LinearLayout.LayoutParams(dp(21), 1))   // מקום לקו האמצעי
+        addView(left, LinearLayout.LayoutParams(0, -2, 1f))
+        setPadding(0, top, 0, 0)
+    }
+    fun icon(res: Int) = android.widget.ImageView(this).apply {
+        setImageResource(res); layoutParams = LinearLayout.LayoutParams(dp(40), dp(44))
+    }.let { FrameLayout(this).apply { addView(it, FrameLayout.LayoutParams(dp(40), dp(44), Gravity.CENTER)) } }
+    fun label(t: String) = text(t, 12f, C.MUTED).apply { gravity = Gravity.CENTER }
+    fun value(t: String) = text(t, 15f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER_HORIZONTAL or Gravity.TOP }
+    val grid = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        addView(row(icon(R.drawable.ic_area_pin), icon(R.drawable.ic_shelter_timer)))
+        addView(row(label("אזור התרעה"), label("זמן התגוננות"), dp(4)))
+        addView(row(value(area), value(time), dp(2)))
+    }
+    clockArea.addView(FrameLayout(this).apply {
+        addView(grid, FrameLayout.LayoutParams(-1, -2))
+        addView(View(this@renderChips).apply { setBackgroundColor(C.DIV) }, FrameLayout.LayoutParams(dp(1), -1, Gravity.CENTER_HORIZONTAL))
+    }, LinearLayout.LayoutParams(-1, -2))
 
     shelterLine.visibility = View.GONE   // הזמן מוצג עכשיו בפס המיקום
     renderExtraCard()

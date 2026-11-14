@@ -55,6 +55,7 @@ class MainActivity : Activity() {
     }
 
     internal lateinit var circle: FrameLayout
+    internal lateinit var card1: LinearLayout   // כרטיס 1: ברכה, מוגן, אזור התרעה, זמן התגוננות
     internal lateinit var shieldIcon: android.widget.ImageView
     internal lateinit var circleLabel: TextView
     internal lateinit var haloOuter: FrameLayout
@@ -258,7 +259,6 @@ class MainActivity : Activity() {
         greeting.setTextColor(soft)
         clockTime.setTextColor(white); clockTime.textSize = 40f
         clockDay.setTextColor(soft); clockDay.textSize = 20f
-        clockCard.addView(greeting)
         clockCard.addView(clockTime)
         clockCard.addView(clockDay)
         // אזור ההתרעה (לפי המיקום) - בכרטיס השעון, מתחת ל"מוגן" (נכנס למקום אחרי שהמגן נוסף)
@@ -377,16 +377,25 @@ class MainActivity : Activity() {
         }
         haloOuter.addView(ring1, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
         haloOuter.addView(haloInner, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
-        // סדר: ברכה למעלה, מתחתיה המגן ו"מוגן", ואז השעה
-        (greeting.layoutParams as? LinearLayout.LayoutParams)?.bottomMargin = dp(6)
-        clockCard.addView(haloOuter, 1, LinearLayout.LayoutParams(dp(56), dp(56)).apply { gravity = Gravity.CENTER_HORIZONTAL })
-        clockCard.addView(circleLabel, 2, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(2) })
-        clockCard.addView(clockArea, 3, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(10) })
+        // כרטיס 1 (העיצוב מחדש, כמו פיקוד העורף): ברכה · מגן · "אתה מוגן" · קו · אזור התרעה | זמן התגוננות - הכל ממורכז
+        greeting.textSize = 16f; greeting.setTextColor(C.MUTED)
+        circleLabel.textSize = 22f
+        card1 = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(18), dp(20), dp(18), dp(18))
+            background = graphite(26)
+            addView(greeting, LinearLayout.LayoutParams(-1, -2))
+            addView(haloOuter, LinearLayout.LayoutParams(dp(56), dp(56)).apply { topMargin = dp(10); bottomMargin = dp(6) })
+            addView(circleLabel, LinearLayout.LayoutParams(-1, -2))
+            addView(View(this@MainActivity).apply { setBackgroundColor(C.DIV) },
+                LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16); bottomMargin = dp(14) })
+            addView(clockArea, LinearLayout.LayoutParams(-1, -2))
+        }
         extraBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutDirection = View.LAYOUT_DIRECTION_RTL }
         clockCard.addView(extraBox, LinearLayout.LayoutParams(-1, -2))
         // רווח שווה: מ"מוגן" עד ראש הספרות של השעה = מהברכה עד העיגול של המגן.
         // נמדד אחרי הפריסה (הספרות הגדולות מגיעות עם רווח פנימי משלהן)
-        clockCard.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> evenClockGaps() }
         circle = FrameLayout(this).apply {
             clipToOutline = true
             addView(clockCard, FrameLayout.LayoutParams(-1, -2))
@@ -423,7 +432,9 @@ class MainActivity : Activity() {
         // החלון הממוזער בתוך המסך הראשי - במקום הכרטיס, וזז עם המסך כמו כרטיס
         miniHost = FrameLayout(this).apply { visibility = View.GONE }
         col.addView(miniHost, col.indexOfChild(alertWrap), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
-        // כרטיס השעה ומזג האוויר (וגם מצב ההגנה)
+        // כרטיס 1: מצב ההגנה, אזור ההתרעה וזמן ההתגוננות
+        col.addView(card1, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
+        // כרטיס השעה ומזג האוויר
         col.addView(circle, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
 
         // האזורים שלי
