@@ -129,22 +129,20 @@ internal fun MainActivity.renderChips() {
     renderExtraCard()
 }
 
-/** כרטיס במסך הראשי: היישובים והאזורים הנוספים (תצוגה בלבד) */
+/** בתחתית כרטיס השעון: היישובים והאזורים הנוספים (תצוגה בלבד). קודם היה כרטיס נפרד מתחת - הוכנס לכרטיס השעון מעריכת צופר */
 internal fun MainActivity.renderExtraCard() {
-    areasSlot.removeAllViews()
+    areasSlot.removeAllViews()   // המקום נשאר ריק כדי שהפיד יישב למטה
+    extraBox.removeAllViews()
     val (towns, dists) = extraSelection()
     val dmap = AreaData.districtMap(this)
-    val card = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        background = graphite(28); clipToOutline = true
-        layoutDirection = View.LAYOUT_DIRECTION_RTL
-        setPadding(0, dp(14), 0, dp(10))
-    }
+    // קו מפריד - כמו הקו שמתחת לאזור ההתרעה
+    extraBox.addView(View(this).apply { setBackgroundColor(Color.parseColor("#33FFFFFF")) },
+        LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(12); bottomMargin = dp(12) })
     // תצוגה בלבד - העריכה בהגדרות התרעות → אזורים נוספים
-    card.addView(text("יישובים ואזורים נוספים", 20f, C.INK, bold = true).apply { gravity = Gravity.CENTER; setPadding(dp(18), 0, dp(18), dp(6)) })
+    extraBox.addView(text("יישובים ואזורים נוספים", 20f, C.INK, bold = true).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(6)) })
     val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
     fun row(name: String, sub: String) = list.addView(LinearLayout(this).apply {
-        gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(5), dp(18), dp(5))
+        gravity = Gravity.CENTER_VERTICAL; setPadding(dp(2), dp(5), dp(2), dp(5))
         addView(text(name, 15f, C.INK).apply { setSingleLine(); ellipsize = TextUtils.TruncateAt.END },
             LinearLayout.LayoutParams(0, -2, 1f))
         if (sub.isNotEmpty()) addView(text(sub, 12f, C.MUTED).apply { setSingleLine() },
@@ -152,17 +150,18 @@ internal fun MainActivity.renderExtraCard() {
     })
     fun section(title: String, names: List<String>, sub: (String) -> String) {
         if (names.isEmpty()) return
-        list.addView(text(title, 12f, C.MUTED2).apply { setPadding(dp(18), dp(6), dp(18), dp(2)) })
+        list.addView(text(title, 12f, C.MUTED2).apply { setPadding(dp(2), dp(6), dp(2), dp(2)) })
         names.forEach { row(it, sub(it)) }
     }
     section("יישובים", towns) { if (it == AreaData.ALL_COUNTRY) "" else dmap[it] ?: "" }
     section("אזורים", dists) { "" }
     if (towns.isEmpty() && dists.isEmpty())
-        list.addView(text("לא נבחרו", 15f, C.MUTED).apply { setPadding(dp(18), dp(4), dp(18), dp(6)) })
-    // הרשימה נגללת בתוך הכרטיס כשהיא ארוכה; הכרטיס לא חורג מהמקום שנשאר במסך
-    card.addView(ScrollView(this).apply { isVerticalScrollBarEnabled = false; addView(list) },
-        LinearLayout.LayoutParams(-1, -2, 1f))
-    areasSlot.addView(card, FrameLayout.LayoutParams(-1, -2, Gravity.TOP))
+        list.addView(text("לא נבחרו", 15f, C.MUTED).apply { gravity = Gravity.CENTER; setPadding(0, dp(4), 0, dp(6)) })
+    // רשימה ארוכה נגללת בתוך הכרטיס - שהכרטיס לא ידחוף את הפיד מהמסך
+    val maxH = dp(170)
+    extraBox.addView(object : ScrollView(this) {
+        override fun onMeasure(w: Int, h: Int) = super.onMeasure(w, View.MeasureSpec.makeMeasureSpec(maxH, View.MeasureSpec.AT_MOST))
+    }.apply { isVerticalScrollBarEnabled = false; addView(list) }, LinearLayout.LayoutParams(-1, -2))
 }
 
 /** במסך הראשי: שורת סיכום של ההתראה האחרונה */

@@ -143,6 +143,8 @@ class MainActivity : Activity() {
     internal lateinit var alertCard: LinearLayout
     internal lateinit var alertWrap: FrameLayout
     internal lateinit var areasSlot: FrameLayout
+    /** בתחתית כרטיס השעון: היישובים והאזורים הנוספים (מעריכת צופר - היו בכרטיס נפרד מתחת) */
+    internal lateinit var extraBox: LinearLayout
 
     /** כשכרטיס ההתרעה מוצג - האזורים בגובה מלא והמסך נגלל; בלעדיו - האזורים ממלאים את מה שנשאר */
     internal lateinit var clockArea: LinearLayout
@@ -380,6 +382,8 @@ class MainActivity : Activity() {
         clockCard.addView(haloOuter, 1, LinearLayout.LayoutParams(dp(56), dp(56)).apply { gravity = Gravity.CENTER_HORIZONTAL })
         clockCard.addView(circleLabel, 2, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(2) })
         clockCard.addView(clockArea, 3, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(10) })
+        extraBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutDirection = View.LAYOUT_DIRECTION_RTL }
+        clockCard.addView(extraBox, LinearLayout.LayoutParams(-1, -2))
         // רווח שווה: מ"מוגן" עד ראש הספרות של השעה = מהברכה עד העיגול של המגן.
         // נמדד אחרי הפריסה (הספרות הגדולות מגיעות עם רווח פנימי משלהן)
         clockCard.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> evenClockGaps() }
