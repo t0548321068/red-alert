@@ -323,7 +323,7 @@ class MainActivity : Activity() {
 
 
         // פיד ארצי - פס רץ עם כל ההתראות בארץ (בלי צליל)
-        feedLine = text("", 14f, C.MUTED).apply {
+        feedLine = text("", 15f, C.MUTED).apply {
             // התראה אחת בכל פעם, מתחלפות בגלילה כלפי מעלה
             // גובה קבוע של 3 שורות (שעה / סוג / אזורים) - הכרטיס לא קופץ בין התראה קצרה לארוכה
             minLines = 3; maxLines = 3
@@ -341,7 +341,7 @@ class MainActivity : Activity() {
             clipToOutline = true; clipChildren = true
             addView(LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.VERTICAL
-                addView(text("התרעות אחרונות", 15f, C.TEXT).apply {
+                addView(text("התרעות אחרונות", 20f, C.TEXT).apply {
                     setTypeface(typeface, android.graphics.Typeface.BOLD)
                     gravity = Gravity.CENTER
                     setPadding(dp(12), dp(12), dp(12), dp(10))
@@ -383,8 +383,8 @@ class MainActivity : Activity() {
         haloOuter.addView(haloInner, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.CENTER))
         // העיצוב מחדש (כמו פיקוד העורף): ארבעה כרטיסים, הכל ממורכז.
         // 1 ברכה · מגן · "אתה מוגן" · אזור התרעה | זמן התגוננות   2 שעה · תאריך · מזג אוויר   3 אזורים נוספים   4 התרעות אחרונות
-        greeting.textSize = 16f; greeting.setTextColor(C.TEXT)   // מעריכת צופר: לבן (במקום אפור)
-        circleLabel.textSize = 22f
+        greeting.textSize = 20f; greeting.setTextColor(C.TEXT)   // מעריכת צופר: לבן (במקום אפור)
+        circleLabel.textSize = 25f
         card1 = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL

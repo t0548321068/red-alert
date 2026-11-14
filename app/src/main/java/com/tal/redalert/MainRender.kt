@@ -128,9 +128,9 @@ internal fun MainActivity.renderChips() {
             },
             LinearLayout.LayoutParams(dp(44), dp(44)))
         // מעריכת צופר: בכהה AAAAAA (בהיר יותר מהאפור הרגיל)
-        addView(text(title, 14f, if (Prefs.darkTheme(this@renderChips)) Color.parseColor("#AAAAAA") else C.MUTED).apply { gravity = Gravity.CENTER; setSingleLine() },
+        addView(text(title, 15f, if (Prefs.darkTheme(this@renderChips)) Color.parseColor("#AAAAAA") else C.MUTED).apply { gravity = Gravity.CENTER; setSingleLine() },
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
-        addView(text(v, 21f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER },
+        addView(text(v, 25f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER },
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
     }
     clockArea.addView(LinearLayout(this).apply {
@@ -152,18 +152,18 @@ internal fun MainActivity.renderExtraCard() {
     val (towns, dists) = extraSelection()
     val dmap = AreaData.districtMap(this)
     // תצוגה בלבד - העריכה בהגדרות התרעות → אזורים נוספים
-    extraBox.addView(text("יישובים ואזורים נוספים", 17f, C.INK, bold = true).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(6)) })
+    extraBox.addView(text("יישובים ואזורים נוספים", 20f, C.INK, bold = true).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(6)) })
     val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
     fun row(name: String, sub: String) = list.addView(LinearLayout(this).apply {
         gravity = Gravity.CENTER_VERTICAL; setPadding(dp(2), dp(5), dp(2), dp(5))
-        addView(text(name, 15f, C.INK).apply { setSingleLine(); ellipsize = TextUtils.TruncateAt.END },
+        addView(text(name, 20f, C.INK).apply { setSingleLine(); ellipsize = TextUtils.TruncateAt.END },
             LinearLayout.LayoutParams(0, -2, 1f))
         if (sub.isNotEmpty()) addView(text(sub, 12f, C.MUTED).apply { setSingleLine() },
             LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
     })
     fun section(title: String, names: List<String>, sub: (String) -> String) {
         if (names.isEmpty()) return
-        list.addView(text(title, 12f, C.MUTED2).apply { setPadding(dp(2), dp(6), dp(2), dp(2)) })
+        list.addView(text(title, 15f, C.MUTED2).apply { setPadding(dp(2), dp(6), dp(2), dp(2)) })
         names.forEach { row(it, sub(it)) }
     }
     section("יישובים", towns) { if (it == AreaData.ALL_COUNTRY) "" else dmap[it] ?: "" }
