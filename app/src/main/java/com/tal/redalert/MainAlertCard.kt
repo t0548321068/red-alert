@@ -85,13 +85,11 @@ internal fun MainActivity.updateAlertCard() {
         }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(8); bottomMargin = dp(2) })
         alertCardLabel = null; alertCardTimer = null
         if (level == AlertService.LEVEL_ALERT) {
-            // כמו מסך מלא (מעריכת צופר): אייקון השעון של המסך הראשי ו"זמן התגוננות: דקה וחצי" מימין, והספירה משמאל - בשורה אחת, באותו גודל
+            // כמו מסך מלא (מעריכת צופר): "⏱ זמן התגוננות: דקה וחצי" מימין (אותו ⏱ כמו בכרטיס השעון במסך הראשי), והספירה משמאל - בשורה אחת, באותו גודל
             val row = LinearLayout(this).apply { gravity = Gravity.CENTER; layoutDirection = View.LAYOUT_DIRECTION_RTL; setPadding(dp(4), dp(6), dp(4), 0) }
             alertCardLabel = text("", 22f, Color.WHITE)
             val gap = View(this)
-            val clock = android.widget.ImageView(this).apply { setImageResource(R.drawable.ic_nav_clock) }
-            alertCardTimer = text("", 22f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER; includeFontPadding = false; tag = listOf(gap, clock) }
-            row.addView(clock, LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(6) })
+            alertCardTimer = text("", 22f, Color.WHITE, bold = true).apply { gravity = Gravity.CENTER; includeFontPadding = false; tag = listOf(gap) }
             row.addView(alertCardLabel); row.addView(gap, LinearLayout.LayoutParams(0, 1, 1f))
             row.addView(alertCardTimer)
             alertCard.addView(row, LinearLayout.LayoutParams(-1, -2))
@@ -106,7 +104,7 @@ internal fun MainActivity.updateAlertCard() {
     AlertUi.stageIcon(j.optString("title"), level, j.optInt("shelter", -1), firedAt).let { r ->
         if (r != alertCardIconRes) { alertCardIconRes = r; AlertUi.setIcon(alertCardIcon, r, big = false) } }
     AlertUi.timer(level, j.optInt("shelter", -1), firedAt, title = j.optString("title"))?.let { (lbl, t) ->
-        alertCardLabel?.text = if (lbl.isEmpty()) "" else lbl + ": " + AreaData.shelterText(j.optInt("shelter", -1))
+        alertCardLabel?.text = if (lbl.isEmpty()) "" else "⏱ " + lbl + ": " + AreaData.shelterText(j.optInt("shelter", -1))
         alertCardLabel?.visibility = if (lbl.isEmpty()) View.GONE else View.VISIBLE
         (alertCardTimer?.tag as? List<*>)?.forEach { (it as? View)?.visibility = if (lbl.isEmpty()) View.GONE else View.VISIBLE }
         alertCardTimer?.textSize = 22f   // גם "נשארים במרחב המוגן עד הודעה" - 22 (מעריכת צופר)
