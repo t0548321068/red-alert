@@ -222,7 +222,8 @@ class MainActivity : Activity() {
         // כותרת + גלגל שיניים
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         // כותרת 25, מיושרת לימין (בכל הכותרות באפליקציה - כמו pageHeader)
-        header.addView(text("צופר חירום", 25f, C.INK, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) },
+        // צופר חירום 2 (עריכת צופר, חבילה אחרת): "צופר חירום 2"
+        header.addView(text(if (packageName == "com.tal.redalert") "צופר חירום" else "צופר חירום 2", 25f, C.INK, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) },
             LinearLayout.LayoutParams(0, -2, 1f))
         // אייקונים למעלה בשמאל (במקום התפריט התחתון): שעון · התרעות · הגדרות (הגדרות הכי שמאלי)
         fun headerIcon(res: Int, click: () -> Unit) = header.addView(android.widget.ImageView(this).apply {
@@ -464,8 +465,6 @@ class MainActivity : Activity() {
 
         // הפיד הארצי - בתחתית המסך
         col.addView(feedCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
-        // שורת החיוויים - בתחתית המסך (כמו התפריט התחתון בפיקוד העורף)
-        col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
 
         val scroll = FrameLayout(this).apply {
             // נגלל כשאין מקום (למשל כשכרטיס ההתרעה מוצג מעל השעון)
@@ -479,7 +478,13 @@ class MainActivity : Activity() {
                 isVerticalScrollBarEnabled = false
                 addView(col, ViewGroup.LayoutParams(-1, -2))
             }
-            addView(mainScroll, FrameLayout.LayoutParams(-1, -1))
+            // שורת החיוויים: קבועה בתחתית המסך, מעל שורת הניווט של הטלפון - לא נגללת עם המסך
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(mainScroll, LinearLayout.LayoutParams(-1, 0, 1f))
+                addView(status, LinearLayout.LayoutParams(-1, -2).apply {
+                    setMargins(dp(16), dp(8), dp(16), dp(10)) })
+            }, FrameLayout.LayoutParams(-1, -1))
             // כפתור צף: התראות בדיקה לכל סוגי ההתרעה
             testFab = FrameLayout(this@MainActivity).apply {
                 background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#D50000")) }
@@ -493,6 +498,10 @@ class MainActivity : Activity() {
             addView(testFab, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM or Gravity.LEFT).apply {
                 setMargins(dp(20), 0, dp(20), dp(20)) })
             applyTestFab()
+            // הכפתור הצף יושב מעל שורת החיוויים (כשהיא מוצגת)
+            status.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+                testFab.translationY = if (v.visibility == View.VISIBLE) -(v.height + dp(10)).toFloat() else 0f
+            }
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")
                 v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)

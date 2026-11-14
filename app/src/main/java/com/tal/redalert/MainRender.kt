@@ -116,9 +116,9 @@ internal fun MainActivity.renderChips() {
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER_HORIZONTAL
         addView(android.widget.ImageView(this@renderChips).apply { setImageResource(iconRes) }, LinearLayout.LayoutParams(dp(40), dp(44)))
-        addView(text(title, 12f, C.MUTED).apply { gravity = Gravity.CENTER; setSingleLine() },
+        addView(text(title, 14f, C.MUTED).apply { gravity = Gravity.CENTER; setSingleLine() },
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
-        addView(text(v, 15f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER },
+        addView(text(v, 21f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER },
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
     }
     clockArea.addView(LinearLayout(this).apply {
