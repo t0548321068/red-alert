@@ -489,20 +489,22 @@ class MainActivity : Activity() {
             }, FrameLayout.LayoutParams(-1, -1))
             // כפתור צף: התראות בדיקה לכל סוגי ההתרעה
             testFab = FrameLayout(this@MainActivity).apply {
-                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#D50000")) }
+                // אפור עם אייקון אדום (כמו הכרטיסים)
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(C.CHIP) }
                 elevation = dp(6).toFloat()
                 addView(android.widget.ImageView(this@MainActivity).apply {
                     setImageResource(R.drawable.ic_list_siren)
-                    imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+                    imageTintList = android.content.res.ColorStateList.valueOf(C.RED)
                 }, FrameLayout.LayoutParams(dp(25), dp(25), Gravity.CENTER))
                 setOnClickListener { chooseTest() }
             }
             addView(testFab, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM or Gravity.LEFT).apply {
-                setMargins(dp(20), 0, dp(20), dp(20)) })
+                setMargins(dp(16), 0, dp(16), dp(10)) })   // מיושר לקצה הכרטיסים
             applyTestFab()
             // הכפתור הצף יושב מעל שורת החיוויים (כשהיא מוצגת)
             status.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
-                testFab.translationY = if (v.visibility == View.VISIBLE) -(v.height + dp(10)).toFloat() else 0f
+                // רווח בין הכפתור לשורת החיוויים = הרווח בין הכרטיסים
+                testFab.translationY = if (v.visibility == View.VISIBLE) -(v.height + dp(GAP)).toFloat() else 0f
             }
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")

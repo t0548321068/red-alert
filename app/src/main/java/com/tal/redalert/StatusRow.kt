@@ -465,5 +465,6 @@ internal fun MainActivity.applyTestFab() {
     if (mode == Prefs.STATUS_TIMED) ui.postDelayed(hideTestFab, Prefs.testFabSeconds(this) * 1000L)
     // המקום בתחתית נשמר גם כשהכפתור נעלם לפי זמן - שהמסך לא יזוז
     mainCol.setPadding(mainCol.paddingLeft, mainCol.paddingTop, mainCol.paddingRight,
-        dp(GAP) + if (mode != Prefs.STATUS_HIDDEN) dp(76) else 0)
+        // מקום לכפתור (56) עם רווח זהה לרווח בין הכרטיסים מעליו ומתחתיו (8 - הרווח שמעל שורת החיוויים)
+        if (mode != Prefs.STATUS_HIDDEN) dp(56 + GAP * 2 - 8) else dp(GAP))
 }
