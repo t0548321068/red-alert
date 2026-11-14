@@ -106,6 +106,7 @@ class InstallReceiver : BroadcastReceiver() {
 class UpdatedReceiver : BroadcastReceiver() {
     override fun onReceive(c: Context, i: Intent) {
         // עדכון שהתחיל ברקע - לא פותחים את האפליקציה באמצע מה שעושים בטלפון
+        if (i.action == Intent.ACTION_MY_PACKAGE_REPLACED) UpdateListener.start(c)   // אחרי עדכון - החיבור הקבוע חוזר
         if (i.action == Intent.ACTION_MY_PACKAGE_REPLACED && c.getSharedPreferences("editor_update", Context.MODE_PRIVATE).getBoolean("reopen", true))
             try { c.startActivity(Intent(c, com.tal.redalert.MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
     }
