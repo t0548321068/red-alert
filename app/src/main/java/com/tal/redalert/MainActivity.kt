@@ -304,10 +304,9 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams(dp(1), dp(26)))
             status.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
         }
-        col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
-        statusRow = status
-        // החלון הממוזער מוצג מתחת לשורת החיוויים - שומרים איפה היא נגמרת על המסך
-        status.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+        statusRow = status   // נכנסת למסך למטה - אחרי הפיד
+        // החלון הממוזער מוצג מתחת לכותרת (שורת החיוויים עברה למטה) - שומרים איפה הכותרת נגמרת על המסך
+        header.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
             if (v.isShown) { val xy = IntArray(2); v.getLocationOnScreen(xy); Prefs.setMiniY(this, xy[1] + v.height); Prefs.setMiniBox(this, xy[0], v.width) }
         }
         applyStatusRow()
@@ -391,15 +390,17 @@ class MainActivity : Activity() {
             addView(View(this@MainActivity).apply { setBackgroundColor(C.DIV) },
                 LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(16); bottomMargin = dp(14) })
             addView(clockArea, LinearLayout.LayoutParams(-1, -2))
+            // כרטיס המידע (שעה, תאריך, מזג אוויר) - בתוך כרטיס 1, מתחת לאזור ההתרעה וזמן ההתגוננות
+            addView(View(this@MainActivity).apply { setBackgroundColor(C.DIV) },
+                LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(14); bottomMargin = dp(6) })
+            clockCard.setPadding(0, 0, 0, 0)
+            addView(clockCard, LinearLayout.LayoutParams(-1, -2))
         }
         extraBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutDirection = View.LAYOUT_DIRECTION_RTL }
         clockCard.addView(extraBox, LinearLayout.LayoutParams(-1, -2))
         // רווח שווה: מ"מוגן" עד ראש הספרות של השעה = מהברכה עד העיגול של המגן.
         // נמדד אחרי הפריסה (הספרות הגדולות מגיעות עם רווח פנימי משלהן)
-        circle = FrameLayout(this).apply {
-            clipToOutline = true
-            addView(clockCard, FrameLayout.LayoutParams(-1, -2))
-        }
+        circle = FrameLayout(this)   // לא מוצג - השעה ומזג האוויר עברו לכרטיס 1
         // מצב שקט - מוצג רק כשהוא פעיל עכשיו
         quietLine = text("", 12f, C.ORANGE).apply {
             gravity = Gravity.CENTER
@@ -434,8 +435,6 @@ class MainActivity : Activity() {
         col.addView(miniHost, col.indexOfChild(alertWrap), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
         // כרטיס 1: מצב ההגנה, אזור ההתרעה וזמן ההתגוננות
         col.addView(card1, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
-        // כרטיס השעה ומזג האוויר
-        col.addView(circle, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
 
         // האזורים שלי
         // אזורי התרעה: אזור לפי מיקום + אזורים נוספים
@@ -458,6 +457,8 @@ class MainActivity : Activity() {
 
         // הפיד הארצי - בתחתית המסך
         col.addView(feedCard, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
+        // שורת החיוויים - בתחתית המסך (כמו התפריט התחתון בפיקוד העורף)
+        col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
 
         val scroll = FrameLayout(this).apply {
             // נגלל כשאין מקום (למשל כשכרטיס ההתרעה מוצג מעל השעון)
