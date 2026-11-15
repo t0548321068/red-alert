@@ -11,6 +11,7 @@ import com.tal.redalert.Prefs
  * בנוסף: שכבת העריכה (✎ ≡ - עריכה ושליחת שינויים), העדכון העצמי של צופר חירום 2, והגרסה שלה בתוך המסכים
  */
 class EditorApp : App() {
+    private var started = 0   // כמה מסכים של האפליקציה גלויים עכשיו
     override fun onCreate() {
         super.onCreate()
         val prev = Thread.getDefaultUncaughtExceptionHandler()
@@ -26,9 +27,10 @@ class EditorApp : App() {
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityResumed(a: Activity) { Editor.scanSoon(); if (a is MainActivity) { Update.maybeCheck(a); askBattery(a) } }
             override fun onActivityCreated(a: Activity, b: Bundle?) {}
-            override fun onActivityStarted(a: Activity) {}
+            // כפתורי העריכה חוזרים למקום הקבוע בכל חזרה לאפליקציה (מהרקע / ממסך אחר של הטלפון)
+            override fun onActivityStarted(a: Activity) { if (++started == 1) Layer.resetPill() }
             override fun onActivityPaused(a: Activity) {}
-            override fun onActivityStopped(a: Activity) {}
+            override fun onActivityStopped(a: Activity) { if (started > 0) started-- }
             override fun onActivitySaveInstanceState(a: Activity, b: Bundle) {}
             override fun onActivityDestroyed(a: Activity) {}
         })
