@@ -1,33 +1,15 @@
 package com.tal.redalert
 
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.NotificationManager
-import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.PowerManager
 import android.provider.Settings
-import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
-import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import com.tal.redalert.MainActivity.C
-import com.tal.redalert.MainActivity.Row
-import com.tal.redalert.MainActivity.Perm
-import com.tal.redalert.MainActivity.SameHeight
 
 // (חלק מהמסך הראשי - MainActivity; המצב עצמו נשמר שם)
 
@@ -149,6 +131,10 @@ private fun MainActivity.closePagesForCard(level: Int) {
 }
 
 internal fun MainActivity.chooseTest() = ouiPage("בדיקת התרעה") { body, rebuild ->
+    // סוג המסך - אותה בחירה כמו בעמוד ההתרעות, כדי לבדוק כל סגנון בלי לצאת מכאן
+    val st = ouiCard()
+    ouiRow(st, "סגנון התרעה", sub = styleSummary()) { showCustomStyles() }
+    ouiAdd(body, st)
     val fab = ouiCard()
     val fm = Prefs.testFabMode(this)
     ouiRow(fab, "כפתור צף במסך הראשי", sub = showModeLabel(fm, Prefs.testFabSeconds(this)), on = fm != Prefs.STATUS_HIDDEN,
@@ -165,55 +151,92 @@ internal fun MainActivity.chooseTest() = ouiPage("בדיקת התרעה") { body
     ouiRow(spk, "הקראה בבדיקה", on = spkOn) { Prefs.setTestSpeak(this, !spkOn); rebuild() }   // כל השורה מדליקה/מכבה - בלי קו
     ouiAdd(body, spk)
     ouiNote(body, "רק בהתרעות בדיקה – בהתרעה אמיתית ההקראה לפי ההגדרות")
-    // אירוע מלא: התרעה מקדימה, ירי וסיום - ברצף, כמו אירוע אמיתי (מקוצר)
-    val seq = ouiCard()
-    ouiRow(seq, "אירוע מלא", sub = "מקדימה ← ירי ← סיום") {
+    // ארבעה חלקים: מבזק · התרעה · סיום - כל אחד עם המסכים שלו, ואירוע מלא שבוחרים בו מה יוצג בכל שלב
+    fun header(t: String) = body.addView(text(t, 13f, C.MUTED2).apply { setPadding(dp(PAGE_SIDE + 16), dp(6), dp(PAGE_SIDE + 16), dp(6)) })
+    fun send(title: String) {
+        val level = AlertService.levelOf(title)
         Prefs.setEnabled(this, true)
-        AlertService.startTestSequence(this)
+        AlertService.start(this, testTitle = title)
+        if (level != AlertService.LEVEL_ALERT && Prefs.isQuietNow(this)) {
+            android.widget.Toast.makeText(this, "שעות שקט פעילות – ההתרעה נשלחה בשקט, בלי צליל ומסך מלא",
+                android.widget.Toast.LENGTH_LONG).show()
+        }
+        closePagesForCard(level)
+    }
+    fun section(name: String, list: List<Pair<String, String>>) {
+        header(name)
+        val c = ouiCard()
+        list.forEachIndexed { i, (label, title) -> if (i > 0) ouiDivider(c); testRow(c, label, title) { send(title) } }
+        ouiAdd(body, c)
+    }
+    section("1 · מבזק", TEST_PRE)
+    section("2 · התרעה", TEST_ALERT)
+    section("3 · סיום", TEST_END)
+
+    // 4 · אירוע מלא: בוחרים מבזק, התרעה וסיום, והם נשלחים ברצף
+    header("4 · אירוע מלא")
+    val seq = ouiCard()
+    fun stage(key: String, name: String, list: List<Pair<String, String>>) {
+        val cur = Prefs.testSeq(this, key, list[0].second)
+        ouiRow(seq, name, sub = list.firstOrNull { it.second == cur }?.first ?: list[0].first) {
+            ouiPage(name) { b2, rebuild2 ->
+                val c = ouiCard()
+                val sel = Prefs.testSeq(this, key, list[0].second)
+                list.forEachIndexed { i, (label, title) ->
+                    if (i > 0) ouiDivider(c)
+                    testRow(c, label, title, selected = sel == title) { Prefs.setTestSeq(this, key, title); rebuild2() }
+                }
+                ouiAdd(b2, c)
+            }
+        }
+        ouiDivider(seq)
+    }
+    stage("pre", "מבזק", TEST_PRE)
+    stage("alert", "התרעה", TEST_ALERT)
+    stage("end", "סיום", TEST_END)
+    ouiRow(seq, "הפעלת האירוע המלא", sub = "מבזק ← התרעה ← סיום") {
+        Prefs.setEnabled(this, true)
+        AlertService.startTestSequence(this, Prefs.testSeq(this, "pre", TEST_PRE[0].second),
+            Prefs.testSeq(this, "alert", TEST_ALERT[0].second), Prefs.testSeq(this, "end", TEST_END[0].second))
         closePagesForCard(AlertService.LEVEL_PRE)
     }
     ouiAdd(body, seq)
-    ouiNote(body, "ירי אחרי 15 שניות, וסיום 20 שניות אחרי שנגמר הזמן להגעה למרחב המוגן")
-    // כל סוגי ההתרעה של פיקוד העורף - כל שורה עם האייקון של הסוג בצבע הרמה
-    val tests = listOf(
-        "התרעה מקדימה" to "בדקות הקרובות צפויות להתקבל התרעות באזורך",
-        "ירי רקטות וטילים" to "ירי רקטות וטילים",
-        "חדירת כלי טיס עוין" to "חדירת כלי טיס עוין",
-        "חדירת מחבלים" to "חדירת מחבלים",
-        "רעידת אדמה" to "רעידת אדמה",
-        "צונאמי" to "צונאמי",
-        "אירוע רדיולוגי" to "אירוע רדיולוגי",
-        "חומרים מסוכנים" to "חומרים מסוכנים",
-        "האירוע הסתיים" to "האירוע הסתיים")
-    val c = ouiCard()
-    tests.forEachIndexed { i, (label, title) ->
-        if (i > 0) ouiDivider(c)
-        val level = AlertService.levelOf(title)
-        c.addView(LinearLayout(this).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(18), 0, dp(18), 0)
-            addView(FrameLayout(this@chooseTest).apply {
-                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(AlertUi.color(level))) }
-                addView(android.widget.ImageView(this@chooseTest).apply {
-                    AlertUi.setIcon(this, AlertUi.icon(title, level))
-                    imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
-                }, FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))   // כמו בהתרעות אחרונות
-            }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(14) })
-            addView(text(label, 16f, C.TEXT), LinearLayout.LayoutParams(0, -2, 1f))
-            setOnClickListener {
-                Prefs.setEnabled(this@chooseTest, true)
-                AlertService.start(this@chooseTest, testTitle = title)
-                if (level != AlertService.LEVEL_ALERT && Prefs.isQuietNow(this@chooseTest)) {
-                    android.widget.Toast.makeText(this@chooseTest,
-                        "שעות שקט פעילות – ההתרעה נשלחה בשקט, בלי צליל ומסך מלא",
-                        android.widget.Toast.LENGTH_LONG).show()
-                }
-                closePagesForCard(level)
-            }
-        }, LinearLayout.LayoutParams(-1, dp(ROW_H)))
-    }
-    ouiAdd(body, c)
-    ouiNote(body, "ההתרעה נשלחת מיד, בדיוק כמו התרעה אמיתית")
+    ouiNote(body, "התרעה 15 שניות אחרי המבזק, וסיום 20 שניות אחרי שנגמר הזמן להגעה למרחב המוגן. ההתרעות נשלחות מיד, בדיוק כמו התרעה אמיתית")
+}
+
+/** המסכים לבדיקה: (מה שכתוב בשורה, הכותרת שנשלחת - כמו שהיא מגיעה מהמקור) */
+private val TEST_PRE = listOf(
+    "מבזק כללי" to "בדקות הקרובות צפויות להתקבל התרעות באזורך",
+    "מבזק – איום מלבנון" to "איום מלבנון")
+private val TEST_ALERT = listOf(
+    "ירי רקטות וטילים" to "ירי רקטות וטילים",
+    "חדירת כלי טיס עוין" to "חדירת כלי טיס עוין",
+    "חדירת מחבלים" to "חדירת מחבלים",
+    "רעידת אדמה" to "רעידת אדמה",
+    "צונאמי" to "צונאמי",
+    "אירוע רדיולוגי" to "אירוע רדיולוגי",
+    "אירוע חומרים מסוכנים" to "אירוע חומרים מסוכנים")
+private val TEST_END = listOf(
+    "האירוע הסתיים" to "האירוע הסתיים",
+    "עדכון – הנחיות חזרה למבנים" to "רעידת אדמה - הנחיות חזרה למבנים")
+
+/** שורת בדיקה: אייקון הסוג בעיגול בצבע הרמה (כמו בהתרעות אחרונות), שם, ובבחירה - כפתור בחירה */
+private fun MainActivity.testRow(c: LinearLayout, label: String, title: String, selected: Boolean? = null, click: () -> Unit) {
+    val level = AlertService.levelOf(title)
+    c.addView(LinearLayout(this).apply {
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(18), 0, dp(18), 0)
+        addView(FrameLayout(this@testRow).apply {
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(AlertUi.color(level))) }
+            addView(android.widget.ImageView(this@testRow).apply {
+                AlertUi.setIcon(this, AlertUi.icon(title, level))
+                imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+            }, FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))
+        }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(14) })
+        addView(text(label, 16f, C.TEXT), LinearLayout.LayoutParams(0, -2, 1f))
+        if (selected != null) addView(ouiRadio(selected), LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginStart = dp(10) })
+        setOnClickListener { click() }
+    }, LinearLayout.LayoutParams(-1, dp(ROW_H)))
 }
 
 /**
@@ -256,14 +279,19 @@ internal fun MainActivity.previewAlertStyle(level: Int = AlertService.LEVEL_ALER
         }
         else -> {
             // ממוזער - בתוך המסך הראשי (במקום הכרטיס), כמו בהתרעה אמיתית: מסתירים את ההגדרות ומחזירים בסיום
+            // בזמן התצוגה המקדימה המסך הראשי מציג רק אותה: כרטיס של התרעה אחרת (למשל בדיקה) מוסתר, וחוזר בסיום
+            previewAlert = org.json.JSONObject().put("title", title).put("body", body).put("level", level)
+                .put("shelter", shelter).put("firedAt", now).put("source", src).put("mapAreas", body)
             pages.forEach { it.hide() }
-            fun back() { if (MiniOverlay.hostedIn(miniHost)) MiniOverlay.hide(this); miniHost.visibility = View.GONE; pages.forEach { it.show() }; updateAlertCard() }
+            fun back() { previewAlert = null; if (MiniOverlay.hostedIn(miniHost)) MiniOverlay.hide(this); miniHost.visibility = View.GONE; pages.forEach { it.show() }; updateAlertCard() }
             ui.post {
                 MiniOverlay.show(this, full, into = miniHost, inline = true) { back() }
                 miniHost.visibility = View.VISIBLE
+                updateAlertCard()
             }
             // אחרי 20 שניות חוזרים להגדרות בכל מקרה (גם אם בינתיים החלון הוחלף / נסגר)
             ui.postDelayed({
+                if (previewAlert?.optLong("firedAt") == now) previewAlert = null
                 if (MiniOverlay.lastFull?.getStringExtra("source") == "תצוגה מקדימה") MiniOverlay.hide(this)
                 miniHost.visibility = View.GONE; pages.forEach { it.show() }; updateAlertCard()
             }, 20_000L)
@@ -279,6 +307,8 @@ internal fun MainActivity.endCardPreview() {
 }
 
 private val STYLE_NAMES = listOf("מסך מלא", "פופ-אפ", "כרטיס", "ממוזער")
+/** הסוגים שנשארו לבחירה: מסך מלא וכרטיס (פופ-אפ וממוזער ירדו) */
+private val STYLES = listOf(0, 2)
 private val TOPICS = listOf(AlertService.LEVEL_ALERT to "התרעות", AlertService.LEVEL_PRE to "מבזקים והנחיות", AlertService.LEVEL_END to "עדכונים")
 
 /** השורה בהגדרות: הבחירה הכללית, ואילו נושאים שונים ממנה */
@@ -291,7 +321,7 @@ internal fun MainActivity.styleSummary(): String {
 internal fun MainActivity.showCustomStyles() = ouiPage("סגנון התרעה") { body, rebuild ->
     val all = ouiCard()
     val opts = LinearLayout(this).apply { setPadding(dp(6), dp(20), dp(6), dp(16)) }   // בלי כותרת - ההדמיות בראש הכרטיס
-    STYLE_NAMES.forEachIndexed { i, label ->
+    STYLES.forEach { i -> val label = STYLE_NAMES[i]
         opts.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
@@ -324,38 +354,23 @@ internal fun MainActivity.showCustomStyles() = ouiPage("סגנון התרעה") 
     ouiAdd(body, c)
     ouiNote(body, if (custom) "התרעות – אדום · מבזקים והנחיות – כתום · עדכונים – ירוק\nבמצב שבת כל ההתרעות במסך מלא"
         else "כשמופעל – הסימון למעלה מתבטל, ולכל נושא בוחרים סגנון משלו")
-    // מה מוצג אחרי שסוגרים מסך מלא / פופ-אפ
-    val ac = ouiCard()
-    ouiRow(ac, "אחרי סגירה", sub = if (Prefs.afterClose(this) == 1) "ממוזער" else "כרטיס") { chooseAfterClose { rebuild() } }
-    ouiAdd(body, ac)
-    ouiNote(body, "מה מוצג כשסוגרים התרעה במסך מלא או בפופ-אפ")
+    // אחרי סגירת מסך מלא - תמיד כרטיס במסך הראשי (הבחירה "אחרי סגירה" ירדה יחד עם הממוזער)
     // המפה במסך ההתרעה (הועבר מעמוד ההתרעות)
     val m = ouiCard()
-    ouiRow(m, "הצג מפה", on = Prefs.alertMap(this)) { Prefs.setAlertMap(this, !Prefs.alertMap(this)); rebuild() }
+    val full = Prefs.alertMap(this); val card = Prefs.alertMapCard(this)
+    ouiRow(m, "הצג מפה", sub = when { full && card -> "מסך מלא וכרטיס"; full -> "מסך מלא"; card -> "כרטיס"; else -> "כבוי" }) {
+        chooseAlertMap { rebuild() } }
     ouiAdd(body, m)
-    ouiNote(body, "המפה מוצגת במסך מלא ובפופ-אפ")
 }
 
-/** אחרי סגירה: כרטיס במסך הראשי או החלון הקטן למעלה */
-private fun MainActivity.chooseAfterClose(done: () -> Unit) = ouiPage("אחרי סגירה", onClose = done) { body, rebuild ->
-    val cur = Prefs.afterClose(this)
+/** הצג מפה: בנפרד למסך מלא ולכרטיס */
+private fun MainActivity.chooseAlertMap(done: () -> Unit) = ouiPage("הצג מפה", onClose = done) { body, rebuild ->
     val c = ouiCard()
-    c.addView(LinearLayout(this).apply {
-        setPadding(dp(6), dp(20), dp(6), dp(16))
-        listOf(2 to "כרטיס", 3 to "ממוזער").forEachIndexed { i, (kind, label) ->
-            addView(LinearLayout(this@chooseAfterClose).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER_HORIZONTAL
-                addView(alertStylePreview(kind), LinearLayout.LayoutParams(dp(58), dp(116)))
-                addLabelRadio(this, label, cur == i)
-                setOnClickListener { Prefs.setAfterClose(this@chooseAfterClose, i); rebuild() }
-            }, LinearLayout.LayoutParams(0, -2, 1f))
-        }
-    })
+    ouiRow(c, "מפה במסך מלא", on = Prefs.alertMap(this)) { Prefs.setAlertMap(this, !Prefs.alertMap(this)); rebuild() }
+    ouiDivider(c)
+    ouiRow(c, "מפה בכרטיס", on = Prefs.alertMapCard(this)) { Prefs.setAlertMapCard(this, !Prefs.alertMapCard(this)); rebuild() }
     ouiAdd(body, c)
-    ouiNote(body, if (cur == 1 && !android.provider.Settings.canDrawOverlays(this))
-        "ממוזער צריך הרשאת \"הצגה מעל אפליקציות\" – בלעדיה יוצג כרטיס"
-        else "כרטיס – במסך הראשי, מעל השעון\nממוזער – חלון קטן בראש המסך, מעל כל אפליקציה")
+    ouiNote(body, "המפה מציגה את האזורים של ההתרעה")
 }
 
 /** בחירת סוג התצוגה לנושא: אותן הדמיות כמו בסוג התצוגה הכללי, בצבע הנושא */
@@ -365,7 +380,7 @@ private fun MainActivity.chooseTopicStyle(level: Int, name: String, done: () -> 
     val c = ouiCard()
     c.addView(text("סוג תצוגה", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
     val opts = LinearLayout(this).apply { setPadding(dp(6), dp(10), dp(6), dp(16)) }
-    STYLE_NAMES.forEachIndexed { i, label ->
+    STYLES.forEach { i -> val label = STYLE_NAMES[i]
         opts.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL

@@ -1,39 +1,22 @@
 package com.tal.redalert
 
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
-import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.PowerManager
 import android.provider.Settings
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
-import android.widget.EditText
-import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import com.tal.redalert.MainActivity.C
-import com.tal.redalert.MainActivity.Row
-import com.tal.redalert.MainActivity.Perm
 import com.tal.redalert.MainActivity.SameHeight
 
 // שורת החיוויים במסך הראשי (מוגן, צלילים, רשת, מיקום, מקורות, גרסה), הפיד הארצי ועמוד המקורות
 // (חלק מהמסך הראשי - MainActivity; המצב עצמו נשמר שם)
 
 /** חיווי: אייקון למעלה, טקסט מתחת */
-internal fun MainActivity.indicator(icon: Int, onClick: (() -> Unit)?) = text("", 12f, C.TEXT).apply {
+internal fun MainActivity.indicator(icon: Int, onClick: (() -> Unit)?) = text("", 12f, C.INK).apply {
     setIndIcon(this, icon)
     maxLines = 1; ellipsize = TextUtils.TruncateAt.END   // 6 חיוויים בשורה - שורה אחת
     // האייקון גדל ב-15%, והרווח שמתחת לו קטן באותה מידה - גובה השורה לא משתנה
@@ -83,7 +66,9 @@ internal fun MainActivity.network(): Pair<String, Boolean>? {
 
 internal fun MainActivity.locationOn(): Boolean {
     val lm = getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
-    return hasLocationPerm() && lm.isLocationEnabled
+    return hasLocationPerm() && (if (android.os.Build.VERSION.SDK_INT >= 28) lm.isLocationEnabled
+        else lm.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER) ||
+            lm.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER))   // Android 8.x
 }
 
 /** הטקסט של פריט בפיד, עם אייקון סוג ההתרעה (בצבע הרמה) במקום תווי המקום */
@@ -116,7 +101,8 @@ internal fun MainActivity.updateFeed() {
         feedText = first?.text ?: ""
         feedLine.text = if (first != null) feedSpan(first)
             else FeedText.windowLabel(win).let { "אין התרעות " + when { it[0].isDigit() -> "ב-$it"; it[0] == 'ה' -> "ב" + it.drop(1); else -> "ב$it" } }
-        feedLine.setTextColor(C.TEXT)
+        // "אין התרעות..." - אפור (מעריכת צופר: AAAAAA בכהה). התרעות - בצבע הטקסט
+        feedLine.setTextColor(if (first == null) C.MUTED else C.TEXT)
         return
     }
     // כל 3 שניות - ההתראה הבאה עולה מלמטה
@@ -270,7 +256,6 @@ internal fun MainActivity.onLocationIndicator() {
     }
 }
 
-/** עמוד מקורות ההתרעה: כמה מחוברים, ומצב כל מקור - מתעדכן כל שנייה */
 /** "לפני X שניות / דקות / שעות" */
 internal fun MainActivity.agoText(t: Long): String {
     if (t <= 0) return "עוד לא"
@@ -481,5 +466,6 @@ internal fun MainActivity.applyTestFab() {
     if (mode == Prefs.STATUS_TIMED) ui.postDelayed(hideTestFab, Prefs.testFabSeconds(this) * 1000L)
     // המקום בתחתית נשמר גם כשהכפתור נעלם לפי זמן - שהמסך לא יזוז
     mainCol.setPadding(mainCol.paddingLeft, mainCol.paddingTop, mainCol.paddingRight,
-        dp(GAP) + if (mode != Prefs.STATUS_HIDDEN) dp(76) else 0)
+        // מקום לכפתור (56) עם רווח זהה לרווח בין הכרטיסים מעליו ומתחתיו (8 - הרווח שמעל שורת החיוויים)
+        if (mode != Prefs.STATUS_HIDDEN) dp(56 + GAP * 2 - 8) else dp(GAP))
 }

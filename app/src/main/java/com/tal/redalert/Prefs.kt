@@ -30,7 +30,6 @@ object Prefs {
         sp(c).edit().putString("cities", JSONArray(list.distinct()).toString()).commit()
 
     fun enabled(c: Context) = sp(c).getBoolean("enabled", false)
-    /** כפתור צף לבדיקת התראה במסך הראשי */
     /** מצב הכפתור הצף: כמו שורת החיוויים (קבוע / לא מוצג / לפי זמן). מגרסה קודמת: מתג מופעל/כבוי */
     fun testFabMode(c: Context) = sp(c).getInt("testFabMode", if (sp(c).getBoolean("testFab", true)) STATUS_ALWAYS else STATUS_HIDDEN)
     fun setTestFabMode(c: Context, v: Int) = sp(c).edit().putInt("testFabMode", v).apply()
@@ -56,6 +55,9 @@ object Prefs {
     fun dateKind(c: Context) = sp(c).getInt("dateKind", 0)
     fun setDateKind(c: Context, v: Int) = sp(c).edit().putInt("dateKind", v).commit()
     /** ברכה לפי השעה (בוקר טוב / ערב טוב...) */
+    /** סידור המסך הראשי: 0 - כרטיס ההגנה (עם הברכה) למעלה ואז השעון · 1 - כרטיס השעון (עם הברכה) למעלה ואז ההגנה */
+    fun mainLayout(c: Context) = sp(c).getInt("mainLayout", 0)
+    fun setMainLayout(c: Context, v: Int) = sp(c).edit().putInt("mainLayout", v).apply()
     fun showGreeting(c: Context) = sp(c).getBoolean("greeting", true)
     fun setShowGreeting(c: Context, v: Boolean) = sp(c).edit().putBoolean("greeting", v).commit()
     /** שם שמופיע אחרי הברכה ("ערב טוב טל"); ריק = בלי שם */
@@ -256,13 +258,18 @@ object Prefs {
     /** הקראה גם בהתרעת בדיקה */
     fun testSpeak(c: Context) = sp(c).getBoolean("testSpeak", true)
     fun setTestSpeak(c: Context, v: Boolean) = sp(c).edit().putBoolean("testSpeak", v).commit()
+    /** בדיקת אירוע מלא: המבזק, ההתרעה והסיום שנבחרו (הכותרת שנשלחת) */
+    fun testSeq(c: Context, stage: String, def: String) = sp(c).getString("testSeq_$stage", def) ?: def
+    fun setTestSeq(c: Context, stage: String, v: String) = sp(c).edit().putString("testSeq_$stage", v).commit()
     fun shabbatMode(c: Context) = sp(c).getInt("shabbatMode", Shabbat.OFF)
     /** מסך שבת: שעון במסך (המסך נשאר דלוק). כבוי - המסך נכבה ונדלק רק בהתרעה */
     fun shabbatClock(c: Context) = sp(c).getBoolean("shabbatClock", false)
     fun setShabbatClock(c: Context, v: Boolean) = sp(c).edit().putBoolean("shabbatClock", v).commit()
     fun shabbatSeconds(c: Context) = sp(c).getBoolean("shabbatSec", false)
     fun setShabbatSeconds(c: Context, v: Boolean) = sp(c).edit().putBoolean("shabbatSec", v).commit()
-    /** "יציאה" ממסך השבת - עד מתי (סוף השבת הנוכחית) */
+    /** מסך שבת: נקודתיים מהבהבות בשעון */
+    fun shabbatBlink(c: Context) = sp(c).getBoolean("shabbatBlink", false)
+    fun setShabbatBlink(c: Context, v: Boolean) = sp(c).edit().putBoolean("shabbatBlink", v).commit()
     /** הפעלה מהירה מכפתור השעון: המצב שהיה לפני (-1 = לא בהפעלה מהירה). ביציאה חוזרים אליו */
     fun shabbatQuick(c: Context) = sp(c).getInt("shabbatQuick", -1)
     fun setShabbatQuick(c: Context, prev: Int) = sp(c).edit().putInt("shabbatQuick", prev).commit()
@@ -332,8 +339,10 @@ object Prefs {
     fun setCountdown(c: Context, until: Long, title: String) =
         sp(c).edit().putLong("cdUntil", until).putString("cdTitle", title).commit()
 
-    // ---- טיימר שהייה במרחב המוגן (10 דקות אחרי ירי) ----
-    const val STAY_MS = 10 * 60 * 1000L
+    // ---- אירוע ירי פעיל: מהירי עד הודעת הסיום (רשת ביטחון - שעה, אם הסיום לא הגיע) ----
+    const val STAY_MS = 60 * 60 * 1000L
+    /** התרעת בדיקה: ההתראה הנוספת נעלמת אחרי 10 דקות (אין הודעת סיום בבדיקה) */
+    const val TEST_STAY_MS = 10 * 60 * 1000L
     fun stayUntil(c: Context) = sp(c).getLong("stayUntil", 0L)
     fun setStayUntil(c: Context, v: Long) = sp(c).edit().putLong("stayUntil", v).commit()
 
@@ -341,15 +350,15 @@ object Prefs {
     fun dndOverride(c: Context) = sp(c).getBoolean("dndOverride", true)
     fun setDndOverride(c: Context, v: Boolean) = sp(c).edit().putBoolean("dndOverride", v).commit()
 
-    /** ערכת נושא: true = כהה (ברירת מחדל), false = בהירה */
     /** ערכת צבעים: 0 כהה, 1 בהירה, 2 לפי המערכת */
     fun themeMode(c: Context) = sp(c).getInt("themeMode", if (sp(c).getBoolean("dark", true)) 0 else 1)
     fun setThemeMode(c: Context, v: Int) = sp(c).edit().putInt("themeMode", v).commit()
 
-    /** סוג תצוגת התרעה: 0 מסך מלא · 1 פופ-אפ · 2 כרטיס מעל השעון · 3 ממוזער */
-    fun alertStyle(c: Context) = sp(c).getInt("alertStyle", 0)
+    /** סוג תצוגת התרעה: 0 מסך מלא · 2 כרטיס מעל השעון. פופ-אפ (1) וממוזער (3) ירדו - בחירה ישנה עוברת לקרוב אליה */
+    private fun twoStyles(v: Int) = when (v) { 1 -> 0; 3 -> 2; else -> v }
+    fun alertStyle(c: Context) = twoStyles(sp(c).getInt("alertStyle", 0))
     /** התאמה אישית לכל נושא (0 התרעות · 1 מבזקים והנחיות · 2 עדכונים): -1 = לפי סוג התצוגה הכללי */
-    fun topicStyle(c: Context, level: Int) = sp(c).getInt("alertStyle_$level", -1)
+    fun topicStyle(c: Context, level: Int) = twoStyles(sp(c).getInt("alertStyle_$level", -1))
     fun setTopicStyle(c: Context, level: Int, v: Int) = sp(c).edit().putInt("alertStyle_$level", v).apply()
     /** סוג התצוגה בפועל לנושא: ההתאמה האישית, ואם אין - הכללי */
     fun alertStyleFor(c: Context, level: Int) = resolveStyle(customStyles(c), topicStyle(c, level), alertStyle(c))
@@ -359,7 +368,7 @@ object Prefs {
     fun customStyles(c: Context) = sp(c).getBoolean("customStyles", (0..2).any { topicStyle(c, it) in 0..3 })
     fun setCustomStyles(c: Context, v: Boolean) = sp(c).edit().putBoolean("customStyles", v).apply()
     /** אחרי סגירת מסך מלא / פופ-אפ: 0 = כרטיס במסך הראשי, 1 = ממוזער (החלון הקטן למעלה) */
-    fun afterClose(c: Context) = sp(c).getInt("afterClose", 0)
+    @Suppress("UNUSED_PARAMETER") fun afterClose(c: Context) = 0   // ממוזער ירד - אחרי סגירה תמיד כרטיס
     /** מסך התרעה נפתח - רק כדי שהמסך הראשי (שמאזין לשינויים) יתעדכן */
     fun markAlertScreen(c: Context) = sp(c).edit().putLong("alertScreenAt", System.currentTimeMillis()).apply()
     /** איפה נגמרת שורת החיוויים במסך הראשי (פיקסלים מראש המסך) - החלון הממוזער מתחתיה. 0 = לא ידוע */
@@ -375,6 +384,9 @@ object Prefs {
     /** מפה במסך ההתרעה (מסך מלא ופופ-אפ) */
     fun alertMap(c: Context) = sp(c).getBoolean("alertMap", true)
     fun setAlertMap(c: Context, v: Boolean) = sp(c).edit().putBoolean("alertMap", v).apply()
+    /** מפה בכרטיס ההתרעה במסך הראשי */
+    fun alertMapCard(c: Context) = sp(c).getBoolean("alertMapCard", true)
+    fun setAlertMapCard(c: Context, v: Boolean) = sp(c).edit().putBoolean("alertMapCard", v).apply()
     fun setAlertStyle(c: Context, v: Int) = sp(c).edit().putInt("alertStyle", v).apply()
 
     /** ההתרעה הפעילה (לכרטיס מעל השעון): title, body, level, shelter, firedAt, source */
@@ -433,7 +445,6 @@ object Prefs {
         else -> true
     }
 
-    /** אפשרות הבטא נפתחה (7 לחיצות על מספר הגרסה) */
     /**
      * בטא רק למכשירים שברשימה (לפי מזהה המכשיר). רשימה ריקה = בלי הגבלה.
      * בכל מכשיר אחר הבטא כבויה ומוסתרת, גם אם הופעלה בעבר.
@@ -484,7 +495,6 @@ object Prefs {
     fun setSkippedVersion(c: Context, v: String) = sp(c).edit().putString("skipVer", v).commit()
     /** גרסה שכבר נשלחה עליה התראה ברקע */
     fun notifiedVersion(c: Context) = sp(c).getString("notifVer", "") ?: ""
-    /** הגרסה החדשה שנמצאה בבדיקה האחרונה (ריק = אין) ומספר הבנייה שלה (בבטא) */
     /** מתי נבדק לאחרונה אם יש גרסה חדשה (גם בבדיקה האוטומטית) */
     fun lastUpdateCheck(c: Context) = sp(c).getLong("lastUpdCheck", 0L)
     fun setLastUpdateCheck(c: Context) = sp(c).edit().putLong("lastUpdCheck", System.currentTimeMillis()).apply()
@@ -531,7 +541,6 @@ object Prefs {
             .let { collapse(it) }
     }
 
-    /** מוסיף יישובים לשורת ההתראה האחרונה (בלי כפילויות) */
     /**
      * "הכול" משלים ממה שהטלפון קיבל: שורה מהארכיון שיש לה שורה תואמת ב"שלי" (אותו סוג וכותרת, עד 5 דקות) -
      * הסדר של השרת (סדר ההגעה בזמן אמת, לכל הטלפונים), ואחריו יישובים שהגיעו לטלפון ואין בשרת

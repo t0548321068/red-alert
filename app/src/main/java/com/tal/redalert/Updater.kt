@@ -53,6 +53,8 @@ object Updater {
 
     /** הגרסה הכי מתאימה להתקנה: יציבה חדשה, או (אם ביקשו) בטא חדשה */
     private fun best(c: Context): Update? {
+        // צופר חירום 2 (עריכת צופר, חבילה אחרת) מתעדכנת לבד מהגרסה שלה - לא מתקינים עליה את צופר חירום
+        if (c.packageName != "com.tal.redalert") return null
         val cur = currentVersion(c)
         // בדיקה שנכשלה (רשת / הגבלת GitHub) - זורקים, ולא מציגים "מעודכן"; הבטא נבדקת גם אם הרגילה נכשלה
         var failed: Exception? = null

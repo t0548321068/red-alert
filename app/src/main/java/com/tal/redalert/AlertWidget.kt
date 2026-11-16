@@ -53,7 +53,7 @@ class AlertWidget : AppWidgetProvider() {
             val v = RemoteViews(c.packageName, R.layout.widget_alert)
             val on = Prefs.enabled(c)
             v.setTextViewText(R.id.widget_status, if (on) "● מוגן" else "○ כבוי")
-            v.setTextColor(R.id.widget_status, Color.parseColor(if (on) "#30D158" else "#8E8E93"))
+            v.setTextColor(R.id.widget_status, Color.parseColor(if (on) "#30D158" else "#AAAAAA"))
 
             // התרעה פעילה (אדום / כתום / ירוק): כרטיס צבעוני במקום שורת ההתראה האחרונה
             val act = activeAny(c)
@@ -63,7 +63,7 @@ class AlertWidget : AppWidgetProvider() {
             val last = Prefs.history(c).firstOrNull()
             if (last == null) {
                 v.setTextViewText(R.id.widget_last, "אין התרעות עדיין")
-                v.setTextColor(R.id.widget_last, Color.parseColor("#8E8E93"))
+                v.setTextColor(R.id.widget_last, Color.parseColor("#AAAAAA"))
             } else {
                 val color = when (last.level) {
                     AlertService.LEVEL_PRE -> "#FF9F0A"

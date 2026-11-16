@@ -1,33 +1,14 @@
 package com.tal.redalert
 
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.NotificationManager
-import android.content.Context
-import android.content.Intent
 import android.graphics.Color
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.PowerManager
-import android.provider.Settings
-import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
-import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.TextView
 import com.tal.redalert.MainActivity.C
 import com.tal.redalert.MainActivity.Row
-import com.tal.redalert.MainActivity.Perm
-import com.tal.redalert.MainActivity.SameHeight
 
 // (חלק מהמסך הראשי - MainActivity; המצב עצמו נשמר שם)
 
@@ -84,12 +65,13 @@ internal fun MainActivity.showSettings() {
                 row.addView(FrameLayout(this).apply {
                     background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(iconColor(r.icon)) }
                     val res = setIcon(r.icon)
-                    if (res != 0) addView(android.widget.ImageView(this@showSettings).apply { setImageResource(res) },
+                    if (res != 0) addView(android.widget.ImageView(this@showSettings).apply {
+                        setImageResource(res); imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE) },
                         FrameLayout.LayoutParams(dp(20), dp(20), Gravity.CENTER))
                     else addView(text(r.icon, 16f, Color.WHITE).apply { gravity = Gravity.CENTER }, FrameLayout.LayoutParams(-1, -1))
                 }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(14) })
                 val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-                texts.addView(text(r.title, 16f, C.TEXT))
+                texts.addView(text(r.title, 18f, C.INK))
                 row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
                 r.on?.let { isOn ->
                     val on = isOn()
@@ -147,7 +129,6 @@ internal fun MainActivity.showProtection() = ouiPage("הגנה") { body, rebuild
                   else "כשהתזמון כבוי - ההגנה פעילה כל הזמן")
 }
 
-/** בחירת שעה - חלון השעה של הטלפון (בסמסונג: גלגלים, "ביטול | סיום") */
 /**
  * בחירת שעה בדיוק כמו "הגדר שעה" בהגדרות של סמסונג: חלון אפור מעוגל בתחתית המסך,
  * כותרת, גלגל שעות וגלגל דקות, ולמטה ביטול | סיום
