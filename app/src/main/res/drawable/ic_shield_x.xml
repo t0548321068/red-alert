@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- מגן אדום עם איקס כהה - לא מוגן (בכרטיס השעון), כמו המגן הירוק עם הווי -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFF453A" android:pathData="M12,2l8,3v6c0,5 -3.5,9.5 -8,11c-4.5,-1.5 -8,-6 -8,-11V5z"/>
+    <path android:strokeColor="#FF232526" android:strokeWidth="2.4" android:strokeLineCap="round"
+        android:pathData="M9,9.5l6,6M15,9.5l-6,6"/>
+</vector>

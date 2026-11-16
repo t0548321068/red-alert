@@ -1,33 +1,5 @@
 package com.tal.redalert
 
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.NotificationManager
-import android.content.Context
-import android.content.Intent
-import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
-import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.PowerManager
-import android.provider.Settings
-import android.text.TextUtils
-import android.view.Gravity
-import android.view.View
-import android.view.ViewGroup
-import android.widget.EditText
-import android.widget.FrameLayout
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
-import com.tal.redalert.MainActivity.C
-import com.tal.redalert.MainActivity.Row
-import com.tal.redalert.MainActivity.Perm
-import com.tal.redalert.MainActivity.SameHeight
 
 // (חלק מהמסך הראשי - MainActivity; המצב עצמו נשמר שם)
 
@@ -102,7 +74,6 @@ internal fun MainActivity.showSpeech() = ouiPage("הקראה") { body, rebuild -
     ouiNote(body, "מקריא סוג, אזורים וזמן להגעה – ואז הצליל. במצב שבת ההקראה פועלת תמיד")
 }
 
-/** שעות שקט: רק התראה מקדימה וסיום אירוע מושתקים. ירי תמיד נשמע. */
 /** עמוד שעות שקט: הדלקה/כיבוי, שעת התחלה וסיום */
 internal fun MainActivity.showQuietHours() = ouiPage("שעות שקט") { body, rebuild ->
     val on = Prefs.quietOn(this)

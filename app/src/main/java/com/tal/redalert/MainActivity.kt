@@ -2,24 +2,18 @@ package com.tal.redalert
 
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.app.NotificationManager
-import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.os.PowerManager
-import android.provider.Settings
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -33,14 +27,16 @@ class MainActivity : Activity() {
         var GREEN = 0; var OFF = 0
         var BLUE = 0; var RED = 0; var ORANGE = 0
         var CARD2 = 0; var DIV = 0; var SEPV = 0; var SOFT = 0; var MUTED2 = 0; var LINE2 = 0
+        /** המסך הראשי (מעריכת צופר): בחשוך - לבן מלא, גם לטקסט המשני. בבהיר - כמו TEXT / SOFT */
+        var INK = 0; var INK_SOFT = 0
         var LIGHT = false
 
         fun apply(dark: Boolean) {
             fun c(d: String, l: String) = Color.parseColor(if (dark) d else l)
             BG = c("#000000", "#F2F2F7")
             CHIP = c("#2C2C2E", "#E5E5EA")
-            TEXT = c("#F2F2F2", "#1C1C1E")
-            MUTED = c("#8E8E93", "#6E6E73")
+            TEXT = c("#FFFFFF", "#1C1C1E")   // בחשוך לבן מלא בכל האפליקציה (מעריכת צופר)
+            MUTED = c("#AAAAAA", "#6E6E73")   // כהה: AAAAAA (קודם 8E8E93)
             GREEN = c("#30D158", "#248A3D")
             OFF = c("#636366", "#8E8E93")
             BLUE = c("#0A84FF", "#007AFF")
@@ -52,11 +48,17 @@ class MainActivity : Activity() {
             SOFT = c("#E6FFFFFF", "#CC1C1C1E")   // טקסט משני רך
             MUTED2 = c("#AAAAAA", "#6E6E73")     // טקסט אפור
             LINE2 = c("#22FFFFFF", "#22000000")
+            INK = c("#FFFFFF", "#1C1C1E")
+            INK_SOFT = c("#FFFFFF", "#CC1C1C1E")
             LIGHT = !dark
         }
     }
 
     internal lateinit var circle: FrameLayout
+    internal var cardMap: AlertMap? = null      // המפה בכרטיס ההתרעה (כשהכרטיס מוצג והמפה מופעלת)
+    internal var cardResumed = false
+    internal lateinit var clockCard: LinearLayout   // כרטיס השעון (שעה, תאריך, מזג אוויר)
+    internal lateinit var card1: LinearLayout   // כרטיס 1: ברכה, מגן, אתה מוגן, אזור התרעה | זמן התגוננות
     internal lateinit var shieldIcon: android.widget.ImageView
     internal lateinit var circleLabel: TextView
     internal lateinit var haloOuter: FrameLayout
@@ -145,6 +147,8 @@ class MainActivity : Activity() {
     internal lateinit var alertCard: LinearLayout
     internal lateinit var alertWrap: FrameLayout
     internal lateinit var areasSlot: FrameLayout
+    /** בתחתית כרטיס השעון: היישובים והאזורים הנוספים (מעריכת צופר - היו בכרטיס נפרד מתחת) */
+    internal lateinit var extraBox: LinearLayout
 
     /** כשכרטיס ההתרעה מוצג - האזורים בגובה מלא והמסך נגלל; בלעדיו - האזורים ממלאים את מה שנשאר */
     internal lateinit var clockArea: LinearLayout
@@ -154,7 +158,9 @@ class MainActivity : Activity() {
 
     internal fun setScrollMode(want: Boolean) {
         // מסך מסובב (לרוחב): אין מספיק גובה - המסך הראשי תמיד נגלל
-        val on = want || resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        // העיצוב מחדש: חמישה כרטיסים לא נכנסים במסך אחד - המסך הראשי תמיד נגלל
+        @Suppress("UNUSED_VARIABLE") val asked = want
+        val on = true
         pageScrolls = on
         if (!on) mainScroll?.scrollTo(0, 0)
         val lp = areasSlot.layoutParams as LinearLayout.LayoutParams
@@ -217,12 +223,14 @@ class MainActivity : Activity() {
 
         // כותרת + גלגל שיניים
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        header.addView(text("צופר חירום", 24f, C.TEXT, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) })
-        header.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+        // כותרת 25, מיושרת לימין (בכל הכותרות באפליקציה - כמו pageHeader)
+        // צופר חירום 2 (עריכת צופר, חבילה אחרת): "צופר חירום 2"
+        header.addView(text(if (packageName == "com.tal.redalert") "צופר חירום" else "צופר חירום 2", 25f, C.INK, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) },
+            LinearLayout.LayoutParams(0, -2, 1f))
         // אייקונים למעלה בשמאל (במקום התפריט התחתון): שעון · התרעות · הגדרות (הגדרות הכי שמאלי)
         fun headerIcon(res: Int, click: () -> Unit) = header.addView(android.widget.ImageView(this).apply {
             setImageResource(res)
-            imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT)
+            imageTintList = android.content.res.ColorStateList.valueOf(C.INK)
             setPadding(dp(11), dp(11), dp(11), dp(11))
             background = android.graphics.drawable.RippleDrawable(
                 android.content.res.ColorStateList.valueOf(C.LINE2), null,
@@ -232,7 +240,7 @@ class MainActivity : Activity() {
         headerIcon(R.drawable.ic_nav_clock) { chooseClock() }
         headerIcon(R.drawable.ic_nav_alerts) { showRecent() }
         headerIcon(R.drawable.ic_gear) { showSettings() }
-        col.addView(header, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+        // הכותרת והכפתורים: קבועים בראש המסך (נכנסים מעל המסך הנגלל, למטה)
 
         // שעון
         clockTime = text("", 44f, C.TEXT).apply {
@@ -244,7 +252,7 @@ class MainActivity : Activity() {
         }
         greeting = text("", 20f, C.TEXT).apply { gravity = Gravity.CENTER }
         // כרטיס השעון: רקע גרפיט, הכל ממורכז, טקסט לבן
-        val clockCard = LinearLayout(this).apply {
+        clockCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(16), dp(16), dp(16))
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
@@ -252,12 +260,11 @@ class MainActivity : Activity() {
                 cornerRadius = dp(24).toFloat()
             }
         }
-        val white = C.TEXT
-        val soft = C.SOFT
+        val white = C.INK
+        val soft = C.INK_SOFT
         greeting.setTextColor(soft)
-        clockTime.setTextColor(white); clockTime.textSize = 46f
-        clockDay.setTextColor(soft)
-        clockCard.addView(greeting)
+        clockTime.setTextColor(white); clockTime.textSize = 40f
+        clockDay.setTextColor(soft); clockDay.textSize = 20f
         clockCard.addView(clockTime)
         clockCard.addView(clockDay)
         // אזור ההתרעה (לפי המיקום) - בכרטיס השעון, מתחת ל"מוגן" (נכנס למקום אחרי שהמגן נוסף)
@@ -303,14 +310,13 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams(dp(1), dp(26)))
             status.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
         }
-        col.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
-        statusRow = status
-        // החלון הממוזער מוצג מתחת לשורת החיוויים - שומרים איפה היא נגמרת על המסך
-        status.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+        statusRow = status   // נכנסת למסך למטה - אחרי הפיד
+        // החלון הממוזער מוצג מתחת לכותרת (שורת החיוויים עברה למטה) - שומרים איפה הכותרת נגמרת על המסך
+        header.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
             if (v.isShown) { val xy = IntArray(2); v.getLocationOnScreen(xy); Prefs.setMiniY(this, xy[1] + v.height); Prefs.setMiniBox(this, xy[0], v.width) }
         }
         applyStatusRow()
-        weatherLine = text("", 19f, C.TEXT).apply {
+        weatherLine = text("", 20f, C.TEXT).apply {
             gravity = Gravity.CENTER
         }
         weatherLine.setTextColor(soft)
@@ -318,7 +324,7 @@ class MainActivity : Activity() {
 
 
         // פיד ארצי - פס רץ עם כל ההתראות בארץ (בלי צליל)
-        feedLine = text("", 14f, C.MUTED).apply {
+        feedLine = text("", 15f, C.MUTED).apply {
             // התראה אחת בכל פעם, מתחלפות בגלילה כלפי מעלה
             // גובה קבוע של 3 שורות (שעה / סוג / אזורים) - הכרטיס לא קופץ בין התראה קצרה לארוכה
             minLines = 3; maxLines = 3
@@ -336,7 +342,7 @@ class MainActivity : Activity() {
             clipToOutline = true; clipChildren = true
             addView(LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.VERTICAL
-                addView(text("התרעות אחרונות", 15f, C.TEXT).apply {
+                addView(text("התרעות אחרונות", 20f, C.TEXT).apply {
                     setTypeface(typeface, android.graphics.Typeface.BOLD)
                     gravity = Gravity.CENTER
                     setPadding(dp(12), dp(12), dp(12), dp(10))
@@ -367,27 +373,39 @@ class MainActivity : Activity() {
         // בראש כרטיס השעון: מגן + "מוגן"/"לא מוגן" + עדכון אחרון (מה שהיה בכרטיס מוגן)
         // בראש הכרטיס: מגן בתוך עיגול עם הילה, ומתחתיו "מוגן" / "לא מוגן"
         shieldIcon = android.widget.ImageView(this)
-        circleLabel = text("מוגן", 22f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER }
+        circleLabel = text("אתה מוגן", 27f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER }
         haloOuter = FrameLayout(this)
         haloInner = FrameLayout(this).apply {
             clipToOutline = true   // הפס נחתך לצורת העיגול
             addView(glow, FrameLayout.LayoutParams(dp(40), dp(40), Gravity.CENTER))
-            addView(shieldIcon, FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER))
+            addView(shieldIcon, FrameLayout.LayoutParams(dp(40), dp(40), Gravity.CENTER))   // רק המגן (מעריכת צופר: 40)
         }
         haloOuter.addView(ring1, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
-        haloOuter.addView(haloInner, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
-        // סדר: ברכה למעלה, מתחתיה המגן ו"מוגן", ואז השעה
-        (greeting.layoutParams as? LinearLayout.LayoutParams)?.bottomMargin = dp(6)
-        clockCard.addView(haloOuter, 1, LinearLayout.LayoutParams(dp(56), dp(56)).apply { gravity = Gravity.CENTER_HORIZONTAL })
-        clockCard.addView(circleLabel, 2, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(2) })
-        clockCard.addView(clockArea, 3, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(10) })
+        haloOuter.addView(haloInner, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.CENTER))
+        // העיצוב מחדש (כמו פיקוד העורף): ארבעה כרטיסים, הכל ממורכז.
+        // 1 ברכה · מגן · "אתה מוגן" · אזור התרעה | זמן התגוננות   2 שעה · תאריך · מזג אוויר   3 אזורים נוספים   4 התרעות אחרונות
+        greeting.textSize = 20f; greeting.setTextColor(C.TEXT)   // מעריכת צופר: לבן (במקום אפור)
+        circleLabel.textSize = 25f
+        card1 = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(dp(18), dp(20), dp(18), dp(18))
+            background = graphite(26)
+            addView(greeting, LinearLayout.LayoutParams(-1, -2))
+            addView(haloOuter, LinearLayout.LayoutParams(dp(56), dp(56)).apply { topMargin = dp(10); bottomMargin = dp(6) })
+            addView(circleLabel, LinearLayout.LayoutParams(-1, -2))
+            // אזור התרעה | זמן התגוננות - באותו כרטיס, בלי קו מפריד מעליהם (רק רווח)
+            addView(clockArea, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
+        }
+        clockCard.background = graphite(26)   // כרטיס 2
+        extraBox = LinearLayout(this).apply {   // כרטיס 3
+            orientation = LinearLayout.VERTICAL; layoutDirection = View.LAYOUT_DIRECTION_RTL
+            setPadding(dp(18), dp(16), dp(18), dp(14))
+            background = graphite(26)
+        }
         // רווח שווה: מ"מוגן" עד ראש הספרות של השעה = מהברכה עד העיגול של המגן.
         // נמדד אחרי הפריסה (הספרות הגדולות מגיעות עם רווח פנימי משלהן)
-        clockCard.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> evenClockGaps() }
-        circle = FrameLayout(this).apply {
-            clipToOutline = true
-            addView(clockCard, FrameLayout.LayoutParams(-1, -2))
-        }
+        circle = FrameLayout(this)   // לא מוצג - השעה ומזג האוויר עברו לכרטיס 1
         // מצב שקט - מוצג רק כשהוא פעיל עכשיו
         quietLine = text("", 12f, C.ORANGE).apply {
             gravity = Gravity.CENTER
@@ -420,8 +438,10 @@ class MainActivity : Activity() {
         // החלון הממוזער בתוך המסך הראשי - במקום הכרטיס, וזז עם המסך כמו כרטיס
         miniHost = FrameLayout(this).apply { visibility = View.GONE }
         col.addView(miniHost, col.indexOfChild(alertWrap), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
-        // כרטיס השעה ומזג האוויר (וגם מצב ההגנה)
-        col.addView(circle, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
+        // כרטיסים 1-3 (כרטיס 4 - הפיד - בהמשך)
+        for (card in listOf<View>(card1, clockCard, extraBox))
+            col.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
+        applyMainLayout()
 
         // האזורים שלי
         // אזורי התרעה: אזור לפי מיקום + אזורים נוספים
@@ -436,8 +456,9 @@ class MainActivity : Activity() {
         areasCard.addView(shelterLine, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         // המסך לא נגלל: אזורי ההתרעה תופסים את מה שנשאר (לכל היותר), והרשימה שבתוכם נגללת
         // כרטיס האזורים לא מוצג במסך הראשי (אזורים נוספים עברו להגדרות) - המקום נשאר ריק כדי שהפיד יישב למטה
-        areasSlot = FrameLayout(this)
-        col.addView(areasSlot, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(GAP) })
+        // לא מוצג (המסך נגלל - אין מקום ריק למלא). מוסתר, כדי שלא יוסיף רווח בין כרטיס 3 לכרטיס 4
+        areasSlot = FrameLayout(this).apply { visibility = View.GONE }
+        col.addView(areasSlot, LinearLayout.LayoutParams(-1, -2))
 
         historyBox = LinearLayout(this)   // לא מוצג - נשאר לשימוש פנימי
         // הכפתור עבר לתפריט הצידי
@@ -457,20 +478,33 @@ class MainActivity : Activity() {
                 isVerticalScrollBarEnabled = false
                 addView(col, ViewGroup.LayoutParams(-1, -2))
             }
-            addView(mainScroll, FrameLayout.LayoutParams(-1, -1))
+            // שורת החיוויים: קבועה בתחתית המסך, מעל שורת הניווט של הטלפון - לא נגללת עם המסך
+            addView(LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(header, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(16), dp(10), dp(16), 0) })
+                addView(mainScroll, LinearLayout.LayoutParams(-1, 0, 1f))
+                addView(status, LinearLayout.LayoutParams(-1, -2).apply {
+                    setMargins(dp(16), dp(8), dp(16), dp(10)) })
+            }, FrameLayout.LayoutParams(-1, -1))
             // כפתור צף: התראות בדיקה לכל סוגי ההתרעה
             testFab = FrameLayout(this@MainActivity).apply {
-                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor("#D50000")) }
+                // אפור עם אייקון אדום (כמו הכרטיסים)
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(C.CHIP) }
                 elevation = dp(6).toFloat()
                 addView(android.widget.ImageView(this@MainActivity).apply {
-                    setImageResource(R.drawable.ic_list_siren)
-                    imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
-                }, FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER))
+                    setImageResource(R.drawable.ic_test_bell)   // פעמון מצלצל
+                    imageTintList = android.content.res.ColorStateList.valueOf(C.RED)
+                }, FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER))
                 setOnClickListener { chooseTest() }
             }
             addView(testFab, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM or Gravity.LEFT).apply {
-                setMargins(dp(20), 0, dp(20), dp(20)) })
+                setMargins(dp(16), 0, dp(16), dp(10)) })   // מיושר לקצה הכרטיסים
             applyTestFab()
+            // הכפתור הצף יושב מעל שורת החיוויים (כשהיא מוצגת)
+            status.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+                // רווח בין הכפתור לשורת החיוויים = הרווח בין הכרטיסים
+                testFab.translationY = if (v.visibility == View.VISIBLE) -(v.height + dp(GAP)).toFloat() else 0f
+            }
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")
                 v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
@@ -522,6 +556,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         shown = this
+        cardResumed = true; cardMap?.onResume()
         if (::statusRow.isInitialized) { applyStatusRow(); applyTestFab() }
         // הכרטיס והצבע - לפני שהמסך מצויר (בחזרה ממסך ההתרעה הם כבר שם, לא קופצים אחרי רגע)
         if (::alertWrap.isInitialized) updateAlertCard()
@@ -580,6 +615,7 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         if (shown === this) shown = null
+        cardResumed = false; cardMap?.onPause()
         // יוצאים מהאפליקציה אחרי שההתרעה כבר נראתה בה: החלון הממוזער לא ממשיך לצוף מעל שאר הטלפון
         if (::miniHost.isInitialized && MiniOverlay.hostedIn(miniHost)) {
             MiniOverlay.hide(this); miniHost.visibility = View.GONE
@@ -594,6 +630,7 @@ class MainActivity : Activity() {
     /** המסך נסגר / נבנה מחדש (סיבוב, החלפת ערכת צבעים) - סוגרים עמודים וטיימרים שלא יישארו תלויים */
     override fun onDestroy() {
         Prefs.unlisten(this, alertListener)
+        endCardMap()
         // בלי להפעיל את פעולות הסגירה של העמודים (למשל טעינה מחדש אחרי החלפת ערכת צבעים)
         pages.toList().forEach { try { it.setOnDismissListener(null); it.dismiss() } catch (_: Exception) { } }
         pages.clear()
@@ -629,18 +666,12 @@ class MainActivity : Activity() {
     /** נטען פעם אחת לכל פתיחה של האפליקציה */
     internal var archiveCache: List<Prefs.Entry>? = null
 
-    /** עיגול בחירה כמו בבחירת קבצים בסמסונג: טבעת, ובנבחר עיגול כחול מלא עם וי */
-
     /** on != null - השורה מציגה מתג (לחיצה על השורה מדליקה/מכבה) */
     internal class Row(val icon: String, val title: String,
                       val on: (() -> Boolean)? = null, val toggle: (() -> Unit)? = null, val action: () -> Unit)
 
-    /** קטגוריה פתוחה במגירת ההגדרות (נשמרת בין פתיחות) */
-    internal var openCat = -1
-
     /** מסך מצב שבת: בחירת מצב, עיר וזמני כניסה ויציאה, והסבר מה המצב עושה */
     internal var shabbatLocAsked = 0L
-    /** עמוד בדיקת התראה: שורה לכל סוג, לחיצה שולחת התראת בדיקה */
     /** הכפתור הצף מוצג / מוסתר לפי ההגדרה; כשמוצג - מקום בתחתית המסך כדי שלא יסתיר כרטיסים */
     internal val hideTestFab = Runnable { if (Prefs.testFabMode(this) == Prefs.STATUS_TIMED) testFab.visibility = View.GONE }
     /** כל העמודים הפתוחים (הגדרות, תת-עמודים, התרעות) - כדי שהתפריט התחתון יסגור את כולם במעבר */

@@ -1,33 +1,8 @@
 package com.tal.redalert
 
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.NotificationManager
-import android.content.Context
-import android.content.Intent
-import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
-import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.PowerManager
-import android.provider.Settings
-import android.text.TextUtils
-import android.view.Gravity
-import android.view.View
-import android.view.ViewGroup
-import android.widget.EditText
-import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import com.tal.redalert.MainActivity.C
-import com.tal.redalert.MainActivity.Row
-import com.tal.redalert.MainActivity.Perm
-import com.tal.redalert.MainActivity.SameHeight
 
 // (חלק מהמסך הראשי - MainActivity; המצב עצמו נשמר שם)
 
@@ -59,6 +34,9 @@ internal fun MainActivity.chooseShabbat() = ouiPage("מצב שבת") { body, reb
         ouiDivider(scr)
         val sec = Prefs.shabbatSeconds(this)
         ouiRow(scr, "שניות", sub = onOff(sec), on = sec) { Prefs.setShabbatSeconds(this, !sec); rebuild() }
+        ouiDivider(scr)
+        val blink = Prefs.shabbatBlink(this)
+        ouiRow(scr, "נקודתיים מהבהבות", sub = onOff(blink), on = blink) { Prefs.setShabbatBlink(this, !blink); rebuild() }
     }
     ouiAdd(body, scr)
     ouiNote(body, "בזמן מצב שבת המסך לא מגיב לנגיעות. יציאה – לחיצה ארוכה של 5 שניות על הכפתור בתחתית")

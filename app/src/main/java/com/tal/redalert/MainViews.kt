@@ -1,29 +1,7 @@
 package com.tal.redalert
-import com.tal.redalert.MainActivity.C
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.NotificationManager
 import android.content.Context
-import android.content.Intent
 import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
-import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.PowerManager
-import android.provider.Settings
-import android.text.TextUtils
-import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
-import android.widget.EditText
-import android.widget.FrameLayout
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
 
 // רכיבי תצוגה קטנים של המסך הראשי
 
@@ -58,7 +36,7 @@ class CenteredIcon(private val d: android.graphics.drawable.Drawable) : android.
 class CheckDot(context: Context, var on: Boolean) : View(context) {
     private val d = resources.displayMetrics.density
     private val ring = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-        style = android.graphics.Paint.Style.STROKE; strokeWidth = 1.6f * d; color = Color.parseColor("#8E8E93") }
+        style = android.graphics.Paint.Style.STROKE; strokeWidth = 1.6f * d; color = Color.parseColor("#AAAAAA") }
     private val fill = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#5B8AF5") }
     private val tick = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
         style = android.graphics.Paint.Style.STROKE; strokeWidth = 2.4f * d; color = Color.BLACK   // וי שחור כמו בסמסונג

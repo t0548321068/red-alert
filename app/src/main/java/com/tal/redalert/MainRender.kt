@@ -1,25 +1,10 @@
 package com.tal.redalert
 import com.tal.redalert.MainActivity.C
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.NotificationManager
-import android.content.Context
-import android.content.Intent
 import android.graphics.Color
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.PowerManager
-import android.provider.Settings
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
-import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -88,30 +73,23 @@ internal fun MainActivity.setSweep(on: Boolean) {
 internal fun MainActivity.refresh() {
     val sched = Prefs.enabled(this) && Prefs.scheduleOffNow(this)   // פעיל, אבל עכשיו מחוץ לתזמון
     val on = Prefs.enabled(this) && !sched
-    val color = if (on) C.GREEN else C.OFF
     // כרטיס כהה, מסגרת ירוקה כשמוגן / אפורה כשלא
     // מוגן: רקע ירוק כהה (בבהיר - ירוק בהיר) עם מסגרת ירוקה; לא מוגן - הכרטיס הרגיל עם מסגרת אפורה
     // מוגן אבל אין אינטרנט: כרטיס כתום - ההתרעות לא יגיעו עד שהרשת תחזור
     val noNet = on && network()?.second != true
-    val dark = Prefs.darkTheme(this@refresh)
     val off = !Prefs.enabled(this)   // כבוי לגמרי (לא לפי תזמון): כרטיס אדום
-    circle.background = graphite(24).apply {
-        when {
-            noNet -> setColor(Color.parseColor(if (dark) "#33240A" else "#FDEFD9"))
-            off -> setColor(Color.parseColor(if (dark) "#3A1214" else "#FBE3E4"))
-            on -> setColor(Color.parseColor(if (dark) "#12301A" else "#E3F4E5"))
-        }
-        setStroke(dp(2), Color.parseColor(if (noNet) "#FF9F0A" else if (on) "#4CAF50" else if (off) "#FF453A" else "#555555")) }
-    shieldIcon.setImageResource(if (on && !noNet) R.drawable.ic_shield_green else R.drawable.ic_shield_outline)
-    shieldIcon.imageTintList = if (noNet) android.content.res.ColorStateList.valueOf(Color.parseColor("#FF9F0A"))
-        else if (off) android.content.res.ColorStateList.valueOf(Color.parseColor("#FF453A")) else null
-    haloOuter.background = GradientDrawable().apply { shape = GradientDrawable.OVAL
-        setColor(Color.parseColor(if (noNet) "#0FFF9F0A" else if (on) "#0F69F0AE" else if (off) "#0FFF453A" else "#00000000")) }
-    haloInner.background = GradientDrawable().apply { shape = GradientDrawable.OVAL
-        setColor(Color.parseColor(if (noNet) "#24FF9F0A" else if (on) "#2469F0AE" else if (off) "#24FF453A" else "#10FFFFFF")) }
-    circleLabel.text = if (noNet) "אין רשת – התרעות לא יגיעו" else if (on) "מוגן" else if (sched) "כבוי לפי תזמון" else "לא מוגן"
-    circleLabel.setTextColor(Color.parseColor(if (noNet) "#FF9F0A" else if (on) "#69F0AE" else if (off) "#FF453A" else "#AAAAAA"))
-    setSweep(on && !noNet)
+    // מצב ההגנה מוצג בכרטיס 1 (מגן + כיתוב). כרטיס השעון - כרטיס רגיל
+    circle.background = graphite(26)
+    // מוגן: מגן ירוק עם וי. לא מוגן: מגן אדום עם איקס. אין רשת: מגן כתום עם סימן קריאה (מעריכת צופר). לפי תזמון: מגן ריק
+    shieldIcon.setImageResource(if (on && !noNet) R.drawable.ic_shield_green else if (noNet) R.drawable.ic_shield_alert
+        else if (off) R.drawable.ic_shield_x else R.drawable.ic_shield_outline)
+    shieldIcon.imageTintList = null
+    // רק המגן: בלי עיגולי ההילה ובלי האנימציה
+    haloOuter.background = null
+    haloInner.background = null
+    circleLabel.text = if (noNet) "אין רשת – התרעות לא יגיעו" else if (on) "אתה מוגן" else if (sched) "כבוי לפי תזמון" else "לא מוגן"
+    circleLabel.setTextColor(if (noNet) C.ORANGE else if (on) C.TEXT else if (off) C.RED else C.MUTED)
+    setSweep(false)   // בלי אנימציית מוגן
     updateIndicators()
 
     renderChips()
@@ -125,60 +103,80 @@ internal fun MainActivity.renderChips() {
     val nearOn = Prefs.nearMe(this)
     val near = if (nearOn) Prefs.nearbyAreas(this) else emptyList()
     val muted = C.MUTED2
-    val light = C.SOFT
 
-    // אזור התרעה (לפי המיקום) - מוצג בכרטיס השעון
+    // כרטיס 1: אזור התרעה (ימין) | זמן התגוננות (שמאל). שלוש שורות - אייקונים, כותרות, ערכים - כל שורה באותו גובה בשני הצדדים
     clockArea.removeAllViews()
-    val top = clockArea
-    top.addView(text("אזור התרעה", 17f, C.SOFT))
-    top.addView(text(if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…", 26f, C.TEXT, bold = true)
-        .apply { setPadding(0, dp(2), 0, 0) })
     val sec = if (nearOn && near.isNotEmpty()) AreaData.shelterSeconds(this, near.take(1)) else null
-    if (sec != null) top.addView(text("⏱ זמן התגוננות: ${AreaData.shelterText(sec)}", 17f, light)
-        .apply { setPadding(0, dp(2), 0, 0) })
-    for (i in 0 until top.childCount) (top.getChildAt(i) as? TextView)?.gravity = Gravity.CENTER
-    // קו מתחת לאזור ההתרעה - מפריד בינו לבין השעון
-    clockArea.addView(View(this).apply { setBackgroundColor(Color.parseColor("#33FFFFFF")) },
-        LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(10) })
+    val area = if (!nearOn) "כבוי" else near.firstOrNull() ?: "מאתר…"
+    val time = if (sec != null) AreaData.shelterText(sec) else "—"
+    // שתי עמודות (אייקון, כותרת, ערך) וקו באמצע. בתוך LinearLayout אופקי הקו מקבל בדיוק את גובה העמודות
+    // (FrameLayout עם קו MATCH_PARENT בתוך מסך נגלל מתח את הכרטיס עד סוף המסך)
+    // האייקון: ⏱ של המערכת (כמו שהיה), וסיכה מצוירת בקו דק באותו סגנון - שניהם באותו גובה
+    fun column(emoji: String, title: String, v: String) = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER_HORIZONTAL
+        addView(if (emoji.isEmpty()) FrameLayout(this@renderChips).apply {
+                addView(android.widget.ImageView(this@renderChips).apply {
+                    setImageResource(R.drawable.ic_area_pin_line)
+                    imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT)
+                }, FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER))
+            } else text(emoji, 30f, C.TEXT).apply {
+                gravity = Gravity.CENTER; includeFontPadding = false
+                // ⏱ של המערכת יוצא קטן מהסיכה (22dp): מגדילים את הגופן עד שגובה הציור עצמו = 22dp
+                val b = android.graphics.Rect(); paint.getTextBounds(emoji, 0, emoji.length, b)
+                if (b.height() > 0) textSize = 30f * dp(22) / b.height()
+            },
+            LinearLayout.LayoutParams(dp(44), dp(44)))
+        // מעריכת צופר: בכהה AAAAAA (בהיר יותר מהאפור הרגיל)
+        addView(text(title, 15f, if (Prefs.darkTheme(this@renderChips)) Color.parseColor("#AAAAAA") else C.MUTED).apply { gravity = Gravity.CENTER; setSingleLine() },
+            LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        addView(text(v, 25f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER },
+            LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
+    }
+    clockArea.addView(LinearLayout(this).apply {
+        isBaselineAligned = false
+        addView(column("", "אזור התרעה", area), LinearLayout.LayoutParams(0, -2, 1f))
+        addView(View(this@renderChips).apply { setBackgroundColor(C.DIV) },
+            LinearLayout.LayoutParams(dp(1), -1).apply { marginStart = dp(10); marginEnd = dp(10) })
+        addView(column("⏱", "זמן התגוננות", time), LinearLayout.LayoutParams(0, -2, 1f))
+    }, LinearLayout.LayoutParams(-1, -2))
 
     shelterLine.visibility = View.GONE   // הזמן מוצג עכשיו בפס המיקום
     renderExtraCard()
 }
 
-/** כרטיס במסך הראשי: היישובים והאזורים הנוספים (תצוגה בלבד) */
+/** כרטיס 4: היישובים והאזורים הנוספים (תצוגה בלבד) */
 internal fun MainActivity.renderExtraCard() {
-    areasSlot.removeAllViews()
+    areasSlot.removeAllViews()   // המקום נשאר ריק כדי שהפיד יישב למטה
+    extraBox.removeAllViews()
     val (towns, dists) = extraSelection()
     val dmap = AreaData.districtMap(this)
-    val card = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        background = graphite(28); clipToOutline = true
-        layoutDirection = View.LAYOUT_DIRECTION_RTL
-        setPadding(0, dp(14), 0, dp(10))
-    }
     // תצוגה בלבד - העריכה בהגדרות התרעות → אזורים נוספים
-    card.addView(text("יישובים ואזורים נוספים", 16f, C.TEXT, bold = true).apply { setPadding(dp(18), 0, dp(18), dp(6)) })
+    extraBox.addView(text("יישובים ואזורים נוספים", 20f, C.INK, bold = true).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(6)) })
     val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
     fun row(name: String, sub: String) = list.addView(LinearLayout(this).apply {
-        gravity = Gravity.CENTER_VERTICAL; setPadding(dp(18), dp(5), dp(18), dp(5))
-        addView(text(name, 15f, C.TEXT).apply { setSingleLine(); ellipsize = TextUtils.TruncateAt.END },
+        gravity = Gravity.CENTER_VERTICAL; setPadding(dp(2), dp(5), dp(2), dp(5))
+        // מעריכת צופר: 18, מודגש, ממורכז לגובה
+        addView(text(name, 18f, C.INK, bold = true).apply { setSingleLine(); ellipsize = TextUtils.TruncateAt.END
+            gravity = Gravity.START or Gravity.CENTER_VERTICAL },   // ימין (התחלת השורה בעברית)
             LinearLayout.LayoutParams(0, -2, 1f))
         if (sub.isNotEmpty()) addView(text(sub, 12f, C.MUTED).apply { setSingleLine() },
             LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
     })
     fun section(title: String, names: List<String>, sub: (String) -> String) {
         if (names.isEmpty()) return
-        list.addView(text(title, 12f, C.MUTED2).apply { setPadding(dp(18), dp(6), dp(18), dp(2)) })
+        list.addView(text(title, 15f, C.MUTED2).apply { setPadding(dp(2), dp(6), dp(2), dp(2)) })
         names.forEach { row(it, sub(it)) }
     }
     section("יישובים", towns) { if (it == AreaData.ALL_COUNTRY) "" else dmap[it] ?: "" }
     section("אזורים", dists) { "" }
     if (towns.isEmpty() && dists.isEmpty())
-        list.addView(text("לא נבחרו", 14f, C.MUTED).apply { setPadding(dp(18), dp(4), dp(18), dp(6)) })
-    // הרשימה נגללת בתוך הכרטיס כשהיא ארוכה; הכרטיס לא חורג מהמקום שנשאר במסך
-    card.addView(ScrollView(this).apply { isVerticalScrollBarEnabled = false; addView(list) },
-        LinearLayout.LayoutParams(-1, -2, 1f))
-    areasSlot.addView(card, FrameLayout.LayoutParams(-1, -2, Gravity.TOP))
+        list.addView(text("לא נבחרו", 15f, C.MUTED).apply { gravity = Gravity.CENTER; setPadding(0, dp(4), 0, dp(6)) })
+    // רשימה ארוכה נגללת בתוך הכרטיס - שהכרטיס לא ידחוף את הפיד מהמסך
+    val maxH = dp(170)
+    extraBox.addView(object : ScrollView(this) {
+        override fun onMeasure(w: Int, h: Int) = super.onMeasure(w, View.MeasureSpec.makeMeasureSpec(maxH, View.MeasureSpec.AT_MOST))
+    }.apply { isVerticalScrollBarEnabled = false; addView(list) }, LinearLayout.LayoutParams(-1, -2))
 }
 
 /** במסך הראשי: שורת סיכום של ההתראה האחרונה */
@@ -191,4 +189,20 @@ internal fun MainActivity.renderHistory() {
         else (if (e.level == AlertService.LEVEL_PRE) "התרעה מקדימה" else e.title) +
             (if (e.ts > 0) " · " + dayLabel(e.ts) + " " + java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date(e.ts)) else ""),
         12f, muted).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
+}
+
+/** סידור המסך הראשי (הגדרות ← תצוגה): איזה כרטיס למעלה, והברכה עוברת איתו לראש הכרטיס */
+internal fun MainActivity.applyMainLayout() {
+    val clockFirst = Prefs.mainLayout(this) == 1
+    val col = card1.parent as? LinearLayout ?: return
+    (greeting.parent as? android.view.ViewGroup)?.removeView(greeting)
+    (if (clockFirst) clockCard else card1).addView(greeting, 0, LinearLayout.LayoutParams(-1, -2))
+    // בלי ברכה מעליו - המגן צמוד יותר לראש הכרטיס
+    (haloOuter.layoutParams as? LinearLayout.LayoutParams)?.let { it.topMargin = if (clockFirst) 0 else dp(10); haloOuter.layoutParams = it }
+    val i = minOf(col.indexOfChild(card1), col.indexOfChild(clockCard))
+    if (i < 0) return
+    val lp1 = card1.layoutParams; val lp2 = clockCard.layoutParams
+    col.removeView(card1); col.removeView(clockCard)
+    if (clockFirst) { col.addView(clockCard, i, lp2); col.addView(card1, i + 1, lp1) }
+    else { col.addView(card1, i, lp1); col.addView(clockCard, i + 1, lp2) }
 }

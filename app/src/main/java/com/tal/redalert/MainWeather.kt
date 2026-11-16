@@ -1,29 +1,6 @@
 package com.tal.redalert
 import com.tal.redalert.MainActivity.C
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.NotificationManager
-import android.content.Context
-import android.content.Intent
-import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
-import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.PowerManager
-import android.provider.Settings
-import android.text.TextUtils
-import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
-import android.widget.EditText
-import android.widget.FrameLayout
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
 
 // המסך הראשי: מזג אוויר ודיוק המיקום שמוצג
 
@@ -111,7 +88,7 @@ internal fun MainActivity.loadWeather(loc: android.location.Location) = Thread {
         val hint = if (hasPrecise()) "" else " (לחץ למיקום מדויק)"
         weatherLine.text = listOf("$icon ${w.temp}°", w.place)
             .filter { it.isNotBlank() }.joinToString(" · ") + hint
-        weatherLine.setTextColor(C.SOFT)
+        weatherLine.setTextColor(C.TEXT)   // מעריכת צופר: לבן מלא (במקום E6FFFFFF)
         weatherShown = true
     }
     // אחרי לחיצה על חיווי המיקום - "מאתר מיקום מדויק…" נשאר לפחות 2 שניות (שיהיה ברור שמשהו קורה)

@@ -1,33 +1,16 @@
 package com.tal.redalert
 
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.NotificationManager
-import android.content.Context
-import android.content.Intent
 import android.graphics.Color
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
 import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.PowerManager
-import android.provider.Settings
-import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
-import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import com.tal.redalert.MainActivity.C
-import com.tal.redalert.MainActivity.Row
-import com.tal.redalert.MainActivity.Perm
-import com.tal.redalert.MainActivity.SameHeight
 
 // (חלק מהמסך הראשי - MainActivity; המצב עצמו נשמר שם)
 
@@ -76,7 +59,6 @@ internal fun MainActivity.showDisplay() {
     // קו מפריד עם שוליים מהצדדים (לא מקצה לקצה), כמו בהגדרות של סמסונג
     fun divider(c: LinearLayout) = c.addView(View(this).apply { setBackgroundColor(C.DIV) },
         LinearLayout.LayoutParams(-1, dp(1)).apply { setMargins(dp(18), 0, dp(18), 0) })
-    /** שורה: שם, מצב בכחול, ומתג (אם יש) */
     /** שורה: שם + מצב בכחול + מתג. open = לחיצה על השם פותחת הגדרה נוספת (והמתג לבד מדליק/מכבה) */
     fun row(c: LinearLayout, title: String, sub: String = "", on: Boolean? = null, sep: Boolean = true,
             open: (() -> Unit)? = null, click: () -> Unit) {
@@ -136,6 +118,51 @@ internal fun MainActivity.showDisplay() {
             open = { chooseThemeTime { applyThemeNow(d) { rebuild() } } }) { setTheme(d, if (byTime) 0 else 3) { rebuild() } }
         addCard(theme)
         note("לפי המערכת – בהיר או חשוך לפי הגדרת הטלפון\nלפי זמן – חשוך בלילה ובהיר ביום")
+        // סידור המסך הראשי: איזה כרטיס למעלה (תצוגה מקדימה, כמו ערכת הצבעים)
+        val lay = card()
+        val pickL = LinearLayout(this).apply { gravity = Gravity.CENTER; setPadding(dp(10), dp(20), dp(10), dp(16)) }
+        fun layoutPreview(clockFirst: Boolean, label: String) = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            val box = LinearLayout(this@showDisplay).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(6), dp(6), dp(6), dp(6))
+                background = GradientDrawable().apply { setColor(Color.parseColor("#2B2B2E")); cornerRadius = dp(12).toFloat() }
+                // כרטיס השעון: שלושה פסים · כרטיס ההגנה: מגן ירוק ושני פסים
+                fun clockBox() = LinearLayout(this@showDisplay).apply {
+                    orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+                    background = GradientDrawable().apply { setColor(Color.parseColor("#3E3E42")); cornerRadius = dp(6).toFloat() }
+                    listOf(30, 18, 24).forEach { w -> addView(View(this@showDisplay).apply {
+                        background = GradientDrawable().apply { setColor(Color.parseColor("#77777C")); cornerRadius = dp(2).toFloat() }
+                    }, LinearLayout.LayoutParams(dp(w), dp(4)).apply { setMargins(0, dp(2), 0, dp(2)) }) }
+                }
+                fun shieldBox() = LinearLayout(this@showDisplay).apply {
+                    orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
+                    background = GradientDrawable().apply { setColor(Color.parseColor("#3E3E42")); cornerRadius = dp(6).toFloat() }
+                    addView(android.widget.ImageView(this@showDisplay).apply { setImageResource(R.drawable.ic_shield_green) },
+                        LinearLayout.LayoutParams(dp(14), dp(14)))
+                    listOf(26, 34).forEach { w -> addView(View(this@showDisplay).apply {
+                        background = GradientDrawable().apply { setColor(Color.parseColor("#77777C")); cornerRadius = dp(2).toFloat() }
+                    }, LinearLayout.LayoutParams(dp(w), dp(4)).apply { setMargins(0, dp(3), 0, 0) }) }
+                }
+                val a = if (clockFirst) clockBox() else shieldBox()
+                val b = if (clockFirst) shieldBox() else clockBox()
+                addView(a, LinearLayout.LayoutParams(-1, dp(52)).apply { bottomMargin = dp(5) })
+                addView(b, LinearLayout.LayoutParams(-1, dp(52)).apply { bottomMargin = dp(5) })
+                addView(View(this@showDisplay).apply {
+                    background = GradientDrawable().apply { setColor(Color.parseColor("#3E3E42")); cornerRadius = dp(6).toFloat() }
+                }, LinearLayout.LayoutParams(-1, dp(22)))
+            }
+            addView(box, LinearLayout.LayoutParams(dp(76), dp(150)))
+            val v = if (clockFirst) 1 else 0
+            addLabelRadio(this, label, Prefs.mainLayout(this@showDisplay) == v)
+            setOnClickListener { Prefs.setMainLayout(this@showDisplay, v); applyMainLayout(); rebuild() }
+        }
+        pickL.addView(layoutPreview(false, "הגנה למעלה"), LinearLayout.LayoutParams(0, -2, 1f))
+        pickL.addView(layoutPreview(true, "שעון למעלה"), LinearLayout.LayoutParams(0, -2, 1f))
+        lay.addView(pickL)
+        addCard(lay)
+        note("סידור המסך הראשי – איזה כרטיס למעלה. הברכה מוצגת בראש הכרטיס העליון")
         // שורת החיוויים במסך הראשי
         val ind = card()
         val sm = Prefs.statusMode(this)
@@ -221,7 +248,6 @@ internal fun MainActivity.chooseDayStyle(done: () -> Unit) = ouiPage("תאריך
     ouiAdd(body, styles)
 }
 
-/** עמוד מזג אוויר: הצגה + תדירות עדכון */
 /** עמוד פיד ארצי: כמה זמן אחורה להציג - מ-30 דקות ועד 24 שעות */
 internal fun MainActivity.chooseFeedWindow(done: () -> Unit) = ouiPage("פיד ארצי", onClose = done) { body, rebuild ->
     val opts = ouiCard()

@@ -1,33 +1,16 @@
 package com.tal.redalert
 
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.NotificationManager
-import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.PowerManager
-import android.provider.Settings
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
-import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.TextView
 import com.tal.redalert.MainActivity.C
-import com.tal.redalert.MainActivity.Row
-import com.tal.redalert.MainActivity.Perm
-import com.tal.redalert.MainActivity.SameHeight
 
 // עמוד "התרעות אחרונות": הכל / שלי, מחולק לימים, נבנה בחלקים לפי הגלילה
 // (חלק מהמסך הראשי - MainActivity; המצב עצמו נשמר שם)
@@ -171,11 +154,12 @@ internal fun MainActivity.appendRecent(c: LinearLayout, count: Int) {
         val icon = AlertUi.icon(e.title, e.level)
         row.addView(FrameLayout(this).apply {
             background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(col)) }
-            addView(android.widget.ImageView(this@appendRecent).apply { AlertUi.setIcon(this, icon) },
+            addView(android.widget.ImageView(this@appendRecent).apply {
+                AlertUi.setIcon(this, icon); imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE) },   // לבן מלא (מעריכת צופר)
                 FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER))
         }, LinearLayout.LayoutParams(dp(36), dp(36)).apply { marginEnd = dp(12) })
         val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        texts.addView(text(if (e.level == AlertService.LEVEL_PRE) "התרעה מקדימה" else e.title, 15f, C.TEXT))
+        texts.addView(text(if (e.level == AlertService.LEVEL_PRE) "התרעה מקדימה" else e.title, 15f, C.INK))
         texts.addView(text(e.body.replace("ברחבי הארץ", AreaData.ALL_COUNTRY), 12f, muted).apply { maxLines = 2; ellipsize = TextUtils.TruncateAt.END })
         row.addView(texts, LinearLayout.LayoutParams(0, -2, 1f))
         // השעה בשורה - של היישוב הראשון שהגיע (לא "בחלק מהאזורים בארץ" וכדומה)
