@@ -158,7 +158,7 @@ internal fun MainActivity.renderExtraCard() {
         gravity = Gravity.CENTER_VERTICAL; setPadding(dp(2), dp(5), dp(2), dp(5))
         // מעריכת צופר: 18, מודגש, ממורכז לגובה
         addView(text(name, 18f, C.INK, bold = true).apply { setSingleLine(); ellipsize = TextUtils.TruncateAt.END
-            gravity = (gravity and Gravity.HORIZONTAL_GRAVITY_MASK) or Gravity.CENTER_VERTICAL },
+            gravity = Gravity.START or Gravity.CENTER_VERTICAL },   // ימין (התחלת השורה בעברית)
             LinearLayout.LayoutParams(0, -2, 1f))
         if (sub.isNotEmpty()) addView(text(sub, 12f, C.MUTED).apply { setSingleLine() },
             LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
