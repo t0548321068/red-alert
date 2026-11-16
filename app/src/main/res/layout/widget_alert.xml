@@ -89,6 +89,6 @@
         android:maxLines="2"
         android:ellipsize="end"
         android:text="אין התרעות עדיין"
-        android:textColor="#8E8E93"
+        android:textColor="#AAAAAA"
         android:textSize="12sp" />
 </LinearLayout>

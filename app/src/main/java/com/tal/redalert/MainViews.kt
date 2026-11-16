@@ -36,7 +36,7 @@ class CenteredIcon(private val d: android.graphics.drawable.Drawable) : android.
 class CheckDot(context: Context, var on: Boolean) : View(context) {
     private val d = resources.displayMetrics.density
     private val ring = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-        style = android.graphics.Paint.Style.STROKE; strokeWidth = 1.6f * d; color = Color.parseColor("#8E8E93") }
+        style = android.graphics.Paint.Style.STROKE; strokeWidth = 1.6f * d; color = Color.parseColor("#AAAAAA") }
     private val fill = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#5B8AF5") }
     private val tick = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
         style = android.graphics.Paint.Style.STROKE; strokeWidth = 2.4f * d; color = Color.BLACK   // וי שחור כמו בסמסונג

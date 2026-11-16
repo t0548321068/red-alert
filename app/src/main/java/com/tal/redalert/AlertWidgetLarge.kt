@@ -29,7 +29,7 @@ class AlertWidgetLarge : AppWidgetProvider() {
             val v = RemoteViews(c.packageName, R.layout.widget_large)
             val on = Prefs.enabled(c)
             v.setTextViewText(R.id.wl_status, if (on) "● מוגן" else "○ כבוי")
-            v.setTextColor(R.id.wl_status, Color.parseColor(if (on) "#30D158" else "#8E8E93"))
+            v.setTextColor(R.id.wl_status, Color.parseColor(if (on) "#30D158" else "#AAAAAA"))
 
             // התרעה פעילה: כרטיס כמו בכתום - אייקון, כותרת, שורה מתחתיה, מיקום.
             // באדום: ירי - ספירה לכניסה ואחריה "נשארים במרחב המוגן עד הודעה". סוג בלי זמן הגעה - ההנחיה שלו (הכל באדום)

@@ -101,7 +101,8 @@ internal fun MainActivity.updateFeed() {
         feedText = first?.text ?: ""
         feedLine.text = if (first != null) feedSpan(first)
             else FeedText.windowLabel(win).let { "אין התרעות " + when { it[0].isDigit() -> "ב-$it"; it[0] == 'ה' -> "ב" + it.drop(1); else -> "ב$it" } }
-        feedLine.setTextColor(C.TEXT)
+        // "אין התרעות..." - אפור (מעריכת צופר: AAAAAA בכהה). התרעות - בצבע הטקסט
+        feedLine.setTextColor(if (first == null) C.MUTED else C.TEXT)
         return
     }
     // כל 3 שניות - ההתראה הבאה עולה מלמטה
