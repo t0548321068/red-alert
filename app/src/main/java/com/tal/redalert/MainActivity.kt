@@ -57,6 +57,7 @@ class MainActivity : Activity() {
     internal lateinit var circle: FrameLayout
     internal var cardMap: AlertMap? = null      // המפה בכרטיס ההתרעה (כשהכרטיס מוצג והמפה מופעלת)
     internal var cardResumed = false
+    internal lateinit var clockCard: LinearLayout   // כרטיס השעון (שעה, תאריך, מזג אוויר)
     internal lateinit var card1: LinearLayout   // כרטיס 1: ברכה, מגן, אתה מוגן, אזור התרעה | זמן התגוננות
     internal lateinit var shieldIcon: android.widget.ImageView
     internal lateinit var circleLabel: TextView
@@ -251,7 +252,7 @@ class MainActivity : Activity() {
         }
         greeting = text("", 20f, C.TEXT).apply { gravity = Gravity.CENTER }
         // כרטיס השעון: רקע גרפיט, הכל ממורכז, טקסט לבן
-        val clockCard = LinearLayout(this).apply {
+        clockCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(16), dp(16), dp(16))
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
