@@ -156,7 +156,9 @@ internal fun MainActivity.renderExtraCard() {
     val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
     fun row(name: String, sub: String) = list.addView(LinearLayout(this).apply {
         gravity = Gravity.CENTER_VERTICAL; setPadding(dp(2), dp(5), dp(2), dp(5))
-        addView(text(name, 20f, C.INK).apply { setSingleLine(); ellipsize = TextUtils.TruncateAt.END },
+        // מעריכת צופר: 18, מודגש, ממורכז לגובה
+        addView(text(name, 18f, C.INK, bold = true).apply { setSingleLine(); ellipsize = TextUtils.TruncateAt.END
+            gravity = (gravity and Gravity.HORIZONTAL_GRAVITY_MASK) or Gravity.CENTER_VERTICAL },
             LinearLayout.LayoutParams(0, -2, 1f))
         if (sub.isNotEmpty()) addView(text(sub, 12f, C.MUTED).apply { setSingleLine() },
             LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(10) })
