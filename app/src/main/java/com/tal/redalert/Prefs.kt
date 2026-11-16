@@ -55,6 +55,9 @@ object Prefs {
     fun dateKind(c: Context) = sp(c).getInt("dateKind", 0)
     fun setDateKind(c: Context, v: Int) = sp(c).edit().putInt("dateKind", v).commit()
     /** ברכה לפי השעה (בוקר טוב / ערב טוב...) */
+    /** סידור המסך הראשי: 0 - כרטיס ההגנה (עם הברכה) למעלה ואז השעון · 1 - כרטיס השעון (עם הברכה) למעלה ואז ההגנה */
+    fun mainLayout(c: Context) = sp(c).getInt("mainLayout", 0)
+    fun setMainLayout(c: Context, v: Int) = sp(c).edit().putInt("mainLayout", v).apply()
     fun showGreeting(c: Context) = sp(c).getBoolean("greeting", true)
     fun setShowGreeting(c: Context, v: Boolean) = sp(c).edit().putBoolean("greeting", v).commit()
     /** שם שמופיע אחרי הברכה ("ערב טוב טל"); ריק = בלי שם */

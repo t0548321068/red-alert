@@ -188,3 +188,19 @@ internal fun MainActivity.renderHistory() {
             (if (e.ts > 0) " · " + dayLabel(e.ts) + " " + java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date(e.ts)) else ""),
         12f, muted).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
 }
+
+/** סידור המסך הראשי (הגדרות ← תצוגה): איזה כרטיס למעלה, והברכה עוברת איתו לראש הכרטיס */
+internal fun MainActivity.applyMainLayout() {
+    val clockFirst = Prefs.mainLayout(this) == 1
+    val col = card1.parent as? LinearLayout ?: return
+    (greeting.parent as? android.view.ViewGroup)?.removeView(greeting)
+    (if (clockFirst) clockCard else card1).addView(greeting, 0, LinearLayout.LayoutParams(-1, -2))
+    // בלי ברכה מעליו - המגן צמוד יותר לראש הכרטיס
+    (haloOuter.layoutParams as? LinearLayout.LayoutParams)?.let { it.topMargin = if (clockFirst) 0 else dp(10); haloOuter.layoutParams = it }
+    val i = minOf(col.indexOfChild(card1), col.indexOfChild(clockCard))
+    if (i < 0) return
+    val lp1 = card1.layoutParams; val lp2 = clockCard.layoutParams
+    col.removeView(card1); col.removeView(clockCard)
+    if (clockFirst) { col.addView(clockCard, i, lp2); col.addView(card1, i + 1, lp1) }
+    else { col.addView(card1, i, lp1); col.addView(clockCard, i + 1, lp2) }
+}

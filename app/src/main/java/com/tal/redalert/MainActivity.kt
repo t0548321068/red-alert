@@ -440,6 +440,7 @@ class MainActivity : Activity() {
         // כרטיסים 1-3 (כרטיס 4 - הפיד - בהמשך)
         for (card in listOf<View>(card1, clockCard, extraBox))
             col.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(GAP) })
+        applyMainLayout()
 
         // האזורים שלי
         // אזורי התרעה: אזור לפי מיקום + אזורים נוספים
