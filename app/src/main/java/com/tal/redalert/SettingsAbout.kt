@@ -139,7 +139,7 @@ internal fun MainActivity.showWhatsNewIfUpdated() {
 /** הטקסט של "מה חדש". sinceVersion = null: רק הגרסה הנוכחית */
 internal fun MainActivity.whatsNewText(sinceVersion: String?): String? {
     val log = try {
-        org.json.JSONObject(assets.open("changelog.json").bufferedReader(Charsets.UTF_8).use { it.readText() })
+        org.json.JSONObject(assets.open(Updater.changelogAsset(this)).bufferedReader(Charsets.UTF_8).use { it.readText() })
     } catch (_: Exception) { return null }
     val cur = Updater.currentVersion(this)
     val versions = log.keys().asSequence()

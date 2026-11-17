@@ -117,9 +117,11 @@ object Updater {
         } catch (_: Exception) { emptyList() }
         return Details(size, date, notes)
     }
+    /** קובץ "מה חדש": של צופר חירום, או של צופר חירום 2 (חבילה אחרת, גרסאות 2.0.x) */
+    fun changelogAsset(c: Context) = if (c.packageName == "com.tal.redalert") "changelog.json" else "editor_changelog.json"
     /** מה חדש בגרסה המותקנת (מתוך האפליקציה) */
     fun currentNotes(c: Context): List<String> = try {
-        notes(JSONObject(c.assets.open("changelog.json").bufferedReader(Charsets.UTF_8).use { it.readText() }), currentVersion(c))
+        notes(JSONObject(c.assets.open(changelogAsset(c)).bufferedReader(Charsets.UTF_8).use { it.readText() }), currentVersion(c))
     } catch (_: Exception) { emptyList() }
     private fun notes(log: JSONObject, ver: String): List<String> =
         log.optJSONArray(ver)?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList()
