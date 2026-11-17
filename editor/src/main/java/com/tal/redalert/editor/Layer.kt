@@ -51,9 +51,11 @@ class Layer(val root: FrameLayout) : FrameLayout(root.context) {
         fun anySelected(): View? = all.keys.firstNotNullOfOrNull { it.selected?.get() }
         /** מיקום הכפתור הצף - משותף לכל החלונות. גרירה חופשית, וחוזר למקום הקבוע בכל חזרה לאפליקציה */
         var pillX = 0f; var pillY = 0f
+        /** הכפתורים הוסתרו (נגררו ל-✕) - עד היציאה הבאה מהאפליקציה */
+        var pillHidden = false
         fun resetPill() {
-            pillX = 0f; pillY = 0f
-            all.keys.forEach { it.pill.translationX = 0f; it.pill.translationY = 0f }
+            pillX = 0f; pillY = 0f; pillHidden = false
+            all.keys.forEach { it.pill.translationX = 0f; it.pill.translationY = 0f; if (it.menu == null) it.pill.visibility = View.VISIBLE }
         }
     }
 
@@ -87,6 +89,23 @@ class Layer(val root: FrameLayout) : FrameLayout(root.context) {
         listBtn.setTextColor(if (n > 0) Color.parseColor("#3A2400") else Color.WHITE)
         (listBtn.background as GradientDrawable).setColor(if (n > 0) Ui.ORANGE else Color.parseColor("#3A3A3C"))
         pill.translationX = pillX; pill.translationY = pillY
+        if (pillHidden) pill.visibility = View.GONE
+    }
+
+    /** ✕ בתחתית המסך - מופיע רק בזמן גרירה. שחרור הכפתורים עליו מסתיר אותם עד היציאה הבאה מהאפליקציה */
+    private val bin = android.widget.TextView(context).apply {
+        text = "✕"; textSize = 22f; setTextColor(Color.WHITE); gravity = Gravity.CENTER
+        background = Ui.round(Color.parseColor("#CC3A3A3C"), 28)
+        elevation = Ui.dp(8).toFloat()
+        visibility = View.GONE
+    }
+    private fun overBin(): Boolean {
+        if (bin.width == 0) return false
+        val p = IntArray(2); pill.getLocationOnScreen(p)
+        val b = IntArray(2); bin.getLocationOnScreen(b)
+        val cx = p[0] + pill.width / 2f; val cy = p[1] + pill.height / 2f
+        val bx = b[0] + bin.width / 2f; val by = b[1] + bin.height / 2f
+        return abs(cx - bx) < Ui.dp(60) && abs(cy - by) < Ui.dp(60)
     }
 
     /** הכפתור הצף: לחיצה על ✎ = מצב עריכה, על הרשימה = עמוד עריכת צופר. גרירה = הזזה */
@@ -98,9 +117,26 @@ class Layer(val root: FrameLayout) : FrameLayout(root.context) {
                 MotionEvent.ACTION_DOWN -> { sx = e.rawX; sy = e.rawY; tx = pill.translationX; ty = pill.translationY; moved = false }
                 MotionEvent.ACTION_MOVE -> {
                     if (abs(e.rawX - sx) > Editor.touchSlop || abs(e.rawY - sy) > Editor.touchSlop) moved = true
-                    if (moved) { pill.translationX = tx + e.rawX - sx; pill.translationY = ty + e.rawY - sy; pillX = pill.translationX; pillY = pill.translationY }
+                    if (moved) {
+                        pill.translationX = tx + e.rawX - sx; pill.translationY = ty + e.rawY - sy; pillX = pill.translationX; pillY = pill.translationY
+                        if (bin.parent == null) addView(bin, LayoutParams(Ui.dp(56), Ui.dp(56), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin = Ui.dp(150) })
+                        if (bin.visibility != View.VISIBLE) { bin.visibility = View.VISIBLE; bin.bringToFront(); pill.bringToFront() }
+                        // מעל ה-✕: אדום וגדול יותר
+                        val on = overBin()
+                        (bin.background as GradientDrawable).setColor(Color.parseColor(if (on) "#E6FF3B30" else "#CC3A3A3C"))
+                        bin.scaleX = if (on) 1.2f else 1f; bin.scaleY = bin.scaleX
+                    }
                 }
-                MotionEvent.ACTION_UP -> if (!moved) { if (v === penBtn) toggle() else openMenu() }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    val drop = moved && overBin()
+                    bin.visibility = View.GONE
+                    if (drop) {
+                        if (Editor.on) toggle()   // בלי כפתורים אין איך לכבות - מכבים את מצב העריכה
+                        pillHidden = true
+                        pillX = 0f; pillY = 0f
+                        all.keys.forEach { it.pill.visibility = View.GONE; it.pill.translationX = 0f; it.pill.translationY = 0f }
+                    } else if (!moved && e.actionMasked == MotionEvent.ACTION_UP) { if (v === penBtn) toggle() else openMenu() }
+                }
             }
             true
         }
