@@ -59,15 +59,9 @@ internal fun MainActivity.setInd(v: TextView, icon: Int, label: String, color: I
     val k = "$icon|$label|$color"
     if (v.tag == k) return
     v.tag = k
-    if (v === protInd) {
-        // "מוגן": גלולה בצבע המצב (ירוק / אדום) מאחורי האייקון, וכיתוב לבן מודגש
-        v.compoundDrawableTintList = null
-        setIndIcon(v, icon, tint = color, pill = (color and 0x00FFFFFF) or 0x2E000000)
-        v.setTextColor(C.TEXT); v.typeface = android.graphics.Typeface.DEFAULT_BOLD
-    } else {
-        setIndIcon(v, icon)
-        v.compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color)
-    }
+    // כל החיוויים באותו סגנון - אייקון בצבע המצב וכיתוב אפור (הגלולה מאחורי "מוגן" ירדה)
+    setIndIcon(v, icon)
+    v.compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color)
     v.text = label
 }
 
