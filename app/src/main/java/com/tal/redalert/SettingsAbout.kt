@@ -144,9 +144,11 @@ internal fun MainActivity.whatsNewText(sinceVersion: String?): String? {
     } catch (_: Exception) { return null }
     val cur = Updater.currentVersion(this)
     val versions = log.keys().asSequence()
-        .filter { v -> if (sinceVersion == null) v == cur else Updater.isNewer(v, sinceVersion) && !Updater.isNewer(v, cur) }
+        .filter { v -> if (sinceVersion == null) !Updater.isNewer(v, cur) else Updater.isNewer(v, sinceVersion) && !Updater.isNewer(v, cur) }
         .sortedWith { a, b -> if (Updater.isNewer(a, b)) -1 else if (a == b) 0 else 1 }
         .toList()
+        // בלי sinceVersion: רק הגרסה הנוכחית - ואם אין לה רשומה (צופר חירום 2 נבנית לבד בכל שינוי), הרשומה האחרונה שלפניה
+        .let { if (sinceVersion == null) it.take(1) else it }
     // כל שורה פעם אחת - בגרסה החדשה ביותר שבה היא מופיעה (4.35 ו-4.35b זהות, ו-4.36b חוזרת עליהן).
     // גרסה שכל השורות שלה כבר הופיעו - לא מוצגת
     val shown = HashSet<String>()
