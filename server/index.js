@@ -59,6 +59,7 @@ function route(req, res) {
   const ip = local ? String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'local' : req.socket.remoteAddress || '';
   // הממסר בבית (צופר ממסר) - מפתח משלו, בלי מגבלת הקצב
   // בדיקת גיבוי: השרת "לא עונה" לשרת המשני ולממסר
+  if (u.pathname === '/relay/ping') relay.touch(req);   // הממסר חי - גם כשבדיקת הגיבוי עונה לו "לא זמין"
   if ((u.pathname === '/alive' && chain.blocks('alive')) || (u.pathname === '/relay/ping' && chain.blocks('ping'))) {
     res.writeHead(503, { 'Content-Type': 'application/json' }); return res.end('{"drill":true}');
   }
@@ -103,5 +104,6 @@ require('./sources/telegram').start();
 archive.start();
 versions.start();
 health.watchDown();
+relay.watchRelay();   // התראה לך כשהממסר בבית מפסיק להתחבר / חוזר
 health.watchDisk();   // התראה לך כשהדיסק בשרת מתמלא
 log('red-alert push server started');
