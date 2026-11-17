@@ -106,13 +106,13 @@ internal fun MainActivity.showDisplay() {
             }
             addView(box, LinearLayout.LayoutParams(dp(76), dp(150)))
             addLabelRadio(this, label, sel)
-            setOnClickListener { setTheme(d, value, if (light) null else blue) { rebuild() } }
+            setOnClickListener { setTheme(d, value) { rebuild() } }
         }
         val sys = mode == 2
         val byTime = mode == 3
+        // חשוך / בהיר. הגוון של כל אחד - ב"פלטת צבעים" (מתחת)
         val nb = Prefs.nightBlue(this)
-        pick.addView(preview(false, "חשוך", mode == 0 && !nb, 0), LinearLayout.LayoutParams(0, -2, 1f))
-        pick.addView(preview(false, "כחול לילה", mode == 0 && nb, 0, blue = true), LinearLayout.LayoutParams(0, -2, 1f))
+        pick.addView(preview(false, "חשוך", mode == 0, 0, blue = nb), LinearLayout.LayoutParams(0, -2, 1f))
         pick.addView(preview(true, "בהיר", mode == 1, 1), LinearLayout.LayoutParams(0, -2, 1f))
         theme.addView(pick)
         divider(theme)
@@ -120,7 +120,12 @@ internal fun MainActivity.showDisplay() {
         row(theme, "לפי זמן", themeTimeLabel(), on = byTime, sep = false,
             open = { chooseThemeTime { applyThemeNow(d) { rebuild() } } }) { setTheme(d, if (byTime) 0 else 3) { rebuild() } }
         addCard(theme)
-        note("לפי המערכת – בהיר או חשוך לפי הגדרת הטלפון\nלפי זמן – חשוך בלילה ובהיר ביום\nבחשוך – שחור או כחול לילה, לפי הבחירה למעלה")
+        note("לפי המערכת – בהיר או חשוך לפי הגדרת הטלפון\nלפי זמן – חשוך בלילה ובהיר ביום")
+        // פלטת צבעים: גוון לחשוך וגוון לבהיר (מעריכת צופר)
+        val pal = card()
+        row(pal, "פלטת צבעים", "חשוך: ${if (nb) "כחול לילה" else "שחור"} · בהיר: רגיל", sep = false) {
+            choosePalette { applyThemeNow(d) { rebuild() } } }
+        addCard(pal)
         // סידור המסך הראשי: איזה כרטיס למעלה (תצוגה מקדימה, כמו ערכת הצבעים)
         val lay = card()
         val pickL = LinearLayout(this).apply { gravity = Gravity.CENTER; setPadding(dp(10), dp(20), dp(10), dp(16)) }
@@ -365,4 +370,19 @@ internal fun MainActivity.chooseThemeTime(done: () -> Unit) = ouiPage("לפי ז
     }
     ouiAdd(body, c)
     ouiNote(body, if (tm == 0) "חשוך מהשקיעה ועד הזריחה, לפי המיקום שלך" else "חשוך משעת ההתחלה ועד שעת הסיום")
+}
+
+/** פלטת צבעים: הגוון של הערכה החשוכה ושל הבהירה */
+internal fun MainActivity.choosePalette(done: () -> Unit) = ouiPage("פלטת צבעים", onClose = done) { body, rebuild ->
+    body.addView(text("בחשוך", 15f, C.MUTED).apply { setPadding(dp(30), dp(6), dp(30), dp(6)) })
+    val dk = ouiCard()
+    ouiRow(dk, "שחור", radio = !Prefs.nightBlue(this)) { Prefs.setNightBlue(this, false); rebuild() }
+    ouiDivider(dk)
+    ouiRow(dk, "כחול לילה", radio = Prefs.nightBlue(this)) { Prefs.setNightBlue(this, true); rebuild() }
+    ouiAdd(body, dk)
+    body.addView(text("בבהיר", 15f, C.MUTED).apply { setPadding(dp(30), dp(14), dp(30), dp(6)) })
+    val lt = ouiCard()
+    ouiRow(lt, "רגיל", radio = true) { }
+    ouiAdd(body, lt)
+    ouiNote(body, "הצבעים מתחלפים כשיוצאים מעמוד התצוגה")
 }

@@ -440,9 +440,10 @@ internal fun MainActivity.chooseStatusMode(done: () -> Unit) = chooseShowMode("�
     extra = { body, rebuild ->
         // מיקום השורה: למטה (כמו תפריט ניווט) או למעלה (מתחת לכותרת)
         val p = ouiCard()
-        ouiRow(p, "למטה", radio = !Prefs.statusTop(this)) { Prefs.setStatusTop(this, false); placeStatusRow(); rebuild() }
-        ouiDivider(p)
+        // מעריכת צופר: "למעלה" בשורה העליונה, "למטה" בתחתונה
         ouiRow(p, "למעלה", radio = Prefs.statusTop(this)) { Prefs.setStatusTop(this, true); placeStatusRow(); rebuild() }
+        ouiDivider(p)
+        ouiRow(p, "למטה", radio = !Prefs.statusTop(this)) { Prefs.setStatusTop(this, false); placeStatusRow(); rebuild() }
         ouiAdd(body, p)
         ouiNote(body, "מיקום השורה במסך הראשי")
     })
