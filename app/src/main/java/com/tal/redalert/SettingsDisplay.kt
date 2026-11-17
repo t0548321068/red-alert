@@ -16,10 +16,9 @@ import com.tal.redalert.MainActivity.C
 
 // עמודי ההגדרות: תצוגה - ערכת צבעים, שעון, תאריך, פיד, מזג אוויר וברכה
 
-internal fun MainActivity.setTheme(d: android.app.Dialog, mode: Int, blue: Boolean? = null, rebuild: () -> Unit) {
-    if (Prefs.themeMode(this) == mode && (blue == null || Prefs.nightBlue(this) == blue)) return
+internal fun MainActivity.setTheme(d: android.app.Dialog, mode: Int, rebuild: () -> Unit) {
+    if (Prefs.themeMode(this) == mode) return
     Prefs.setThemeMode(this, mode)
-    if (blue != null) Prefs.setNightBlue(this, blue)
     applyThemeNow(d, rebuild)
 }
 
