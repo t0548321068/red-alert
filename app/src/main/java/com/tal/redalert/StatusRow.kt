@@ -5,6 +5,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.provider.Settings
 import android.text.TextUtils
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
@@ -16,7 +17,7 @@ import com.tal.redalert.MainActivity.SameHeight
 // (חלק מהמסך הראשי - MainActivity; המצב עצמו נשמר שם)
 
 /** חיווי: אייקון למעלה, טקסט מתחת */
-internal fun MainActivity.indicator(icon: Int, onClick: (() -> Unit)?) = text("", 12f, C.INK).apply {
+internal fun MainActivity.indicator(icon: Int, onClick: (() -> Unit)?) = text("", 12f, C.MUTED).apply {   // כיתוב אפור (כמו תפריט ניווט)
     setIndIcon(this, icon)
     maxLines = 1; ellipsize = TextUtils.TruncateAt.END   // 6 חיוויים בשורה - שורה אחת
     // האייקון גדל ב-15%, והרווח שמתחת לו קטן באותה מידה - גובה השורה לא משתנה
@@ -29,12 +30,23 @@ internal fun MainActivity.indicator(icon: Int, onClick: (() -> Unit)?) = text(""
  * אייקון החיווי - מעט גדול מהגודל המקורי. אייקון שצויר גדול יותר (24dp) נשאר באותו גודל,
  * אבל תופס את אותו גובה כמו השאר - כדי שהטקסט מתחת לכל החיוויים יהיה באותו קו
  */
-internal fun MainActivity.setIndIcon(v: TextView, icon: Int) {
+internal fun MainActivity.setIndIcon(v: TextView, icon: Int, tint: Int? = null, pill: Int = 0) {
     val d = getDrawable(icon)?.mutate() ?: return
+    if (tint != null) d.setTint(tint)
     val dw = (d.intrinsicWidth * 1.45f).toInt(); val dh = (d.intrinsicHeight * 1.45f).toInt()
     val h = (dp(18) * 1.45f).toInt()
     val box = if (dh <= h) d.apply { setBounds(0, 0, dw, dh) } else SameHeight(d, dw, dh, h).apply { setBounds(0, 0, dw, h) }
-    v.setCompoundDrawablesRelative(null, box, null, null)
+    if (pill == 0) { v.setCompoundDrawablesRelative(null, box, null, null); return }
+    // גלולה מאחורי האייקון (כמו הלשונית הנבחרת בתפריט ניווט) - באותו גובה כמו שאר האייקונים, כדי שהכיתובים יישארו בקו
+    val bw = box.bounds.width(); val bh = box.bounds.height()
+    val pw = dp(52); val ph = h
+    val bg = GradientDrawable().apply { setColor(pill); cornerRadius = ph / 2f }
+    val ld = android.graphics.drawable.LayerDrawable(arrayOf(bg, box)).apply {
+        setLayerSize(0, pw, ph); setLayerSize(1, bw, bh)
+        setLayerGravity(0, Gravity.CENTER); setLayerGravity(1, Gravity.CENTER)
+        setBounds(0, 0, pw, ph)
+    }
+    v.setCompoundDrawablesRelative(null, ld, null, null)
 }
 
 /** חיווי צלילים: רמקול, ומסביבו קווי רטט כשהרטט פועל */
@@ -47,8 +59,15 @@ internal fun MainActivity.setInd(v: TextView, icon: Int, label: String, color: I
     val k = "$icon|$label|$color"
     if (v.tag == k) return
     v.tag = k
-    setIndIcon(v, icon)
-    v.compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color)
+    if (v === protInd) {
+        // "מוגן": גלולה בצבע המצב (ירוק / אדום) מאחורי האייקון, וכיתוב לבן מודגש
+        v.compoundDrawableTintList = null
+        setIndIcon(v, icon, tint = color, pill = (color and 0x00FFFFFF) or 0x2E000000)
+        v.setTextColor(C.TEXT); v.typeface = android.graphics.Typeface.DEFAULT_BOLD
+    } else {
+        setIndIcon(v, icon)
+        v.compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color)
+    }
     v.text = label
 }
 
