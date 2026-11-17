@@ -464,8 +464,8 @@ internal fun MainActivity.placeStatusRow() {
 
 /** בחירה משותפת (שורת חיוויים, כפתור צף): מוצג קבוע / לא מוצג / לפי זמן - ובלפי זמן כמה שניות, כולל מותאם */
 internal fun MainActivity.chooseShowMode(title: String, mode: () -> Int, setMode: (Int) -> Unit, sec: () -> Int, setSec: (Int) -> Unit,
-                           apply: () -> Unit, note: String, female: Boolean = false, done: () -> Unit,
-                           extra: ((LinearLayout, () -> Unit) -> Unit)? = null) =
+                           apply: () -> Unit, note: String, female: Boolean = false,
+                           extra: ((LinearLayout, () -> Unit) -> Unit)? = null, done: () -> Unit) =
     ouiPage(title, onClose = done) { body, rebuild ->
         val c = ouiCard()
         listOf(Prefs.STATUS_ALWAYS to (if (female) "מוצגת קבוע" else "מוצג קבוע"),
