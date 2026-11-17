@@ -75,6 +75,10 @@ class RelayService : Service() {
                         Relay.active = false
                         Relay.admin(this, if (primary) "✅ השרת הראשי חזר – הממסר חזר להמתנה" else "✅ השרת המשני פעיל – הממסר חזר להמתנה")
                     }
+                } else if (!Relay.active && !Relay.online()) {
+                    // אין אינטרנט בבית - לא נכנסים לפעולה ולא שולחים "שני השרתים לא עונים" (ההודעה גם לא הייתה יוצאת).
+                    // השרת מודיע לך בעצמו כשהממסר לא מתחבר 10 דקות
+                    downChecks = 0
                 } else if (++downChecks >= 3 && !Relay.active) {
                     Relay.active = true; Relay.activeSince = t; hbAt = 0
                     Relay.sources.forEach { it.lastTry = 0 }

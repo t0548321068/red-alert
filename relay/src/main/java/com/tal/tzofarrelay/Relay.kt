@@ -88,6 +88,8 @@ object Relay {
     }
 
     /** השרת הראשי: בדיקה עם המפתח (גם מוודא שהמפתח נכון). קוד התשובה (-1 = אין חיבור) */
+    /** יש לטלפון בבית אינטרנט בכלל? (גוגל עונה 204). בלי אינטרנט - השרתים לא "נפלו", הבעיה בבית */
+    fun online(): Boolean = try { http("https://connectivitycheck.gstatic.com/generate_204").first == 204 } catch (_: Exception) { false }
     fun pingPrimary(key: String): Int = try {
         val (code, body) = http("$PRIMARY/relay/ping", "POST", "", mapOf("X-Relay-Key" to key))
         drill = code == 503 && body.contains("drill")
