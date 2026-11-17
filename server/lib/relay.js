@@ -5,7 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { log } = require('./util');
-const { ok } = require('./health');
+const { ok, STARTED } = require('./health');
+const { adminPush } = require('./push');
 
 const KEY_FILE = path.join(__dirname, '..', 'relay.key');   // לא נכנס לגיט
 let key = '';
@@ -58,7 +59,29 @@ function handle(req, res, u) {
   });
 }
 
+/** הממסר פנה לבדוק את השרת (גם בזמן בדיקת גיבוי, כשהשרת עונה לו "לא זמין") */
+let pingAt = 0;
+const touch = req => { if (keyOk(req.headers['x-relay-key'])) pingAt = Date.now(); };
+
+// הממסר מודיע לבד כשהשרתים לא עונים - אבל כשהטלפון בבית כבוי או בלי אינטרנט, הוא לא יכול להודיע כלום.
+// לכן השרת עוקב: הממסר פונה כל דקה. 10 דקות בלי שמיעה ממנו - התראה לך, וכשהוא חוזר - עוד התראה
+let relayDown = false;
+function watchRelay() {
+  setInterval(() => {
+    const last = Math.max(pingAt, seen.ping, seen.live);
+    if (!last || Date.now() - STARTED < 5 * 60 * 1000) return;   // לא היה מחובר מאז שהשרת עלה / רק עלה
+    const gone = Date.now() - last;
+    if (!relayDown && gone > 10 * 60 * 1000) {
+      relayDown = true;
+      adminPush('⚠️ הממסר בבית לא מחובר כבר 10 דקות – הטלפון כבוי, בלי אינטרנט או שהאפליקציה נעצרה');
+    } else if (relayDown && gone < 2 * 60 * 1000) {
+      relayDown = false;
+      adminPush('✅ הממסר בבית חזר להתחבר');
+    }
+  }, 60 * 1000);
+}
+
 /** לאתר: המפתח ומצב הממסר */
 function status() { return { key, seen, forwarded, since: firstSeen, now: Date.now() }; }
 
-module.exports = { handle, status, key: () => key };
+module.exports = { handle, status, key: () => key, touch, watchRelay };
