@@ -16,16 +16,17 @@ import com.tal.redalert.MainActivity.C
 
 // עמודי ההגדרות: תצוגה - ערכת צבעים, שעון, תאריך, פיד, מזג אוויר וברכה
 
-internal fun MainActivity.setTheme(d: android.app.Dialog, mode: Int, rebuild: () -> Unit) {
-    if (Prefs.themeMode(this) == mode) return
+internal fun MainActivity.setTheme(d: android.app.Dialog, mode: Int, blue: Boolean? = null, rebuild: () -> Unit) {
+    if (Prefs.themeMode(this) == mode && (blue == null || Prefs.nightBlue(this) == blue)) return
     Prefs.setThemeMode(this, mode)
+    if (blue != null) Prefs.setNightBlue(this, blue)
     applyThemeNow(d, rebuild)
 }
 
 /** עמוד התצוגה מתחלף מיד לצבעים לפי ההגדרה הנוכחית */
 internal fun MainActivity.applyThemeNow(d: android.app.Dialog, rebuild: () -> Unit) {
     // עמוד התצוגה מתחלף מיד לצבעים החדשים; שאר האפליקציה - ביציאה מהעמוד
-    C.apply(Prefs.darkTheme(this))
+    C.apply(Prefs.darkTheme(this), Prefs.nightBlue(this))
     (d.window?.decorView?.findViewWithTag<View>("displayPage"))?.setBackgroundColor(C.BG)
     @Suppress("DEPRECATION")
     d.window?.statusBarColor = C.BG
@@ -90,26 +91,28 @@ internal fun MainActivity.showDisplay() {
         val mode = Prefs.themeMode(this)
         val theme = card()
         val pick = LinearLayout(this).apply { gravity = Gravity.CENTER; setPadding(dp(10), dp(20), dp(10), dp(16)) }
-        fun preview(light: Boolean, label: String, sel: Boolean, value: Int) = LinearLayout(this).apply {
+        fun preview(light: Boolean, label: String, sel: Boolean, value: Int, blue: Boolean = false) = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             val box = LinearLayout(this@showDisplay).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(6), dp(6), dp(6), dp(6))
-                background = GradientDrawable().apply { setColor(Color.parseColor(if (light) "#D9D9DC" else "#2B2B2E")); cornerRadius = dp(12).toFloat() }
+                background = GradientDrawable().apply { setColor(Color.parseColor(if (light) "#D9D9DC" else if (blue) "#0D1424" else "#2B2B2E")); cornerRadius = dp(12).toFloat() }
                 listOf(12, 26, 40, 26).forEach { h ->
                     addView(View(this@showDisplay).apply {
-                        background = GradientDrawable().apply { setColor(Color.parseColor(if (light) "#BDBDC2" else "#3E3E42")); cornerRadius = dp(6).toFloat() }
+                        background = GradientDrawable().apply { setColor(Color.parseColor(if (light) "#BDBDC2" else if (blue) "#22304D" else "#3E3E42")); cornerRadius = dp(6).toFloat() }
                     }, LinearLayout.LayoutParams(-1, dp(h)).apply { bottomMargin = dp(5) })
                 }
             }
             addView(box, LinearLayout.LayoutParams(dp(76), dp(150)))
             addLabelRadio(this, label, sel)
-            setOnClickListener { setTheme(d, value) { rebuild() } }
+            setOnClickListener { setTheme(d, value, if (light) null else blue) { rebuild() } }
         }
         val sys = mode == 2
         val byTime = mode == 3
-        pick.addView(preview(false, "חשוך", mode == 0, 0), LinearLayout.LayoutParams(0, -2, 1f))
+        val nb = Prefs.nightBlue(this)
+        pick.addView(preview(false, "חשוך", mode == 0 && !nb, 0), LinearLayout.LayoutParams(0, -2, 1f))
+        pick.addView(preview(false, "כחול לילה", mode == 0 && nb, 0, blue = true), LinearLayout.LayoutParams(0, -2, 1f))
         pick.addView(preview(true, "בהיר", mode == 1, 1), LinearLayout.LayoutParams(0, -2, 1f))
         theme.addView(pick)
         divider(theme)
@@ -117,7 +120,7 @@ internal fun MainActivity.showDisplay() {
         row(theme, "לפי זמן", themeTimeLabel(), on = byTime, sep = false,
             open = { chooseThemeTime { applyThemeNow(d) { rebuild() } } }) { setTheme(d, if (byTime) 0 else 3) { rebuild() } }
         addCard(theme)
-        note("לפי המערכת – בהיר או חשוך לפי הגדרת הטלפון\nלפי זמן – חשוך בלילה ובהיר ביום")
+        note("לפי המערכת – בהיר או חשוך לפי הגדרת הטלפון\nלפי זמן – חשוך בלילה ובהיר ביום\nבחשוך – שחור או כחול לילה, לפי הבחירה למעלה")
         // סידור המסך הראשי: איזה כרטיס למעלה (תצוגה מקדימה, כמו ערכת הצבעים)
         val lay = card()
         val pickL = LinearLayout(this).apply { gravity = Gravity.CENTER; setPadding(dp(10), dp(20), dp(10), dp(16)) }
@@ -201,9 +204,10 @@ internal fun MainActivity.showDisplay() {
     }
     themeAtOpen = Prefs.themeMode(this)
     val darkAtOpen = Prefs.darkTheme(this)
+    val blueAtOpen = Prefs.nightBlue(this)
     rebuild()
     // יציאה מהעמוד: אם ערכת הצבעים השתנתה - טוענים מחדש וחוזרים להגדרות
-    track(d) { if (Prefs.themeMode(this) != themeAtOpen || Prefs.darkTheme(this) != darkAtOpen) { MainActivity.reopenDisplay = true; recreate() } }
+    track(d) { if (Prefs.themeMode(this) != themeAtOpen || Prefs.darkTheme(this) != darkAtOpen || Prefs.nightBlue(this) != blueAtOpen) { MainActivity.reopenDisplay = true; recreate() } }
     body.setPadding(0, 0, 0, dp(30))
     d.setContentView(page)
     d.window?.setLayout(-1, -1)

@@ -31,10 +31,12 @@ class MainActivity : Activity() {
         var INK = 0; var INK_SOFT = 0
         var LIGHT = false
 
-        fun apply(dark: Boolean) {
+        fun apply(dark: Boolean, blue: Boolean = false) {
             fun c(d: String, l: String) = Color.parseColor(if (dark) d else l)
-            BG = c("#000000", "#F2F2F7")
-            CHIP = c("#2C2C2E", "#E5E5EA")
+            // כחול לילה: הערכה הכהה בגוון כחול עמוק (רקע, כרטיסים, קווים, פס החיוויים)
+            fun b(black: String, night: String) = if (blue) night else black
+            BG = c(b("#000000", "#0D1424"), "#F2F2F7")
+            CHIP = c(b("#2C2C2E", "#22304D"), "#E5E5EA")
             TEXT = c("#FFFFFF", "#1C1C1E")   // בחשוך לבן מלא בכל האפליקציה (מעריכת צופר)
             MUTED = c("#AAAAAA", "#6E6E73")   // כהה: AAAAAA (קודם 8E8E93)
             GREEN = c("#30D158", "#248A3D")
@@ -42,13 +44,13 @@ class MainActivity : Activity() {
             BLUE = c("#0A84FF", "#007AFF")
             RED = c("#FF3B30", "#E0352B")
             ORANGE = c("#FF9F0A", "#E08600")
-            CARD2 = c("#1B1B1D", "#FFFFFF")      // כרטיסים (One UI)
-            DIV = c("#2A2A2C", "#E0E0E5")        // קו בין שורות
-            SEPV = c("#5C5C5E", "#C7C7CC")       // קו לפני מתג (לפי צילום סמסונג)
+            CARD2 = c(b("#1B1B1D", "#18223A"), "#FFFFFF")      // כרטיסים (One UI)
+            DIV = c(b("#2A2A2C", "#26324D"), "#E0E0E5")        // קו בין שורות
+            SEPV = c(b("#5C5C5E", "#3A4866"), "#C7C7CC")       // קו לפני מתג (לפי צילום סמסונג)
             SOFT = c("#E6FFFFFF", "#CC1C1C1E")   // טקסט משני רך
             MUTED2 = c("#AAAAAA", "#6E6E73")     // טקסט אפור
             LINE2 = c("#22FFFFFF", "#22000000")
-            BAR = c("#121214", "#FFFFFF")   // פס החיוויים בתחתית
+            BAR = c(b("#121214", "#111A2E"), "#FFFFFF")   // פס החיוויים בתחתית
             INK = c("#FFFFFF", "#1C1C1E")
             INK_SOFT = c("#FFFFFF", "#CC1C1C1E")
             LIGHT = !dark
@@ -201,7 +203,7 @@ class MainActivity : Activity() {
         val dark = Prefs.darkTheme(this)
         setTheme(if (dark) android.R.style.Theme_DeviceDefault_NoActionBar
                  else android.R.style.Theme_DeviceDefault_Light_NoActionBar)
-        C.apply(dark)
+        C.apply(dark, Prefs.nightBlue(this))
         super.onCreate(savedInstanceState)
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_RTL
         window.decorView.setBackgroundColor(C.BG)

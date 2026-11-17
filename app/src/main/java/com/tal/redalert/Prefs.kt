@@ -356,6 +356,9 @@ object Prefs {
     /** ערכת צבעים: 0 כהה, 1 בהירה, 2 לפי המערכת */
     fun themeMode(c: Context) = sp(c).getInt("themeMode", if (sp(c).getBoolean("dark", true)) 0 else 1)
     fun setThemeMode(c: Context, v: Int) = sp(c).edit().putInt("themeMode", v).commit()
+    /** הערכה הכהה: שחור (ברירת מחדל) או כחול לילה */
+    fun nightBlue(c: Context) = sp(c).getBoolean("nightBlue", false)
+    fun setNightBlue(c: Context, v: Boolean) = sp(c).edit().putBoolean("nightBlue", v).commit()
 
     /** סוג תצוגת התרעה: 0 מסך מלא · 2 כרטיס מעל השעון. פופ-אפ (1) וממוזער (3) ירדו - בחירה ישנה עוברת לקרוב אליה */
     private fun twoStyles(v: Int) = when (v) { 1 -> 0; 3 -> 2; else -> v }
