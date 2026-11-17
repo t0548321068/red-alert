@@ -306,7 +306,9 @@ class MainActivity : Activity() {
                     android.widget.Toast.LENGTH_LONG).show()
         }
         updateVerInd()
-        listOf(protInd, sndInd, netInd, locInd, srvInd, verInd).forEach { v ->
+        listOf(protInd, sndInd, netInd, locInd, srvInd, verInd).forEachIndexed { i, v ->
+            if (i > 0) status.addView(View(this).apply { setBackgroundColor(C.LINE2) },
+                LinearLayout.LayoutParams(dp(1), dp(26)))   // קו אנכי בין החיוויים
             status.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
         }
         // קו דק מעל הפס, שמפריד אותו מהכרטיסים
