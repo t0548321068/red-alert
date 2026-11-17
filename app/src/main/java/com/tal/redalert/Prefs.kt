@@ -358,7 +358,11 @@ object Prefs {
     fun setThemeMode(c: Context, v: Int) = sp(c).edit().putInt("themeMode", v).commit()
     /** הערכה הכהה: שחור (ברירת מחדל) או כחול לילה */
     fun nightBlue(c: Context) = sp(c).getBoolean("nightBlue", false)
-    fun setNightBlue(c: Context, v: Boolean) = sp(c).edit().putBoolean("nightBlue", v).commit()
+    /** פלטת הצבעים בחשוך / בבהיר (Palettes). מי שבחר קודם "כחול לילה" - ממשיך איתו */
+    fun darkPalette(c: Context) = sp(c).getString("darkPalette", null) ?: if (nightBlue(c)) "night" else "black"
+    fun setDarkPalette(c: Context, v: String) = sp(c).edit().putString("darkPalette", v).commit()
+    fun lightPalette(c: Context) = sp(c).getString("lightPalette", null) ?: "regular"
+    fun setLightPalette(c: Context, v: String) = sp(c).edit().putString("lightPalette", v).commit()
 
     /** סוג תצוגת התרעה: 0 מסך מלא · 2 כרטיס מעל השעון. פופ-אפ (1) וממוזער (3) ירדו - בחירה ישנה עוברת לקרוב אליה */
     private fun twoStyles(v: Int) = when (v) { 1 -> 0; 3 -> 2; else -> v }

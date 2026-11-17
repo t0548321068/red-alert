@@ -26,7 +26,7 @@ internal fun MainActivity.setTheme(d: android.app.Dialog, mode: Int, blue: Boole
 /** עמוד התצוגה מתחלף מיד לצבעים לפי ההגדרה הנוכחית */
 internal fun MainActivity.applyThemeNow(d: android.app.Dialog, rebuild: () -> Unit) {
     // עמוד התצוגה מתחלף מיד לצבעים החדשים; שאר האפליקציה - ביציאה מהעמוד
-    C.apply(Prefs.darkTheme(this), Prefs.nightBlue(this))
+    C.apply(Prefs.darkTheme(this), Palettes.current(this, Prefs.darkTheme(this)))
     (d.window?.decorView?.findViewWithTag<View>("displayPage"))?.setBackgroundColor(C.BG)
     @Suppress("DEPRECATION")
     d.window?.statusBarColor = C.BG
@@ -91,16 +91,17 @@ internal fun MainActivity.showDisplay() {
         val mode = Prefs.themeMode(this)
         val theme = card()
         val pick = LinearLayout(this).apply { gravity = Gravity.CENTER; setPadding(dp(10), dp(20), dp(10), dp(16)) }
-        fun preview(light: Boolean, label: String, sel: Boolean, value: Int, blue: Boolean = false) = LinearLayout(this).apply {
+        fun preview(light: Boolean, label: String, sel: Boolean, value: Int) = LinearLayout(this).apply {
+            val p = if (light) Palettes.light(this@showDisplay) else Palettes.dark(this@showDisplay)   // התצוגה המקדימה בפלטה שנבחרה
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             val box = LinearLayout(this@showDisplay).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(6), dp(6), dp(6), dp(6))
-                background = GradientDrawable().apply { setColor(Color.parseColor(if (light) "#D9D9DC" else if (blue) "#0D1424" else "#2B2B2E")); cornerRadius = dp(12).toFloat() }
+                background = GradientDrawable().apply { setColor(p.c(if (light) p.chip else p.bg).let { if (!light && p.id == "black") Color.parseColor("#2B2B2E") else it }); cornerRadius = dp(12).toFloat() }
                 listOf(12, 26, 40, 26).forEach { h ->
                     addView(View(this@showDisplay).apply {
-                        background = GradientDrawable().apply { setColor(Color.parseColor(if (light) "#BDBDC2" else if (blue) "#22304D" else "#3E3E42")); cornerRadius = dp(6).toFloat() }
+                        background = GradientDrawable().apply { setColor(p.c(if (light) p.sepv else p.chip)); cornerRadius = dp(6).toFloat() }
                     }, LinearLayout.LayoutParams(-1, dp(h)).apply { bottomMargin = dp(5) })
                 }
             }
@@ -111,8 +112,7 @@ internal fun MainActivity.showDisplay() {
         val sys = mode == 2
         val byTime = mode == 3
         // חשוך / בהיר. הגוון של כל אחד - ב"פלטת צבעים" (מתחת)
-        val nb = Prefs.nightBlue(this)
-        pick.addView(preview(false, "חשוך", mode == 0, 0, blue = nb), LinearLayout.LayoutParams(0, -2, 1f))
+        pick.addView(preview(false, "חשוך", mode == 0, 0), LinearLayout.LayoutParams(0, -2, 1f))
         pick.addView(preview(true, "בהיר", mode == 1, 1), LinearLayout.LayoutParams(0, -2, 1f))
         theme.addView(pick)
         divider(theme)
@@ -123,7 +123,7 @@ internal fun MainActivity.showDisplay() {
         note("לפי המערכת – בהיר או חשוך לפי הגדרת הטלפון\nלפי זמן – חשוך בלילה ובהיר ביום")
         // פלטת צבעים: גוון לחשוך וגוון לבהיר (מעריכת צופר)
         val pal = card()
-        row(pal, "פלטת צבעים", "חשוך: ${if (nb) "כחול לילה" else "שחור"} · בהיר: רגיל", sep = false) {
+        row(pal, "פלטת צבעים", "חשוך: ${Palettes.dark(this).name} · בהיר: ${Palettes.light(this).name}", sep = false) {
             choosePalette { applyThemeNow(d) { rebuild() } } }
         addCard(pal)
         // סידור המסך הראשי: איזה כרטיס למעלה (תצוגה מקדימה, כמו ערכת הצבעים)
@@ -209,10 +209,10 @@ internal fun MainActivity.showDisplay() {
     }
     themeAtOpen = Prefs.themeMode(this)
     val darkAtOpen = Prefs.darkTheme(this)
-    val blueAtOpen = Prefs.nightBlue(this)
+    val palAtOpen = Prefs.darkPalette(this) + "|" + Prefs.lightPalette(this)
     rebuild()
     // יציאה מהעמוד: אם ערכת הצבעים השתנתה - טוענים מחדש וחוזרים להגדרות
-    track(d) { if (Prefs.themeMode(this) != themeAtOpen || Prefs.darkTheme(this) != darkAtOpen || Prefs.nightBlue(this) != blueAtOpen) { MainActivity.reopenDisplay = true; recreate() } }
+    track(d) { if (Prefs.themeMode(this) != themeAtOpen || Prefs.darkTheme(this) != darkAtOpen || Prefs.darkPalette(this) + "|" + Prefs.lightPalette(this) != palAtOpen) { MainActivity.reopenDisplay = true; recreate() } }
     body.setPadding(0, 0, 0, dp(30))
     d.setContentView(page)
     d.window?.setLayout(-1, -1)
@@ -372,17 +372,24 @@ internal fun MainActivity.chooseThemeTime(done: () -> Unit) = ouiPage("לפי ז
     ouiNote(body, if (tm == 0) "חשוך מהשקיעה ועד הזריחה, לפי המיקום שלך" else "חשוך משעת ההתחלה ועד שעת הסיום")
 }
 
-/** פלטת צבעים: הגוון של הערכה החשוכה ושל הבהירה */
+/** פלטת צבעים: הגוון של הערכה החשוכה ושל הבהירה - כמה צבעים לכל אחת, עם עיגול צבע ליד כל שם */
 internal fun MainActivity.choosePalette(done: () -> Unit) = ouiPage("פלטת צבעים", onClose = done) { body, rebuild ->
-    body.addView(text("בחשוך", 15f, C.MUTED).apply { setPadding(dp(30), dp(6), dp(30), dp(6)) })
-    val dk = ouiCard()
-    ouiRow(dk, "שחור", radio = !Prefs.nightBlue(this)) { Prefs.setNightBlue(this, false); rebuild() }
-    ouiDivider(dk)
-    ouiRow(dk, "כחול לילה", radio = Prefs.nightBlue(this)) { Prefs.setNightBlue(this, true); rebuild() }
-    ouiAdd(body, dk)
-    body.addView(text("בבהיר", 15f, C.MUTED).apply { setPadding(dp(30), dp(14), dp(30), dp(6)) })
-    val lt = ouiCard()
-    ouiRow(lt, "רגיל", radio = true) { }
-    ouiAdd(body, lt)
+    // עיגול: הרקע של הפלטה מבחוץ והכרטיס בפנים
+    fun swatch(p: Palette) = android.widget.FrameLayout(this).apply {
+        background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(p.c(p.bg)); setStroke(dp(1), p.c(p.sepv)) }
+        addView(View(this@choosePalette).apply { background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(p.c(p.chip)) } },
+            android.widget.FrameLayout.LayoutParams(dp(14), dp(14), Gravity.CENTER))
+    }
+    fun section(title: String, list: List<Palette>, sel: String, top: Int, set: (String) -> Unit) {
+        body.addView(text(title, 15f, C.MUTED).apply { setPadding(dp(30), dp(top), dp(30), dp(6)) })
+        val c = ouiCard()
+        list.forEachIndexed { i, p ->
+            if (i > 0) ouiDivider(c)
+            ouiRow(c, p.name, radio = p.id == sel, lead = swatch(p)) { set(p.id); rebuild() }
+        }
+        ouiAdd(body, c)
+    }
+    section("בחשוך", Palettes.DARK, Prefs.darkPalette(this), 6) { Prefs.setDarkPalette(this, it) }
+    section("בבהיר", Palettes.LIGHT, Prefs.lightPalette(this), 14) { Prefs.setLightPalette(this, it) }
     ouiNote(body, "הצבעים מתחלפים כשיוצאים מעמוד התצוגה")
 }
