@@ -158,8 +158,9 @@ internal fun MainActivity.showDisplay() {
             addLabelRadio(this, label, Prefs.mainLayout(this@showDisplay) == v)
             setOnClickListener { Prefs.setMainLayout(this@showDisplay, v); applyMainLayout(); rebuild() }
         }
-        pickL.addView(layoutPreview(false, "הגנה למעלה"), LinearLayout.LayoutParams(0, -2, 1f))
+        // מעריכת צופר: "שעון למעלה" מימין, "הגנה למעלה" משמאל
         pickL.addView(layoutPreview(true, "שעון למעלה"), LinearLayout.LayoutParams(0, -2, 1f))
+        pickL.addView(layoutPreview(false, "הגנה למעלה"), LinearLayout.LayoutParams(0, -2, 1f))
         lay.addView(pickL)
         addCard(lay)
         note("סידור המסך הראשי – איזה כרטיס למעלה. הברכה מוצגת בראש הכרטיס העליון")
@@ -171,7 +172,7 @@ internal fun MainActivity.showDisplay() {
             Prefs.setStatusMode(this, if (sm == Prefs.STATUS_HIDDEN) Prefs.STATUS_ALWAYS else Prefs.STATUS_HIDDEN)
             applyStatusRow(); rebuild() }
         addCard(ind)
-        note("מוגן · צלילים · רשת · מיקום · חיבור · גרסה – מעל השעון במסך הראשי")
+        note("מוגן · צלילים · רשת · מיקום · חיבור · גרסה – בתחתית המסך הראשי, או למעלה")
         // שעון ותאריך, מזג אוויר וברכה - בכרטיס אחד
         val more = card()
         row(more, "שעון", listOf(if (Prefs.showSeconds(this)) "שניות" else "", if (Prefs.blinkColon(this)) "נקודתיים מהבהבות" else "")

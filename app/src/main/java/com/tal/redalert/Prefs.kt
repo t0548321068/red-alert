@@ -72,6 +72,9 @@ object Prefs {
     /** שורת החיוויים במסך הראשי: 0 = מוצגת קבוע, 1 = לא מוצגת, 2 = כמה שניות אחרי פתיחה / נגיעה */
     const val STATUS_ALWAYS = 0; const val STATUS_HIDDEN = 1; const val STATUS_TIMED = 2
     fun statusMode(c: Context) = sp(c).getInt("statusMode", STATUS_ALWAYS)
+    /** שורת החיוויים למעלה (מתחת לכותרת) במקום למטה */
+    fun statusTop(c: Context) = sp(c).getBoolean("statusTop", false)
+    fun setStatusTop(c: Context, v: Boolean) = sp(c).edit().putBoolean("statusTop", v).apply()
     fun setStatusMode(c: Context, v: Int) = sp(c).edit().putInt("statusMode", v).apply()
     fun statusSeconds(c: Context) = sp(c).getInt("statusSec", 10)
     fun setStatusSeconds(c: Context, v: Int) = sp(c).edit().putInt("statusSec", v).apply()

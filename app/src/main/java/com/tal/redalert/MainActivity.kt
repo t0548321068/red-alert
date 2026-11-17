@@ -208,7 +208,7 @@ class MainActivity : Activity() {
         @Suppress("DEPRECATION")
         window.statusBarColor = C.BG
         @Suppress("DEPRECATION")
-        window.navigationBarColor = C.BAR   // כמו פס החיוויים - נראים כפס אחד בתחתית
+        window.navigationBarColor = if (Prefs.statusTop(this)) C.BG else C.BAR   // כמו פס החיוויים (כשהוא למטה) - נראים כפס אחד
         // אייקונים כהים בשורת המצב כשהרקע בהיר
         if (Build.VERSION.SDK_INT >= 30) {
             val light = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
@@ -506,11 +506,13 @@ class MainActivity : Activity() {
             addView(testFab, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM or Gravity.LEFT).apply {
                 setMargins(dp(16), 0, dp(16), 0) })   // מיושר לקצה הכרטיסים (הפס צמוד לתחתית)
             applyTestFab()
-            // הכפתור הצף יושב מעל שורת החיוויים (כשהיא מוצגת)
+            // הכפתור הצף יושב מעל שורת החיוויים (כשהיא מוצגת למטה)
             statusRow.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
                 // רווח בין הכפתור לשורת החיוויים = הרווח בין הכרטיסים
-                testFab.translationY = if (v.visibility == View.VISIBLE) -(v.height + dp(GAP)).toFloat() else 0f
+                testFab.translationY = if (v.visibility == View.VISIBLE && !Prefs.statusTop(this@MainActivity)) -(v.height + dp(GAP)).toFloat()
+                    else -dp(GAP).toFloat()   // השורה למעלה / מוסתרת - הכפתור ברווח הרגיל מהתחתית
             }
+            if (Prefs.statusTop(this@MainActivity)) placeStatusRow()
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")
                 v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
