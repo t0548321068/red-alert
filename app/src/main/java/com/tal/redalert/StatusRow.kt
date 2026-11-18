@@ -5,6 +5,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.provider.Settings
 import android.text.TextUtils
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
@@ -16,7 +17,7 @@ import com.tal.redalert.MainActivity.SameHeight
 // (חלק מהמסך הראשי - MainActivity; המצב עצמו נשמר שם)
 
 /** חיווי: אייקון למעלה, טקסט מתחת */
-internal fun MainActivity.indicator(icon: Int, onClick: (() -> Unit)?) = text("", 12f, C.INK).apply {
+internal fun MainActivity.indicator(icon: Int, onClick: (() -> Unit)?) = text("", 12f, C.MUTED).apply {   // כיתוב אפור (כמו תפריט ניווט)
     setIndIcon(this, icon)
     maxLines = 1; ellipsize = TextUtils.TruncateAt.END   // 6 חיוויים בשורה - שורה אחת
     // האייקון גדל ב-15%, והרווח שמתחת לו קטן באותה מידה - גובה השורה לא משתנה
@@ -29,12 +30,23 @@ internal fun MainActivity.indicator(icon: Int, onClick: (() -> Unit)?) = text(""
  * אייקון החיווי - מעט גדול מהגודל המקורי. אייקון שצויר גדול יותר (24dp) נשאר באותו גודל,
  * אבל תופס את אותו גובה כמו השאר - כדי שהטקסט מתחת לכל החיוויים יהיה באותו קו
  */
-internal fun MainActivity.setIndIcon(v: TextView, icon: Int) {
+internal fun MainActivity.setIndIcon(v: TextView, icon: Int, tint: Int? = null, pill: Int = 0) {
     val d = getDrawable(icon)?.mutate() ?: return
+    if (tint != null) d.setTint(tint)
     val dw = (d.intrinsicWidth * 1.45f).toInt(); val dh = (d.intrinsicHeight * 1.45f).toInt()
     val h = (dp(18) * 1.45f).toInt()
     val box = if (dh <= h) d.apply { setBounds(0, 0, dw, dh) } else SameHeight(d, dw, dh, h).apply { setBounds(0, 0, dw, h) }
-    v.setCompoundDrawablesRelative(null, box, null, null)
+    if (pill == 0) { v.setCompoundDrawablesRelative(null, box, null, null); return }
+    // גלולה מאחורי האייקון (כמו הלשונית הנבחרת בתפריט ניווט) - באותו גובה כמו שאר האייקונים, כדי שהכיתובים יישארו בקו
+    val bw = box.bounds.width(); val bh = box.bounds.height()
+    val pw = dp(52); val ph = h
+    val bg = GradientDrawable().apply { setColor(pill); cornerRadius = ph / 2f }
+    val ld = android.graphics.drawable.LayerDrawable(arrayOf(bg, box)).apply {
+        setLayerSize(0, pw, ph); setLayerSize(1, bw, bh)
+        setLayerGravity(0, Gravity.CENTER); setLayerGravity(1, Gravity.CENTER)
+        setBounds(0, 0, pw, ph)
+    }
+    v.setCompoundDrawablesRelative(null, ld, null, null)
 }
 
 /** חיווי צלילים: רמקול, ומסביבו קווי רטט כשהרטט פועל */
@@ -47,6 +59,7 @@ internal fun MainActivity.setInd(v: TextView, icon: Int, label: String, color: I
     val k = "$icon|$label|$color"
     if (v.tag == k) return
     v.tag = k
+    // כל החיוויים באותו סגנון - אייקון בצבע המצב וכיתוב אפור (הגלולה מאחורי "מוגן" ירדה)
     setIndIcon(v, icon)
     v.compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color)
     v.text = label
@@ -423,11 +436,37 @@ internal fun MainActivity.secLabel(sec: Int) = when {
 
 internal fun MainActivity.chooseStatusMode(done: () -> Unit) = chooseShowMode("שורת חיוויים", { Prefs.statusMode(this) },
     { Prefs.setStatusMode(this, it) }, { Prefs.statusSeconds(this) }, { Prefs.setStatusSeconds(this, it) }, ::applyStatusRow,
-    "\"לפי זמן\" – השורה מוצגת כשפותחים את האפליקציה או נוגעים במסך, ונעלמת אחרי הזמן שבוחרים", female = true, done = done)
+    "\"לפי זמן\" – השורה מוצגת כשפותחים את האפליקציה או נוגעים במסך, ונעלמת אחרי הזמן שבוחרים", female = true, done = done,
+    extra = { body, rebuild ->
+        // מיקום השורה: למטה (כמו תפריט ניווט) או למעלה (מתחת לכותרת)
+        val p = ouiCard()
+        // מעריכת צופר: "למעלה" בשורה העליונה, "למטה" בתחתונה
+        ouiRow(p, "למעלה", radio = Prefs.statusTop(this)) { Prefs.setStatusTop(this, true); placeStatusRow(); rebuild() }
+        ouiDivider(p)
+        ouiRow(p, "למטה", radio = !Prefs.statusTop(this)) { Prefs.setStatusTop(this, false); placeStatusRow(); rebuild() }
+        ouiAdd(body, p)
+        ouiNote(body, "מיקום השורה במסך הראשי")
+    })
+
+/** שורת החיוויים: למטה (צמודה לתחתית, קו מעליה) או למעלה (מתחת לכותרת, קו מתחתיה) */
+internal fun MainActivity.placeStatusRow() {
+    val bar = statusRow as? LinearLayout ?: return
+    val root = bar.parent as? LinearLayout ?: return
+    val top = Prefs.statusTop(this)
+    val line = (0 until bar.childCount).map { bar.getChildAt(it) }.firstOrNull { it !is LinearLayout }
+    if (line != null) { bar.removeView(line); bar.addView(line, if (top) bar.childCount else 0) }
+    root.removeView(bar)
+    if (top) root.addView(bar, 1, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+    else root.addView(bar, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+    window.navigationBarColor = if (top) C.BG else C.BAR
+    applyTestFab()
+    bar.requestLayout()
+}
 
 /** בחירה משותפת (שורת חיוויים, כפתור צף): מוצג קבוע / לא מוצג / לפי זמן - ובלפי זמן כמה שניות, כולל מותאם */
 internal fun MainActivity.chooseShowMode(title: String, mode: () -> Int, setMode: (Int) -> Unit, sec: () -> Int, setSec: (Int) -> Unit,
-                           apply: () -> Unit, note: String, female: Boolean = false, done: () -> Unit) =
+                           apply: () -> Unit, note: String, female: Boolean = false,
+                           extra: ((LinearLayout, () -> Unit) -> Unit)? = null, done: () -> Unit) =
     ouiPage(title, onClose = done) { body, rebuild ->
         val c = ouiCard()
         listOf(Prefs.STATUS_ALWAYS to (if (female) "מוצגת קבוע" else "מוצג קבוע"),
@@ -439,6 +478,7 @@ internal fun MainActivity.chooseShowMode(title: String, mode: () -> Int, setMode
             }
         ouiAdd(body, c)
         ouiNote(body, note)
+        extra?.invoke(body, rebuild)
         if (mode() == Prefs.STATUS_TIMED) {
             val t = ouiCard()
             t.addView(text("כמה זמן להציג", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
@@ -467,5 +507,5 @@ internal fun MainActivity.applyTestFab() {
     // המקום בתחתית נשמר גם כשהכפתור נעלם לפי זמן - שהמסך לא יזוז
     mainCol.setPadding(mainCol.paddingLeft, mainCol.paddingTop, mainCol.paddingRight,
         // מקום לכפתור (56) עם רווח זהה לרווח בין הכרטיסים מעליו ומתחתיו (8 - הרווח שמעל שורת החיוויים)
-        if (mode != Prefs.STATUS_HIDDEN) dp(56 + GAP * 2 - 8) else dp(GAP))
+        if (mode != Prefs.STATUS_HIDDEN) dp(56 + GAP * 2 - if (Prefs.statusTop(this)) 0 else 8) else dp(GAP))
 }
