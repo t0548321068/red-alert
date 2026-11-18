@@ -36,25 +36,27 @@ class Edit(val screen: String, val path: String, val cls: String, var label: Str
     var strokeW: Float? = null
     /** גודל המסגרת באחוזים (100 = רגיל) */
     var scale: Float? = null
+    /** הוחלף במקום עם רכיב אחר (המזהה שלו) */
+    var swap: String? = null
     var note = ""
     var shot: String? = null
     var theme = ""
 
     fun changed() = color != null || size != null || bold != null || align != null || valign != null || radius != null || text != null || alpha != null || hidden != null ||
-        letter != null || line != null || pad != null || bg != null || stroke != null || strokeW != null || scale != null || dx != 0f || dy != 0f || note.isNotBlank()
+        letter != null || line != null || pad != null || bg != null || stroke != null || strokeW != null || scale != null || swap != null || dx != 0f || dy != 0f || note.isNotBlank()
     fun copy() = fromJson(toJson())
     /** מעתיק את כל הערכים ששונו מ-o (לביטול) */
     fun assign(o: Edit) {
         color = o.color; size = o.size; radius = o.radius; text = o.text; bold = o.bold; align = o.align; valign = o.valign
         dx = o.dx; dy = o.dy; note = o.note; alpha = o.alpha; hidden = o.hidden; letter = o.letter; line = o.line
-        pad = o.pad; bg = o.bg; stroke = o.stroke; strokeW = o.strokeW; scale = o.scale
+        pad = o.pad; bg = o.bg; stroke = o.stroke; strokeW = o.strokeW; scale = o.scale; swap = o.swap
     }
 
     fun toJson(): JSONObject = JSONObject().put("screen", screen).put("path", path).put("cls", cls).put("label", label)
         .put("kind", kind).put("base", base).put("color", color).put("size", size?.toDouble()).put("radius", radius?.toDouble())
         .put("text", text).put("bold", bold).put("align", align).put("valign", valign).put("dx", dx.toDouble()).put("dy", dy.toDouble()).put("note", note).put("shot", shot).put("theme", theme)
         .put("alpha", alpha?.toDouble()).put("hidden", hidden).put("letter", letter?.toDouble()).put("line", line?.toDouble())
-        .put("pad", pad?.toDouble()).put("bg", bg).put("stroke", stroke).put("strokeW", strokeW?.toDouble()).put("scale", scale?.toDouble())
+        .put("pad", pad?.toDouble()).put("bg", bg).put("stroke", stroke).put("strokeW", strokeW?.toDouble()).put("scale", scale?.toDouble()).put("swap", swap)
 
     /** מה שנשלח לשרת */
     fun toSend(): JSONObject {
@@ -77,6 +79,7 @@ class Edit(val screen: String, val path: String, val cls: String, var label: Str
         pad?.let { ch("pad", ft(base.optDouble("pad", 0.0).toFloat()), ft(it)) }
         bg?.let { ch("bg", base.optString("bg", "שקוף"), it) }
         if (stroke != null || strokeW != null) ch("stroke", "ללא", (stroke ?: "#8E8E93") + " · " + ft(strokeW ?: 1f))
+        swap?.let { k -> c.put("swap", JSONObject().put("with", Store.edits[k]?.let { it.label + " (" + it.path + " · " + it.cls + ")" } ?: k)) }
         scale?.let { ch("scale", "100%", ft(it) + "%") }
         if (dx != 0f || dy != 0f) c.put("move", JSONObject().put("dx", dx.toDouble()).put("dy", dy.toDouble()))
         if (note.isNotBlank()) c.put("note", note.trim())
@@ -101,7 +104,7 @@ class Edit(val screen: String, val path: String, val cls: String, var label: Str
             fun t(k: String) = o.optString(k).takeIf { o.has(k) && !o.isNull(k) && it.isNotEmpty() && it != "null" }
             alpha = f("alpha"); letter = f("letter"); line = f("line"); pad = f("pad"); strokeW = f("strokeW"); scale = f("scale")
             hidden = if (!o.has("hidden") || o.isNull("hidden")) null else o.optBoolean("hidden")
-            bg = t("bg"); stroke = t("stroke")
+            bg = t("bg"); stroke = t("stroke"); swap = t("swap")
         }
     }
 }
