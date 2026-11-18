@@ -122,7 +122,7 @@ internal fun MainActivity.showDisplay() {
         note("לפי המערכת – בהיר או חשוך לפי הגדרת הטלפון\nלפי זמן – חשוך בלילה ובהיר ביום")
         // פלטת צבעים: גוון לחשוך וגוון לבהיר (מעריכת צופר)
         val pal = card()
-        row(pal, "פלטת צבעים", "חשוך: ${Palettes.dark(this).name} · בהיר: ${Palettes.light(this).name}", sep = false) {
+        row(pal, "ערכות נושא", "חשוך: ${Palettes.dark(this).name} · בהיר: ${Palettes.light(this).name}", sep = false) {
             choosePalette { applyThemeNow(d) { rebuild() } } }
         addCard(pal)
         // סידור המסך הראשי: איזה כרטיס למעלה (תצוגה מקדימה, כמו ערכת הצבעים)
@@ -372,7 +372,7 @@ internal fun MainActivity.chooseThemeTime(done: () -> Unit) = ouiPage("לפי ז
 }
 
 /** פלטת צבעים: הגוון של הערכה החשוכה ושל הבהירה - כמה צבעים לכל אחת, עם עיגול צבע ליד כל שם */
-internal fun MainActivity.choosePalette(done: () -> Unit) = ouiPage("פלטת צבעים", onClose = done) { body, rebuild ->
+internal fun MainActivity.choosePalette(done: () -> Unit) = ouiPage("ערכות נושא", onClose = done) { body, rebuild ->
     // עיגול: הרקע של הפלטה מבחוץ והכרטיס בפנים
     fun swatch(p: Palette) = android.widget.FrameLayout(this).apply {
         background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(p.c(p.bg)); setStroke(dp(1), p.c(p.sepv)) }
