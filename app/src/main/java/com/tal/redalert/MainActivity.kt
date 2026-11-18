@@ -26,15 +26,16 @@ class MainActivity : Activity() {
         var BG = 0; var CHIP = 0; var TEXT = 0; var MUTED = 0
         var GREEN = 0; var OFF = 0
         var BLUE = 0; var RED = 0; var ORANGE = 0
-        var CARD2 = 0; var DIV = 0; var SEPV = 0; var SOFT = 0; var MUTED2 = 0; var LINE2 = 0
+        var CARD2 = 0; var DIV = 0; var SEPV = 0; var SOFT = 0; var MUTED2 = 0; var LINE2 = 0; var BAR = 0
         /** המסך הראשי (מעריכת צופר): בחשוך - לבן מלא, גם לטקסט המשני. בבהיר - כמו TEXT / SOFT */
         var INK = 0; var INK_SOFT = 0
         var LIGHT = false
 
-        fun apply(dark: Boolean) {
+        fun apply(dark: Boolean, pal: Palette = if (dark) Palettes.DARK[0] else Palettes.LIGHT[0]) {
             fun c(d: String, l: String) = Color.parseColor(if (dark) d else l)
-            BG = c("#000000", "#F2F2F7")
-            CHIP = c("#2C2C2E", "#E5E5EA")
+            // המשטחים (רקע, כרטיסים, קווים, פס החיוויים) - מפלטת הצבעים שנבחרה (Palettes)
+            BG = pal.c(pal.bg)
+            CHIP = pal.c(pal.chip)
             TEXT = c("#FFFFFF", "#1C1C1E")   // בחשוך לבן מלא בכל האפליקציה (מעריכת צופר)
             MUTED = c("#AAAAAA", "#6E6E73")   // כהה: AAAAAA (קודם 8E8E93)
             GREEN = c("#30D158", "#248A3D")
@@ -42,12 +43,13 @@ class MainActivity : Activity() {
             BLUE = c("#0A84FF", "#007AFF")
             RED = c("#FF3B30", "#E0352B")
             ORANGE = c("#FF9F0A", "#E08600")
-            CARD2 = c("#1B1B1D", "#FFFFFF")      // כרטיסים (One UI)
-            DIV = c("#2A2A2C", "#E0E0E5")        // קו בין שורות
-            SEPV = c("#5C5C5E", "#C7C7CC")       // קו לפני מתג (לפי צילום סמסונג)
+            CARD2 = pal.c(pal.card)      // כרטיסים (One UI)
+            DIV = pal.c(pal.div)         // קו בין שורות
+            SEPV = pal.c(pal.sepv)       // קו לפני מתג (לפי צילום סמסונג)
             SOFT = c("#E6FFFFFF", "#CC1C1C1E")   // טקסט משני רך
             MUTED2 = c("#AAAAAA", "#6E6E73")     // טקסט אפור
             LINE2 = c("#22FFFFFF", "#22000000")
+            BAR = pal.c(pal.bar)   // פס החיוויים
             INK = c("#FFFFFF", "#1C1C1E")
             INK_SOFT = c("#FFFFFF", "#CC1C1C1E")
             LIGHT = !dark
@@ -200,14 +202,14 @@ class MainActivity : Activity() {
         val dark = Prefs.darkTheme(this)
         setTheme(if (dark) android.R.style.Theme_DeviceDefault_NoActionBar
                  else android.R.style.Theme_DeviceDefault_Light_NoActionBar)
-        C.apply(dark)
+        C.apply(dark, Palettes.current(this, dark))
         super.onCreate(savedInstanceState)
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_RTL
         window.decorView.setBackgroundColor(C.BG)
         @Suppress("DEPRECATION")
         window.statusBarColor = C.BG
         @Suppress("DEPRECATION")
-        window.navigationBarColor = C.BG
+        window.navigationBarColor = if (Prefs.statusTop(this)) C.BG else C.BAR   // כמו פס החיוויים (כשהוא למטה) - נראים כפס אחד
         // אייקונים כהים בשורת המצב כשהרקע בהיר
         if (Build.VERSION.SDK_INT >= 30) {
             val light = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
@@ -274,8 +276,8 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
             // האייקונים הוגדלו - הריפוד קטן באותה מידה, כדי שגובה השורה יישאר כמו קודם
             val padV = ((7f - 22f * (1.3f - 1.15f) / 2f) * resources.displayMetrics.density).toInt()
-            setPadding(dp(6), padV, dp(6), padV)
-            background = graphite(28)
+            setPadding(dp(6), padV + dp(2), dp(6), padV + dp(2))
+            setBackgroundColor(C.BAR)   // פס ברוחב המסך (כמו תפריט ניווט תחתון) - בלי כרטיס
         }
         netInd = indicator(R.drawable.ic_globe) { showNetworkInfo() }   // לחיצה: עמוד הרשת (חיבור, שרת, שרשרת הגיבוי)
         protInd = indicator(R.drawable.ic_shield_ind) { toggle() }   // לחיצה: הפעלה / כיבוי (נראה כמו שאר החיוויים)
@@ -307,10 +309,16 @@ class MainActivity : Activity() {
         updateVerInd()
         listOf(protInd, sndInd, netInd, locInd, srvInd, verInd).forEachIndexed { i, v ->
             if (i > 0) status.addView(View(this).apply { setBackgroundColor(C.LINE2) },
-                LinearLayout.LayoutParams(dp(1), dp(26)))
+                LinearLayout.LayoutParams(dp(1), dp(26)))   // קו אנכי בין החיוויים
             status.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
         }
-        statusRow = status   // נכנסת למסך למטה - אחרי הפיד
+        // קו דק מעל הפס, שמפריד אותו מהכרטיסים
+        val statusBar = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(View(this@MainActivity).apply { setBackgroundColor(C.LINE2) }, LinearLayout.LayoutParams(-1, dp(1)))
+            addView(status, LinearLayout.LayoutParams(-1, -2))
+        }
+        statusRow = statusBar   // נכנסת למסך למטה - קבועה בתחתית
         // החלון הממוזער מוצג מתחת לכותרת (שורת החיוויים עברה למטה) - שומרים איפה הכותרת נגמרת על המסך
         header.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
             if (v.isShown) { val xy = IntArray(2); v.getLocationOnScreen(xy); Prefs.setMiniY(this, xy[1] + v.height); Prefs.setMiniBox(this, xy[0], v.width) }
@@ -483,8 +491,7 @@ class MainActivity : Activity() {
                 orientation = LinearLayout.VERTICAL
                 addView(header, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(16), dp(10), dp(16), 0) })
                 addView(mainScroll, LinearLayout.LayoutParams(-1, 0, 1f))
-                addView(status, LinearLayout.LayoutParams(-1, -2).apply {
-                    setMargins(dp(16), dp(8), dp(16), dp(10)) })
+                addView(statusRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
             }, FrameLayout.LayoutParams(-1, -1))
             // כפתור צף: התראות בדיקה לכל סוגי ההתרעה
             testFab = FrameLayout(this@MainActivity).apply {
@@ -498,13 +505,15 @@ class MainActivity : Activity() {
                 setOnClickListener { chooseTest() }
             }
             addView(testFab, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM or Gravity.LEFT).apply {
-                setMargins(dp(16), 0, dp(16), dp(10)) })   // מיושר לקצה הכרטיסים
+                setMargins(dp(16), 0, dp(16), 0) })   // מיושר לקצה הכרטיסים (הפס צמוד לתחתית)
             applyTestFab()
-            // הכפתור הצף יושב מעל שורת החיוויים (כשהיא מוצגת)
-            status.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+            // הכפתור הצף יושב מעל שורת החיוויים (כשהיא מוצגת למטה)
+            statusRow.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
                 // רווח בין הכפתור לשורת החיוויים = הרווח בין הכרטיסים
-                testFab.translationY = if (v.visibility == View.VISIBLE) -(v.height + dp(GAP)).toFloat() else 0f
+                testFab.translationY = if (v.visibility == View.VISIBLE && !Prefs.statusTop(this@MainActivity)) -(v.height + dp(GAP)).toFloat()
+                    else -dp(GAP).toFloat()   // השורה למעלה / מוסתרת - הכפתור ברווח הרגיל מהתחתית
             }
+            if (Prefs.statusTop(this@MainActivity)) placeStatusRow()
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")
                 v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)

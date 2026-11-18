@@ -72,6 +72,9 @@ object Prefs {
     /** שורת החיוויים במסך הראשי: 0 = מוצגת קבוע, 1 = לא מוצגת, 2 = כמה שניות אחרי פתיחה / נגיעה */
     const val STATUS_ALWAYS = 0; const val STATUS_HIDDEN = 1; const val STATUS_TIMED = 2
     fun statusMode(c: Context) = sp(c).getInt("statusMode", STATUS_ALWAYS)
+    /** שורת החיוויים למעלה (מתחת לכותרת) במקום למטה */
+    fun statusTop(c: Context) = sp(c).getBoolean("statusTop", false)
+    fun setStatusTop(c: Context, v: Boolean) = sp(c).edit().putBoolean("statusTop", v).apply()
     fun setStatusMode(c: Context, v: Int) = sp(c).edit().putInt("statusMode", v).apply()
     fun statusSeconds(c: Context) = sp(c).getInt("statusSec", 10)
     fun setStatusSeconds(c: Context, v: Int) = sp(c).edit().putInt("statusSec", v).apply()
@@ -353,6 +356,13 @@ object Prefs {
     /** ערכת צבעים: 0 כהה, 1 בהירה, 2 לפי המערכת */
     fun themeMode(c: Context) = sp(c).getInt("themeMode", if (sp(c).getBoolean("dark", true)) 0 else 1)
     fun setThemeMode(c: Context, v: Int) = sp(c).edit().putInt("themeMode", v).commit()
+    /** הערכה הכהה: שחור (ברירת מחדל) או כחול לילה */
+    fun nightBlue(c: Context) = sp(c).getBoolean("nightBlue", false)
+    /** פלטת הצבעים בחשוך / בבהיר (Palettes). מי שבחר קודם "כחול לילה" - ממשיך איתו */
+    fun darkPalette(c: Context) = sp(c).getString("darkPalette", null) ?: if (nightBlue(c)) "night" else "black"
+    fun setDarkPalette(c: Context, v: String) = sp(c).edit().putString("darkPalette", v).commit()
+    fun lightPalette(c: Context) = sp(c).getString("lightPalette", null) ?: "regular"
+    fun setLightPalette(c: Context, v: String) = sp(c).edit().putString("lightPalette", v).commit()
 
     /** סוג תצוגת התרעה: 0 מסך מלא · 2 כרטיס מעל השעון. פופ-אפ (1) וממוזער (3) ירדו - בחירה ישנה עוברת לקרוב אליה */
     private fun twoStyles(v: Int) = when (v) { 1 -> 0; 3 -> 2; else -> v }

@@ -53,8 +53,8 @@ object Updater {
 
     /** הגרסה הכי מתאימה להתקנה: יציבה חדשה, או (אם ביקשו) בטא חדשה */
     private fun best(c: Context): Update? {
-        // צופר חירום 2 (עריכת צופר, חבילה אחרת) מתעדכנת לבד מהגרסה שלה - לא מתקינים עליה את צופר חירום
-        if (c.packageName != "com.tal.redalert") return null
+        // צופר חירום 2 (חבילה אחרת) - אפליקציה בפני עצמה: הגרסאות שלה (2.0.x), לא של צופר חירום
+        if (c.packageName != "com.tal.redalert") return bestV2(c)
         val cur = currentVersion(c)
         // בדיקה שנכשלה (רשת / הגבלת GitHub) - זורקים, ולא מציגים "מעודכן"; הבטא נבדקת גם אם הרגילה נכשלה
         var failed: Exception? = null
@@ -109,7 +109,9 @@ object Updater {
         // "מה חדש" של גרסה שעוד לא הותקנה - מקובץ השינויים ב-GitHub (בענף של הגרסה: רגילה / בטא)
         val notes = try {
             val branch = if (u.key.startsWith("beta")) "beta" else "main"
-            val conn = URL("https://raw.githubusercontent.com/t0548321068/red-alert/$branch/app/src/main/assets/changelog.json")
+            // צופר חירום 2: קובץ השינויים שלה (בענף editor)
+            val file = if (u.key.startsWith("v2-")) "editor/editor/src/main/assets/editor_changelog.json" else "$branch/app/src/main/assets/changelog.json"
+            val conn = URL("https://raw.githubusercontent.com/t0548321068/red-alert/$file")
                 .openConnection() as HttpURLConnection
             conn.connectTimeout = 6000; conn.readTimeout = 6000
             val log = try { JSONObject(conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }) } finally { conn.disconnect() }
@@ -117,9 +119,11 @@ object Updater {
         } catch (_: Exception) { emptyList() }
         return Details(size, date, notes)
     }
+    /** קובץ "מה חדש": של צופר חירום, או של צופר חירום 2 (חבילה אחרת, גרסאות 2.0.x) */
+    fun changelogAsset(c: Context) = if (c.packageName == "com.tal.redalert") "changelog.json" else "editor_changelog.json"
     /** מה חדש בגרסה המותקנת (מתוך האפליקציה) */
     fun currentNotes(c: Context): List<String> = try {
-        notes(JSONObject(c.assets.open("changelog.json").bufferedReader(Charsets.UTF_8).use { it.readText() }), currentVersion(c))
+        notes(JSONObject(c.assets.open(changelogAsset(c)).bufferedReader(Charsets.UTF_8).use { it.readText() }), currentVersion(c))
     } catch (_: Exception) { emptyList() }
     private fun notes(log: JSONObject, ver: String): List<String> =
         log.optJSONArray(ver)?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList()
@@ -163,6 +167,23 @@ object Updater {
     } catch (_: Exception) { null }
 
     /** (גרסה, קישור ל-APK, מספר בנייה) */
+    /** צופר חירום 2: הגרסה שפורסמה אחרונה (כותרת "… · 2.0.38") והקובץ שלה */
+    private const val V2_API = "https://api.github.com/repos/t0548321068/red-alert/releases/tags/editor"
+    private fun bestV2(c: Context): Update? {
+        val conn = URL(V2_API).openConnection() as HttpURLConnection
+        conn.connectTimeout = 8000; conn.readTimeout = 8000
+        conn.setRequestProperty("Accept", "application/vnd.github+json")
+        val json = try {
+            if (conn.responseCode != 200) throw java.io.IOException("HTTP ${conn.responseCode}")
+            JSONObject(conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) })
+        } finally { conn.disconnect() }
+        val ver = Regex("(\\d+(?:\\.\\d+)+)\\s*$").find(json.optString("name"))?.groupValues?.get(1) ?: return null
+        val assets = json.optJSONArray("assets") ?: return null
+        val url = (0 until assets.length()).map { assets.getJSONObject(it).optString("browser_download_url") }
+            .firstOrNull { it.endsWith(".apk") } ?: return null
+        return if (isNewer(ver, currentVersion(c))) Update(ver, "v2-$ver", url, ver, 0) else null
+    }
+
     private fun fetch(api: String): Triple<String, String, Int>? {
         val conn = URL(api).openConnection() as HttpURLConnection
         conn.connectTimeout = 8000

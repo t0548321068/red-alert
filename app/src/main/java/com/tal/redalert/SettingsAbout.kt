@@ -129,7 +129,8 @@ internal fun MainActivity.showWhatsNewIfUpdated() {
     val seen = Prefs.seenVersion(this)
     Prefs.setSeenVersion(this, cur)
     when {
-        seen.isNotEmpty() && seen != cur -> showWhatsNew(sinceVersion = seen)
+        // גרסה שמורה ממשפחה אחרת (צופר חירום 2: 4.34b לפני המעבר ל-2.0.x) - לא ניתן להשוות; מציגים את הגרסה הנוכחית
+        seen.isNotEmpty() && seen != cur -> showWhatsNew(sinceVersion = if (Updater.isNewer(cur, seen)) seen else null)
         // גרסאות ישנות לא שמרו את הערך - אם זו לא התקנה חדשה, מציגים את הגרסה הנוכחית
         seen.isEmpty() && (Prefs.enabled(this) || Prefs.history(this).isNotEmpty()) ->
             showWhatsNew(sinceVersion = null)
@@ -139,18 +140,24 @@ internal fun MainActivity.showWhatsNewIfUpdated() {
 /** הטקסט של "מה חדש". sinceVersion = null: רק הגרסה הנוכחית */
 internal fun MainActivity.whatsNewText(sinceVersion: String?): String? {
     val log = try {
-        org.json.JSONObject(assets.open("changelog.json").bufferedReader(Charsets.UTF_8).use { it.readText() })
+        org.json.JSONObject(assets.open(Updater.changelogAsset(this)).bufferedReader(Charsets.UTF_8).use { it.readText() })
     } catch (_: Exception) { return null }
     val cur = Updater.currentVersion(this)
     val versions = log.keys().asSequence()
-        .filter { v -> if (sinceVersion == null) v == cur else Updater.isNewer(v, sinceVersion) && !Updater.isNewer(v, cur) }
+        .filter { v -> if (sinceVersion == null) !Updater.isNewer(v, cur) else Updater.isNewer(v, sinceVersion) && !Updater.isNewer(v, cur) }
         .sortedWith { a, b -> if (Updater.isNewer(a, b)) -1 else if (a == b) 0 else 1 }
         .toList()
-    if (versions.isEmpty()) return null
-    return versions.joinToString("\n\n") { v ->
+        // בלי sinceVersion: רק הגרסה הנוכחית - ואם אין לה רשומה (צופר חירום 2 נבנית לבד בכל שינוי), הרשומה האחרונה שלפניה
+        .let { if (sinceVersion == null) it.take(1) else it }
+    // כל שורה פעם אחת - בגרסה החדשה ביותר שבה היא מופיעה (4.35 ו-4.35b זהות, ו-4.36b חוזרת עליהן).
+    // גרסה שכל השורות שלה כבר הופיעו - לא מוצגת
+    val shown = HashSet<String>()
+    val blocks = versions.mapNotNull { v ->
         val items = log.getJSONArray(v)
-        "גרסה $v\n" + (0 until items.length()).joinToString("\n") { "• " + items.getString(it) }
+        val lines = (0 until items.length()).map { items.getString(it) }.filter { shown.add(it) }
+        if (lines.isEmpty()) null else "גרסה $v\n" + lines.joinToString("\n") { "• $it" }
     }
+    return if (blocks.isEmpty()) null else blocks.joinToString("\n\n")
 }
 
 internal fun MainActivity.showWhatsNew(sinceVersion: String?) {
