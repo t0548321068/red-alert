@@ -127,6 +127,7 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
         "space" -> e.letter != null || e.line != null || e.pad != null
         "show" -> e.alpha != null || e.hidden != null
         "note" -> e.note.isNotBlank()
+        "move" -> isSet("move") || e.swap != null
         else -> isSet(k)
     }
     private fun drawTabs() {
@@ -292,6 +293,15 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
                     addView(arrow("→", 1f, 0f), LayoutParams(Ui.dp(56), -2))
                 })
                 col.addView(desc)
+                // החלפה: הרכיב הזה עובר למקום של רכיב אחר, והאחר - לכאן
+                val other = e.swap?.let { Store.edits[it] }
+                col.addView(Ui.btn(context, if (layer.swapPick != null) "לחץ על הרכיב שאיתו להחליף…" else if (other != null) "⇄ הוחלף עם: ${other.label.take(24)}" else "⇄ החלפה עם רכיב אחר",
+                    if (layer.swapPick != null) Ui.BLUE else Ui.CARD) {
+                    if (layer.swapPick != null) { layer.swapPick = null; drawPane(); return@btn }
+                    layer.swapPick = { w -> layer.swapPick = null; swapWith(w); drawPane() }
+                    drawPane()
+                }, LayoutParams(-1, -2).apply { topMargin = Ui.dp(12) })
+                if (other != null) col.addView(Ui.btn(context, "ביטול ההחלפה", Color.TRANSPARENT, Ui.RED) { unswap(); drawPane() }, LayoutParams(-1, -2))
             }
             else -> {
                 val t = edit(e.note, true).apply { hint = "מה לשנות ברכיב הזה" }
@@ -299,6 +309,29 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
                 col.addView(t)
             }
         }
+    }
+
+    /** החלפת מקום עם רכיב אחר: כל אחד זז למקום של השני (מיושר לפינה הימנית-עליונה) */
+    private fun swapWith(w: View) {
+        var p: Any? = w.parent; while (p is View) { if (p === v) return; p = p.parent }   // רכיב שבתוך הרכיב - לא
+        p = v.parent; while (p is View) { if (p === w) return; p = p.parent }
+        if (w === v) return
+        unswap()
+        val o = layer.editOf(w)
+        val a = IntArray(2).also { v.getLocationOnScreen(it) }; val b = IntArray(2).also { w.getLocationOnScreen(it) }
+        val ax = a[0] - v.translationX + v.width; val ay = a[1] - v.translationY
+        val bx = b[0] - w.translationX + w.width; val by = b[1] - w.translationY
+        fun r(f: Float) = Math.round(f / d * 10) / 10f
+        e.dx = r(bx - ax); e.dy = r(by - ay); o.dx = r(ax - bx); o.dy = r(ay - by)
+        e.swap = o.key; o.swap = e.key
+        touched += "move"
+        live(); Editor.applyTo(w, o); Store.save(context)
+    }
+    private fun unswap() {
+        val k = e.swap ?: return
+        Store.edits[k]?.let { o -> if (o.swap == e.key) { o.swap = null; o.dx = 0f; o.dy = 0f; if (!o.changed()) Store.edits.remove(k) } }
+        e.swap = null; e.dx = 0f; e.dy = 0f
+        live(); Store.save(context)
     }
 
     /** בחירת צבע: עיגולים מהירים + קוד צבע */
@@ -386,6 +419,7 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
     }
 
     private fun reset() {
+        unswap()
         e.assign(Edit(e.screen, e.path, e.cls, e.label, e.kind, e.base))
         live(); drawPane()
     }
@@ -400,6 +434,7 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
     fun finish(save: Boolean) {
         v.overlay.remove(sel)
         if (!save) {
+            if (e.swap != before.swap) unswap()
             e.assign(before)
             if (touched.isNotEmpty()) Editor.restore(v, e, touched)
             Editor.applyTo(v, e)

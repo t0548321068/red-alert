@@ -184,7 +184,9 @@ class Layer(val root: FrameLayout) : FrameLayout(root.context) {
                     val c = MotionEvent.obtain(ev); c.action = MotionEvent.ACTION_CANCEL
                     Editor.forward(root, this, c, target); c.recycle()
                     val loc = IntArray(2); getLocationOnScreen(loc)
-                    Editor.hit(root, (loc[0] + ev.x).toInt(), (loc[1] + ev.y).toInt())?.let { select(it) }
+                    Editor.hit(root, (loc[0] + ev.x).toInt(), (loc[1] + ev.y).toInt())?.let { h ->
+                        val pick = swapPick
+                        if (pick != null) pick(h) else select(h) }
                 }
                 target = null
             }
@@ -197,14 +199,22 @@ class Layer(val root: FrameLayout) : FrameLayout(root.context) {
     @Suppress("UNUSED_PARAMETER") private fun testTap(ev: MotionEvent) { }
 
     /** בחירת רכיב: יוצרים את השינוי שלו (עם הערכים המקוריים) ופותחים את חלון העריכה */
-    fun select(v: View) {
-        closePanel(save = true)
+    /** בחירת הרכיב השני להחלפה: הלחיצה הבאה על רכיב הולכת לכאן במקום לפתוח אותו */
+    var swapPick: ((View) -> Unit)? = null
+
+    /** השינוי של רכיב (נוצר עם הערכים המקוריים אם אין עדיין) */
+    fun editOf(v: View): Edit {
         val path = Editor.pathOf(root, v)
         val sk = Editor.screenOf(root)
         val key = "$sk/$path"
-        val e = Store.edits[key]?.takeIf { it.cls == v.javaClass.simpleName }
+        return Store.edits[key]?.takeIf { it.cls == v.javaClass.simpleName }
             ?: Edit(sk, path, v.javaClass.simpleName, Editor.labelOf(v), Editor.kindOf(v), Editor.baseOf(v))
                 .also { it.shot = Editor.shot(v); Store.edits[key] = it }   // תמונה של הרכיב כמו שהוא - לזיהוי בשליחה
+    }
+
+    fun select(v: View) {
+        closePanel(save = true)
+        val e = editOf(v)
         selected = WeakReference(v)
         Editor.unmark(v)
         panel = Panel(this, v, e).also { addView(it) }
@@ -215,6 +225,7 @@ class Layer(val root: FrameLayout) : FrameLayout(root.context) {
     fun closePanel(save: Boolean) {
         val p = panel ?: return
         panel = null
+        swapPick = null
         p.finish(save)
         removeView(p)
         selected = null
