@@ -20,16 +20,41 @@ class Edit(val screen: String, val path: String, val cls: String, var label: Str
     var valign: String? = null
     var dx = 0f
     var dy = 0f
+    /** שקיפות באחוזים (100 = רגיל) */
+    var alpha: Float? = null
+    /** מוסתר */
+    var hidden: Boolean? = null
+    /** ריווח אותיות (×100) / ריווח שורות (%) - טקסט */
+    var letter: Float? = null
+    var line: Float? = null
+    /** ריווח פנימי (dp) - מסגרת */
+    var pad: Float? = null
+    /** רקע מאחורי טקסט / אייקון */
+    var bg: String? = null
+    /** קו מסגרת: צבע ועובי (dp) */
+    var stroke: String? = null
+    var strokeW: Float? = null
+    /** גודל המסגרת באחוזים (100 = רגיל) */
+    var scale: Float? = null
     var note = ""
     var shot: String? = null
     var theme = ""
 
-    fun changed() = color != null || size != null || bold != null || align != null || valign != null || radius != null || text != null || dx != 0f || dy != 0f || note.isNotBlank()
+    fun changed() = color != null || size != null || bold != null || align != null || valign != null || radius != null || text != null || alpha != null || hidden != null ||
+        letter != null || line != null || pad != null || bg != null || stroke != null || strokeW != null || scale != null || dx != 0f || dy != 0f || note.isNotBlank()
     fun copy() = fromJson(toJson())
+    /** מעתיק את כל הערכים ששונו מ-o (לביטול) */
+    fun assign(o: Edit) {
+        color = o.color; size = o.size; radius = o.radius; text = o.text; bold = o.bold; align = o.align; valign = o.valign
+        dx = o.dx; dy = o.dy; note = o.note; alpha = o.alpha; hidden = o.hidden; letter = o.letter; line = o.line
+        pad = o.pad; bg = o.bg; stroke = o.stroke; strokeW = o.strokeW; scale = o.scale
+    }
 
     fun toJson(): JSONObject = JSONObject().put("screen", screen).put("path", path).put("cls", cls).put("label", label)
         .put("kind", kind).put("base", base).put("color", color).put("size", size?.toDouble()).put("radius", radius?.toDouble())
         .put("text", text).put("bold", bold).put("align", align).put("valign", valign).put("dx", dx.toDouble()).put("dy", dy.toDouble()).put("note", note).put("shot", shot).put("theme", theme)
+        .put("alpha", alpha?.toDouble()).put("hidden", hidden).put("letter", letter?.toDouble()).put("line", line?.toDouble())
+        .put("pad", pad?.toDouble()).put("bg", bg).put("stroke", stroke).put("strokeW", strokeW?.toDouble()).put("scale", scale?.toDouble())
 
     /** מה שנשלח לשרת */
     fun toSend(): JSONObject {
@@ -44,6 +69,15 @@ class Edit(val screen: String, val path: String, val cls: String, var label: Str
         valign?.let { fun n(a: String) = if (a == "top") "למעלה" else if (a == "bottom") "למטה" else "מרכז"
             c.put("valign", JSONObject().put("from", n(base.optString("valign"))).put("to", n(it))) }
         bold?.let { c.put("bold", JSONObject().put("from", if (base.optBoolean("bold")) "מודגש" else "רגיל").put("to", if (it) "מודגש" else "רגיל")) }
+        fun ch(k: String, from: String, to: String) = c.put(k, JSONObject().put("from", from).put("to", to))
+        alpha?.let { ch("alpha", ft(base.optDouble("alpha", 100.0).toFloat()) + "%", ft(it) + "%") }
+        hidden?.let { ch("hidden", "מוצג", if (it) "מוסתר" else "מוצג") }
+        letter?.let { ch("letter", ft(base.optDouble("letter", 0.0).toFloat()), ft(it)) }
+        line?.let { ch("line", ft(base.optDouble("line", 100.0).toFloat()) + "%", ft(it) + "%") }
+        pad?.let { ch("pad", ft(base.optDouble("pad", 0.0).toFloat()), ft(it)) }
+        bg?.let { ch("bg", base.optString("bg", "שקוף"), it) }
+        if (stroke != null || strokeW != null) ch("stroke", "ללא", (stroke ?: "#8E8E93") + " · " + ft(strokeW ?: 1f))
+        scale?.let { ch("scale", "100%", ft(it) + "%") }
         if (dx != 0f || dy != 0f) c.put("move", JSONObject().put("dx", dx.toDouble()).put("dy", dy.toDouble()))
         if (note.isNotBlank()) c.put("note", note.trim())
         return JSONObject().put("screen", screen).put("screenName", screen.substringAfter('|')).put("el", path + " · " + cls)
@@ -63,6 +97,11 @@ class Edit(val screen: String, val path: String, val cls: String, var label: Str
             dx = o.optDouble("dx", 0.0).toFloat(); dy = o.optDouble("dy", 0.0).toFloat()
             note = o.optString("note"); shot = o.optString("shot").takeIf { it.isNotEmpty() && it != "null" }
             theme = o.optString("theme")
+            fun f(k: String) = if (!o.has(k) || o.isNull(k)) null else o.optDouble(k).toFloat()
+            fun t(k: String) = o.optString(k).takeIf { o.has(k) && !o.isNull(k) && it.isNotEmpty() && it != "null" }
+            alpha = f("alpha"); letter = f("letter"); line = f("line"); pad = f("pad"); strokeW = f("strokeW"); scale = f("scale")
+            hidden = if (!o.has("hidden") || o.isNull("hidden")) null else o.optBoolean("hidden")
+            bg = t("bg"); stroke = t("stroke")
         }
     }
 }

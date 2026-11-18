@@ -157,22 +157,43 @@ object Editor {
     /** הערכים המקוריים של רכיב (לפני שינוי) */
     fun baseOf(v: View): JSONObject {
         val o = JSONObject()
+        o.put("alpha", Math.round(v.alpha * 100).toDouble()).put("scale", Math.round(v.scaleX * 100).toDouble())
         when (v) {
             is TextView -> o.put("color", hex(v.currentTextColor)).put("size", r1(v.textSize / sd).toDouble()).put("text", v.text.toString())
                 .put("bold", v.typeface?.isBold == true).put("align", alignOf(v)).put("valign", valignOf(v))
+                .put("letter", r1(v.letterSpacing * 100).toDouble()).put("line", Math.round(v.lineSpacingMultiplier * 100).toDouble())
+                .put("bg", bgName(v.background))
             is ImageView -> o.put("color", v.imageTintList?.defaultColor?.let { hex(it) } ?: "מקורי").put("size", r1(v.width / d).toDouble())
+                .put("bg", bgName(v.background))
             else -> {
                 val bg = v.background
-                o.put("color", when (bg) {
-                    is GradientDrawable -> bg.color?.defaultColor?.let { hex(it) } ?: "שקוף"
-                    is ColorDrawable -> hex(bg.color)
-                    null -> "שקוף"
-                    else -> "אחר"
-                })
+                o.put("color", bgName(bg))
                 o.put("radius", r1(((bg as? GradientDrawable)?.cornerRadius ?: 0f) / d).toDouble())
+                o.put("pad", r1(v.paddingTop / d).toDouble())
+                    .put("pads", "${v.paddingLeft},${v.paddingTop},${v.paddingRight},${v.paddingBottom}")
             }
         }
         return o
+    }
+    private fun bgName(bg: Drawable?) = when (bg) {
+        is GradientDrawable -> bg.color?.defaultColor?.let { hex(it) } ?: "שקוף"
+        is ColorDrawable -> hex(bg.color)
+        null -> "שקוף"
+        else -> "אחר"
+    }
+
+    /** הרקע המקורי של רכיב לפני ששינינו בו רקע / מסגרת - לחזרה */
+    private val origBg = WeakHashMap<View, Drawable?>()
+    private val strokeKey = WeakHashMap<View, String>()
+    private val hiddenByUs = WeakHashMap<View, Boolean>()
+    private fun keepBg(v: View) { if (!origBg.containsKey(v)) origBg[v] = v.background?.constantState?.newDrawable()?.mutate() }
+    /** צבע רקע: ברקע מעוגל - רק הצבע; בלי רקע - רקע חדש עם פינות קלות */
+    private fun setBg(v: View, c: Int) {
+        when (val bg = v.background) {
+            is GradientDrawable -> if (bg.color?.defaultColor != c) { keepBg(v); bg.mutate(); bg.setColor(c) }
+            is ColorDrawable -> if (bg.color != c) { keepBg(v); bg.color = c }
+            else -> { keepBg(v); v.background = GradientDrawable().apply { setColor(c); cornerRadius = 8 * d } }
+        }
     }
 
     /** היישור בפועל של טקסט (ימין / מרכז / שמאל) */
@@ -200,11 +221,15 @@ object Editor {
                 e.valign?.let { val g = when (it) { "top" -> Gravity.TOP; "bottom" -> Gravity.BOTTOM; else -> Gravity.CENTER_VERTICAL }
                     if (valignOf(v) != it) v.gravity = (v.gravity and Gravity.VERTICAL_GRAVITY_MASK.inv()) or g }
                 e.bold?.let { if ((v.typeface?.isBold == true) != it) v.setTypeface(android.graphics.Typeface.create(v.typeface, if (it) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)) }
+                e.letter?.let { if (abs(v.letterSpacing - it / 100f) > 0.001f) v.letterSpacing = it / 100f }
+                e.line?.let { if (abs(v.lineSpacingMultiplier - it / 100f) > 0.001f) v.setLineSpacing(v.lineSpacingExtra, it / 100f) }
+                parse(e.bg)?.let { setBg(v, it) }
             }
             is ImageView -> {
                 if (color != null && v.imageTintList?.defaultColor != color) v.imageTintList = ColorStateList.valueOf(color)
                 e.size?.let { val px = (it * d).toInt(); val lp = v.layoutParams
                     if (lp != null && (lp.width != px || lp.height != px)) { lp.width = px; lp.height = px; v.layoutParams = lp } }
+                parse(e.bg)?.let { setBg(v, it) }
             }
             else -> {
                 if (color != null) when (val bg = v.background) {
@@ -214,8 +239,23 @@ object Editor {
                 }
                 e.radius?.let { val g = v.background as? GradientDrawable
                     if (g != null && abs(g.cornerRadius - it * d) > 0.5f) { g.mutate(); g.cornerRadius = it * d } }
+                e.pad?.let { val p = (it * d).toInt()
+                    if (v.paddingLeft != p || v.paddingTop != p || v.paddingRight != p || v.paddingBottom != p) v.setPadding(p, p, p, p) }
+                if (e.stroke != null || e.strokeW != null) {
+                    val sc = parse(e.stroke) ?: Color.parseColor("#8E8E93"); val sw = ((e.strokeW ?: 1f) * d).toInt().coerceAtLeast(1)
+                    val g = when (val bg = v.background) {
+                        is GradientDrawable -> bg
+                        else -> { keepBg(v); GradientDrawable().apply { setColor((bg as? ColorDrawable)?.color ?: Color.TRANSPARENT)
+                            cornerRadius = (e.radius ?: 0f) * d }.also { v.background = it } }
+                    }
+                    val k = "${System.identityHashCode(g)}/$sw/$sc"
+                    if (strokeKey[v] != k) { keepBg(v); g.mutate(); g.setStroke(sw, sc); strokeKey[v] = k }
+                }
             }
         }
+        e.alpha?.let { if (abs(v.alpha - it / 100f) > 0.005f) v.alpha = it / 100f }
+        e.scale?.let { if (abs(v.scaleX - it / 100f) > 0.005f) { v.scaleX = it / 100f; v.scaleY = it / 100f } }
+        if (e.hidden == true) { if (v.visibility != View.INVISIBLE) v.visibility = View.INVISIBLE; hiddenByUs[v] = true }
         if (v.translationX != e.dx * d) v.translationX = e.dx * d
         if (v.translationY != e.dy * d) v.translationY = e.dy * d
     }
@@ -233,7 +273,15 @@ object Editor {
             if (want("align") && b.has("align")) align = b.optString("align")
             if (want("valign") && b.has("valign")) valign = b.optString("valign")
             if (!want("move")) { dx = e.dx; dy = e.dy }
+            if (want("alpha")) alpha = b.optDouble("alpha", 100.0).toFloat()
+            if (want("scale")) scale = b.optDouble("scale", 100.0).toFloat()
+            if (want("letter") && v is TextView) letter = b.optDouble("letter", 0.0).toFloat()
+            if (want("line") && v is TextView) line = b.optDouble("line", 100.0).toFloat()
         }
+        if ((want("bg") || want("stroke")) && origBg.containsKey(v)) { v.background = origBg.remove(v); strokeKey.remove(v) }
+        if (want("hidden") && hiddenByUs.remove(v) != null) v.visibility = View.VISIBLE
+        if (want("pad")) b.optString("pads").split(',').mapNotNull { it.toIntOrNull() }.takeIf { it.size == 4 }
+            ?.let { v.setPadding(it[0], it[1], it[2], it[3]) }
         applyTo(v, back)
         if (want("color") && v is ImageView && b.optString("color") == "מקורי") v.imageTintList = null
     }
@@ -253,6 +301,10 @@ object Editor {
                 if (e.changed() && layer.selected?.get() !== v) { mark(v, true); seen += v }
             }
         }
+        val hid = HashSet<View>()
+        if (hiddenByUs.isNotEmpty()) for ((root, layer) in layers) if (root.isAttachedToWindow)
+            for (e in Store.edits.values) if (e.hidden == true && e.screen == layer.screen) find(root, e.path)?.let { hid += it }
+        hiddenByUs.keys.toList().forEach { v -> if (v !in hid) { hiddenByUs.remove(v); v.visibility = View.VISIBLE } }
         marks.keys.toList().forEach { v -> if (v !in seen && Layer.anySelected() !== v) mark(v, false) }
     }
 
