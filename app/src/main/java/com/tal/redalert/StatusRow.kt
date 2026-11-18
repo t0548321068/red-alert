@@ -436,11 +436,37 @@ internal fun MainActivity.secLabel(sec: Int) = when {
 
 internal fun MainActivity.chooseStatusMode(done: () -> Unit) = chooseShowMode("שורת חיוויים", { Prefs.statusMode(this) },
     { Prefs.setStatusMode(this, it) }, { Prefs.statusSeconds(this) }, { Prefs.setStatusSeconds(this, it) }, ::applyStatusRow,
-    "\"לפי זמן\" – השורה מוצגת כשפותחים את האפליקציה או נוגעים במסך, ונעלמת אחרי הזמן שבוחרים", female = true, done = done)
+    "\"לפי זמן\" – השורה מוצגת כשפותחים את האפליקציה או נוגעים במסך, ונעלמת אחרי הזמן שבוחרים", female = true, done = done,
+    extra = { body, rebuild ->
+        // מיקום השורה: למטה (כמו תפריט ניווט) או למעלה (מתחת לכותרת)
+        val p = ouiCard()
+        // מעריכת צופר: "למעלה" בשורה העליונה, "למטה" בתחתונה
+        ouiRow(p, "למעלה", radio = Prefs.statusTop(this)) { Prefs.setStatusTop(this, true); placeStatusRow(); rebuild() }
+        ouiDivider(p)
+        ouiRow(p, "למטה", radio = !Prefs.statusTop(this)) { Prefs.setStatusTop(this, false); placeStatusRow(); rebuild() }
+        ouiAdd(body, p)
+        ouiNote(body, "מיקום השורה במסך הראשי")
+    })
+
+/** שורת החיוויים: למטה (צמודה לתחתית, קו מעליה) או למעלה (מתחת לכותרת, קו מתחתיה) */
+internal fun MainActivity.placeStatusRow() {
+    val bar = statusRow as? LinearLayout ?: return
+    val root = bar.parent as? LinearLayout ?: return
+    val top = Prefs.statusTop(this)
+    val line = (0 until bar.childCount).map { bar.getChildAt(it) }.firstOrNull { it !is LinearLayout }
+    if (line != null) { bar.removeView(line); bar.addView(line, if (top) bar.childCount else 0) }
+    root.removeView(bar)
+    if (top) root.addView(bar, 1, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+    else root.addView(bar, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+    window.navigationBarColor = if (top) C.BG else C.BAR
+    applyTestFab()
+    bar.requestLayout()
+}
 
 /** בחירה משותפת (שורת חיוויים, כפתור צף): מוצג קבוע / לא מוצג / לפי זמן - ובלפי זמן כמה שניות, כולל מותאם */
 internal fun MainActivity.chooseShowMode(title: String, mode: () -> Int, setMode: (Int) -> Unit, sec: () -> Int, setSec: (Int) -> Unit,
-                           apply: () -> Unit, note: String, female: Boolean = false, done: () -> Unit) =
+                           apply: () -> Unit, note: String, female: Boolean = false,
+                           extra: ((LinearLayout, () -> Unit) -> Unit)? = null, done: () -> Unit) =
     ouiPage(title, onClose = done) { body, rebuild ->
         val c = ouiCard()
         listOf(Prefs.STATUS_ALWAYS to (if (female) "מוצגת קבוע" else "מוצג קבוע"),
@@ -452,6 +478,7 @@ internal fun MainActivity.chooseShowMode(title: String, mode: () -> Int, setMode
             }
         ouiAdd(body, c)
         ouiNote(body, note)
+        extra?.invoke(body, rebuild)
         if (mode() == Prefs.STATUS_TIMED) {
             val t = ouiCard()
             t.addView(text("כמה זמן להציג", 16f, C.TEXT).apply { setPadding(dp(18), dp(14), dp(18), dp(4)) })
@@ -480,5 +507,5 @@ internal fun MainActivity.applyTestFab() {
     // המקום בתחתית נשמר גם כשהכפתור נעלם לפי זמן - שהמסך לא יזוז
     mainCol.setPadding(mainCol.paddingLeft, mainCol.paddingTop, mainCol.paddingRight,
         // מקום לכפתור (56) עם רווח זהה לרווח בין הכרטיסים מעליו ומתחתיו (8 - הרווח שמעל שורת החיוויים)
-        if (mode != Prefs.STATUS_HIDDEN) dp(56 + GAP * 2 - 8) else dp(GAP))
+        if (mode != Prefs.STATUS_HIDDEN) dp(56 + GAP * 2 - if (Prefs.statusTop(this)) 0 else 8) else dp(GAP))
 }

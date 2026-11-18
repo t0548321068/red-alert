@@ -31,10 +31,11 @@ class MainActivity : Activity() {
         var INK = 0; var INK_SOFT = 0
         var LIGHT = false
 
-        fun apply(dark: Boolean) {
+        fun apply(dark: Boolean, pal: Palette = if (dark) Palettes.DARK[0] else Palettes.LIGHT[0]) {
             fun c(d: String, l: String) = Color.parseColor(if (dark) d else l)
-            BG = c("#000000", "#F2F2F7")
-            CHIP = c("#2C2C2E", "#E5E5EA")
+            // המשטחים (רקע, כרטיסים, קווים, פס החיוויים) - מפלטת הצבעים שנבחרה (Palettes)
+            BG = pal.c(pal.bg)
+            CHIP = pal.c(pal.chip)
             TEXT = c("#FFFFFF", "#1C1C1E")   // בחשוך לבן מלא בכל האפליקציה (מעריכת צופר)
             MUTED = c("#AAAAAA", "#6E6E73")   // כהה: AAAAAA (קודם 8E8E93)
             GREEN = c("#30D158", "#248A3D")
@@ -42,13 +43,13 @@ class MainActivity : Activity() {
             BLUE = c("#0A84FF", "#007AFF")
             RED = c("#FF3B30", "#E0352B")
             ORANGE = c("#FF9F0A", "#E08600")
-            CARD2 = c("#1B1B1D", "#FFFFFF")      // כרטיסים (One UI)
-            DIV = c("#2A2A2C", "#E0E0E5")        // קו בין שורות
-            SEPV = c("#5C5C5E", "#C7C7CC")       // קו לפני מתג (לפי צילום סמסונג)
+            CARD2 = pal.c(pal.card)      // כרטיסים (One UI)
+            DIV = pal.c(pal.div)         // קו בין שורות
+            SEPV = pal.c(pal.sepv)       // קו לפני מתג (לפי צילום סמסונג)
             SOFT = c("#E6FFFFFF", "#CC1C1C1E")   // טקסט משני רך
             MUTED2 = c("#AAAAAA", "#6E6E73")     // טקסט אפור
             LINE2 = c("#22FFFFFF", "#22000000")
-            BAR = c("#121214", "#FFFFFF")   // פס החיוויים בתחתית
+            BAR = pal.c(pal.bar)   // פס החיוויים
             INK = c("#FFFFFF", "#1C1C1E")
             INK_SOFT = c("#FFFFFF", "#CC1C1C1E")
             LIGHT = !dark
@@ -201,14 +202,14 @@ class MainActivity : Activity() {
         val dark = Prefs.darkTheme(this)
         setTheme(if (dark) android.R.style.Theme_DeviceDefault_NoActionBar
                  else android.R.style.Theme_DeviceDefault_Light_NoActionBar)
-        C.apply(dark)
+        C.apply(dark, Palettes.current(this, dark))
         super.onCreate(savedInstanceState)
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_RTL
         window.decorView.setBackgroundColor(C.BG)
         @Suppress("DEPRECATION")
         window.statusBarColor = C.BG
         @Suppress("DEPRECATION")
-        window.navigationBarColor = C.BAR   // כמו פס החיוויים - נראים כפס אחד בתחתית
+        window.navigationBarColor = if (Prefs.statusTop(this)) C.BG else C.BAR   // כמו פס החיוויים (כשהוא למטה) - נראים כפס אחד
         // אייקונים כהים בשורת המצב כשהרקע בהיר
         if (Build.VERSION.SDK_INT >= 30) {
             val light = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
@@ -506,11 +507,13 @@ class MainActivity : Activity() {
             addView(testFab, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.BOTTOM or Gravity.LEFT).apply {
                 setMargins(dp(16), 0, dp(16), 0) })   // מיושר לקצה הכרטיסים (הפס צמוד לתחתית)
             applyTestFab()
-            // הכפתור הצף יושב מעל שורת החיוויים (כשהיא מוצגת)
+            // הכפתור הצף יושב מעל שורת החיוויים (כשהיא מוצגת למטה)
             statusRow.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
                 // רווח בין הכפתור לשורת החיוויים = הרווח בין הכרטיסים
-                testFab.translationY = if (v.visibility == View.VISIBLE) -(v.height + dp(GAP)).toFloat() else 0f
+                testFab.translationY = if (v.visibility == View.VISIBLE && !Prefs.statusTop(this@MainActivity)) -(v.height + dp(GAP)).toFloat()
+                    else -dp(GAP).toFloat()   // השורה למעלה / מוסתרת - הכפתור ברווח הרגיל מהתחתית
             }
+            if (Prefs.statusTop(this@MainActivity)) placeStatusRow()
             setOnApplyWindowInsetsListener { v, insets ->
                 @Suppress("DEPRECATION")
                 v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)

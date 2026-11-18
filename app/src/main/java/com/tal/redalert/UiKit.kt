@@ -186,12 +186,14 @@ internal fun MainActivity.switchZone(row: LinearLayout, on: Boolean, padEnd: Int
 internal fun MainActivity.ouiRow(c: LinearLayout, title: String, sub: String = "", subColor: Int = OUI_BLUE,
                    end: String? = null, endColor: Int = C.TEXT, endBig: Boolean = false,
                    radio: Boolean? = null, on: Boolean? = null, onToggle: (() -> Unit)? = null,
-                   click: (() -> Unit)? = null) {
+                   lead: View? = null, click: (() -> Unit)? = null) {
     val r = LinearLayout(this).apply {
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(18), 0, dp(18), 0)
         if (click != null) setOnClickListener { click() }
     }
+    // lead: משהו לפני הכותרת (למשל עיגול צבע בפלטת צבעים)
+    if (lead != null) r.addView(lead, LinearLayout.LayoutParams(dp(26), dp(26)).apply { marginEnd = dp(14) })
     val t = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
     t.addView(text(title, 16f, C.TEXT).apply { includeFontPadding = false })
     if (sub.isNotEmpty()) t.addView(text(sub, 12f, subColor).apply { includeFontPadding = false; setPadding(0, dp(4), 0, 0) })
