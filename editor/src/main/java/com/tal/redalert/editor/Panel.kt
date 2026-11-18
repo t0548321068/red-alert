@@ -23,9 +23,14 @@ import android.widget.TextView
 class Panel(private val layer: Layer, private val v: View, private val e: Edit) : LinearLayout(layer.context) {
     private val before = e.copy()
     /** שדות ששונו בחלון הזה - רק אותם מחזירים למקור כשמבטלים שינוי */
-    private val touched = HashSet<String>().apply {
-        if (e.color != null) add("color"); if (e.size != null) add("size"); if (e.radius != null) add("radius")
-        if (e.text != null) add("text"); if (e.bold != null) add("bold"); if (e.align != null) add("align"); if (e.valign != null) add("valign"); if (e.dx != 0f || e.dy != 0f) add("move") }
+    private val touched = HashSet<String>().apply { FIELDS.filter { isSet(it) }.forEach { add(it) } }
+    private fun isSet(f: String) = when (f) {
+        "color" -> e.color != null; "size" -> e.size != null; "radius" -> e.radius != null; "text" -> e.text != null
+        "bold" -> e.bold != null; "align" -> e.align != null; "valign" -> e.valign != null; "alpha" -> e.alpha != null
+        "hidden" -> e.hidden != null; "letter" -> e.letter != null; "line" -> e.line != null; "pad" -> e.pad != null
+        "bg" -> e.bg != null; "stroke" -> e.stroke != null || e.strokeW != null; "scale" -> e.scale != null
+        else -> e.dx != 0f || e.dy != 0f
+    }
     private val sel = GradientDrawable().apply {
         setStroke(Ui.dp(2), Ui.BLUE, Ui.dp(5).toFloat(), Ui.dp(3).toFloat()); setColor(Color.TRANSPARENT) }
     private var tab = "color"
@@ -34,9 +39,9 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
     private val d = context.resources.displayMetrics.density
 
     private val tabList = when (e.kind) {
-        "t" -> listOf("color" to "צבע", "size" to "גופן", "text" to "טקסט", "move" to "מיקום", "note" to "הערה")
-        "i" -> listOf("color" to "צבע", "size" to "גודל", "move" to "מיקום", "note" to "הערה")
-        else -> listOf("color" to "רקע", "radius" to "פינות", "move" to "מיקום", "note" to "הערה")
+        "t" -> listOf("color" to "צבע", "size" to "גופן", "text" to "טקסט", "space" to "ריווח", "bg" to "רקע", "show" to "שקיפות", "move" to "מיקום", "note" to "הערה")
+        "i" -> listOf("color" to "צבע", "size" to "גודל", "bg" to "רקע", "show" to "שקיפות", "move" to "מיקום", "note" to "הערה")
+        else -> listOf("color" to "רקע", "radius" to "פינות", "stroke" to "מסגרת", "space" to "ריווח", "scale" to "גודל", "show" to "שקיפות", "move" to "מיקום", "note" to "הערה")
     }
 
     init {
@@ -70,7 +75,8 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
                 addView(Ui.tv(context, "רכיב מעל ›", 13f, Color.parseColor("#5AA9FF")).apply {
                     setPadding(Ui.dp(8), Ui.dp(4), 0, Ui.dp(4)); setOnClickListener { layer.selectParent(v) } })
         })
-        addView(tabs, LayoutParams(-1, -2).apply { topMargin = Ui.dp(10); bottomMargin = Ui.dp(10) })
+        addView(HorizontalScrollView(context).apply { isHorizontalScrollBarEnabled = false; addView(tabs) },
+            LayoutParams(-1, -2).apply { topMargin = Ui.dp(10); bottomMargin = Ui.dp(10) })
         addView(pane, LayoutParams(-1, -2))
         addView(LinearLayout(context).apply {
             addView(Ui.btn(context, "בלי שינוי", Color.TRANSPARENT, Ui.RED) { reset() }, LayoutParams(0, -2, 0.8f))
@@ -117,33 +123,49 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
     }
 
     private fun modified(k: String) = when (k) {
-        "color" -> e.color != null; "size" -> e.size != null || e.bold != null || e.align != null || e.valign != null; "radius" -> e.radius != null; "text" -> e.text != null
-        "move" -> e.dx != 0f || e.dy != 0f; else -> e.note.isNotBlank()
+        "size" -> e.size != null || e.bold != null || e.align != null || e.valign != null
+        "space" -> e.letter != null || e.line != null || e.pad != null
+        "show" -> e.alpha != null || e.hidden != null
+        "note" -> e.note.isNotBlank()
+        else -> isSet(k)
     }
     private fun drawTabs() {
         tabs.removeAllViews()
         tabList.forEachIndexed { i, (k, name) ->
             tabs.addView(Ui.tv(context, name + if (modified(k)) " •" else "", 13f, if (k == tab) Color.WHITE else Ui.TEXT).apply {
-                gravity = Gravity.CENTER; setPadding(0, Ui.dp(7), 0, Ui.dp(7))
+                gravity = Gravity.CENTER; setPadding(Ui.dp(12), Ui.dp(7), Ui.dp(12), Ui.dp(7))
                 background = Ui.round(if (k == tab) Ui.BLUE else Ui.CARD, 10)
                 setOnClickListener { tab = k; drawTabs(); drawPane(); place() }
-            }, LayoutParams(0, -2, 1f).apply { if (i > 0) marginStart = Ui.dp(5) })
+            }, LayoutParams(-2, -2).apply { if (i > 0) marginStart = Ui.dp(5) })
         }
+    }
+
+    /** ערך שחזר למקור = לא שונה */
+    private fun normalize() {
+        val b = e.base
+        fun same(x: Float?, k: String, def: Double) = x != null && kotlin.math.abs(x - b.optDouble(k, def).toFloat()) < 0.05f
+        if (same(e.size, "size", -1.0)) e.size = null
+        if (same(e.radius, "radius", -1.0)) e.radius = null
+        if (e.text != null && e.text == b.optString("text")) e.text = null
+        if (e.bold != null && e.bold == b.optBoolean("bold")) e.bold = null
+        if (e.align != null && e.align == b.optString("align")) e.align = null
+        if (e.valign != null && e.valign == b.optString("valign")) e.valign = null
+        if (e.color != null && e.color.equals(b.optString("color"), true)) e.color = null
+        if (same(e.alpha, "alpha", 100.0)) e.alpha = null
+        if (e.hidden == false) e.hidden = null
+        if (same(e.letter, "letter", 0.0)) e.letter = null
+        if (same(e.line, "line", 100.0)) e.line = null
+        if (same(e.pad, "pad", 0.0)) e.pad = null
+        if (e.bg != null && e.bg.equals(b.optString("bg"), true)) e.bg = null
+        if (e.strokeW != null && e.strokeW!! <= 0f) { e.strokeW = null; e.stroke = null }
+        if (same(e.scale, "scale", 100.0)) e.scale = null
     }
 
     /** שינוי חי: על הרכיב מיד */
     private fun live() {
-        if (e.size != null && e.size == e.base.optDouble("size", -1.0).toFloat()) e.size = null
-        if (e.radius != null && e.radius == e.base.optDouble("radius", -1.0).toFloat()) e.radius = null
-        if (e.text != null && e.text == e.base.optString("text")) e.text = null
-        if (e.bold != null && e.bold == e.base.optBoolean("bold")) e.bold = null
-        if (e.align != null && e.align == e.base.optString("align")) e.align = null
-        if (e.valign != null && e.valign == e.base.optString("valign")) e.valign = null
-        if (e.color != null && e.color.equals(e.base.optString("color"), true)) e.color = null
-        if (e.color != null) touched += "color"; if (e.size != null) touched += "size"; if (e.radius != null) touched += "radius"
-        if (e.text != null) touched += "text"; if (e.bold != null) touched += "bold"; if (e.align != null) touched += "align"; if (e.valign != null) touched += "valign"; if (e.dx != 0f || e.dy != 0f) touched += "move"
-        val back = touched.filter { f -> when (f) { "color" -> e.color == null; "size" -> e.size == null; "radius" -> e.radius == null
-            "text" -> e.text == null; "bold" -> e.bold == null; "align" -> e.align == null; "valign" -> e.valign == null; else -> e.dx == 0f && e.dy == 0f } }.toSet()
+        normalize()
+        FIELDS.filter { isSet(it) }.forEach { touched += it }
+        val back = touched.filter { !isSet(it) }.toSet()
         if (back.isNotEmpty()) Editor.restore(v, e, back)
         Editor.applyTo(v, e)
         sel.setBounds(0, 0, v.width, v.height)
@@ -158,29 +180,22 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
         pane.addView(col, FrameLayout.LayoutParams(-1, -2))
         val b = e.base
         when (tab) {
-            "color" -> {
-                val now = e.color ?: b.optString("color")
-                val row = LinearLayout(context).apply { setPadding(0, Ui.dp(2), 0, Ui.dp(2)) }
-                palette.forEach { c ->
-                    row.addView(View(context).apply {
-                        background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(c))
-                            setStroke(Ui.dp(if (c.equals(now, true)) 3 else 1), if (c.equals(now, true)) Color.WHITE else Color.parseColor("#555555")) }
-                        setOnClickListener { e.color = c; live(); drawPane() }
-                    }, LayoutParams(Ui.dp(32), Ui.dp(32)).apply { marginEnd = Ui.dp(8) })
-                }
-                col.addView(HorizontalScrollView(context).apply { isHorizontalScrollBarEnabled = false; addView(row) })
-                val hex = edit(now, false).apply { inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS; textDirection = View.TEXT_DIRECTION_LTR }
-                col.addView(LinearLayout(context).apply {
-                    gravity = Gravity.CENTER_VERTICAL
-                    addView(hex, LayoutParams(0, -2, 1f))
-                    addView(Ui.btn(context, "החל", Ui.CARD) {
-                        val s = hex.text.toString().trim().let { if (it.startsWith("#")) it else "#$it" }.uppercase()
-                        if (Regex("^#([0-9A-F]{6}|[0-9A-F]{8})$").matches(s)) { e.color = s; live(); drawPane() }
-                        else hex.error = "#RRGGBB"
-                    }, LayoutParams(-2, -2).apply { marginStart = Ui.dp(8) })
-                }, LayoutParams(-1, -2).apply { topMargin = Ui.dp(10) })
-                col.addView(hint("מקורי: " + b.optString("color")))
+            "color" -> colors(col, e.color ?: b.optString("color"), b.optString("color")) { e.color = it }
+            "bg" -> colors(col, e.bg ?: b.optString("bg", "שקוף"), b.optString("bg", "שקוף")) { e.bg = it }
+            "stroke" -> {
+                colors(col, e.stroke ?: "#8E8E93", "ללא") { e.stroke = it; if (e.strokeW == null) e.strokeW = 1f }
+                stepper(col, "עובי הקו", e.strokeW ?: 0f, 0f, 0f, 12f, 0.5f, "") { e.strokeW = it; if (it > 0f && e.stroke == null) e.stroke = "#8E8E93" }
             }
+            "scale" -> stepper(col, "גודל", e.scale ?: b.optDouble("scale", 100.0).toFloat(), b.optDouble("scale", 100.0).toFloat(), 30f, 200f, 5f, "%") { e.scale = it }
+            "show" -> {
+                stepper(col, "שקיפות", e.alpha ?: b.optDouble("alpha", 100.0).toFloat(), b.optDouble("alpha", 100.0).toFloat(), 0f, 100f, 5f, "%") { e.alpha = it }
+                col.addView(choice(listOf(false to "מוצג", true to "מוסתר"), { e.hidden ?: false }) { e.hidden = it }, LayoutParams(-1, -2).apply { topMargin = Ui.dp(12) })
+                col.addView(hint("מוסתר: הרכיב נעלם, המקום שלו נשאר"))
+            }
+            "space" -> if (e.kind == "t") {
+                stepper(col, "ריווח אותיות", e.letter ?: b.optDouble("letter", 0.0).toFloat(), b.optDouble("letter", 0.0).toFloat(), -10f, 50f, 1f, "") { e.letter = it }
+                stepper(col, "ריווח שורות", e.line ?: b.optDouble("line", 100.0).toFloat(), b.optDouble("line", 100.0).toFloat(), 60f, 250f, 5f, "%") { e.line = it }
+            } else stepper(col, "ריווח פנימי", e.pad ?: b.optDouble("pad", 0.0).toFloat(), b.optDouble("pad", 0.0).toFloat(), 0f, 60f, 1f, "") { e.pad = it }
             "size", "radius" -> {
                 val k = tab
                 val base = b.optDouble(k, 0.0).toFloat()
@@ -286,6 +301,71 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
         }
     }
 
+    /** בחירת צבע: עיגולים מהירים + קוד צבע */
+    private fun colors(col: LinearLayout, now: String, orig: String, set: (String) -> Unit) {
+        val row = LinearLayout(context).apply { setPadding(0, Ui.dp(2), 0, Ui.dp(2)) }
+        palette.forEach { c ->
+            row.addView(View(context).apply {
+                background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(Color.parseColor(c))
+                    setStroke(Ui.dp(if (c.equals(now, true)) 3 else 1), if (c.equals(now, true)) Color.WHITE else Color.parseColor("#555555")) }
+                setOnClickListener { set(c); live(); drawPane() }
+            }, LayoutParams(Ui.dp(32), Ui.dp(32)).apply { marginEnd = Ui.dp(8) })
+        }
+        col.addView(HorizontalScrollView(context).apply { isHorizontalScrollBarEnabled = false; addView(row) })
+        val hex = edit(now, false).apply { inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS; textDirection = View.TEXT_DIRECTION_LTR }
+        col.addView(LinearLayout(context).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            addView(hex, LayoutParams(0, -2, 1f))
+            addView(Ui.btn(context, "החל", Ui.CARD) {
+                val s = hex.text.toString().trim().let { if (it.startsWith("#")) it else "#$it" }.uppercase()
+                if (Regex("^#([0-9A-F]{6}|[0-9A-F]{8})$").matches(s)) { set(s); live(); drawPane() }
+                else hex.error = "#RRGGBB"
+            }, LayoutParams(-2, -2).apply { marginStart = Ui.dp(8) })
+        }, LayoutParams(-1, -2).apply { topMargin = Ui.dp(10) })
+        col.addView(hint("מקורי: $orig"))
+    }
+
+    /** מספר: + / − ופס גרירה */
+    private fun stepper(col: LinearLayout, name: String, start: Float, base: Float, min: Float, max: Float, step: Float, unit: String, set: (Float) -> Unit) {
+        var now = start
+        val value = Ui.tv(context, fmt(now) + unit, 18f, bold = true).apply { gravity = Gravity.CENTER }
+        val bar = SeekBar(context).apply { this.max = ((max - min) / step).toInt(); progress = ((now - min) / step).toInt() }
+        fun put(x: Float) {
+            now = (Math.round(x / step) * step).coerceIn(min, max); value.text = fmt(now) + unit; bar.progress = ((now - min) / step).toInt()
+            set(now); live()
+        }
+        if (col.childCount > 0) col.addView(View(context), LayoutParams(-1, Ui.dp(10)))
+        col.addView(LinearLayout(context).apply {
+            gravity = Gravity.CENTER
+            addView(Ui.btn(context, "+", Ui.CARD) { put(now + step) }, LayoutParams(Ui.dp(52), -2))
+            addView(value, LayoutParams(Ui.dp(96), -2))
+            addView(Ui.btn(context, "−", Ui.CARD) { put(now - step) }, LayoutParams(Ui.dp(52), -2))
+        })
+        bar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(s: SeekBar, p: Int, user: Boolean) { if (user) put(min + p * step) }
+            override fun onStartTrackingTouch(s: SeekBar) {}
+            override fun onStopTrackingTouch(s: SeekBar) {}
+        })
+        bar.layoutDirection = View.LAYOUT_DIRECTION_LTR
+        col.addView(bar, LayoutParams(-1, -2).apply { topMargin = Ui.dp(8) })
+        col.addView(hint("$name · מקורי: ${fmt(base)}$unit"))
+    }
+
+    /** בחירה בין כמה אפשרויות (כפתורים) */
+    private fun <T> choice(opts: List<Pair<T, String>>, cur: () -> T, set: (T) -> Unit): LinearLayout = LinearLayout(context).also { row ->
+        fun draw() {
+            row.removeAllViews()
+            opts.forEachIndexed { i, (x, name) ->
+                row.addView(Ui.tv(context, name, 14f, if (cur() == x) Color.WHITE else Ui.TEXT).apply {
+                    gravity = Gravity.CENTER; setPadding(0, Ui.dp(9), 0, Ui.dp(9))
+                    background = Ui.round(if (cur() == x) Ui.BLUE else Ui.CARD, 10)
+                    setOnClickListener { set(x); live(); draw() }
+                }, LayoutParams(0, -2, 1f).apply { if (i > 0) marginStart = Ui.dp(8) })
+            }
+        }
+        draw()
+    }
+
     private fun fmt(f: Float) = if (f == f.toInt().toFloat()) f.toInt().toString() else "%.1f".format(f)
     private fun moveText(): String {
         if (e.dx == 0f && e.dy == 0f) return "במקום המקורי · כל לחיצה = 1"
@@ -306,7 +386,7 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
     }
 
     private fun reset() {
-        e.color = null; e.size = null; e.radius = null; e.text = null; e.bold = null; e.align = null; e.valign = null; e.dx = 0f; e.dy = 0f; e.note = ""
+        e.assign(Edit(e.screen, e.path, e.cls, e.label, e.kind, e.base))
         live(); drawPane()
     }
 
@@ -320,8 +400,7 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
     fun finish(save: Boolean) {
         v.overlay.remove(sel)
         if (!save) {
-            e.color = before.color; e.size = before.size; e.radius = before.radius; e.text = before.text; e.bold = before.bold; e.align = before.align; e.valign = before.valign
-            e.dx = before.dx; e.dy = before.dy; e.note = before.note
+            e.assign(before)
             if (touched.isNotEmpty()) Editor.restore(v, e, touched)
             Editor.applyTo(v, e)
         } else if (e.changed()) e.theme = if (com.tal.redalert.Prefs.darkTheme(context)) "dark" else "light"
@@ -329,6 +408,8 @@ class Panel(private val layer: Layer, private val v: View, private val e: Edit) 
     }
 
     companion object {
+        private val FIELDS = listOf("color", "size", "radius", "text", "bold", "align", "valign", "move",
+            "alpha", "hidden", "letter", "line", "pad", "bg", "stroke", "scale")
         /** המיקום שהחלון נגרר אליו - משותף לכל הרכיבים (-1 = עוד לא נגרר) */
         var posX = 0f; var posY = -1
         /** הצבעים לבחירה מהירה (בקומפניון - כדי שיהיו מוכנים כבר בבניית החלון) */
