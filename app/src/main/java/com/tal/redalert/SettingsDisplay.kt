@@ -379,16 +379,32 @@ internal fun MainActivity.choosePalette(done: () -> Unit) = ouiPage("ערכות 
         addView(View(this@choosePalette).apply { background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(p.c(p.chip)) } },
             android.widget.FrameLayout.LayoutParams(dp(14), dp(14), Gravity.CENTER))
     }
+    // הערכה מתחלפת מיד: הצבעים החדשים + רקע העמוד עצמו (שאר האפליקציה - ביציאה מעמוד התצוגה)
+    fun recolor() {
+        C.apply(Prefs.darkTheme(this), Palettes.current(this, Prefs.darkTheme(this)))
+        var v: View? = body
+        while (v != null) { if (v !== body) v.setBackgroundColor(C.BG); v = v.parent as? View }
+        // שורת המצב והניווט של העמוד הזה (העמוד הפתוח האחרון)
+        pages.lastOrNull()?.window?.let { w ->
+            @Suppress("DEPRECATION")
+            w.statusBarColor = C.BG
+            if (Build.VERSION.SDK_INT >= 30) {
+                val light = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                    android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+                w.insetsController?.setSystemBarsAppearance(if (C.LIGHT) light else 0, light)
+            }
+        }
+    }
     fun section(title: String, list: List<Palette>, sel: String, top: Int, set: (String) -> Unit) {
         body.addView(text(title, 15f, C.MUTED).apply { setPadding(dp(30), dp(top), dp(30), dp(6)) })
         val c = ouiCard()
         list.forEachIndexed { i, p ->
             if (i > 0) ouiDivider(c)
-            ouiRow(c, p.name, radio = p.id == sel, lead = swatch(p)) { set(p.id); rebuild() }
+            ouiRow(c, p.name, radio = p.id == sel, lead = swatch(p)) { set(p.id); recolor(); rebuild() }
         }
         ouiAdd(body, c)
     }
     section("בחשוך", Palettes.DARK, Prefs.darkPalette(this), 6) { Prefs.setDarkPalette(this, it) }
     section("בבהיר", Palettes.LIGHT, Prefs.lightPalette(this), 14) { Prefs.setLightPalette(this, it) }
-    ouiNote(body, "הצבעים מתחלפים כשיוצאים מעמוד התצוגה")
+    ouiNote(body, "הערכה מתחלפת מיד. המסך הראשי מתחלף כשחוזרים אליו")
 }
