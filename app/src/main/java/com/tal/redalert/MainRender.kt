@@ -84,6 +84,17 @@ internal fun MainActivity.refresh() {
     shieldIcon.setImageResource(if (on && !noNet) R.drawable.ic_shield_green else if (noNet) R.drawable.ic_shield_alert
         else if (off) R.drawable.ic_shield_x else R.drawable.ic_shield_outline)
     shieldIcon.imageTintList = null
+    // כרטיס "אתה מוגן" בצבע המצב: רקע כהה בגוון + מסגרת זוהרת (ירוק מוגן · כתום אין רשת · אדום כבוי). לפי תזמון - כרטיס רגיל
+    val tone = if (noNet) "#FF9F0A" else if (on) "#30D158" else if (off) "#FF453A" else null
+    if (tone == null) { card1.background = graphite(26); card1.elevation = 0f }
+    else {
+        val dark = !C.LIGHT
+        val fill = if (noNet) (if (dark) "#2E1F08" else "#FFF1DD") else if (on) (if (dark) "#0F2A18" else "#E6F7EA") else (if (dark) "#2E0F0E" else "#FDE7E6")
+        card1.background = GradientDrawable().apply { cornerRadius = dp(26).toFloat(); setColor(Color.parseColor(fill)); setStroke((1.5f * resources.displayMetrics.density).toInt(), Color.parseColor(tone)) }
+        // זוהר: צל בצבע המצב סביב הכרטיס
+        if (android.os.Build.VERSION.SDK_INT >= 28) { card1.outlineSpotShadowColor = Color.parseColor(tone); card1.outlineAmbientShadowColor = Color.parseColor(tone) }
+        card1.elevation = dp(10).toFloat()
+    }
     // רק המגן: בלי עיגולי ההילה ובלי האנימציה
     haloOuter.background = null
     haloInner.background = null
