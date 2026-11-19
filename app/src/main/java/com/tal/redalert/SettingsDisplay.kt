@@ -127,7 +127,7 @@ internal fun MainActivity.showDisplay() {
         addCard(pal)
         // כרטיס ההגנה: רקע ומסגרת
         val prot = card()
-        row(prot, "כרטיס ההגנה", "רקע: ${PROT_BG[Prefs.protBg(this)]}" + if (Prefs.protBg(this) == 3) "" else " · מסגרת: ${PROT_FRAME[Prefs.protFrame(this)]}", sep = false) {
+        row(prot, "כרטיס ההגנה", "רקע: ${PROT_BG[Prefs.protBg(this)]}" + if (Prefs.protBg(this) in 3..4) "" else " · מסגרת: ${PROT_FRAME[Prefs.protFrame(this)]}", sep = false) {
             chooseProtCard { rebuild() } }
         addCard(prot)
         // סידור המסך הראשי: איזה כרטיס למעלה (תצוגה מקדימה, כמו ערכת הצבעים)
@@ -398,12 +398,13 @@ internal fun MainActivity.choosePalette(done: () -> Unit) = ouiPage("ערכות 
     ouiNote(body, "הצבעים מתחלפים כשיוצאים מעמוד התצוגה")
 }
 
-internal val PROT_BG = listOf("ריק", "ירוק כהה", "מעבר ירוק לשחור", "ירוק כהה + מסגרת", "זוהר מבפנים", "מעבר מלמטה", "ירוק עמוק + זוהר")
+internal val PROT_BG = listOf("ריק", "ירוק כהה", "מעבר ירוק לשחור", "ירוק כהה + מסגרת", "ירוק כהה + מסגרת זוהרת", "זוהר מבפנים", "מעבר מלמטה", "ירוק עמוק + זוהר")
 internal val PROT_FRAME = listOf("ללא מסגרת", "מסגרת דקה", "מסגרת עבה", "זוהר ירוק")
 
 /** כרטיס ההגנה: בוחרים רקע ומסגרת, עם תצוגה מקדימה */
 internal fun MainActivity.chooseProtCard(done: () -> Unit) = ouiPage("כרטיס ההגנה", onClose = done) { body, rebuild ->
     val bgSel = Prefs.protBg(this); val frSel = Prefs.protFrame(this)
+    val framed = bgSel == 3 || bgSel == 4   // רקע שיש בו כבר מסגרת - בלי בחירת מסגרת
     // תצוגה מקדימה גדולה
     val pv = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(16), dp(16), dp(16), dp(16))
@@ -423,11 +424,11 @@ internal fun MainActivity.chooseProtCard(done: () -> Unit) = ouiPage("כרטיס
     ouiAdd(body, cb)
     body.addView(text("מסגרת", 15f, C.MUTED).apply { setPadding(dp(30), dp(14), dp(30), dp(6)) })
     val cf = ouiCard()
-    if (bgSel == 3) cf.alpha = 0.4f
+    if (framed) cf.alpha = 0.4f
     PROT_FRAME.forEachIndexed { i, n ->
         if (i > 0) ouiDivider(cf)
-        ouiRow(cf, n, radio = i == frSel && bgSel != 3, lead = sw(0, i)) { if (bgSel != 3) { Prefs.setProtFrame(this, i); rebuild() } }
+        ouiRow(cf, n, radio = i == frSel && !framed, lead = sw(0, i)) { if (!framed) { Prefs.setProtFrame(this, i); rebuild() } }
     }
     ouiAdd(body, cf)
-    ouiNote(body, if (bgSel == 3) "ברקע \"ירוק כהה + מסגרת\" יש כבר מסגרת" else "כשאין רשת הכרטיס כתום, וכשההתרעות כבויות – אדום")
+    ouiNote(body, if (framed) "ברקע עם מסגרת אין בחירת מסגרת" else "כשאין רשת הכרטיס כתום, וכשההתרעות כבויות – אדום")
 }

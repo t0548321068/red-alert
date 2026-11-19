@@ -73,10 +73,16 @@ object Prefs {
     const val STATUS_ALWAYS = 0; const val STATUS_HIDDEN = 1; const val STATUS_TIMED = 2
     fun statusMode(c: Context) = sp(c).getInt("statusMode", STATUS_ALWAYS)
     /** שורת החיוויים למעלה (מתחת לכותרת) במקום למטה */
-    /** כרטיס ההגנה: רקע (0 ריק · 1 ירוק כהה · 2 מעבר לשחור · 3 ירוק כהה + מסגרת · 4 זוהר מבפנים · 5 מעבר מלמטה · 6 ירוק עמוק + זוהר)
-     *  ומסגרת (0 ללא · 1 דקה · 2 עבה · 3 זוהר) */
-    fun protBg(c: Context) = sp(c).getInt("protBg", 1)
-    fun setProtBg(c: Context, v: Int) = sp(c).edit().putInt("protBg", v).apply()
+    /** כרטיס ההגנה: רקע (0 ריק · 1 ירוק כהה · 2 מעבר לשחור · 3 ירוק כהה + מסגרת · 4 ירוק כהה + מסגרת זוהרת ·
+     *  5 זוהר מבפנים · 6 מעבר מלמטה · 7 ירוק עמוק + זוהר) ומסגרת (0 ללא · 1 דקה · 2 עבה · 3 זוהר).
+     *  protBg הישן (בלי 4) עובר לרשימה החדשה; ירוק כהה + זוהר (ברירת המחדל הקודמת) = 4 */
+    fun protBg(c: Context): Int {
+        val p = sp(c)
+        if (p.contains("protBg2")) return p.getInt("protBg2", 4)
+        val o = p.getInt("protBg", -1)
+        return when { o < 0 -> 4; o == 1 && protFrame(c) == 3 -> 4; o >= 4 -> o + 1; else -> o }
+    }
+    fun setProtBg(c: Context, v: Int) = sp(c).edit().putInt("protBg2", v).apply()
     fun protFrame(c: Context) = sp(c).getInt("protFrame", 3)
     fun setProtFrame(c: Context, v: Int) = sp(c).edit().putInt("protFrame", v).apply()
     fun statusTop(c: Context) = sp(c).getBoolean("statusTop", false)

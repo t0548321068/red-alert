@@ -222,19 +222,20 @@ internal fun MainActivity.protStyle(v: View, bg: Int, frame: Int, tone: Int, rad
     val mid = c(if (dark) arrayOf("#14532D", "#5A3A0A", "#5A1A16")[tone] else arrayOf("#BFE8CB", "#FFDDA8", "#F8C4BF")[tone])
     val d = GradientDrawable().apply { cornerRadius = dp(radius).toFloat() }
     when (bg) {
-        1, 3 -> d.setColor(fill)
+        1, 3, 4 -> d.setColor(fill)
         2 -> { d.orientation = GradientDrawable.Orientation.TOP_BOTTOM; d.colors = intArrayOf(mid, base, base) }
-        4 -> { d.gradientType = GradientDrawable.RADIAL_GRADIENT; d.setGradientCenter(0.5f, 0.35f)
+        5 -> { d.gradientType = GradientDrawable.RADIAL_GRADIENT; d.setGradientCenter(0.5f, 0.35f)
             d.gradientRadius = dp(170).toFloat(); d.colors = intArrayOf((t and 0xFFFFFF) or 0x73000000, base) }
-        5 -> { d.orientation = GradientDrawable.Orientation.BOTTOM_TOP; d.colors = intArrayOf(mid, base, base) }
-        6 -> d.setColor(deep)
+        6 -> { d.orientation = GradientDrawable.Orientation.BOTTOM_TOP; d.colors = intArrayOf(mid, base, base) }
+        7 -> d.setColor(deep)
         else -> d.setColor(base)
     }
     val px = resources.displayMetrics.density
-    val w = if (bg == 3) 1.5f else when (frame) { 1 -> 1f; 2 -> 3f; 3 -> 1.5f; else -> 0f }
+    val framed = bg == 3 || bg == 4   // רקע שיש בו כבר מסגרת
+    val w = if (framed) 1.5f else when (frame) { 1 -> 1f; 2 -> 3f; 3 -> 1.5f; else -> 0f }
     if (w > 0f) d.setStroke((w * px).toInt().coerceAtLeast(1), t)
     v.background = d
-    val glow = bg == 6 || (bg != 3 && frame == 3)
+    val glow = bg == 4 || bg == 7 || (!framed && frame == 3)
     if (android.os.Build.VERSION.SDK_INT >= 28) { v.outlineSpotShadowColor = t; v.outlineAmbientShadowColor = t }
     v.elevation = if (glow) dp(10).toFloat() else 0f
 }
