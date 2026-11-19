@@ -389,7 +389,7 @@ class MainActivity : Activity() {
             addView(shieldIcon, FrameLayout.LayoutParams(dp(40), dp(40), Gravity.CENTER))   // רק המגן (מעריכת צופר: 40)
         }
         haloOuter.addView(ring1, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
-        haloOuter.addView(haloInner, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.CENTER))
+        haloOuter.addView(haloInner, FrameLayout.LayoutParams(dp(54), dp(54), Gravity.CENTER))
         // העיצוב מחדש (כמו פיקוד העורף): ארבעה כרטיסים, הכל ממורכז.
         // 1 ברכה · מגן · "אתה מוגן" · אזור התרעה | זמן התגוננות   2 שעה · תאריך · מזג אוויר   3 אזורים נוספים   4 התרעות אחרונות
         greeting.textSize = 20f; greeting.setTextColor(C.TEXT)   // מעריכת צופר: לבן (במקום אפור)
@@ -400,7 +400,7 @@ class MainActivity : Activity() {
             setPadding(dp(18), dp(20), dp(18), dp(18))
             background = graphite(26)
             addView(greeting, LinearLayout.LayoutParams(-1, -2))
-            addView(haloOuter, LinearLayout.LayoutParams(dp(56), dp(56)).apply { topMargin = dp(10); bottomMargin = dp(6) })
+            addView(haloOuter, LinearLayout.LayoutParams(dp(72), dp(72)).apply { topMargin = dp(10); bottomMargin = dp(6) })
             addView(circleLabel, LinearLayout.LayoutParams(-1, -2))
             // אזור התרעה | זמן התגוננות - באותו כרטיס, בלי קו מפריד מעליהם (רק רווח)
             addView(clockArea, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })

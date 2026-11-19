@@ -84,9 +84,11 @@ internal fun MainActivity.refresh() {
     shieldIcon.setImageResource(if (on && !noNet) R.drawable.ic_shield_green else if (noNet) R.drawable.ic_shield_alert
         else if (off) R.drawable.ic_shield_x else R.drawable.ic_shield_outline)
     shieldIcon.imageTintList = null
-    // רק המגן: בלי עיגולי ההילה ובלי האנימציה
-    haloOuter.background = null
-    haloInner.background = null
+    // חיווי סביב המגן: שני עיגולים בצבע המצב (ירוק מוגן · כתום אין רשת · אדום כבוי). בלי אנימציה
+    haloOuter.background = GradientDrawable().apply { shape = GradientDrawable.OVAL
+        setColor(Color.parseColor(if (noNet) "#0FFF9F0A" else if (on) "#0F69F0AE" else if (off) "#0FFF453A" else "#00000000")) }
+    haloInner.background = GradientDrawable().apply { shape = GradientDrawable.OVAL
+        setColor(Color.parseColor(if (noNet) "#24FF9F0A" else if (on) "#2469F0AE" else if (off) "#24FF453A" else "#10FFFFFF")) }
     circleLabel.text = if (noNet) "אין רשת – התרעות לא יגיעו" else if (on) "אתה מוגן" else if (sched) "כבוי לפי תזמון" else "לא מוגן"
     circleLabel.setTextColor(if (noNet) C.ORANGE else if (on) C.TEXT else if (off) C.RED else C.MUTED)
     setSweep(false)   // בלי אנימציית מוגן
