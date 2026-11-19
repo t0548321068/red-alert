@@ -84,17 +84,10 @@ internal fun MainActivity.refresh() {
     shieldIcon.setImageResource(if (on && !noNet) R.drawable.ic_shield_green else if (noNet) R.drawable.ic_shield_alert
         else if (off) R.drawable.ic_shield_x else R.drawable.ic_shield_outline)
     shieldIcon.imageTintList = null
-    // כרטיס "אתה מוגן" בצבע המצב: רקע כהה בגוון + מסגרת זוהרת (ירוק מוגן · כתום אין רשת · אדום כבוי). לפי תזמון - כרטיס רגיל
-    val tone = if (noNet) "#FF9F0A" else if (on) "#30D158" else if (off) "#FF453A" else null
-    if (tone == null) { card1.background = graphite(26); card1.elevation = 0f }
-    else {
-        val dark = !C.LIGHT
-        val fill = if (noNet) (if (dark) "#2E1F08" else "#FFF1DD") else if (on) (if (dark) "#0F2A18" else "#E6F7EA") else (if (dark) "#2E0F0E" else "#FDE7E6")
-        card1.background = GradientDrawable().apply { cornerRadius = dp(26).toFloat(); setColor(Color.parseColor(fill)); setStroke((1.5f * resources.displayMetrics.density).toInt(), Color.parseColor(tone)) }
-        // זוהר: צל בצבע המצב סביב הכרטיס
-        if (android.os.Build.VERSION.SDK_INT >= 28) { card1.outlineSpotShadowColor = Color.parseColor(tone); card1.outlineAmbientShadowColor = Color.parseColor(tone) }
-        card1.elevation = dp(10).toFloat()
-    }
+    // כרטיס "אתה מוגן" בצבע המצב (ירוק מוגן · כתום אין רשת · אדום כבוי), בסגנון שנבחר בהגדרות. לפי תזמון - כרטיס רגיל
+    val tone = if (noNet) 1 else if (on) 0 else if (off) 2 else -1
+    if (tone < 0) { card1.background = graphite(26); card1.elevation = 0f }
+    else protStyle(card1, Prefs.protBg(this), Prefs.protFrame(this), tone, 26)
     // רק המגן: בלי עיגולי ההילה ובלי האנימציה
     haloOuter.background = null
     haloInner.background = null
@@ -216,4 +209,32 @@ internal fun MainActivity.applyMainLayout() {
     col.removeView(card1); col.removeView(clockCard)
     if (clockFirst) { col.addView(clockCard, i, lp2); col.addView(card1, i + 1, lp1) }
     else { col.addView(card1, i, lp1); col.addView(clockCard, i + 1, lp2) }
+}
+
+/** סגנון כרטיס ההגנה. tone: 0 ירוק · 1 כתום · 2 אדום. משמש גם לתצוגה המקדימה בהגדרות */
+internal fun MainActivity.protStyle(v: View, bg: Int, frame: Int, tone: Int, radius: Int) {
+    val dark = !C.LIGHT
+    fun c(h: String) = Color.parseColor(h)
+    val t = c(arrayOf("#30D158", "#FF9F0A", "#FF453A")[tone])
+    val base = (graphite(radius) as? GradientDrawable)?.color?.defaultColor ?: C.CHIP
+    val fill = c(if (dark) arrayOf("#0F2A18", "#2E1F08", "#2E0F0E")[tone] else arrayOf("#E6F7EA", "#FFF1DD", "#FDE7E6")[tone])
+    val deep = c(if (dark) arrayOf("#0B3D1C", "#3D2A08", "#3D0F0C")[tone] else arrayOf("#D2F0DB", "#FFE6C2", "#FBD5D2")[tone])
+    val mid = c(if (dark) arrayOf("#14532D", "#5A3A0A", "#5A1A16")[tone] else arrayOf("#BFE8CB", "#FFDDA8", "#F8C4BF")[tone])
+    val d = GradientDrawable().apply { cornerRadius = dp(radius).toFloat() }
+    when (bg) {
+        1, 3 -> d.setColor(fill)
+        2 -> { d.orientation = GradientDrawable.Orientation.TOP_BOTTOM; d.colors = intArrayOf(mid, base, base) }
+        4 -> { d.gradientType = GradientDrawable.RADIAL_GRADIENT; d.setGradientCenter(0.5f, 0.35f)
+            d.gradientRadius = dp(170).toFloat(); d.colors = intArrayOf((t and 0xFFFFFF) or 0x73000000, base) }
+        5 -> { d.orientation = GradientDrawable.Orientation.BOTTOM_TOP; d.colors = intArrayOf(mid, base, base) }
+        6 -> d.setColor(deep)
+        else -> d.setColor(base)
+    }
+    val px = resources.displayMetrics.density
+    val w = if (bg == 3) 1.5f else when (frame) { 1 -> 1f; 2 -> 3f; 3 -> 1.5f; else -> 0f }
+    if (w > 0f) d.setStroke((w * px).toInt().coerceAtLeast(1), t)
+    v.background = d
+    val glow = bg == 6 || (bg != 3 && frame == 3)
+    if (android.os.Build.VERSION.SDK_INT >= 28) { v.outlineSpotShadowColor = t; v.outlineAmbientShadowColor = t }
+    v.elevation = if (glow) dp(10).toFloat() else 0f
 }

@@ -125,6 +125,11 @@ internal fun MainActivity.showDisplay() {
         row(pal, "ערכות נושא", "חשוך: ${Palettes.dark(this).name} · בהיר: ${Palettes.light(this).name}", sep = false) {
             choosePalette { applyThemeNow(d) { rebuild() } } }
         addCard(pal)
+        // כרטיס ההגנה: רקע ומסגרת
+        val prot = card()
+        row(prot, "כרטיס ההגנה", "רקע: ${PROT_BG[Prefs.protBg(this)]}" + if (Prefs.protBg(this) == 3) "" else " · מסגרת: ${PROT_FRAME[Prefs.protFrame(this)]}", sep = false) {
+            chooseProtCard { rebuild() } }
+        addCard(prot)
         // סידור המסך הראשי: איזה כרטיס למעלה (תצוגה מקדימה, כמו ערכת הצבעים)
         val lay = card()
         val pickL = LinearLayout(this).apply { gravity = Gravity.CENTER; setPadding(dp(10), dp(20), dp(10), dp(16)) }
@@ -391,4 +396,38 @@ internal fun MainActivity.choosePalette(done: () -> Unit) = ouiPage("ערכות 
     section("בחשוך", Palettes.DARK, Prefs.darkPalette(this), 6) { Prefs.setDarkPalette(this, it) }
     section("בבהיר", Palettes.LIGHT, Prefs.lightPalette(this), 14) { Prefs.setLightPalette(this, it) }
     ouiNote(body, "הצבעים מתחלפים כשיוצאים מעמוד התצוגה")
+}
+
+internal val PROT_BG = listOf("ריק", "ירוק כהה", "מעבר ירוק לשחור", "ירוק כהה + מסגרת", "זוהר מבפנים", "מעבר מלמטה", "ירוק עמוק + זוהר")
+internal val PROT_FRAME = listOf("ללא מסגרת", "מסגרת דקה", "מסגרת עבה", "זוהר ירוק")
+
+/** כרטיס ההגנה: בוחרים רקע ומסגרת, עם תצוגה מקדימה */
+internal fun MainActivity.chooseProtCard(done: () -> Unit) = ouiPage("כרטיס ההגנה", onClose = done) { body, rebuild ->
+    val bgSel = Prefs.protBg(this); val frSel = Prefs.protFrame(this)
+    // תצוגה מקדימה גדולה
+    val pv = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(16), dp(16), dp(16), dp(16))
+        addView(android.widget.ImageView(this@chooseProtCard).apply { setImageResource(R.drawable.ic_shield_green) }, LinearLayout.LayoutParams(dp(40), dp(40)))
+        addView(text("אתה מוגן", 22f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+    }
+    protStyle(pv, bgSel, frSel, 0, 26)
+    body.addView(pv, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(PAGE_SIDE + 4), dp(10), dp(PAGE_SIDE + 4), dp(18)) })
+    // עיגול קטן בסגנון - ליד כל אפשרות
+    fun sw(b: Int, f: Int) = View(this).also { protStyle(it, b, f, 0, 9) }
+    body.addView(text("רקע", 15f, C.MUTED).apply { setPadding(dp(30), dp(6), dp(30), dp(6)) })
+    val cb = ouiCard()
+    PROT_BG.forEachIndexed { i, n ->
+        if (i > 0) ouiDivider(cb)
+        ouiRow(cb, n, radio = i == bgSel, lead = sw(i, 0)) { Prefs.setProtBg(this, i); rebuild() }
+    }
+    ouiAdd(body, cb)
+    body.addView(text("מסגרת", 15f, C.MUTED).apply { setPadding(dp(30), dp(14), dp(30), dp(6)) })
+    val cf = ouiCard()
+    if (bgSel == 3) cf.alpha = 0.4f
+    PROT_FRAME.forEachIndexed { i, n ->
+        if (i > 0) ouiDivider(cf)
+        ouiRow(cf, n, radio = i == frSel && bgSel != 3, lead = sw(0, i)) { if (bgSel != 3) { Prefs.setProtFrame(this, i); rebuild() } }
+    }
+    ouiAdd(body, cf)
+    ouiNote(body, if (bgSel == 3) "ברקע \"ירוק כהה + מסגרת\" יש כבר מסגרת" else "כשאין רשת הכרטיס כתום, וכשההתרעות כבויות – אדום")
 }
