@@ -86,8 +86,8 @@ internal fun MainActivity.refresh() {
     shieldIcon.imageTintList = null
     // כרטיס "אתה מוגן" בצבע המצב (ירוק מוגן · כתום אין רשת · אדום כבוי), בסגנון שנבחר בהגדרות. לפי תזמון - כרטיס רגיל
     val tone = if (noNet) 1 else if (on) 0 else if (off) 2 else -1
-    if (tone < 0) { card1.background = graphite(26); card1.elevation = 0f }
-    else protStyle(card1, Prefs.protBg(this), Prefs.protFrame(this), tone, 26)
+    if (tone < 0) { card1.background = graphite(28); card1.elevation = 0f }
+    else protStyle(card1, Prefs.protBg(this), Prefs.protFrame(this), tone, 28)
     // רק המגן: בלי עיגולי ההילה ובלי האנימציה
     haloOuter.background = null
     haloInner.background = null

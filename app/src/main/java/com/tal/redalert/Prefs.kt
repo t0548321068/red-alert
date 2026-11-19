@@ -80,10 +80,10 @@ object Prefs {
         val p = sp(c)
         if (p.contains("protBg2")) return p.getInt("protBg2", 4)
         val o = p.getInt("protBg", -1)
-        return when { o < 0 -> 4; o == 1 && protFrame(c) == 3 -> 4; o >= 4 -> o + 1; else -> o }
+        return when { o < 0 -> 4; o == 1 && p.getInt("protFrame", 3) == 3 -> 4; o >= 4 -> o + 1; else -> o }
     }
     fun setProtBg(c: Context, v: Int) = sp(c).edit().putInt("protBg2", v).apply()
-    fun protFrame(c: Context) = sp(c).getInt("protFrame", 3)
+    fun protFrame(c: Context) = sp(c).getInt("protFrame", 0)
     fun setProtFrame(c: Context, v: Int) = sp(c).edit().putInt("protFrame", v).apply()
     fun statusTop(c: Context) = sp(c).getBoolean("statusTop", false)
     fun setStatusTop(c: Context, v: Boolean) = sp(c).edit().putBoolean("statusTop", v).apply()
