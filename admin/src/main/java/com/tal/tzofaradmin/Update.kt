@@ -31,7 +31,19 @@ object Update {
         return false
     }
 
+    /** קודם דרך השרת (בלי מגבלה), ורק אם הוא לא עונה - ישר מ-GitHub */
     private fun latest(api: String = API): Pair<String, String>? {
+        val key = if (api == EDITOR_API) "editor" else "admin"
+        try {
+            val conn = URL("https://tzofar-app.duckdns.org/apps").openConnection() as HttpURLConnection
+            conn.connectTimeout = 5000; conn.readTimeout = 5000
+            val v = try { if (conn.responseCode == 200) JSONObject(conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }).optString(key) else "" } finally { conn.disconnect() }
+            if (v.isNotEmpty()) return v to "https://github.com/t0548321068/red-alert/releases/download/$key/tzofar-$key.apk"
+        } catch (_: Exception) {}
+        return try { fromGithub(api) } catch (_: Exception) { null }
+    }
+
+    private fun fromGithub(api: String): Pair<String, String>? {
         val conn = URL(api).openConnection() as HttpURLConnection
         conn.connectTimeout = 8000; conn.readTimeout = 10000
         conn.setRequestProperty("Accept", "application/vnd.github+json")
