@@ -79,6 +79,9 @@ object Prefs {
     fun setProtBg(c: Context, v: Int) = sp(c).edit().putInt("protBg3", v).apply()
     fun protFrame(c: Context) = sp(c).getInt("protFrame3", 0)
     fun setProtFrame(c: Context, v: Int) = sp(c).edit().putInt("protFrame3", v).apply()
+    /** כרטיס ההגנה: האייקון במצב מוגן (0 מגן עם וי · 1 מגן מתאר · 2 מגן מלא · 3 עיגול וי · 4 בית מוגן · 5 פעמון וי) */
+    fun protIcon(c: Context) = sp(c).getInt("protIcon", 0)
+    fun setProtIcon(c: Context, v: Int) = sp(c).edit().putInt("protIcon", v).apply()
     fun statusTop(c: Context) = sp(c).getBoolean("statusTop", false)
     fun setStatusTop(c: Context, v: Boolean) = sp(c).edit().putBoolean("statusTop", v).apply()
     fun setStatusMode(c: Context, v: Int) = sp(c).edit().putInt("statusMode", v).apply()

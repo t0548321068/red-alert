@@ -81,7 +81,7 @@ internal fun MainActivity.refresh() {
     // מצב ההגנה מוצג בכרטיס 1 (מגן + כיתוב). כרטיס השעון - כרטיס רגיל
     circle.background = graphite(26)
     // מוגן: מגן ירוק עם וי. לא מוגן: מגן אדום עם איקס. אין רשת: מגן כתום עם סימן קריאה (מעריכת צופר). לפי תזמון: מגן ריק
-    shieldIcon.setImageResource(if (on && !noNet) R.drawable.ic_shield_green else if (noNet) R.drawable.ic_shield_alert
+    shieldIcon.setImageResource(if (on && !noNet) PROT_ICONS[Prefs.protIcon(this)] else if (noNet) R.drawable.ic_shield_alert
         else if (off) R.drawable.ic_shield_x else R.drawable.ic_shield_outline)
     shieldIcon.imageTintList = null
     // כרטיס "אתה מוגן" בסגנון שנבחר בהגדרות, בצבע המצב (ירוק מוגן · כתום אין רשת · אדום כבוי). לפי תזמון - כרטיס רגיל
@@ -220,8 +220,14 @@ internal fun MainActivity.applyProtCard(on: Boolean, noNet: Boolean, off: Boolea
 internal fun MainActivity.refreshProtCard() {
     val sched = Prefs.enabled(this) && Prefs.scheduleOffNow(this)
     val on = Prefs.enabled(this) && !sched
-    applyProtCard(on, on && network()?.second != true, !Prefs.enabled(this))
+    val noNet = on && network()?.second != true
+    applyProtCard(on, noNet, !Prefs.enabled(this))
+    if (on && !noNet) shieldIcon.setImageResource(PROT_ICONS[Prefs.protIcon(this)])
 }
+
+/** האייקונים של כרטיס ההגנה במצב מוגן (אין רשת / לא מוגן - תמיד האייקון הרגיל) */
+internal val PROT_ICONS = intArrayOf(R.drawable.ic_shield_green, R.drawable.ic_prot_outline, R.drawable.ic_prot_solid,
+    R.drawable.ic_prot_circle, R.drawable.ic_prot_home, R.drawable.ic_prot_bell)
 
 /** רקע עם זוהר מסביב: הזוהר מצויר מחוץ לגבולות הכרטיס (ההורים לא חותכים אותו) */
 private class GlowBg(val inner: android.graphics.drawable.Drawable, glow: Int, fill: Int, blur: Float, val r: Float) :
