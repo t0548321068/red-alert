@@ -252,7 +252,7 @@ class MainActivity : Activity() {
         clockDay = text("", 19f, C.TEXT).apply {
             gravity = Gravity.CENTER
         }
-        greeting = text("", 20f, C.TEXT).apply { gravity = Gravity.CENTER }
+        greeting = text("", 18f, C.TEXT).apply { gravity = Gravity.CENTER }
         // כרטיס השעון: רקע גרפיט, הכל ממורכז, טקסט לבן
         clockCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -265,8 +265,8 @@ class MainActivity : Activity() {
         val white = C.INK
         val soft = C.INK_SOFT
         greeting.setTextColor(soft)
-        clockTime.setTextColor(white); clockTime.textSize = 40f
-        clockDay.setTextColor(soft); clockDay.textSize = 20f
+        clockTime.setTextColor(white); clockTime.textSize = 35f
+        clockDay.setTextColor(soft); clockDay.textSize = 18f
         clockCard.addView(clockTime)
         clockCard.addView(clockDay)
         // אזור ההתרעה (לפי המיקום) - בכרטיס השעון, מתחת ל"מוגן" (נכנס למקום אחרי שהמגן נוסף)
@@ -324,7 +324,7 @@ class MainActivity : Activity() {
             if (v.isShown) { val xy = IntArray(2); v.getLocationOnScreen(xy); Prefs.setMiniY(this, xy[1] + v.height); Prefs.setMiniBox(this, xy[0], v.width) }
         }
         applyStatusRow()
-        weatherLine = text("", 20f, C.TEXT).apply {
+        weatherLine = text("", 18f, C.TEXT).apply {
             gravity = Gravity.CENTER
         }
         weatherLine.setTextColor(soft)
@@ -350,7 +350,7 @@ class MainActivity : Activity() {
             clipToOutline = true; clipChildren = true
             addView(LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.VERTICAL
-                addView(text("התרעות אחרונות", 20f, C.TEXT).apply {
+                addView(text("התרעות אחרונות", 18f, C.TEXT).apply {
                     setTypeface(typeface, android.graphics.Typeface.BOLD)
                     gravity = Gravity.CENTER
                     setPadding(dp(12), dp(12), dp(12), dp(10))
@@ -392,8 +392,8 @@ class MainActivity : Activity() {
         haloOuter.addView(haloInner, FrameLayout.LayoutParams(dp(56), dp(56), Gravity.CENTER))
         // העיצוב מחדש (כמו פיקוד העורף): ארבעה כרטיסים, הכל ממורכז.
         // 1 ברכה · מגן · "אתה מוגן" · אזור התרעה | זמן התגוננות   2 שעה · תאריך · מזג אוויר   3 אזורים נוספים   4 התרעות אחרונות
-        greeting.textSize = 20f; greeting.setTextColor(C.TEXT)   // מעריכת צופר: לבן (במקום אפור)
-        circleLabel.textSize = 25f
+        greeting.textSize = 18f; greeting.setTextColor(C.TEXT)   // מעריכת צופר: לבן (במקום אפור)
+        circleLabel.textSize = 22f
         card1 = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
