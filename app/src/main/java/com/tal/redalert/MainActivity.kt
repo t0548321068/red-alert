@@ -226,8 +226,9 @@ class MainActivity : Activity() {
         // כותרת + גלגל שיניים
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         // כותרת 25, מיושרת לימין (בכל הכותרות באפליקציה - כמו pageHeader)
-        // צופר חירום 2 (עריכת צופר, חבילה אחרת): "צופר חירום 2"
-        header.addView(text(if (packageName == "com.tal.redalert") "צופר חירום" else "צופר חירום 2", 25f, C.INK, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) },
+        // צופר חירום 2 (עריכת צופר, חבילה אחרת): "צופר חירום 2.0" - שני המספרים הראשונים של הגרסה שלה (2.0.67 -> 2.0)
+        val v2 = try { (packageManager.getPackageInfo(packageName, 0).versionName ?: "").split('.').take(2).joinToString(".") } catch (_: Exception) { "" }
+        header.addView(text(if (packageName == "com.tal.redalert") "צופר חירום" else "צופר חירום " + v2.ifEmpty { "2" }, 25f, C.INK, bold = true).apply { setPadding(dp(4), 0, dp(4), 0) },
             LinearLayout.LayoutParams(0, -2, 1f))
         // אייקונים למעלה בשמאל (במקום התפריט התחתון): שעון · התרעות · הגדרות (הגדרות הכי שמאלי)
         fun headerIcon(res: Int, click: () -> Unit) = header.addView(android.widget.ImageView(this).apply {
