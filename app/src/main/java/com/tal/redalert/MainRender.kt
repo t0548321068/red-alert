@@ -133,7 +133,7 @@ internal fun MainActivity.renderChips() {
         // מעריכת צופר: בכהה AAAAAA (בהיר יותר מהאפור הרגיל)
         addView(text(title, 15f, if (Prefs.darkTheme(this@renderChips)) Color.parseColor("#AAAAAA") else C.MUTED).apply { gravity = Gravity.CENTER; setSingleLine() },
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
-        addView(text(v, 25f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER },
+        addView(text(v, 22f, C.TEXT, bold = true).apply { gravity = Gravity.CENTER },
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
     }
     clockArea.addView(LinearLayout(this).apply {
@@ -155,12 +155,12 @@ internal fun MainActivity.renderExtraCard() {
     val (towns, dists) = extraSelection()
     val dmap = AreaData.districtMap(this)
     // תצוגה בלבד - העריכה בהגדרות התרעות → אזורים נוספים
-    extraBox.addView(text("יישובים ואזורים נוספים", 20f, C.INK, bold = true).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(6)) })
+    extraBox.addView(text("יישובים ואזורים נוספים", 18f, C.INK, bold = true).apply { gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(6)) })
     val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
     fun row(name: String, sub: String) = list.addView(LinearLayout(this).apply {
         gravity = Gravity.CENTER_VERTICAL; setPadding(dp(2), dp(5), dp(2), dp(5))
         // מעריכת צופר: 18, מודגש, ממורכז לגובה
-        addView(text(name, 18f, C.INK, bold = true).apply { setSingleLine(); ellipsize = TextUtils.TruncateAt.END
+        addView(text(name, 16f, C.INK, bold = true).apply { setSingleLine(); ellipsize = TextUtils.TruncateAt.END
             gravity = Gravity.START or Gravity.CENTER_VERTICAL },   // ימין (התחלת השורה בעברית)
             LinearLayout.LayoutParams(0, -2, 1f))
         if (sub.isNotEmpty()) addView(text(sub, 12f, C.MUTED).apply { setSingleLine() },
