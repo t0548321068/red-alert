@@ -139,24 +139,10 @@ internal fun MainActivity.showDisplay() {
             applyStatusRow(); rebuild() }
         addCard(ind)
         note("מוגן · צלילים · רשת · מיקום · חיבור · גרסה – בתחתית המסך הראשי, או למעלה")
-        // שעון ותאריך, מזג אוויר וברכה - בכרטיס אחד
+        // כרטיס השעון: שעון, תאריך, מזג אוויר וברכה - בעמוד משלו
         val more = card()
-        row(more, "שעון", listOf(if (Prefs.showSeconds(this)) "שניות" else "", if (Prefs.blinkColon(this)) "נקודתיים מהבהבות" else "")
-            .filter { it.isNotEmpty() }.joinToString(" · ")) { showClockPage() }
-        divider(more)
-        row(more, "תאריך", TimeFormat.dayOptions()[Prefs.dayStyle(this)], on = Prefs.showDate(this),
-            open = { chooseDayStyle { rebuild() } }) {
-            Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); rebuild() }
-        divider(more)
-        row(more, "מזג אוויר", "עדכון " + weatherLabel(Prefs.weatherMinutes(this)), on = Prefs.showWeather(this),
-            open = { chooseWeatherInterval { rebuild() } }) {
-            Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); rebuild() }
-        divider(more)
-        // ברכה: מתג נפרד (עם קו מפריד), ולחיצה על השם פותחת הזנת שם ("ערב טוב טל")
-        row(more, "ברכה", Prefs.greetingName(this), on = Prefs.showGreeting(this), open = { showGreetingName { rebuild() } }) {
-            Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock(); rebuild() }
+        row(more, "כרטיס השעון", clockCardSummary(), sep = false) { chooseClockCard { rebuild() } }
         addCard(more)
-        note("מזג אוויר וברכה בכרטיס השעון במסך הראשי")
         // פיד ארצי - כמה זמן אחורה להציג
         val feed = card()
         row(feed, "פיד ארצי", FeedText.windowLabel(Prefs.feedMinutes(this)), on = Prefs.feedAlways(this),
@@ -552,4 +538,51 @@ private fun MainActivity.protLayoutCard(body: LinearLayout, rebuild: () -> Unit)
         lay.addView(pickL)
         ouiAdd(body, lay)
         ouiNote(body, "הברכה מוצגת בראש הכרטיס העליון")
+}
+
+/** תקציר כרטיס השעון: מה מופעל */
+internal fun MainActivity.clockCardSummary(): String = listOf(
+    if (Prefs.showSeconds(this)) "שניות" else "",
+    if (Prefs.showDate(this)) "תאריך" else "",
+    if (Prefs.showWeather(this)) "מזג אוויר" else "",
+    if (Prefs.showGreeting(this)) "ברכה" else "").filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "שעה בלבד" }
+
+/** כרטיס השעון: תצוגה מקדימה קבועה למעלה + שעון, תאריך, מזג אוויר וברכה */
+internal fun MainActivity.chooseClockCard(done: () -> Unit) {
+    val cardW = clockCard.width
+    ouiPage("כרטיס השעון", onClose = done, pin = 1) { body, rebuild ->
+        // תצוגה מקדימה: תמונה של כרטיס השעון במסך הראשי, אחרי שהוא מתעדכן
+        val pv = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL }
+        val side = if (cardW > 0) ((resources.displayMetrics.widthPixels - cardW) / 2) else dp(PAGE_SIDE + 4)
+        body.addView(pv, LinearLayout.LayoutParams(-1, -2).apply { setMargins(side, dp(10), side, dp(18)) })
+        fun snap() {
+            pv.removeAllViews()
+            // הברכה נמצאת בכרטיס העליון - אם הוא כרטיס ההגנה, מוסיפים אותה מעל
+            val gIn = greeting.parent === clockCard
+            val img = if (clockCard.width > 0 && clockCard.height > 0)
+                android.graphics.Bitmap.createBitmap(clockCard.width, clockCard.height, android.graphics.Bitmap.Config.ARGB_8888)
+                    .also { clockCard.draw(android.graphics.Canvas(it)) } else null
+            val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = graphite(26) }
+            if (!gIn && greeting.visibility == View.VISIBLE)
+                box.addView(text(greeting.text.toString(), greeting.textSize / resources.displayMetrics.scaledDensity, C.TEXT).apply {
+                    gravity = Gravity.CENTER; typeface = greeting.typeface; setPadding(0, dp(16), 0, 0) }, LinearLayout.LayoutParams(-1, -2))
+            if (img != null) box.addView(android.widget.ImageView(this).apply { setImageBitmap(img); adjustViewBounds = true },
+                LinearLayout.LayoutParams(-1, -2))
+            pv.addView(box, LinearLayout.LayoutParams(-1, -2))
+        }
+        snap(); clockCard.post { clockCard.post { snap() } }
+        val c = ouiCard()
+        ouiRow(c, "שעון", sub = listOf(if (Prefs.showSeconds(this)) "שניות" else "", if (Prefs.blinkColon(this)) "נקודתיים מהבהבות" else "")
+            .filter { it.isNotEmpty() }.joinToString(" · ")) { showClockPage() }
+        ouiDivider(c)
+        ouiRow(c, "תאריך", sub = TimeFormat.dayOptions()[Prefs.dayStyle(this)], on = Prefs.showDate(this),
+            onToggle = { Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); rebuild() }) { chooseDayStyle { rebuild() } }
+        ouiDivider(c)
+        ouiRow(c, "מזג אוויר", sub = "עדכון " + weatherLabel(Prefs.weatherMinutes(this)), on = Prefs.showWeather(this),
+            onToggle = { Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); rebuild() }) { chooseWeatherInterval { rebuild() } }
+        ouiDivider(c)
+        ouiRow(c, "ברכה", sub = Prefs.greetingName(this), on = Prefs.showGreeting(this),
+            onToggle = { Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock(); rebuild() }) { showGreetingName { rebuild() } }
+        ouiAdd(body, c)
+    }
 }
