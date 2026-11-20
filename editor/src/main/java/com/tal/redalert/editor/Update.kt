@@ -30,7 +30,17 @@ object Update {
         if (System.currentTimeMillis() - lastCheck > 60_000 || (needPermission && c.packageManager.canRequestPackageInstalls())) check(c) { Editor.refreshMenus() }
     }
 
+    /** קודם דרך האתר - לא נספר במגבלת 60 הבדיקות לשעה של ה-API (בדיקה כל דקה מיצתה אותה, ואז "לא ניתן לבדוק") */
+    private fun cheap(): Pair<String, String>? = try {
+        val conn = URL("https://github.com/t0548321068/red-alert/releases/tag/editor").openConnection() as HttpURLConnection
+        conn.connectTimeout = 8000; conn.readTimeout = 10000
+        val html = try { if (conn.responseCode != 200) "" else conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) } } finally { conn.disconnect() }
+        Regex("עריכת צופר · (\\d+(?:\\.\\d+)+)").find(html)?.groupValues?.get(1)
+            ?.let { it to "https://github.com/t0548321068/red-alert/releases/download/editor/tzofar-editor.apk" }
+    } catch (_: Exception) { null }
+
     private fun latest(): Pair<String, String>? {
+        cheap()?.let { return it }
         val conn = URL(API).openConnection() as HttpURLConnection
         conn.connectTimeout = 8000; conn.readTimeout = 10000
         conn.setRequestProperty("Accept", "application/vnd.github+json")
