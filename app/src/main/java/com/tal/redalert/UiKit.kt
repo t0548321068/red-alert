@@ -55,6 +55,7 @@ internal fun MainActivity.graphite(@Suppress("UNUSED_PARAMETER") radius: Int) = 
 internal fun MainActivity.ouiPage(title: String, refreshOnFocus: Boolean = true, onClose: (() -> Unit)? = null,
                     button: Pair<String, (done: () -> Unit) -> Unit>? = null,
                     buttonLabel: ((TextView) -> Unit)? = null,
+                    pin: Int = 0,
                     build: (LinearLayout, () -> Unit) -> Unit) {
     val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
     val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(30)) }
@@ -68,16 +69,41 @@ internal fun MainActivity.ouiPage(title: String, refreshOnFocus: Boolean = true,
             insets
         }
     }
+    // pin: הכותרת ועוד pin פריטים ראשונים נשארים קבועים למעלה, ורק השאר גולל (למשל תצוגה מקדימה)
+    val fixed = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutDirection = View.LAYOUT_DIRECTION_RTL; setBackgroundColor(C.BG) }
     lateinit var rebuild: () -> Unit
     rebuild = {
-        body.removeAllViews()
+        val y = page.scrollY
+        body.removeAllViews(); fixed.removeAllViews()
         body.addView(pageHeader(title))
         build(body, rebuild)
+        if (pin > 0) repeat(minOf(pin + 1, body.childCount)) {
+            val v = body.getChildAt(0); val lp = v.layoutParams
+            body.removeViewAt(0); fixed.addView(v, lp)
+        }
+        if (pin > 0) page.post { page.scrollTo(0, y) }   // בחירה לא מקפיצה את הרשימה למעלה
     }
     rebuild()
     val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
-    frame.addView(page, FrameLayout.LayoutParams(-1, -1))
-    frame.setOnApplyWindowInsetsListener { _, insets -> page.dispatchApplyWindowInsets(insets) }
+    if (pin > 0) {
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        col.addView(fixed, LinearLayout.LayoutParams(-1, -2))
+        col.addView(page, LinearLayout.LayoutParams(-1, 0, 1f))
+        frame.addView(col, FrameLayout.LayoutParams(-1, -1))
+        page.setOnApplyWindowInsetsListener { v, insets ->
+            @Suppress("DEPRECATION")
+            v.setPadding(insets.systemWindowInsetLeft, 0, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
+            insets
+        }
+        frame.setOnApplyWindowInsetsListener { _, insets ->
+            @Suppress("DEPRECATION")
+            fixed.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, 0)
+            page.dispatchApplyWindowInsets(insets)
+        }
+    } else {
+        frame.addView(page, FrameLayout.LayoutParams(-1, -1))
+        frame.setOnApplyWindowInsetsListener { _, insets -> page.dispatchApplyWindowInsets(insets) }
+    }
     body.setPadding(0, 0, 0, dp(if (button == null) 30 else 100))
     if (button == null) d.setContentView(frame)
     else {
