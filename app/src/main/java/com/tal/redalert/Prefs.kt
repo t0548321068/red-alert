@@ -82,6 +82,16 @@ object Prefs {
     /** כרטיס ההגנה: האייקון במצב מוגן (0 מגן עם וי · 1 מגן מתאר · 2 מגן מלא · 3 עיגול וי · 4 בית מוגן · 5 פעמון וי) */
     fun protIcon(c: Context) = sp(c).getInt("protIcon", 0)
     fun setProtIcon(c: Context, v: Int) = sp(c).edit().putInt("protIcon", v).apply()
+    /** כרטיס ההגנה: הכיתוב במצב מוגן (0 אתה מוגן · 1 מוגן · 2 הכל תקין · 3 ההתרעות פעילות · 4 טקסט משלו) */
+    fun protText(c: Context) = sp(c).getInt("protText", 0)
+    fun setProtText(c: Context, v: Int) = sp(c).edit().putInt("protText", v).apply()
+    fun protTextOwn(c: Context) = sp(c).getString("protTextOwn", "") ?: ""
+    fun setProtTextOwn(c: Context, v: String) = sp(c).edit().putString("protTextOwn", v).apply()
+    /** הכיתוב שמוצג בפועל (טקסט משלו ריק - "אתה מוגן") */
+    fun protLabel(c: Context): String {
+        val i = protText(c)
+        return if (i == 4) protTextOwn(c).trim().ifEmpty { "אתה מוגן" } else listOf("אתה מוגן", "מוגן", "הכל תקין", "ההתרעות פעילות")[i.coerceIn(0, 3)]
+    }
     fun statusTop(c: Context) = sp(c).getBoolean("statusTop", false)
     fun setStatusTop(c: Context, v: Boolean) = sp(c).edit().putBoolean("statusTop", v).apply()
     fun setStatusMode(c: Context, v: Int) = sp(c).edit().putInt("statusMode", v).apply()

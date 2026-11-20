@@ -127,7 +127,7 @@ internal fun MainActivity.showDisplay() {
         addCard(pal)
         // כרטיס ההגנה: רקע ומסגרת
         val prot = card()
-        row(prot, "כרטיס ההגנה", "${PROT_BG[Prefs.protBg(this)]} · ${PROT_FRAME[Prefs.protFrame(this)]} · ${PROT_ICON_NAMES[Prefs.protIcon(this)]}", sep = false) {
+        row(prot, "כרטיס ההגנה", "${PROT_BG[Prefs.protBg(this)]} · ${PROT_FRAME[Prefs.protFrame(this)]} · ${PROT_ICON_NAMES[Prefs.protIcon(this)]} · ${Prefs.protLabel(this)}", sep = false) {
             chooseProtCard { rebuild() } }
         addCard(prot)
         // סידור המסך הראשי: איזה כרטיס למעלה (תצוגה מקדימה, כמו ערכת הצבעים)
@@ -433,12 +433,15 @@ internal fun MainActivity.chooseProtCard(done: () -> Unit) {
             chooseProtDesign(areaBmp, greet, cardW) { rebuild() } }
         ouiDivider(c)
         ouiRow(c, "אייקון", sub = PROT_ICON_NAMES[Prefs.protIcon(this)]) { chooseProtIcon(areaBmp, greet, cardW) { rebuild() } }
+        ouiDivider(c)
+        ouiRow(c, "כיתוב", sub = Prefs.protLabel(this)) { chooseProtText(areaBmp, greet, cardW) { rebuild() } }
         ouiAdd(body, c)
     }
 }
 
 /** תצוגה מקדימה: אותו כרטיס כמו במסך הראשי - ברכה, אייקון, "אתה מוגן", אזור התרעה | זמן התגוננות, בעיצוב שנבחר */
-private fun MainActivity.protPreview(body: LinearLayout, areaBmp: android.graphics.Bitmap?, greet: String?, cardW: Int) {
+private fun MainActivity.protPreview(body: LinearLayout, areaBmp: android.graphics.Bitmap?, greet: String?, cardW: Int): TextView {
+    lateinit var label: TextView
     val pv = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(18), dp(20), dp(18), dp(18))
         if (greet != null)
@@ -448,8 +451,9 @@ private fun MainActivity.protPreview(body: LinearLayout, areaBmp: android.graphi
             addView(android.widget.ImageView(this@protPreview).apply { setImageResource(PROT_ICONS[Prefs.protIcon(this@protPreview)]) },
                 android.widget.FrameLayout.LayoutParams(dp(40), dp(40), Gravity.CENTER))
         }, LinearLayout.LayoutParams(dp(56), dp(56)).apply { topMargin = dp(10); bottomMargin = dp(6) })
-        addView(text("אתה מוגן", circleLabel.textSize / resources.displayMetrics.scaledDensity, C.TEXT, bold = true).apply {
-            gravity = Gravity.CENTER; typeface = circleLabel.typeface }, LinearLayout.LayoutParams(-1, -2))
+        label = text(Prefs.protLabel(this@protPreview), circleLabel.textSize / resources.displayMetrics.scaledDensity, C.TEXT, bold = true).apply {
+            gravity = Gravity.CENTER; typeface = circleLabel.typeface }
+        addView(label, LinearLayout.LayoutParams(-1, -2))
         if (areaBmp != null)
             addView(android.widget.ImageView(this@protPreview).apply { setImageBitmap(areaBmp); adjustViewBounds = true
                 scaleType = android.widget.ImageView.ScaleType.FIT_CENTER }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
@@ -458,6 +462,43 @@ private fun MainActivity.protPreview(body: LinearLayout, areaBmp: android.graphi
     val side = if (cardW > 0) ((resources.displayMetrics.widthPixels - cardW) / 2) else dp(PAGE_SIDE + 4)
     body.addView(pv, LinearLayout.LayoutParams(-1, -2).apply { setMargins(side, dp(10), side, dp(18)) })
     protStyle(pv, Prefs.protBg(this), Prefs.protFrame(this), 0, 26)
+    return label
+}
+
+/** כרטיס ההגנה ← כיתוב: תצוגה מקדימה + 4 נוסחים או טקסט משלו */
+private fun MainActivity.chooseProtText(areaBmp: android.graphics.Bitmap?, greet: String?, cardW: Int, done: () -> Unit) {
+    ouiPage("כיתוב", onClose = done) { body, rebuild ->
+        val label = protPreview(body, areaBmp, greet, cardW)
+        val sel = Prefs.protText(this)
+        val c = ouiCard()
+        listOf("אתה מוגן", "מוגן", "הכל תקין", "ההתרעות פעילות", "טקסט משלך").forEachIndexed { i, n ->
+            if (i > 0) ouiDivider(c)
+            ouiRow(c, n, radio = i == sel) { Prefs.setProtText(this, i); refreshProtCard(); rebuild() }
+        }
+        ouiAdd(body, c)
+        // טקסט משלו: שדה כתיבה, מתעדכן תוך כדי הקלדה
+        if (sel == 4) {
+            val f = ouiCard()
+            f.addView(android.widget.EditText(this).apply {
+                hint = "למשל: שקט ובטוח"
+                setText(Prefs.protTextOwn(this@chooseProtText)); textSize = 16f; isSingleLine = true
+                setTextColor(C.TEXT); setHintTextColor(C.MUTED)
+                background = GradientDrawable().apply { setColor(C.CARD2); cornerRadius = dp(18).toFloat() }
+                setPadding(dp(16), dp(12), dp(16), dp(12))
+                filters = arrayOf(android.text.InputFilter.LengthFilter(24))
+                addTextChangedListener(object : android.text.TextWatcher {
+                    override fun afterTextChanged(s: android.text.Editable?) {
+                        Prefs.setProtTextOwn(this@chooseProtText, s?.toString() ?: "")
+                        label.text = Prefs.protLabel(this@chooseProtText); refreshProtCard()
+                    }
+                    override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, d: Int) {}
+                    override fun onTextChanged(s: CharSequence?, a: Int, b: Int, d: Int) {}
+                })
+            }, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(14), dp(14), dp(14), dp(14)) })
+            ouiAdd(body, f)
+        }
+        ouiNote(body, "משנה רק את המצב \"מוגן\". \"אין רשת\" ו\"לא מוגן\" נשארים כמו שהם")
+    }
 }
 
 /** כרטיס ההגנה ← אייקון: תצוגה מקדימה + 6 אייקונים */

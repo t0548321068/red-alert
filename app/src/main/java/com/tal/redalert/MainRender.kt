@@ -90,7 +90,7 @@ internal fun MainActivity.refresh() {
     // רק המגן: בלי עיגולי ההילה ובלי האנימציה
     haloOuter.background = null
     haloInner.background = null
-    circleLabel.text = if (noNet) "אין רשת – התרעות לא יגיעו" else if (on) "אתה מוגן" else if (sched) "כבוי לפי תזמון" else "לא מוגן"
+    circleLabel.text = if (noNet) "אין רשת – התרעות לא יגיעו" else if (on) Prefs.protLabel(this) else if (sched) "כבוי לפי תזמון" else "לא מוגן"
     circleLabel.setTextColor(if (noNet) C.ORANGE else if (on) C.TEXT else if (off) C.RED else C.MUTED)
     setSweep(false)   // בלי אנימציית מוגן
     updateIndicators()
@@ -222,7 +222,7 @@ internal fun MainActivity.refreshProtCard() {
     val on = Prefs.enabled(this) && !sched
     val noNet = on && network()?.second != true
     applyProtCard(on, noNet, !Prefs.enabled(this))
-    if (on && !noNet) shieldIcon.setImageResource(PROT_ICONS[Prefs.protIcon(this)])
+    if (on && !noNet) { shieldIcon.setImageResource(PROT_ICONS[Prefs.protIcon(this)]); circleLabel.text = Prefs.protLabel(this) }
 }
 
 /** האייקונים של כרטיס ההגנה במצב מוגן (אין רשת / לא מוגן - תמיד האייקון הרגיל) */
