@@ -86,7 +86,7 @@ internal fun MainActivity.refresh() {
     shieldIcon.imageTintList = null
     // כרטיס "אתה מוגן" בסגנון שנבחר בהגדרות, בצבע המצב (ירוק מוגן · כתום אין רשת · אדום כבוי). לפי תזמון - כרטיס רגיל
     val tone = if (noNet) 1 else if (on) 0 else if (off) 2 else -1
-    if (tone < 0) protStyle(card1, 0, 0, 0, 26) else protStyle(card1, Prefs.protBg(this), Prefs.protFrame(this), tone, 26)
+    applyProtCard(on, noNet, off)
     // רק המגן: בלי עיגולי ההילה ובלי האנימציה
     haloOuter.background = null
     haloInner.background = null
@@ -210,8 +210,46 @@ internal fun MainActivity.applyMainLayout() {
     else { col.addView(card1, i, lp1); col.addView(clockCard, i + 1, lp2) }
 }
 
+/** כרטיס "אתה מוגן" בסגנון שנבחר בהגדרות, בצבע המצב (ירוק מוגן · כתום אין רשת · אדום כבוי). לפי תזמון - כרטיס רגיל */
+internal fun MainActivity.applyProtCard(on: Boolean, noNet: Boolean, off: Boolean) {
+    val tone = if (noNet) 1 else if (on) 0 else if (off) 2 else -1
+    if (tone < 0) protStyle(card1, 0, 0, 0, 26) else protStyle(card1, Prefs.protBg(this), Prefs.protFrame(this), tone, 26)
+}
+
+/** רק כרטיס ההגנה, בלי לגעת בשאר המסך (מעמוד ההגדרות) */
+internal fun MainActivity.refreshProtCard() {
+    val sched = Prefs.enabled(this) && Prefs.scheduleOffNow(this)
+    val on = Prefs.enabled(this) && !sched
+    applyProtCard(on, on && network()?.second != true, !Prefs.enabled(this))
+}
+
+/** רקע עם זוהר מסביב: הזוהר מצויר מחוץ לגבולות הכרטיס (ההורים לא חותכים אותו) */
+private class GlowBg(val inner: android.graphics.drawable.Drawable, glow: Int, fill: Int, blur: Float, val r: Float) :
+    android.graphics.drawable.Drawable() {
+    private val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = fill; setShadowLayer(blur, 0f, 0f, glow)
+    }
+    override fun draw(c: android.graphics.Canvas) {
+        c.drawRoundRect(android.graphics.RectF(bounds), r, r, p)
+        inner.bounds = bounds; inner.draw(c)
+    }
+    override fun setAlpha(a: Int) {}
+    override fun setColorFilter(f: android.graphics.ColorFilter?) {}
+    @Suppress("OVERRIDE_DEPRECATION") override fun getOpacity() = android.graphics.PixelFormat.TRANSLUCENT
+    override fun getOutline(o: android.graphics.Outline) { o.setRoundRect(bounds, r) }
+}
+
+/** ההורים לא חותכים את הזוהר - עד גלילה (לא כולל), כדי שהתוכן לא יגלוש מעל הכותרת */
+private fun View.unclipParents() {
+    var g = parent as? android.view.ViewGroup
+    while (g != null && g !is ScrollView) {
+        g.clipChildren = false; g.clipToPadding = false
+        g = g.parent as? android.view.ViewGroup
+    }
+}
+
 /** סגנון כרטיס ההגנה (רקע + מסגרת). tone: 0 ירוק · 1 כתום · 2 אדום. משמש גם לתצוגה המקדימה בהגדרות */
-internal fun MainActivity.protStyle(v: View, bg: Int, frame: Int, tone: Int, radius: Int) {
+internal fun MainActivity.protStyle(v: View, bg: Int, frame: Int, tone: Int, radius: Int, glow: Boolean = true) {
     val dark = !C.LIGHT
     fun c(h: String) = Color.parseColor(h)
     val t = c(arrayOf("#30D158", "#FF9F0A", "#FF453A")[tone])
@@ -231,14 +269,17 @@ internal fun MainActivity.protStyle(v: View, bg: Int, frame: Int, tone: Int, rad
         else -> d.setColor(base)
     }
     if (w > 0f) d.setStroke((w * px).toInt().coerceAtLeast(1), t)
-    v.background = if (bg == 3 || bg == 6) {
+    val bgd = if (bg == 3 || bg == 6) {
         // פס ירוק למעלה / למטה: שכבה בצבע המצב, ומעליה הכרטיס מוזז בפס
         val bar = GradientDrawable().apply { cornerRadius = r; setColor(t) }
         android.graphics.drawable.LayerDrawable(arrayOf(bar, d)).apply {
             if (bg == 3) setLayerInset(1, 0, dp(5), 0, 0) else setLayerInset(1, 0, 0, 0, dp(5))
         }
     } else d
-    if (android.os.Build.VERSION.SDK_INT >= 28) { v.outlineSpotShadowColor = t; v.outlineAmbientShadowColor = t }
-    v.outlineProvider = android.view.ViewOutlineProvider.BACKGROUND
-    v.elevation = if (frame == 3) dp(10).toFloat() else 0f
+    v.elevation = 0f
+    // זוהר ירוק: הילה בצבע המצב מסביב לכרטיס
+    v.background = if (frame == 3 && glow) {
+        v.unclipParents(); v.post { v.unclipParents() }
+        GlowBg(bgd, (t and 0xFFFFFF) or 0xB3000000.toInt(), base, dp(12).toFloat(), r)
+    } else bgd
 }

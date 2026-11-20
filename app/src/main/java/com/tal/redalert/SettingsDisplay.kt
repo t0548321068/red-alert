@@ -418,13 +418,20 @@ internal val PROT_BG = listOf("ללא", "ירוק כהה", "מעבר ירוק ל
 internal val PROT_FRAME = listOf("ללא", "מסגרת דקה", "מסגרת עבה", "זוהר ירוק", "מסגרת בינונית")
 
 /** כרטיס ההגנה: בוחרים רקע ומסגרת, עם תצוגה מקדימה */
-internal fun MainActivity.chooseProtCard(done: () -> Unit) = ouiPage("כרטיס ההגנה", onClose = done) { body, rebuild ->
+internal fun MainActivity.chooseProtCard(done: () -> Unit) {
+    // תמונה של אזור התרעה | זמן התגוננות - פעם אחת בפתיחת העמוד, כדי שלא תיעלם בכל בחירה
+    val areaBmp = if (clockArea.width > 0 && clockArea.height > 0)
+        android.graphics.Bitmap.createBitmap(clockArea.width, clockArea.height, android.graphics.Bitmap.Config.ARGB_8888)
+            .also { clockArea.draw(android.graphics.Canvas(it)) } else null
+    val greet = if (greeting.visibility == View.VISIBLE) greeting.text.toString() else null
+    val cardW = card1.width
+    ouiPage("כרטיס ההגנה", onClose = done) { body, rebuild ->
     val bgSel = Prefs.protBg(this); val frSel = Prefs.protFrame(this)
     // תצוגה מקדימה: אותו כרטיס כמו במסך הראשי - ברכה, מגן, "אתה מוגן", אזור התרעה | זמן התגוננות, באותם גדלים
     val pv = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL; setPadding(dp(18), dp(20), dp(18), dp(18))
-        if (greeting.visibility == View.VISIBLE)
-            addView(text(greeting.text.toString(), greeting.textSize / resources.displayMetrics.scaledDensity, C.TEXT).apply {
+        if (greet != null)
+            addView(text(greet, greeting.textSize / resources.displayMetrics.scaledDensity, C.TEXT).apply {
                 gravity = greeting.gravity; typeface = greeting.typeface }, LinearLayout.LayoutParams(-1, -2))
         addView(android.widget.FrameLayout(this@chooseProtCard).apply {
             addView(android.widget.ImageView(this@chooseProtCard).apply { setImageResource(R.drawable.ic_shield_green) },
@@ -433,32 +440,31 @@ internal fun MainActivity.chooseProtCard(done: () -> Unit) = ouiPage("כרטיס
         addView(text("אתה מוגן", circleLabel.textSize / resources.displayMetrics.scaledDensity, C.TEXT, bold = true).apply {
             gravity = Gravity.CENTER; typeface = circleLabel.typeface }, LinearLayout.LayoutParams(-1, -2))
         // אזור התרעה | זמן התגוננות: תמונה של מה שמוצג עכשיו במסך הראשי
-        if (clockArea.width > 0 && clockArea.height > 0) {
-            val bmp = android.graphics.Bitmap.createBitmap(clockArea.width, clockArea.height, android.graphics.Bitmap.Config.ARGB_8888)
-            clockArea.draw(android.graphics.Canvas(bmp))
-            addView(android.widget.ImageView(this@chooseProtCard).apply { setImageBitmap(bmp); adjustViewBounds = true
+        if (areaBmp != null) {
+            addView(android.widget.ImageView(this@chooseProtCard).apply { setImageBitmap(areaBmp); adjustViewBounds = true
                 scaleType = android.widget.ImageView.ScaleType.FIT_CENTER }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
         }
     }
     protStyle(pv, bgSel, frSel, 0, 26)
     // אותו רוחב כמו הכרטיס במסך הראשי
-    val side = if (card1.width > 0) ((resources.displayMetrics.widthPixels - card1.width) / 2) else dp(PAGE_SIDE + 4)
+    val side = if (cardW > 0) ((resources.displayMetrics.widthPixels - cardW) / 2) else dp(PAGE_SIDE + 4)
     body.addView(pv, LinearLayout.LayoutParams(-1, -2).apply { setMargins(side, dp(10), side, dp(18)) })
     // ריבוע קטן בסגנון - ליד כל אפשרות
-    fun sw(b: Int, f: Int) = View(this).also { protStyle(it, b, f, 0, 7); it.elevation = 0f }
+    fun sw(b: Int, f: Int) = View(this).also { protStyle(it, b, f, 0, 7, glow = false) }
     body.addView(text("רקע", 15f, C.MUTED).apply { setPadding(dp(30), dp(6), dp(30), dp(6)) })
     val cb = ouiCard()
     PROT_BG.forEachIndexed { i, n ->
         if (i > 0) ouiDivider(cb)
-        ouiRow(cb, n, radio = i == bgSel, lead = sw(i, 0)) { Prefs.setProtBg(this, i); refresh(); rebuild() }
+        ouiRow(cb, n, radio = i == bgSel, lead = sw(i, 0)) { Prefs.setProtBg(this, i); refreshProtCard(); rebuild() }
     }
     ouiAdd(body, cb)
     body.addView(text("מסגרת", 15f, C.MUTED).apply { setPadding(dp(30), dp(14), dp(30), dp(6)) })
     val cf = ouiCard()
     PROT_FRAME.forEachIndexed { i, n ->
         if (i > 0) ouiDivider(cf)
-        ouiRow(cf, n, radio = i == frSel, lead = sw(0, i)) { Prefs.setProtFrame(this, i); refresh(); rebuild() }
+        ouiRow(cf, n, radio = i == frSel, lead = sw(0, i)) { Prefs.setProtFrame(this, i); refreshProtCard(); rebuild() }
     }
     ouiAdd(body, cf)
     ouiNote(body, "כשאין רשת הכרטיס כתום, וכשההתרעות כבויות – אדום")
+    }
 }
