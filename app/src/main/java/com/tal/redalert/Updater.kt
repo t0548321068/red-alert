@@ -233,7 +233,7 @@ object Updater {
 
     private fun offer(a: Activity, u: Update) {
         val beta = u.key.startsWith("beta")
-        AppSheet.show(a, (if (beta) "🧪 גרסת בטא זמינה – " else "🆕 גרסה חדשה זמינה – ") + u.label,
+        AppSheet.show(a, (if (beta) "🧪 גרסת בטא זמינה – " else "גרסה חדשה זמינה – ") + u.label,
             "הגרסה שלך: ${versionLabel(a)}\nלהתקין עכשיו?" +
                 (if (beta) "\n\nגרסת בטא – לפני שחרור לכולם, ייתכנו בה תקלות." else "") +
                 "\n\n\"מאוחר יותר\" – אפשר לעדכן בכל עת דרך ⚙ ← עדכונים",

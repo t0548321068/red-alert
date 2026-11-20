@@ -122,6 +122,7 @@ internal fun MainActivity.renderChips() {
                 addView(android.widget.ImageView(this@renderChips).apply {
                     setImageResource(R.drawable.ic_area_pin_line)
                     imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT)
+                    translationY = dp(5).toFloat()   // מצופר חירום 2: 5 למטה
                 }, FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER))
             } else FrameLayout(this@renderChips).apply {
                 // ⏱ של המערכת: מצויר לתמונה חתוכה בדיוק לגבולות הציור, ומוצג בגובה 22dp במרכז - בדיוק כמו הסיכה.
@@ -135,6 +136,7 @@ internal fun MainActivity.renderChips() {
                         setImageBitmap(bmp)
                     }
                     adjustViewBounds = true; scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                    translationY = dp(5).toFloat()   // מצופר חירום 2: 5 למטה
                 }, FrameLayout.LayoutParams(-2, dp(22), Gravity.CENTER))
             },
             LinearLayout.LayoutParams(dp(44), dp(44)))
