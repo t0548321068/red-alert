@@ -82,6 +82,8 @@ function route(req, res) {
     case '/beta': return files.serveBeta(res, String(q('code') || '').trim().toUpperCase());
     // שעון אחיד: השעה של השרת (מסונכרן ל-NTP) - הטלפונים והאתר מציגים לפיה
     case '/time': res.writeHead(200, { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' }); return res.end(String(Date.now()));
+    // ניהול צופר: בדיקת עדכון לו ולעריכת צופר דרך השרת
+    case '/apps': res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); return res.end(JSON.stringify(versions.apps));
     case '/status':
       // כפתור "בדוק את השרתים": מצב המקורות, וסימן חיים דרך Firebase - כך נבדקת כל הדרך עד הטלפון.
       // לכל היותר פעם בדקה (שלא יוכלו להציף את המכשירים מבחוץ)
