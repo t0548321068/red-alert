@@ -84,6 +84,9 @@ internal fun MainActivity.refresh() {
     shieldIcon.setImageResource(if (on && !noNet) R.drawable.ic_shield_green else if (noNet) R.drawable.ic_shield_alert
         else if (off) R.drawable.ic_shield_x else R.drawable.ic_shield_outline)
     shieldIcon.imageTintList = null
+    // כרטיס "אתה מוגן" בסגנון שנבחר בהגדרות, בצבע המצב (ירוק מוגן · כתום אין רשת · אדום כבוי). לפי תזמון - כרטיס רגיל
+    val tone = if (noNet) 1 else if (on) 0 else if (off) 2 else -1
+    if (tone < 0) protStyle(card1, 0, 0, 0, 26) else protStyle(card1, Prefs.protBg(this), Prefs.protFrame(this), tone, 26)
     // רק המגן: בלי עיגולי ההילה ובלי האנימציה
     haloOuter.background = null
     haloInner.background = null
@@ -205,4 +208,37 @@ internal fun MainActivity.applyMainLayout() {
     col.removeView(card1); col.removeView(clockCard)
     if (clockFirst) { col.addView(clockCard, i, lp2); col.addView(card1, i + 1, lp1) }
     else { col.addView(card1, i, lp1); col.addView(clockCard, i + 1, lp2) }
+}
+
+/** סגנון כרטיס ההגנה (רקע + מסגרת). tone: 0 ירוק · 1 כתום · 2 אדום. משמש גם לתצוגה המקדימה בהגדרות */
+internal fun MainActivity.protStyle(v: View, bg: Int, frame: Int, tone: Int, radius: Int) {
+    val dark = !C.LIGHT
+    fun c(h: String) = Color.parseColor(h)
+    val t = c(arrayOf("#30D158", "#FF9F0A", "#FF453A")[tone])
+    val base = (graphite(radius) as? GradientDrawable)?.color?.defaultColor ?: C.CHIP
+    val fill = c(if (dark) arrayOf("#0F2A18", "#2E1F08", "#2E0F0E")[tone] else arrayOf("#E6F7EA", "#FFF1DD", "#FDE7E6")[tone])
+    val mid = c(if (dark) arrayOf("#14532D", "#5A3A0A", "#5A1A16")[tone] else arrayOf("#BFE8CB", "#FFDDA8", "#F8C4BF")[tone])
+    val r = dp(radius).toFloat()
+    val px = resources.displayMetrics.density
+    val w = when (frame) { 1 -> 1f; 2 -> 3f; 3, 4 -> 1.5f; else -> 0f }
+    val d = GradientDrawable().apply { cornerRadius = r }
+    when (bg) {
+        1 -> d.setColor(fill)
+        2 -> { d.orientation = GradientDrawable.Orientation.TOP_BOTTOM; d.colors = intArrayOf(mid, base, base, base) }
+        4 -> { d.gradientType = GradientDrawable.RADIAL_GRADIENT; d.setGradientCenter(0.5f, 0.35f)
+            d.gradientRadius = dp(170).toFloat(); d.colors = intArrayOf((t and 0xFFFFFF) or 0x73000000, base) }
+        5 -> { d.orientation = GradientDrawable.Orientation.BOTTOM_TOP; d.colors = intArrayOf(mid, base, base) }
+        else -> d.setColor(base)
+    }
+    if (w > 0f) d.setStroke((w * px).toInt().coerceAtLeast(1), t)
+    v.background = if (bg == 3 || bg == 6) {
+        // פס ירוק למעלה / למטה: שכבה בצבע המצב, ומעליה הכרטיס מוזז בפס
+        val bar = GradientDrawable().apply { cornerRadius = r; setColor(t) }
+        android.graphics.drawable.LayerDrawable(arrayOf(bar, d)).apply {
+            if (bg == 3) setLayerInset(1, 0, dp(5), 0, 0) else setLayerInset(1, 0, 0, 0, dp(5))
+        }
+    } else d
+    if (android.os.Build.VERSION.SDK_INT >= 28) { v.outlineSpotShadowColor = t; v.outlineAmbientShadowColor = t }
+    v.outlineProvider = android.view.ViewOutlineProvider.BACKGROUND
+    v.elevation = if (frame == 3) dp(10).toFloat() else 0f
 }
