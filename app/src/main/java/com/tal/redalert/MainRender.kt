@@ -123,11 +123,19 @@ internal fun MainActivity.renderChips() {
                     setImageResource(R.drawable.ic_area_pin_line)
                     imageTintList = android.content.res.ColorStateList.valueOf(C.TEXT)
                 }, FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER))
-            } else text(emoji, 30f, C.TEXT).apply {
-                gravity = Gravity.CENTER; includeFontPadding = false
-                // ⏱ של המערכת יוצא קטן מהסיכה (22dp): מגדילים את הגופן עד שגובה הציור עצמו = 22dp
-                val b = android.graphics.Rect(); paint.getTextBounds(emoji, 0, emoji.length, b)
-                if (b.height() > 0) textSize = 30f * dp(22) / b.height()
+            } else FrameLayout(this@renderChips).apply {
+                // ⏱ של המערכת: מצויר לתמונה חתוכה בדיוק לגבולות הציור, ומוצג בגובה 22dp במרכז - בדיוק כמו הסיכה.
+                // (כטקסט, הגופן מוסיף רווח מעל ומתחת, והאייקון יצא נמוך או גבוה מהסיכה)
+                addView(android.widget.ImageView(this@renderChips).apply {
+                    val pt = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { textSize = dp(64).toFloat(); color = C.TEXT }
+                    val b = android.graphics.Rect(); pt.getTextBounds(emoji, 0, emoji.length, b)
+                    if (b.width() > 0 && b.height() > 0) {
+                        val bmp = android.graphics.Bitmap.createBitmap(b.width(), b.height(), android.graphics.Bitmap.Config.ARGB_8888)
+                        android.graphics.Canvas(bmp).drawText(emoji, -b.left.toFloat(), -b.top.toFloat(), pt)
+                        setImageBitmap(bmp)
+                    }
+                    adjustViewBounds = true; scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                }, FrameLayout.LayoutParams(-2, dp(22), Gravity.CENTER))
             },
             LinearLayout.LayoutParams(dp(44), dp(44)))
         // מעריכת צופר: בכהה AAAAAA (בהיר יותר מהאפור הרגיל)
