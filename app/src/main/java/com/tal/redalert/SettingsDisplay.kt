@@ -467,7 +467,7 @@ private fun MainActivity.protPreview(body: LinearLayout, areaBmp: android.graphi
 
 /** כרטיס ההגנה ← כיתוב: תצוגה מקדימה + 4 נוסחים או טקסט משלו */
 private fun MainActivity.chooseProtText(areaBmp: android.graphics.Bitmap?, greet: String?, cardW: Int, done: () -> Unit) {
-    ouiPage("כיתוב", onClose = done) { body, rebuild ->
+    ouiPage("כיתוב", onClose = done, pin = 1) { body, rebuild ->
         val label = protPreview(body, areaBmp, greet, cardW)
         val sel = Prefs.protText(this)
         val c = ouiCard()
@@ -503,7 +503,7 @@ private fun MainActivity.chooseProtText(areaBmp: android.graphics.Bitmap?, greet
 
 /** כרטיס ההגנה ← אייקון: תצוגה מקדימה + 6 אייקונים */
 private fun MainActivity.chooseProtIcon(areaBmp: android.graphics.Bitmap?, greet: String?, cardW: Int, done: () -> Unit) {
-    ouiPage("אייקון", onClose = done) { body, rebuild ->
+    ouiPage("אייקון", onClose = done, pin = 1) { body, rebuild ->
         protPreview(body, areaBmp, greet, cardW)
         val sel = Prefs.protIcon(this)
         val c = ouiCard().apply { setPadding(dp(8), dp(10), dp(8), dp(10)) }
@@ -526,7 +526,7 @@ private fun MainActivity.chooseProtIcon(areaBmp: android.graphics.Bitmap?, greet
 
 /** כרטיס ההגנה ← עיצוב: בוחרים רקע ומסגרת, עם תצוגה מקדימה */
 private fun MainActivity.chooseProtDesign(areaBmp: android.graphics.Bitmap?, greet: String?, cardW: Int, done: () -> Unit) {
-    ouiPage("עיצוב", onClose = done) { body, rebuild ->
+    ouiPage("עיצוב", onClose = done, pin = 1) { body, rebuild ->
         val bgSel = Prefs.protBg(this); val frSel = Prefs.protFrame(this)
         protPreview(body, areaBmp, greet, cardW)
         // ריבוע קטן בסגנון - ליד כל אפשרות
