@@ -113,7 +113,7 @@ internal fun MainActivity.ouiPage(title: String, refreshOnFocus: Boolean = true,
         }
     }
     // הכותרת (ועוד pin פריטים ראשונים, למשל תצוגה מקדימה) נשארת קבועה למעלה, ורק השאר גולל
-    val fixed = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutDirection = View.LAYOUT_DIRECTION_RTL; setBackgroundColor(C.BG) }
+    val fixed = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutDirection = View.LAYOUT_DIRECTION_RTL; setBackgroundColor(C.BG); tag = "pageTop" }
     lateinit var rebuild: () -> Unit
     rebuild = {
         val y = page.scrollY

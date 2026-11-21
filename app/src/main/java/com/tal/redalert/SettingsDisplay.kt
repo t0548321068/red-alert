@@ -244,9 +244,9 @@ internal fun MainActivity.chooseFeedWindow(done: () -> Unit) = ouiPage("פיד �
             Prefs.setFeedMinutes(this, m.coerceIn(1, 24 * 60)); updateFeed(); rebuild() }
     }
     ouiAdd(body, opts)
-    ouiNote(body, "ההתרעות מתחלפות אחת אחרי השנייה בגלילה כלפי מעלה")
-    // מעריכת צופר: המלל עבר לכאן מעמוד התצוגה
-    ouiNote(body, "ההתרעות בכל הארץ בתחתית המסך הראשי. כשהמתג מופעל - הפיד מוצג תמיד, גם כשאין התרעות")
+    // מעריכת צופר: הסבר אחד - קודם איך ההתרעות מתחלפות, ומתחת המלל שעבר מעמוד התצוגה
+    ouiNote(body, "ההתרעות מתחלפות אחת אחרי השנייה בגלילה כלפי מעלה\n" +
+        "ההתרעות בכל הארץ בתחתית המסך הראשי. כשהמתג מופעל - הפיד מוצג תמיד, גם כשאין התרעות")
 }
 
 internal fun MainActivity.chooseWeatherInterval(done: () -> Unit) = ouiPage("מזג אוויר", onClose = done) { body, rebuild ->
@@ -352,8 +352,10 @@ internal fun MainActivity.choosePalette(done: () -> Unit) = ouiPage("ערכות 
     // הערכה מתחלפת מיד: הצבעים החדשים + רקע העמוד עצמו (שאר האפליקציה - ביציאה מעמוד התצוגה)
     fun recolor() {
         C.apply(Prefs.darkTheme(this), Palettes.current(this, Prefs.darkTheme(this)))
-        var v: View? = body
-        while (v != null) { if (v !== body) v.setBackgroundColor(C.BG); v = v.parent as? View }
+        var v: View? = body; var root: View = body
+        while (v != null) { if (v !== body) v.setBackgroundColor(C.BG); root = v; v = v.parent as? View }
+        // הכותרת הקבועה למעלה לא נמצאת מעל הרשימה - גם היא מתחלפת מיד (מעריכת צופר)
+        root.findViewWithTag<View>("pageTop")?.setBackgroundColor(C.BG)
         // שורת המצב והניווט של העמוד הזה (העמוד הפתוח האחרון)
         pages.lastOrNull()?.window?.let { w ->
             @Suppress("DEPRECATION")
@@ -393,6 +395,8 @@ internal fun MainActivity.chooseProtCard(done: () -> Unit) {
     val greet = if (greeting.visibility == View.VISIBLE) greeting.text.toString() else null
     val cardW = card1.width
     ouiPage("כרטיס ההגנה", onClose = done) { body, rebuild ->
+        // מעריכת צופר: המיקום במסך הראשי - למעלה, לפני עיצוב / אייקון / כיתוב
+        protLayoutCard(body, rebuild)
         val c = ouiCard()
         ouiRow(c, "עיצוב", sub = "רקע: ${PROT_BG[Prefs.protBg(this)]} · מסגרת: ${PROT_FRAME[Prefs.protFrame(this)]}") {
             chooseProtDesign(areaBmp, greet, cardW) { rebuild() } }
@@ -401,7 +405,6 @@ internal fun MainActivity.chooseProtCard(done: () -> Unit) {
         ouiDivider(c)
         ouiRow(c, "כיתוב", sub = Prefs.protLabel(this)) { chooseProtText(areaBmp, greet, cardW) { rebuild() } }
         ouiAdd(body, c)
-        protLayoutCard(body, rebuild)
     }
 }
 
@@ -517,7 +520,7 @@ private fun MainActivity.chooseProtDesign(areaBmp: android.graphics.Bitmap?, gre
 
 /** כרטיס ההגנה ← מיקום במסך הראשי: למעלה או מתחת לשעון (תצוגה מקדימה קטנה של המסך) */
 private fun MainActivity.protLayoutCard(body: LinearLayout, rebuild: () -> Unit) {
-        body.addView(text("מיקום במסך הראשי", 15f, C.MUTED).apply { setPadding(dp(30), dp(14), dp(30), dp(6)) })
+        body.addView(text("מיקום במסך הראשי", 15f, C.MUTED).apply { setPadding(dp(30), dp(6), dp(30), dp(6)) })
         val lay = ouiCard()
         val pickL = LinearLayout(this).apply { gravity = Gravity.CENTER; setPadding(dp(10), dp(20), dp(10), dp(16)) }
         fun layoutPreview(clockFirst: Boolean, label: String) = LinearLayout(this).apply {
@@ -557,9 +560,9 @@ private fun MainActivity.protLayoutCard(body: LinearLayout, rebuild: () -> Unit)
             addLabelRadio(this, label, Prefs.mainLayout(this@protLayoutCard) == v)
             setOnClickListener { Prefs.setMainLayout(this@protLayoutCard, v); applyMainLayout(); rebuild() }
         }
-        // מעריכת צופר: הוחלף המיקום - "מתחת לשעון" מימין, "למעלה" משמאל
-        pickL.addView(layoutPreview(true, "מתחת לשעון"), LinearLayout.LayoutParams(0, -2, 1f))
+        // כרטיס ההגנה "למעלה" מימין, "מתחת לשעון" משמאל
         pickL.addView(layoutPreview(false, "למעלה"), LinearLayout.LayoutParams(0, -2, 1f))
+        pickL.addView(layoutPreview(true, "מתחת לשעון"), LinearLayout.LayoutParams(0, -2, 1f))
         lay.addView(pickL)
         ouiAdd(body, lay)
         ouiNote(body, "הברכה מוצגת בראש הכרטיס העליון")
