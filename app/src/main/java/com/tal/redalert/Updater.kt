@@ -222,6 +222,8 @@ object Updater {
         fun parts(v: String) = v.split(".").map { p -> p.takeWhile { it.isDigit() }.toIntOrNull() ?: 0 }
         val r = parts(remote)
         val l = parts(local)
+        // מעבר לשיטת x.y.z (מ-4.43): גרסה עם שלושה מספרים תמיד חדשה מגרסה עם שני מספרים (1.4.44 אחרי 4.43)
+        if ((r.size >= 3) != (l.size >= 3)) return r.size >= 3
         for (i in 0 until maxOf(r.size, l.size)) {
             val a = r.getOrElse(i) { 0 }
             val b = l.getOrElse(i) { 0 }
