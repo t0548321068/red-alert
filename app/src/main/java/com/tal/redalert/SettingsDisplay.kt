@@ -30,6 +30,7 @@ internal fun MainActivity.applyThemeNow(d: android.app.Dialog, rebuild: () -> Un
     (d.window?.decorView?.findViewWithTag<View>("displayTop"))?.let { it.setBackgroundColor(C.BG); (it.parent as? View)?.setBackgroundColor(C.BG) }
     @Suppress("DEPRECATION")
     d.window?.statusBarColor = C.BG
+    d.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(C.BG))
     if (Build.VERSION.SDK_INT >= 30) {
         val light = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
             android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
@@ -144,7 +145,9 @@ private fun MainActivity.displayPage(colors: Boolean, onClose: (() -> Unit)? = n
         // פלטת צבעים: גוון לחשוך וגוון לבהיר (מעריכת צופר)
         val pal = card()
         row(pal, "ערכות נושא", "חשוך: ${Palettes.dark(this).name} · בהיר: ${Palettes.light(this).name}", sep = false) {
-            choosePalette { applyThemeNow(d) { rebuild() } } }
+            // העמוד הזה (מתחת) מתעדכן כבר בזמן הבחירה - שבחזרה לא יופיע לרגע בצבעים הקודמים (קפיצה בהדמיה)
+            val update = { applyThemeNow(d) { rebuild() } }
+            choosePalette(onChange = update, done = update) } }
         addCard(pal)
         return
         }
@@ -342,7 +345,7 @@ internal fun MainActivity.chooseThemeTime(done: () -> Unit) = ouiPage("לפי ז
 }
 
 /** פלטת צבעים: הגוון של הערכה החשוכה ושל הבהירה - כמה צבעים לכל אחת, עם עיגול צבע ליד כל שם */
-internal fun MainActivity.choosePalette(done: () -> Unit) = ouiPage("ערכות נושא", onClose = done) { body, rebuild ->
+internal fun MainActivity.choosePalette(onChange: () -> Unit = {}, done: () -> Unit) = ouiPage("ערכות נושא", onClose = done) { body, rebuild ->
     // עיגול: הרקע של הפלטה מבחוץ והכרטיס בפנים
     fun swatch(p: Palette) = android.widget.FrameLayout(this).apply {
         background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(p.c(p.bg)); setStroke(dp(1), p.c(p.sepv)) }
@@ -372,7 +375,7 @@ internal fun MainActivity.choosePalette(done: () -> Unit) = ouiPage("ערכות 
         val c = ouiCard()
         list.forEachIndexed { i, p ->
             if (i > 0) ouiDivider(c)
-            ouiRow(c, p.name, radio = p.id == sel, lead = swatch(p)) { set(p.id); recolor(); rebuild() }
+            ouiRow(c, p.name, radio = p.id == sel, lead = swatch(p)) { set(p.id); recolor(); onChange(); rebuild() }
         }
         ouiAdd(body, c)
     }
