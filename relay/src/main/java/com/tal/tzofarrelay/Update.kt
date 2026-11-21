@@ -23,8 +23,11 @@ object Update {
         @Suppress("DEPRECATION") c.packageManager.getPackageInfo(c.packageName, 0).versionCode
     } catch (_: Exception) { 0 }
 
+    /** הגרסה לתצוגה (1.28.0) */
+    fun currentName(c: Context): String = try { c.packageManager.getPackageInfo(c.packageName, 0).versionName ?: "" } catch (_: Exception) { "" }
+
     /** הגרסה האחרונה בגיטהאב: מספר, קישור להורדה, גודל ותאריך פרסום */
-    class Latest(val n: Int, val url: String, val size: Long, val date: Long)
+    class Latest(val n: Int, val url: String, val size: Long, val date: Long, val v: String = "1.$n")
 
     /** בודק את הגרסה האחרונה (null = אין חיבור). רץ ברקע */
     fun lookup(): Latest? {
@@ -33,13 +36,15 @@ object Update {
         conn.setRequestProperty("Accept", "application/vnd.github+json")
         val j = try { if (conn.responseCode != 200) return null; JSONObject(conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }) } finally { conn.disconnect() }
         val n = Regex("(\\d+)\\s*$").find(j.optString("name"))?.groupValues?.get(1)?.toIntOrNull() ?: return null
+        // שם הגרסה בכותרת ("ממסר צופר · 1.28.0 · 30"); גרסאות ישנות - רק מספר הבנייה
+        val v = Regex("(\\d+\\.\\d+\\.\\d+)").find(j.optString("name"))?.groupValues?.get(1) ?: "1.$n"
         val a = j.optJSONArray("assets") ?: return null
         val asset = (0 until a.length()).map { a.getJSONObject(it) }.firstOrNull { it.optString("browser_download_url").endsWith(".apk") } ?: return null
         val date = try {
             java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
                 .parse(asset.optString("updated_at"))?.time ?: 0L
         } catch (_: Exception) { 0L }
-        return Latest(n, asset.optString("browser_download_url"), asset.optLong("size"), date)
+        return Latest(n, asset.optString("browser_download_url"), asset.optLong("size"), date, v)
     }
 
     /** "התקן עכשיו": מוריד ומתקין. בלי אישור התקנה - פותח את מסך האישור, ואז לוחצים שוב */
@@ -51,7 +56,7 @@ object Update {
                 android.net.Uri.parse("package:${c.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             return
         }
-        busy = true; status = "מוריד גרסה 1.${l.n}…"; refresh()
+        busy = true; status = "מוריד גרסה ${l.v}…"; refresh()
         Thread {
             try {
                 val f = File(c.cacheDir, "relay-update.apk")
