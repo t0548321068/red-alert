@@ -55,6 +55,7 @@ internal fun MainActivity.fixedHeaderPage(top: LinearLayout, page: ScrollView): 
     top.setBackgroundColor(C.BG)
     col.addView(top, LinearLayout.LayoutParams(-1, -2))
     col.addView(page, LinearLayout.LayoutParams(-1, 0, 1f))
+    noTinyScroll(page)
     page.setOnApplyWindowInsetsListener { v, insets ->
         @Suppress("DEPRECATION")
         v.setPadding(insets.systemWindowInsetLeft, 0, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
@@ -66,6 +67,23 @@ internal fun MainActivity.fixedHeaderPage(top: LinearLayout, page: ScrollView): 
         page.dispatchApplyWindowInsets(insets)
     }
     return col
+}
+
+/**
+ * כשכל התוכן נכנס במסך (הכותרת קבועה למעלה), הריווח שבסוף הרשימה יצר גלילה של כמה פיקסלים -
+ * הרשימה "זזה קצת ונעצרת". כאן הריווח בסוף מתקצר בדיוק עד שאין מה לגלול; כשהתוכן ארוך מהמסך - הריווח המלא
+ */
+internal fun noTinyScroll(page: ScrollView) {
+    var base = -1
+    page.viewTreeObserver.addOnGlobalLayoutListener {
+        val c = page.getChildAt(0) ?: return@addOnGlobalLayoutListener
+        if (base < 0) base = c.paddingBottom
+        val view = page.height - page.paddingTop - page.paddingBottom
+        if (view <= 0) return@addOnGlobalLayoutListener
+        val need = c.height - c.paddingBottom
+        val want = if (need <= view) minOf(base, view - need) else base
+        if (c.paddingBottom != want) c.setPadding(c.paddingLeft, c.paddingTop, c.paddingRight, want)
+    }
 }
 
 /** שוליים מהצדדים לכרטיסים - כמו במסך הראשי */
@@ -128,6 +146,7 @@ internal fun MainActivity.ouiPage(title: String, refreshOnFocus: Boolean = true,
         }
     }
     body.setPadding(0, 0, 0, dp(if (button == null) 30 else 100))
+    if (button == null) noTinyScroll(page)   // עם כפתור צף - הריווח המלא נשאר (שהכפתור לא יסתיר את השורה האחרונה)
     if (button == null) d.setContentView(frame)
     else {
         // כפתור כחול גדול קבוע מעל התפריט (כמו "בדוק אם יש עדכונים" בסמסונג)
