@@ -52,8 +52,8 @@ jobs:
           R=${{ github.repository }}
           if gh release view relay --repo $R >/dev/null 2>&1; then
             gh release upload relay tzofar-relay.apk --clobber --repo $R
-            gh release edit relay --repo $R --title "ממסר צופר · ${{ github.run_number }}" --prerelease --draft=false
+            gh release edit relay --repo $R --title "ממסר צופר · $(grep -oP 'versionName = "\K[^"]+' relay/build.gradle.kts) · ${{ github.run_number }}" --prerelease --draft=false
           else
             gh release create relay tzofar-relay.apk --repo $R --prerelease --latest=false --target ${{ github.sha }} \
-              --title "ממסר צופר · ${{ github.run_number }}" --notes "האפליקציה לטלפון שבבית – מעבירה את התרעות פיקוד העורף לשרת"
+              --title "ממסר צופר · $(grep -oP 'versionName = "\K[^"]+' relay/build.gradle.kts) · ${{ github.run_number }}" --notes "האפליקציה לטלפון שבבית – מעבירה את התרעות פיקוד העורף לשרת"
           fi
