@@ -147,7 +147,7 @@ private fun MainActivity.displayPage(colors: Boolean, onClose: (() -> Unit)? = n
         row(pal, "ערכות נושא", "חשוך: ${Palettes.dark(this).name} · בהיר: ${Palettes.light(this).name}", sep = false) {
             // העמוד הזה (מתחת) מתעדכן כבר בזמן הבחירה - שבחזרה לא יופיע לרגע בצבעים הקודמים (קפיצה בהדמיה)
             val update = { applyThemeNow(d) { rebuild() } }
-            choosePalette(onChange = update, done = update) } }
+            choosePalette(onChange = update, done = update) }
         addCard(pal)
         return
         }
