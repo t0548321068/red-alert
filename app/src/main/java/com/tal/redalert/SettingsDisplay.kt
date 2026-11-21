@@ -42,7 +42,7 @@ internal fun MainActivity.applyThemeNow(d: android.app.Dialog, rebuild: () -> Un
 internal fun MainActivity.showDisplay() {
     val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
     val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(30)) }
-    val page = PageScroll(this).apply {
+    val page = ScrollView(this).apply {
         tag = "displayPage"
         setBackgroundColor(C.BG)
         layoutDirection = View.LAYOUT_DIRECTION_RTL

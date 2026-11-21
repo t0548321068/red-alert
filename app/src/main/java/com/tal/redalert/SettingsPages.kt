@@ -18,7 +18,7 @@ import com.tal.redalert.MainActivity.Row
 internal fun MainActivity.showSettings() {
     val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
     val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-    val page = PageScroll(this).apply {
+    val page = ScrollView(this).apply {
         setBackgroundColor(C.BG)
         layoutDirection = View.LAYOUT_DIRECTION_RTL
         addView(body)

@@ -86,33 +86,6 @@ internal fun noTinyScroll(page: ScrollView) {
     }
 }
 
-/**
- * הגלילה של עמודי ההגדרות. ScrollView רגיל לא "תופס" גרירה שמתחילה על שורה כשאין מה לגלול
- * (כל התוכן נכנס מתחת לכותרת הקבועה) - אז גרירה על השורות לא הזיזה כלום, ורק ברווחים היה אפקט המתיחה.
- * כאן גרירה אנכית על שורה נתפסת תמיד, כך שהעמוד מגיב אותו דבר בכל מקום (גלילה / מתיחה בקצה)
- */
-internal class PageScroll(c: android.content.Context) : ScrollView(c) {
-    private var downX = 0f; private var downY = 0f
-    private val slop = android.view.ViewConfiguration.get(c).scaledTouchSlop
-    init { overScrollMode = OVER_SCROLL_ALWAYS }   // אפקט המתיחה גם כשכל התוכן נכנס במסך (כמו בסמסונג)
-    override fun onInterceptTouchEvent(ev: android.view.MotionEvent): Boolean {
-        if (scrollY != 0 || canScrollVertically(1)) return super.onInterceptTouchEvent(ev)
-        when (ev.actionMasked) {
-            android.view.MotionEvent.ACTION_DOWN -> { downX = ev.x; downY = ev.y }
-            android.view.MotionEvent.ACTION_MOVE -> {
-                val dy = kotlin.math.abs(ev.y - downY)
-                if (dy > slop && dy > kotlin.math.abs(ev.x - downX)) {
-                    // מתחילים גרירה של העמוד מהנקודה הנוכחית (ההמשך - ב-onTouchEvent הרגיל, עם אפקט המתיחה)
-                    val down = android.view.MotionEvent.obtain(ev).apply { action = android.view.MotionEvent.ACTION_DOWN }
-                    super.onTouchEvent(down); down.recycle()
-                    return true
-                }
-            }
-        }
-        return false
-    }
-}
-
 /** שוליים מהצדדים לכרטיסים - כמו במסך הראשי */
 internal const val PAGE_SIDE = 16
 /** גובה שורה בכל מסכי ההגדרות - כמו במסך ההגדרות הראשי (אייקון 34 + 12 למעלה ולמטה) */
@@ -129,7 +102,7 @@ internal fun MainActivity.ouiPage(title: String, refreshOnFocus: Boolean = true,
                     build: (LinearLayout, () -> Unit) -> Unit) {
     val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
     val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(30)) }
-    val page = PageScroll(this).apply {
+    val page = ScrollView(this).apply {
         setBackgroundColor(C.BG)
         layoutDirection = View.LAYOUT_DIRECTION_RTL
         addView(body)
@@ -313,7 +286,7 @@ internal fun MainActivity.onePage(title: String, action: Pair<Int, () -> Unit>? 
                     build: (LinearLayout) -> Unit) {
     val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
     val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-    val page = PageScroll(this).apply {
+    val page = ScrollView(this).apply {
         setBackgroundColor(C.BG)
         layoutDirection = View.LAYOUT_DIRECTION_RTL
         addView(body)
