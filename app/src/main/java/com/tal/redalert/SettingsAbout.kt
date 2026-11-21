@@ -219,7 +219,9 @@ private fun MainActivity.deviceInfo(): String {
         "גרסה" to Updater.versionLabel(this),
         "דגם" to "${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE}",
         "מוגן" to yes(Prefs.enabled(this) && !Prefs.scheduleOffNow(this)),
-        "אזורים" to (Prefs.nearbyAreas(this) + Prefs.cities(this)).distinct().joinToString(", ").ifEmpty { "–" },
+        // הרבה יישובים קרובים (ירושלים) - רק 15 הראשונים ומספר השאר, שהדיווח לא יהיה גדול מדי
+        "אזורים" to (Prefs.nearbyAreas(this) + Prefs.cities(this)).distinct().let { a ->
+            (a.take(15).joinToString(", ") + if (a.size > 15) " ועוד ${a.size - 15}" else "").ifEmpty { "–" } },
         "צלילים" to yes(Prefs.soundsOn(this)), "רטט" to yes(Prefs.vibesOn(this)),
         "מושתק" to yes(Prefs.mutedNow(this)), "צליל חזק" to yes(Prefs.loudSound(this)),
         "עקיפת שקט" to yes(Prefs.bypassSilent(this)), "שעות שקט" to yes(Prefs.quietOn(this)),
