@@ -121,7 +121,7 @@ private fun MainActivity.displayPage(colors: Boolean, onClose: (() -> Unit)? = n
                 background = GradientDrawable().apply { setColor(p.c(if (light) p.chip else p.bg).let { if (!light && p.id == "black") Color.parseColor("#2B2B2E") else it }); cornerRadius = dp(12).toFloat() }
                 listOf(12, 26, 40, 26).forEach { h ->
                     addView(View(this@displayPage).apply {
-                        background = GradientDrawable().apply { setColor(p.c(if (light) p.sepv else p.chip)); cornerRadius = dp(6).toFloat() }
+                        background = GradientDrawable().apply { setColor(p.c(if (light) p.sepv else if (p.id == "black") p.sepv else p.chip)); cornerRadius = dp(6).toFloat() }
                     }, LinearLayout.LayoutParams(-1, dp(h)).apply { bottomMargin = dp(5) })
                 }
             }
