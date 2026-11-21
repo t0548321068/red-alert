@@ -160,6 +160,13 @@ private fun MainActivity.displayPage(colors: Boolean, onClose: (() -> Unit)? = n
         val more = card()
         row(more, "כרטיס השעון", clockCardSummary(), sep = false) { chooseClockCard { rebuild() } }
         addCard(more)
+        // ברכה - שורה נפרדת (לא בתוך כרטיס מסוים): מוצגת בראש הכרטיס העליון, לפי המיקום שנבחר
+        val gr = card()
+        row(gr, "ברכה", TimeFormat.greeting(System.currentTimeMillis()) + Prefs.greetingName(this).let { if (it.isEmpty()) "" else " $it" },
+            on = Prefs.showGreeting(this), open = { showGreetingName { rebuild() } }) {
+            Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock(); rebuild() }
+        addCard(gr)
+        note("הברכה מוצגת בראש הכרטיס העליון – עכשיו " + if (Prefs.mainLayout(this) == 1) "כרטיס השעון" else "כרטיס ההגנה")
         // שורת החיוויים במסך הראשי (ההסבר - בעמוד שלה)
         val ind = card()
         val sm = Prefs.statusMode(this)
@@ -575,10 +582,9 @@ private fun MainActivity.protLayoutCard(body: LinearLayout, rebuild: () -> Unit)
 internal fun MainActivity.clockCardSummary(): String = listOf(
     if (Prefs.showSeconds(this)) "שניות" else "",
     if (Prefs.showDate(this)) "תאריך" else "",
-    if (Prefs.showWeather(this)) "מזג אוויר" else "",
-    if (Prefs.showGreeting(this)) "ברכה" else "").filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "שעה בלבד" }
+    if (Prefs.showWeather(this)) "מזג אוויר" else "").filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "שעה בלבד" }
 
-/** כרטיס השעון: תצוגה מקדימה קבועה למעלה + שעון, תאריך, מזג אוויר וברכה */
+/** כרטיס השעון: תצוגה מקדימה קבועה למעלה + שעון, תאריך ומזג אוויר (הברכה - שורה נפרדת בעמוד התצוגה) */
 internal fun MainActivity.chooseClockCard(done: () -> Unit) {
     val cardW = clockCard.width
     ouiPage("כרטיס השעון", onClose = done, pin = 1) { body, rebuild ->
@@ -611,9 +617,6 @@ internal fun MainActivity.chooseClockCard(done: () -> Unit) {
         ouiDivider(c)
         ouiRow(c, "מזג אוויר", sub = "עדכון " + weatherLabel(Prefs.weatherMinutes(this)), on = Prefs.showWeather(this),
             onToggle = { Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); rebuild() }) { chooseWeatherInterval { rebuild() } }
-        ouiDivider(c)
-        ouiRow(c, "ברכה", sub = Prefs.greetingName(this), on = Prefs.showGreeting(this),
-            onToggle = { Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock(); rebuild() }) { showGreetingName { rebuild() } }
         ouiAdd(body, c)
     }
 }
