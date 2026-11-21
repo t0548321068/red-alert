@@ -166,10 +166,21 @@ object Updater {
         }
     } catch (_: Exception) { null }
 
+    /** צופר חירום 2: הגרסה מתוך דף הגרסה באתר ("עריכת צופר · 2.0.71") */
+    private fun cheapV2(): String? = try {
+        val conn = URL("$REPO/tag/editor").openConnection() as HttpURLConnection
+        conn.connectTimeout = 8000; conn.readTimeout = 8000
+        val html = try { if (conn.responseCode != 200) "" else conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) } }
+                   finally { conn.disconnect() }
+        Regex("עריכת צופר · (\\d+(?:\\.\\d+)+)").find(html)?.groupValues?.get(1)
+    } catch (_: Exception) { null }
+
     /** (גרסה, קישור ל-APK, מספר בנייה) */
     /** צופר חירום 2: הגרסה שפורסמה אחרונה (כותרת "… · 2.0.38") והקובץ שלה */
     private const val V2_API = "https://api.github.com/repos/t0548321068/red-alert/releases/tags/editor"
     private fun bestV2(c: Context): Update? {
+        // קודם דרך האתר (לא נספר במגבלת 60 הבדיקות לשעה של ה-API), ורק אם נכשל - ה-API
+        cheapV2()?.let { ver -> return if (isNewer(ver, currentVersion(c))) Update(ver, "v2-$ver", "$REPO/download/editor/tzofar-editor.apk", ver, 0) else null }
         val conn = URL(V2_API).openConnection() as HttpURLConnection
         conn.connectTimeout = 8000; conn.readTimeout = 8000
         conn.setRequestProperty("Accept", "application/vnd.github+json")
@@ -222,7 +233,7 @@ object Updater {
 
     private fun offer(a: Activity, u: Update) {
         val beta = u.key.startsWith("beta")
-        AppSheet.show(a, (if (beta) "🧪 גרסת בטא זמינה – " else "🆕 גרסה חדשה זמינה – ") + u.label,
+        AppSheet.show(a, (if (beta) "🧪 גרסת בטא זמינה – " else "גרסה חדשה זמינה – ") + u.label,
             "הגרסה שלך: ${versionLabel(a)}\nלהתקין עכשיו?" +
                 (if (beta) "\n\nגרסת בטא – לפני שחרור לכולם, ייתכנו בה תקלות." else "") +
                 "\n\n\"מאוחר יותר\" – אפשר לעדכן בכל עת דרך ⚙ ← עדכונים",

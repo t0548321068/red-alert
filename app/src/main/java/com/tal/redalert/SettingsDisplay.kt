@@ -27,8 +27,10 @@ internal fun MainActivity.applyThemeNow(d: android.app.Dialog, rebuild: () -> Un
     // עמוד התצוגה מתחלף מיד לצבעים החדשים; שאר האפליקציה - ביציאה מהעמוד
     C.apply(Prefs.darkTheme(this), Palettes.current(this, Prefs.darkTheme(this)))
     (d.window?.decorView?.findViewWithTag<View>("displayPage"))?.setBackgroundColor(C.BG)
+    (d.window?.decorView?.findViewWithTag<View>("displayTop"))?.let { it.setBackgroundColor(C.BG); (it.parent as? View)?.setBackgroundColor(C.BG) }
     @Suppress("DEPRECATION")
     d.window?.statusBarColor = C.BG
+    d.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(C.BG))
     if (Build.VERSION.SDK_INT >= 30) {
         val light = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
             android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
@@ -38,7 +40,24 @@ internal fun MainActivity.applyThemeNow(d: android.app.Dialog, rebuild: () -> Un
 }
 
 /** עמוד "תצוגה" בסגנון One UI (כמו בהגדרות של סמסונג) */
-internal fun MainActivity.showDisplay() {
+internal fun MainActivity.showDisplay() = displayPage(colors = false)
+
+/** עמוד "רקע וצבעים": חשוך / בהיר, לפי המערכת / לפי זמן, וערכות נושא (מעמוד התצוגה - שהעמוד לא יהיה ארוך) */
+internal fun MainActivity.showColors(done: () -> Unit) = displayPage(colors = true, onClose = done)
+
+/** תקציר בשורה "רקע וצבעים": המצב + הערכה */
+internal fun MainActivity.colorsSummary(): String {
+    val dk = Palettes.dark(this).name; val lt = Palettes.light(this).name
+    return when (Prefs.themeMode(this)) {
+        0 -> "חשוך · $dk"
+        1 -> "בהיר · $lt"
+        2 -> "לפי המערכת · $dk / $lt"
+        else -> "לפי זמן · $dk / $lt"
+    }
+}
+
+/** בונה את עמוד התצוגה, או (colors) את עמוד רקע וצבעים - אותו מבנה, וצבעי העמוד מתחלפים מיד */
+private fun MainActivity.displayPage(colors: Boolean, onClose: (() -> Unit)? = null) {
     val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
     val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(30)) }
     val page = ScrollView(this).apply {
@@ -46,12 +65,9 @@ internal fun MainActivity.showDisplay() {
         setBackgroundColor(C.BG)
         layoutDirection = View.LAYOUT_DIRECTION_RTL
         addView(body)
-        setOnApplyWindowInsetsListener { v, insets ->
-            @Suppress("DEPRECATION")
-            v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
-            insets
-        }
     }
+    // הכותרת קבועה למעלה ולא נגללת
+    val top = LinearLayout(this).apply { tag = "displayTop" }
     val blue = Color.parseColor("#5AA9FF")
     fun card() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = graphite(26); clipToOutline = true }
     fun addCard(c: View) = body.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(PAGE_SIDE), 0, dp(PAGE_SIDE), dp(12)) })
@@ -85,22 +101,28 @@ internal fun MainActivity.showDisplay() {
     fun rebuild() {
         body.removeAllViews()
         // כותרת עם חזרה
-        body.addView(pageHeader("תצוגה"))
+        top.removeAllViews(); top.addView(pageHeader(if (colors) "רקע וצבעים" else "תצוגה"))
+        if (!colors) {
+            // רקע וצבעים - בעמוד משלו
+            val col = card()
+            row(col, "רקע וצבעים", colorsSummary(), sep = false) { showColors { applyThemeNow(d) { rebuild() } } }
+            addCard(col)
+        } else {
         // ערכת צבעים: תצוגה מקדימה חשוך / בהיר + "לפי המערכת"
         val mode = Prefs.themeMode(this)
         val theme = card()
         val pick = LinearLayout(this).apply { gravity = Gravity.CENTER; setPadding(dp(10), dp(20), dp(10), dp(16)) }
         fun preview(light: Boolean, label: String, sel: Boolean, value: Int) = LinearLayout(this).apply {
-            val p = if (light) Palettes.light(this@showDisplay) else Palettes.dark(this@showDisplay)   // התצוגה המקדימה בפלטה שנבחרה
+            val p = if (light) Palettes.light(this@displayPage) else Palettes.dark(this@displayPage)   // התצוגה המקדימה בפלטה שנבחרה
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            val box = LinearLayout(this@showDisplay).apply {
+            val box = LinearLayout(this@displayPage).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(6), dp(6), dp(6), dp(6))
                 background = GradientDrawable().apply { setColor(p.c(if (light) p.chip else p.bg).let { if (!light && p.id == "black") Color.parseColor("#2B2B2E") else it }); cornerRadius = dp(12).toFloat() }
                 listOf(12, 26, 40, 26).forEach { h ->
-                    addView(View(this@showDisplay).apply {
-                        background = GradientDrawable().apply { setColor(p.c(if (light) p.sepv else p.chip)); cornerRadius = dp(6).toFloat() }
+                    addView(View(this@displayPage).apply {
+                        background = GradientDrawable().apply { setColor(p.c(if (light) p.sepv else if (p.id == "black") p.sepv else p.chip)); cornerRadius = dp(6).toFloat() }
                     }, LinearLayout.LayoutParams(-1, dp(h)).apply { bottomMargin = dp(5) })
                 }
             }
@@ -123,14 +145,28 @@ internal fun MainActivity.showDisplay() {
         // פלטת צבעים: גוון לחשוך וגוון לבהיר (מעריכת צופר)
         val pal = card()
         row(pal, "ערכות נושא", "חשוך: ${Palettes.dark(this).name} · בהיר: ${Palettes.light(this).name}", sep = false) {
-            choosePalette { applyThemeNow(d) { rebuild() } } }
+            // העמוד הזה (מתחת) מתעדכן כבר בזמן הבחירה - שבחזרה לא יופיע לרגע בצבעים הקודמים (קפיצה בהדמיה)
+            val update = { applyThemeNow(d) { rebuild() } }
+            choosePalette(onChange = update, done = update) }
         addCard(pal)
+        return
+        }
         // כרטיס ההגנה: רקע ומסגרת
         val prot = card()
         row(prot, "כרטיס ההגנה", "${PROT_BG[Prefs.protBg(this)]} · ${PROT_FRAME[Prefs.protFrame(this)]} · ${PROT_ICON_NAMES[Prefs.protIcon(this)]} · ${Prefs.protLabel(this)}", sep = false) {
             chooseProtCard { rebuild() } }
         addCard(prot)
-        // שורת החיוויים במסך הראשי
+        // כרטיס השעון: שעון, תאריך, מזג אוויר וברכה - בעמוד משלו (מעריכת צופר: הוחלף במקום עם שורת החיוויים)
+        val more = card()
+        row(more, "כרטיס השעון", clockCardSummary(), sep = false) { chooseClockCard { rebuild() } }
+        addCard(more)
+        // ברכה - שורה נפרדת (לא בתוך כרטיס מסוים): מוצגת בראש הכרטיס העליון, לפי המיקום שנבחר
+        val gr = card()
+        row(gr, "ברכה", TimeFormat.greeting(System.currentTimeMillis()) + Prefs.greetingName(this).let { if (it.isEmpty()) "" else " $it" },
+            on = Prefs.showGreeting(this), open = { showGreetingName { rebuild() } }) {
+            Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock(); rebuild() }
+        addCard(gr)
+        // שורת החיוויים במסך הראשי (ההסבר - בעמוד שלה)
         val ind = card()
         val sm = Prefs.statusMode(this)
         row(ind, "שורת חיוויים", statusModeLabel(), on = sm != Prefs.STATUS_HIDDEN, sep = false,
@@ -138,41 +174,23 @@ internal fun MainActivity.showDisplay() {
             Prefs.setStatusMode(this, if (sm == Prefs.STATUS_HIDDEN) Prefs.STATUS_ALWAYS else Prefs.STATUS_HIDDEN)
             applyStatusRow(); rebuild() }
         addCard(ind)
-        note("מוגן · צלילים · רשת · מיקום · חיבור · גרסה – בתחתית המסך הראשי, או למעלה")
-        // שעון ותאריך, מזג אוויר וברכה - בכרטיס אחד
-        val more = card()
-        row(more, "שעון", listOf(if (Prefs.showSeconds(this)) "שניות" else "", if (Prefs.blinkColon(this)) "נקודתיים מהבהבות" else "")
-            .filter { it.isNotEmpty() }.joinToString(" · ")) { showClockPage() }
-        divider(more)
-        row(more, "תאריך", TimeFormat.dayOptions()[Prefs.dayStyle(this)], on = Prefs.showDate(this),
-            open = { chooseDayStyle { rebuild() } }) {
-            Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); rebuild() }
-        divider(more)
-        row(more, "מזג אוויר", "עדכון " + weatherLabel(Prefs.weatherMinutes(this)), on = Prefs.showWeather(this),
-            open = { chooseWeatherInterval { rebuild() } }) {
-            Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); rebuild() }
-        divider(more)
-        // ברכה: מתג נפרד (עם קו מפריד), ולחיצה על השם פותחת הזנת שם ("ערב טוב טל")
-        row(more, "ברכה", Prefs.greetingName(this), on = Prefs.showGreeting(this), open = { showGreetingName { rebuild() } }) {
-            Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock(); rebuild() }
-        addCard(more)
-        note("מזג אוויר וברכה בכרטיס השעון במסך הראשי")
         // פיד ארצי - כמה זמן אחורה להציג
         val feed = card()
         row(feed, "פיד ארצי", FeedText.windowLabel(Prefs.feedMinutes(this)), on = Prefs.feedAlways(this),
             open = { chooseFeedWindow { rebuild() } }) {
             Prefs.setFeedAlways(this, !Prefs.feedAlways(this)); updateFeed(); rebuild() }
         addCard(feed)
-        note("ההתרעות בכל הארץ בתחתית המסך הראשי. כשהמתג מופעל - הפיד מוצג תמיד, גם כשאין התרעות")
     }
-    themeAtOpen = Prefs.themeMode(this)
+    if (!colors) themeAtOpen = Prefs.themeMode(this)
     val darkAtOpen = Prefs.darkTheme(this)
     val palAtOpen = Prefs.darkPalette(this) + "|" + Prefs.lightPalette(this)
     rebuild()
-    // יציאה מהעמוד: אם ערכת הצבעים השתנתה - טוענים מחדש וחוזרים להגדרות
-    track(d) { if (Prefs.themeMode(this) != themeAtOpen || Prefs.darkTheme(this) != darkAtOpen || Prefs.darkPalette(this) + "|" + Prefs.lightPalette(this) != palAtOpen) { MainActivity.reopenDisplay = true; recreate() } }
+    // עמוד רקע וצבעים: בחזרה - עמוד התצוגה מתחלף לצבעים החדשים (הטעינה מחדש - ביציאה מעמוד התצוגה)
+    if (colors) track(d, onClose)
+    // יציאה מעמוד התצוגה: אם ערכת הצבעים השתנתה - טוענים מחדש וחוזרים להגדרות
+    else track(d) { if (Prefs.themeMode(this) != themeAtOpen || Prefs.darkTheme(this) != darkAtOpen || Prefs.darkPalette(this) + "|" + Prefs.lightPalette(this) != palAtOpen) { MainActivity.reopenDisplay = true; recreate() } }
     body.setPadding(0, 0, 0, dp(30))
-    d.setContentView(page)
+    d.setContentView(fixedHeaderPage(top, page))
     d.window?.setLayout(-1, -1)
     @Suppress("DEPRECATION")
     d.window?.statusBarColor = C.BG
@@ -235,7 +253,9 @@ internal fun MainActivity.chooseFeedWindow(done: () -> Unit) = ouiPage("פיד �
             Prefs.setFeedMinutes(this, m.coerceIn(1, 24 * 60)); updateFeed(); rebuild() }
     }
     ouiAdd(body, opts)
-    ouiNote(body, "ההתרעות מתחלפות אחת אחרי השנייה בגלילה כלפי מעלה")
+    // מעריכת צופר: הסבר אחד - קודם איך ההתרעות מתחלפות, ומתחת המלל שעבר מעמוד התצוגה
+    ouiNote(body, "ההתרעות מתחלפות אחת אחרי השנייה בגלילה כלפי מעלה\n" +
+        "ההתרעות בכל הארץ בתחתית המסך הראשי. כשהמתג מופעל - הפיד מוצג תמיד, גם כשאין התרעות")
 }
 
 internal fun MainActivity.chooseWeatherInterval(done: () -> Unit) = ouiPage("מזג אוויר", onClose = done) { body, rebuild ->
@@ -300,7 +320,9 @@ internal fun MainActivity.showGreetingName(done: () -> Unit) {
             20f, C.TEXT).apply { gravity = Gravity.CENTER; setPadding(0, dp(10), 0, dp(4)) }
         field.tag = prev
         body.addView(prev)
-        ouiNote(body, "כך תופיע הברכה בכרטיס השעון. בלי שם – רק הברכה")
+        // באיזה כרטיס - לפי המיקום שנבחר (הכרטיס העליון)
+        ouiNote(body, "כך תופיע הברכה בראש הכרטיס העליון – עכשיו " +
+            (if (Prefs.mainLayout(this) == 1) "כרטיס השעון" else "כרטיס ההגנה") + ". בלי שם – רק הברכה")
     }
 }
 
@@ -331,7 +353,7 @@ internal fun MainActivity.chooseThemeTime(done: () -> Unit) = ouiPage("לפי ז
 }
 
 /** פלטת צבעים: הגוון של הערכה החשוכה ושל הבהירה - כמה צבעים לכל אחת, עם עיגול צבע ליד כל שם */
-internal fun MainActivity.choosePalette(done: () -> Unit) = ouiPage("ערכות נושא", onClose = done) { body, rebuild ->
+internal fun MainActivity.choosePalette(onChange: () -> Unit = {}, done: () -> Unit) = ouiPage("ערכות נושא", onClose = done) { body, rebuild ->
     // עיגול: הרקע של הפלטה מבחוץ והכרטיס בפנים
     fun swatch(p: Palette) = android.widget.FrameLayout(this).apply {
         background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(p.c(p.bg)); setStroke(dp(1), p.c(p.sepv)) }
@@ -341,8 +363,10 @@ internal fun MainActivity.choosePalette(done: () -> Unit) = ouiPage("ערכות 
     // הערכה מתחלפת מיד: הצבעים החדשים + רקע העמוד עצמו (שאר האפליקציה - ביציאה מעמוד התצוגה)
     fun recolor() {
         C.apply(Prefs.darkTheme(this), Palettes.current(this, Prefs.darkTheme(this)))
-        var v: View? = body
-        while (v != null) { if (v !== body) v.setBackgroundColor(C.BG); v = v.parent as? View }
+        var v: View? = body; var root: View = body
+        while (v != null) { if (v !== body) v.setBackgroundColor(C.BG); root = v; v = v.parent as? View }
+        // הכותרת הקבועה למעלה לא נמצאת מעל הרשימה - גם היא מתחלפת מיד (מעריכת צופר)
+        root.findViewWithTag<View>("pageTop")?.setBackgroundColor(C.BG)
         // שורת המצב והניווט של העמוד הזה (העמוד הפתוח האחרון)
         pages.lastOrNull()?.window?.let { w ->
             @Suppress("DEPRECATION")
@@ -359,7 +383,7 @@ internal fun MainActivity.choosePalette(done: () -> Unit) = ouiPage("ערכות 
         val c = ouiCard()
         list.forEachIndexed { i, p ->
             if (i > 0) ouiDivider(c)
-            ouiRow(c, p.name, radio = p.id == sel, lead = swatch(p)) { set(p.id); recolor(); rebuild() }
+            ouiRow(c, p.name, radio = p.id == sel, lead = swatch(p)) { set(p.id); recolor(); onChange(); rebuild() }
         }
         ouiAdd(body, c)
     }
@@ -382,6 +406,8 @@ internal fun MainActivity.chooseProtCard(done: () -> Unit) {
     val greet = if (greeting.visibility == View.VISIBLE) greeting.text.toString() else null
     val cardW = card1.width
     ouiPage("כרטיס ההגנה", onClose = done) { body, rebuild ->
+        // מעריכת צופר: המיקום במסך הראשי - למעלה, לפני עיצוב / אייקון / כיתוב
+        protLayoutCard(body, rebuild)
         val c = ouiCard()
         ouiRow(c, "עיצוב", sub = "רקע: ${PROT_BG[Prefs.protBg(this)]} · מסגרת: ${PROT_FRAME[Prefs.protFrame(this)]}") {
             chooseProtDesign(areaBmp, greet, cardW) { rebuild() } }
@@ -390,7 +416,6 @@ internal fun MainActivity.chooseProtCard(done: () -> Unit) {
         ouiDivider(c)
         ouiRow(c, "כיתוב", sub = Prefs.protLabel(this)) { chooseProtText(areaBmp, greet, cardW) { rebuild() } }
         ouiAdd(body, c)
-        protLayoutCard(body, rebuild)
     }
 }
 
@@ -506,7 +531,7 @@ private fun MainActivity.chooseProtDesign(areaBmp: android.graphics.Bitmap?, gre
 
 /** כרטיס ההגנה ← מיקום במסך הראשי: למעלה או מתחת לשעון (תצוגה מקדימה קטנה של המסך) */
 private fun MainActivity.protLayoutCard(body: LinearLayout, rebuild: () -> Unit) {
-        body.addView(text("מיקום במסך הראשי", 15f, C.MUTED).apply { setPadding(dp(30), dp(14), dp(30), dp(6)) })
+        body.addView(text("מיקום במסך הראשי", 15f, C.MUTED).apply { setPadding(dp(30), dp(6), dp(30), dp(6)) })
         val lay = ouiCard()
         val pickL = LinearLayout(this).apply { gravity = Gravity.CENTER; setPadding(dp(10), dp(20), dp(10), dp(16)) }
         fun layoutPreview(clockFirst: Boolean, label: String) = LinearLayout(this).apply {
@@ -551,5 +576,47 @@ private fun MainActivity.protLayoutCard(body: LinearLayout, rebuild: () -> Unit)
         pickL.addView(layoutPreview(true, "מתחת לשעון"), LinearLayout.LayoutParams(0, -2, 1f))
         lay.addView(pickL)
         ouiAdd(body, lay)
-        ouiNote(body, "הברכה מוצגת בראש הכרטיס העליון")
+}
+
+/** תקציר כרטיס השעון: מה מופעל */
+internal fun MainActivity.clockCardSummary(): String = listOf(
+    if (Prefs.showSeconds(this)) "שניות" else "",
+    if (Prefs.showDate(this)) "תאריך" else "",
+    if (Prefs.showWeather(this)) "מזג אוויר" else "").filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "שעה בלבד" }
+
+/** כרטיס השעון: תצוגה מקדימה קבועה למעלה + שעון, תאריך ומזג אוויר (הברכה - שורה נפרדת בעמוד התצוגה) */
+internal fun MainActivity.chooseClockCard(done: () -> Unit) {
+    val cardW = clockCard.width
+    ouiPage("כרטיס השעון", onClose = done, pin = 1) { body, rebuild ->
+        // תצוגה מקדימה: תמונה של כרטיס השעון במסך הראשי, אחרי שהוא מתעדכן
+        val pv = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL }
+        val side = if (cardW > 0) ((resources.displayMetrics.widthPixels - cardW) / 2) else dp(PAGE_SIDE + 4)
+        body.addView(pv, LinearLayout.LayoutParams(-1, -2).apply { setMargins(side, dp(10), side, dp(18)) })
+        fun snap() {
+            pv.removeAllViews()
+            // הברכה נמצאת בכרטיס העליון - אם הוא כרטיס ההגנה, מוסיפים אותה מעל
+            val gIn = greeting.parent === clockCard
+            val img = if (clockCard.width > 0 && clockCard.height > 0)
+                android.graphics.Bitmap.createBitmap(clockCard.width, clockCard.height, android.graphics.Bitmap.Config.ARGB_8888)
+                    .also { clockCard.draw(android.graphics.Canvas(it)) } else null
+            val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = graphite(26) }
+            if (!gIn && greeting.visibility == View.VISIBLE)
+                box.addView(text(greeting.text.toString(), greeting.textSize / resources.displayMetrics.scaledDensity, C.TEXT).apply {
+                    gravity = Gravity.CENTER; typeface = greeting.typeface; setPadding(0, dp(16), 0, 0) }, LinearLayout.LayoutParams(-1, -2))
+            if (img != null) box.addView(android.widget.ImageView(this).apply { setImageBitmap(img); adjustViewBounds = true },
+                LinearLayout.LayoutParams(-1, -2))
+            pv.addView(box, LinearLayout.LayoutParams(-1, -2))
+        }
+        snap(); clockCard.post { clockCard.post { snap() } }
+        val c = ouiCard()
+        ouiRow(c, "שעון", sub = listOf(if (Prefs.showSeconds(this)) "שניות" else "", if (Prefs.blinkColon(this)) "נקודתיים מהבהבות" else "")
+            .filter { it.isNotEmpty() }.joinToString(" · ")) { showClockPage() }
+        ouiDivider(c)
+        ouiRow(c, "תאריך", sub = TimeFormat.dayOptions()[Prefs.dayStyle(this)], on = Prefs.showDate(this),
+            onToggle = { Prefs.setShowDate(this, !Prefs.showDate(this)); updateClock(); refresh(); rebuild() }) { chooseDayStyle { rebuild() } }
+        ouiDivider(c)
+        ouiRow(c, "מזג אוויר", sub = "עדכון " + weatherLabel(Prefs.weatherMinutes(this)), on = Prefs.showWeather(this),
+            onToggle = { Prefs.setShowWeather(this, !Prefs.showWeather(this)); updateWeather(force = true); rebuild() }) { chooseWeatherInterval { rebuild() } }
+        ouiAdd(body, c)
+    }
 }

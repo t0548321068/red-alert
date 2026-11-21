@@ -436,7 +436,9 @@ internal fun MainActivity.secLabel(sec: Int) = when {
 
 internal fun MainActivity.chooseStatusMode(done: () -> Unit) = chooseShowMode("שורת חיוויים", { Prefs.statusMode(this) },
     { Prefs.setStatusMode(this, it) }, { Prefs.statusSeconds(this) }, { Prefs.setStatusSeconds(this, it) }, ::applyStatusRow,
-    "\"לפי זמן\" – השורה מוצגת כשפותחים את האפליקציה או נוגעים במסך, ונעלמת אחרי הזמן שבוחרים", female = true, done = done,
+    // מעריכת צופר: הסבר אחד - "שורת החיוויים" ראשון, ומתחתיו "לפי זמן"
+    "שורת החיוויים – בתחתית המסך הראשי, או למעלה\n" +
+        "\"לפי זמן\" – השורה מוצגת כשפותחים את האפליקציה או נוגעים במסך, ונעלמת אחרי הזמן שבוחרים", female = true, done = done,
     extra = { body, rebuild ->
         // מיקום השורה: למטה (כמו תפריט ניווט) או למעלה (מתחת לכותרת)
         val p = ouiCard()

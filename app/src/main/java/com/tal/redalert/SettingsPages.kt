@@ -23,11 +23,8 @@ internal fun MainActivity.showSettings() {
         layoutDirection = View.LAYOUT_DIRECTION_RTL
         addView(body)
     }
-    page.setOnApplyWindowInsetsListener { v, insets ->
-        @Suppress("DEPRECATION")
-        v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
-        insets
-    }
+    // הכותרת קבועה למעלה ולא נגללת
+    val top = LinearLayout(this).apply { addView(pageHeader("הגדרות")) }
     val cats = listOf(
         // הפעלה / כיבוי של האפליקציה - כמו הכפתור בשורת החיווי
         "צופר חירום" to { listOf(Row("⏻", "הגנה",
@@ -43,8 +40,6 @@ internal fun MainActivity.showSettings() {
     )
     fun rebuild() {
         body.removeAllViews()
-        // כותרת כמו בשאר מסכי ההגדרות
-        body.addView(pageHeader("הגדרות"))
         cats.forEach { (_, rows) ->
             // בלי כותרת מעל כל כרטיס - רק רווח בין הכרטיסים
             val card = LinearLayout(this).apply {
@@ -87,7 +82,7 @@ internal fun MainActivity.showSettings() {
         body.addView(View(this), LinearLayout.LayoutParams(-1, dp(30)))
     }
     rebuild()
-    d.setContentView(page)
+    d.setContentView(fixedHeaderPage(top, page))
     d.window?.setLayout(-1, -1)
     @Suppress("DEPRECATION")
     d.window?.statusBarColor = C.BG
@@ -108,25 +103,29 @@ internal fun MainActivity.showProtection() = ouiPage("הגנה") { body, rebuild
 
     val sc = ouiCard()
     val on = Prefs.schedOn(this)
-    ouiRow(sc, "תזמון", sub = "פעיל רק בימים ובשעות שתבחר", on = on) { Prefs.setSchedOn(this, !on); refresh(); rebuild() }
-    if (on) {
-        // לכל יום: מתג + השעות שלו. לחיצה על השורה - בחירת שעת התחלה ואז סיום
-        TimeFormat.NAMES.forEachIndexed { d, name ->
-            ouiDivider(sc)
-            val dOn = Prefs.schedDayOn(this, d)
-            val f = Prefs.schedDayFrom(this, d); val t = Prefs.schedDayTo(this, d)
-            val range = when { !dOn -> "כבוי כל היום"; f == t -> "כל היום"; else -> hhmm(f) + "–" + hhmm(t) + if (t < f) " (עד למחרת)" else "" }
-            ouiRow(sc, name, sub = range, on = dOn,
-                onToggle = { Prefs.setSchedDay(this, d, !dOn, f, t); refresh(); rebuild() }) {
-                pickTime("$name – פעיל משעה", f) { nf ->
-                    pickTime("$name – פעיל עד שעה", t) { nt -> Prefs.setSchedDay(this, d, true, nf, nt); refresh(); rebuild() }
-                }
+    // הימים והשעות - בעמוד משלהם (לחיצה על "תזמון"); המתג לבד מדליק/מכבה
+    ouiRow(sc, "תזמון", sub = "פעיל רק בימים ובשעות שתבחר", on = on,
+        onToggle = { Prefs.setSchedOn(this, !on); refresh(); rebuild() }) { showSchedule { rebuild() } }
+    ouiAdd(body, sc)
+}
+
+/** עמוד תזמון: לכל יום מתג + השעות שלו. לחיצה על השורה - בחירת שעת התחלה ואז סיום */
+internal fun MainActivity.showSchedule(done: () -> Unit) = ouiPage("תזמון", onClose = done) { body, rebuild ->
+    val sc = ouiCard()
+    TimeFormat.NAMES.forEachIndexed { d, name ->
+        if (d > 0) ouiDivider(sc)
+        val dOn = Prefs.schedDayOn(this, d)
+        val f = Prefs.schedDayFrom(this, d); val t = Prefs.schedDayTo(this, d)
+        val range = when { !dOn -> "כבוי כל היום"; f == t -> "כל היום"; else -> hhmm(f) + "–" + hhmm(t) + if (t < f) " (עד למחרת)" else "" }
+        ouiRow(sc, name, sub = range, on = dOn,
+            onToggle = { Prefs.setSchedDay(this, d, !dOn, f, t); refresh(); rebuild() }) {
+            pickTime("$name – פעיל משעה", f) { nf ->
+                pickTime("$name – פעיל עד שעה", t) { nt -> Prefs.setSchedDay(this, d, true, nf, nt); refresh(); rebuild() }
             }
         }
     }
     ouiAdd(body, sc)
-    ouiNote(body, if (on) "מחוץ לשעות האלה האפליקציה לא מקבלת התרעות. לחיצה על יום – שינוי השעות. סיום לפני התחלה = עד למחרת"
-                  else "כשהתזמון כבוי - ההגנה פעילה כל הזמן")
+    ouiNote(body, "מחוץ לשעות האלה האפליקציה לא מקבלת התרעות. לחיצה על יום – שינוי השעות. סיום לפני התחלה = עד למחרת")
 }
 
 /**
