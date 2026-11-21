@@ -6,7 +6,7 @@ const { updatePush } = require('./push');
 const REPO = 'https://github.com/t0548321068/red-alert/releases';
 const latest = { stable: '', beta: '' };
 // ניהול צופר ועריכת צופר: הגרסה מכותרת דף השחרור (בלי ה-API של GitHub, שמוגבל ל-60 בדיקות בשעה לטלפון)
-const apps = { admin: '', editor: '' };
+const apps = { admin: '', editor: '', inbox: '' };
 async function pollApps() {
   for (const k of Object.keys(apps)) {
     try { const m = /(\d+(?:\.\d+)+)\s*(?:·|&middot;|&#183;)\s*t0548321068\/red-alert/.exec(await get(REPO + '/tag/' + k)); if (m) apps[k] = m[1]; } catch (_) {}

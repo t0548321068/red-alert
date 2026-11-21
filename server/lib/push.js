@@ -112,6 +112,13 @@ function adminPush(text) {
     .catch(e => log('admin push failed', e.message));
 }
 
+// פנייה חדשה מ"יצירת קשר": רק לאפליקציית פניות צופר (נושא inbox)
+function inbox(id, from, text) {
+  log('inbox', id, from);
+  admin.messaging().send({ topic: 'inbox', data: { type: 'inbox', id, from, text }, android: { priority: 'high', ttl: 24 * 3600 * 1000 } })
+    .catch(e => log('inbox push failed', e.message));
+}
+
 // הודעה מהאתר: לכל הטלפונים, או למכשיר אחד (נושא d_<קוד המכשיר>)
 function message(text, to) {
   const topic = to === 'all' ? TOPIC : 'd_' + to;
@@ -119,4 +126,4 @@ function message(text, to) {
   return admin.messaging().send({ topic, data: { type: 'msg', text }, android: { priority: 'high', ttl: 24 * 3600 * 1000 } });
 }
 
-module.exports = { send, heartbeat, updatePush, adminPush, message, state, saveState, saveNow };
+module.exports = { send, heartbeat, updatePush, adminPush, inbox, message, state, saveState, saveNow };
