@@ -83,7 +83,8 @@ function crash(req, res) {
 const reportAt = new Map();   // לכל מכשיר - עד 3 דיווחים ב-10 דקות
 function report(req, res) {
   let body = '';
-  req.on('data', d => { body += d; if (body.length > 12000) req.destroy(); });
+  // עד 60000 (מקצרים בהמשך) - דיווח עם הרבה אזורים לא ייכשל
+  req.on('data', d => { body += d; if (body.length > 60000) req.destroy(); });
   req.on('end', () => {
     let j = {};
     try { j = JSON.parse(body); } catch (_) {}
