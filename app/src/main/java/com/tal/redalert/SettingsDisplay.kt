@@ -576,7 +576,6 @@ private fun MainActivity.protLayoutCard(body: LinearLayout, rebuild: () -> Unit)
         pickL.addView(layoutPreview(true, "מתחת לשעון"), LinearLayout.LayoutParams(0, -2, 1f))
         lay.addView(pickL)
         ouiAdd(body, lay)
-        ouiNote(body, "הברכה מוצגת בראש הכרטיס העליון")
 }
 
 /** תקציר כרטיס השעון: מה מופעל */

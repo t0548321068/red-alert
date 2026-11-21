@@ -107,8 +107,6 @@ internal fun MainActivity.showProtection() = ouiPage("הגנה") { body, rebuild
     ouiRow(sc, "תזמון", sub = "פעיל רק בימים ובשעות שתבחר", on = on,
         onToggle = { Prefs.setSchedOn(this, !on); refresh(); rebuild() }) { showSchedule { rebuild() } }
     ouiAdd(body, sc)
-    ouiNote(body, if (on) "מחוץ לימים ולשעות שנבחרו האפליקציה לא מקבלת התרעות"
-                  else "כשהתזמון כבוי - ההגנה פעילה כל הזמן")
 }
 
 /** עמוד תזמון: לכל יום מתג + השעות שלו. לחיצה על השורה - בחירת שעת התחלה ואז סיום */
