@@ -1,0 +1,18 @@
+        <!-- צופר חירום 2 (עריכת צופר): העדכון העצמי שלה. נכנס לסוף ה-application של המניפסט של צופר חירום (build.gradle.kts) -->
+        <receiver android:name=".editor.InstallReceiver" android:exported="false" />
+        <service android:name=".editor.UpdateJob" android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+        <service android:name=".editor.UpdateListener" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="self-update: instant install when a new version is published" />
+        </service>
+        <receiver android:name=".editor.BootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+        <receiver android:name=".editor.UpdatedReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
