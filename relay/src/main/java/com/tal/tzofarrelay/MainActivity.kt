@@ -283,7 +283,7 @@ class MainActivity : Activity() {
             ind(R.drawable.ic_antenna, srv.first, srv.second, null),
             ind(R.drawable.ic_globe, if (wifi) "Wi‑Fi" else "לא Wi‑Fi", if (wifi) GREEN else ORANGE, null),
             ind(R.drawable.ic_battery, if (charging) "בטעינה" else "${battery()}%", if (charging) GREEN else ORANGE, null),
-            ind(R.drawable.ic_info, "1.${Update.current(this)}", TEXT) { go(2) })   // גרסה: עמוד בדיקת העדכונים
+            ind(R.drawable.ic_info, Update.currentName(this), TEXT) { go(2) })   // גרסה: עמוד בדיקת העדכונים
         inds.forEachIndexed { i, v ->
             if (i > 0) row.addView(View(this).apply { setBackgroundColor(LINE2) }, LinearLayout.LayoutParams(dp(1), dp(26)))
             row.addView(v, LinearLayout.LayoutParams(0, -2, 1f))
@@ -399,7 +399,7 @@ class MainActivity : Activity() {
         add(info)
         // עדכונים: גרסה נוכחית, ובדיקה + הורדה + התקנה מתוך הממסר
         val upd = card()
-        row(upd, "גרסה", "", "1.${Update.current(this)}", TEXT)
+        row(upd, "גרסה", "", Update.currentName(this), TEXT)
         // בדיקת עדכונים - פותח את עמוד בדיקת העדכונים, כמו בצופר חירום
         row(upd, "בדיקת עדכונים", "", "", TEXT) { go(2) }
         add(upd)
@@ -444,7 +444,7 @@ class MainActivity : Activity() {
             headline.text = title
             sub.text = subText; sub.visibility = if (subText.isEmpty()) View.GONE else View.VISIBLE
         }
-        val mine = "1.${Update.current(this)}"
+        val mine = Update.currentName(this)
         val dateFmt = java.text.SimpleDateFormat("HH:mm dd/MM/yyyy", java.util.Locale.US)
         /** כרטיס הגרסאות - נבנה מחדש כשמצב ההורדה משתנה */
         fun cardInto(vararg rows: Pair<String, String>) {
@@ -472,9 +472,9 @@ class MainActivity : Activity() {
                     when {
                         l != null && l.n > Update.current(this) -> {
                             // ---- יש גרסה חדשה ----
-                            head("#162038", R.drawable.ic_upd_new, blue, "גרסה חדשה זמינה – 1.${l.n}",
+                            head("#162038", R.drawable.ic_upd_new, blue, "גרסה חדשה זמינה – ${l.v}",
                                 if (l.date > 0) "פורסמה " + dateFmt.format(java.util.Date(l.date)) else "")
-                            cardInto("הגרסה שלך" to mine, "גרסה חדשה" to "1.${l.n}",
+                            cardInto("הגרסה שלך" to mine, "גרסה חדשה" to l.v,
                                 *(if (l.size > 0) arrayOf("גודל" to "%.1f MB".format(java.util.Locale.US, l.size / 1048576.0)) else arrayOf<Pair<String, String>>()))
                             // מצב ההורדה וההתקנה מתחת לכרטיס
                             val st = text("", 11f, MUTED2).apply { setPadding(dp(32), 0, dp(32), dp(14)) }

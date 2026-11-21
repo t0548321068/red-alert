@@ -14,7 +14,7 @@ android {
         targetSdk = 34
         // מספר הגרסה עולה בכל בנייה
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
-        versionName = "1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
+        versionName = "1.28.0"   // x.y.z: y = פיצ'ר, z = תיקון. versionCode = מספר הבנייה (לבדיקת העדכון)
     }
 
     buildTypes {
