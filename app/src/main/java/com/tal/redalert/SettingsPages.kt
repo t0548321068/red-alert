@@ -103,25 +103,31 @@ internal fun MainActivity.showProtection() = ouiPage("הגנה") { body, rebuild
 
     val sc = ouiCard()
     val on = Prefs.schedOn(this)
-    ouiRow(sc, "תזמון", sub = "פעיל רק בימים ובשעות שתבחר", on = on) { Prefs.setSchedOn(this, !on); refresh(); rebuild() }
-    if (on) {
-        // לכל יום: מתג + השעות שלו. לחיצה על השורה - בחירת שעת התחלה ואז סיום
-        TimeFormat.NAMES.forEachIndexed { d, name ->
-            ouiDivider(sc)
-            val dOn = Prefs.schedDayOn(this, d)
-            val f = Prefs.schedDayFrom(this, d); val t = Prefs.schedDayTo(this, d)
-            val range = when { !dOn -> "כבוי כל היום"; f == t -> "כל היום"; else -> hhmm(f) + "–" + hhmm(t) + if (t < f) " (עד למחרת)" else "" }
-            ouiRow(sc, name, sub = range, on = dOn,
-                onToggle = { Prefs.setSchedDay(this, d, !dOn, f, t); refresh(); rebuild() }) {
-                pickTime("$name – פעיל משעה", f) { nf ->
-                    pickTime("$name – פעיל עד שעה", t) { nt -> Prefs.setSchedDay(this, d, true, nf, nt); refresh(); rebuild() }
-                }
+    // הימים והשעות - בעמוד משלהם (לחיצה על "תזמון"); המתג לבד מדליק/מכבה
+    ouiRow(sc, "תזמון", sub = "פעיל רק בימים ובשעות שתבחר", on = on,
+        onToggle = { Prefs.setSchedOn(this, !on); refresh(); rebuild() }) { showSchedule { rebuild() } }
+    ouiAdd(body, sc)
+    ouiNote(body, if (on) "מחוץ לימים ולשעות שנבחרו האפליקציה לא מקבלת התרעות"
+                  else "כשהתזמון כבוי - ההגנה פעילה כל הזמן")
+}
+
+/** עמוד תזמון: לכל יום מתג + השעות שלו. לחיצה על השורה - בחירת שעת התחלה ואז סיום */
+internal fun MainActivity.showSchedule(done: () -> Unit) = ouiPage("תזמון", onClose = done) { body, rebuild ->
+    val sc = ouiCard()
+    TimeFormat.NAMES.forEachIndexed { d, name ->
+        if (d > 0) ouiDivider(sc)
+        val dOn = Prefs.schedDayOn(this, d)
+        val f = Prefs.schedDayFrom(this, d); val t = Prefs.schedDayTo(this, d)
+        val range = when { !dOn -> "כבוי כל היום"; f == t -> "כל היום"; else -> hhmm(f) + "–" + hhmm(t) + if (t < f) " (עד למחרת)" else "" }
+        ouiRow(sc, name, sub = range, on = dOn,
+            onToggle = { Prefs.setSchedDay(this, d, !dOn, f, t); refresh(); rebuild() }) {
+            pickTime("$name – פעיל משעה", f) { nf ->
+                pickTime("$name – פעיל עד שעה", t) { nt -> Prefs.setSchedDay(this, d, true, nf, nt); refresh(); rebuild() }
             }
         }
     }
     ouiAdd(body, sc)
-    ouiNote(body, if (on) "מחוץ לשעות האלה האפליקציה לא מקבלת התרעות. לחיצה על יום – שינוי השעות. סיום לפני התחלה = עד למחרת"
-                  else "כשהתזמון כבוי - ההגנה פעילה כל הזמן")
+    ouiNote(body, "מחוץ לשעות האלה האפליקציה לא מקבלת התרעות. לחיצה על יום – שינוי השעות. סיום לפני התחלה = עד למחרת")
 }
 
 /**
