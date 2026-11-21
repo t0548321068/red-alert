@@ -35,8 +35,9 @@ internal fun MainActivity.showSettings() {
         "הרשאות" to { phoneRows() },
         // עדכונים ואודות - כל אחד בכרטיס נפרד
         "עדכונים" to { listOf(Row("⬆️", "עדכונים") { showUpdates() }) },
-        "אודות" to { listOf(Row("ℹ️", "אודות") { showAbout() }) }
-        // יצירת קשר מושהית - כדי להחזיר: "יצירת קשר" to { listOf(Row("✉️", "יצירת קשר") { showContact() }) }
+        "אודות" to { listOf(Row("ℹ️", "אודות") { showAbout() }) },
+        // הפניות מגיעות רק לאפליקציית פניות צופר
+        "יצירת קשר" to { listOf(Row("✉️", "יצירת קשר") { showContact() }) }
     )
     fun rebuild() {
         body.removeAllViews()
