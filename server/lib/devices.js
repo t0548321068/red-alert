@@ -1,7 +1,7 @@
 // המכשירים והקריסות - לאתר בלבד (רק לך).
 // /ping   כל טלפון מדווח פעם ב-10 דקות (עם סימן החיים): גרסה, דגם, מוגן או לא
 // /crash  האפליקציה קרסה בטלפון - השגיאה נשמרת ונשלחת אליך כהודעת תקלה
-// /report דיווח על בעיה ממסך "יצירת קשר" באפליקציה
+// /report דיווח על בעיה ממסך "יצירת קשר" באפליקציה - נשמר ונשלח רק לאפליקציית "פניות צופר" (נושא inbox)
 // אין כאן שום מידע אישי: מזהה מכשיר מקוצר (אותו קוד של הבטא), דגם וגרסה
 const fs = require('fs');
 const path = require('path');
@@ -12,6 +12,9 @@ const adminPush = t => require('./push').adminPush(t);
 const FILE = path.join(__dirname, '..', 'devices.json');
 let data = { devices: {}, crashes: [], messages: [], reports: [] };
 try { data = Object.assign(data, JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch (_) {}
+const newId = () => require('crypto').randomBytes(4).toString('hex');
+// פניות ישנות (לפני פניות צופר): מזהה, וסימון שנקראו
+for (const r of data.reports) { if (!r.id) { r.id = newId(); r.read = true; } if (!r.replies) r.replies = []; }
 let saveT = null;
 function save() {
   clearTimeout(saveT);
@@ -89,12 +92,12 @@ function report(req, res) {
     const now = Date.now(), times = (reportAt.get(code) || []).filter(t => now - t < 10 * 60 * 1000);
     if (times.length >= 3) { res.writeHead(429); return res.end(); }
     times.push(now); reportAt.set(code, times);
-    const r = { d: code, v: clean(j.v, 16), m: clean(j.m, 40), at: now, text, info: cleanLines(j.info, 3000) };
+    const r = { id: newId(), d: code, v: clean(j.v, 16), m: clean(j.m, 40), at: now, text, info: cleanLines(j.info, 3000), read: false, replies: [] };
     data.reports.unshift(r);
-    data.reports.length = Math.min(data.reports.length, 50);
+    data.reports.length = Math.min(data.reports.length, 200);
     save();
     log('report', code, text.slice(0, 80));
-    limitedPush(`📩 דיווח מ-${r.m || code}: ${text.replace(/\s+/g, ' ').slice(0, 120)}`);
+    inboxPush(r);
     res.writeHead(204); res.end();
   });
 }
@@ -125,6 +128,41 @@ function sendMessage(req, res) {
   });
 }
 
+// ---- פניות צופר: הפניות מ"יצירת קשר" - רק לאפליקציה הזו (לא לכל טלפוני הבטא) ----
+// עד 10 התראות ב-10 דקות (שקודים מומצאים לא יציפו). מעבר לזה - רק נשמר
+let inboxTimes = [];
+function inboxPush(r) {
+  const now = Date.now();
+  inboxTimes = inboxTimes.filter(x => now - x < 10 * 60 * 1000);
+  if (inboxTimes.length >= 10) return;
+  inboxTimes.push(now);
+  require('./push').inbox(r.id, r.m || r.d, r.text.replace(/\s+/g, ' ').slice(0, 200));
+}
+
+/** GET: כל הפניות (הכי חדשה למעלה). POST {id, reply} תשובה לפונה · {id, read} סימון · {id, del} מחיקה */
+function inbox(req, res) {
+  const out = (code, j) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(j)); };
+  if (req.method !== 'POST') return out(200, { reports: data.reports });
+  let body = '';
+  req.on('data', d => { body += d; if (body.length > 4000) req.destroy(); });
+  req.on('end', async () => {
+    let j = {};
+    try { j = JSON.parse(body); } catch (_) {}
+    const r = data.reports.find(x => x.id === String(j.id || ''));
+    if (!r) return out(404, { error: 'not found' });
+    if (j.del) { data.reports = data.reports.filter(x => x !== r); save(); return out(200, { ok: true }); }
+    if (typeof j.read === 'boolean') { r.read = j.read; save(); return out(200, { ok: true }); }
+    const text = clean(j.reply, 500).trim();
+    if (!text) return out(400, { error: 'empty' });
+    try {
+      await require('./push').message(text, r.d);
+      r.replies.push({ text, at: Date.now() }); r.read = true;
+      save();
+      out(200, { ok: true, report: r });
+    } catch (e) { log('reply failed', e.message); out(502, { error: 'send failed' }); }
+  });
+}
+
 /** לאתר: המכשירים (הכי חדש למעלה) והקריסות האחרונות */
 function list() {
   return {
@@ -135,4 +173,4 @@ function list() {
   };
 }
 
-module.exports = { ping, crash, report, list, sendMessage, saveNow };
+module.exports = { ping, crash, report, inbox, list, sendMessage, saveNow };

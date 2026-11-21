@@ -1,0 +1,62 @@
+name: Build inbox APK
+
+# פניות צופר: הפניות ממסך "יצירת קשר" ותשובה לפונה. נבנית ומתפרסמת (גרסה "inbox") מענף inbox
+on:
+  push:
+    branches: [inbox]
+    paths: ['inbox/**', '.github/workflows/inbox.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.3
+      - name: Build
+        run: |
+          set -o pipefail
+          # לא רשומה ב-settings.gradle.kts (שינוי שם בונה ומשחרר את צופר חירום) - נוספת כאן, רק לבנייה הזו
+          echo 'include(":inbox")' >> settings.gradle.kts
+          V=$(grep -oP 'versionName = "\K[^"]+' inbox/build.gradle.kts)
+          echo "TITLE=פניות צופר · $V" >> $GITHUB_ENV
+          gradle :inbox:assembleRelease --console=plain 2>&1 | tee build.log || {
+            grep -E '^e: |error:|Lint found|What went wrong' -A2 build.log | head -30 | sed 's/^/::error::/'
+            exit 1
+          }
+      - name: Sign
+        env:
+          SIGNING_PASS: ${{ secrets.SIGNING_PASS }}
+        run: |
+          set -e
+          B=$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)
+          W=$(mktemp -d)
+          git fetch -q origin signing
+          git show FETCH_HEAD:signing.enc | openssl enc -d -aes-256-cbc -pbkdf2 -iter 300000 -pass env:SIGNING_PASS | tar -x -C $W
+          $B/zipalign -f -p 4 inbox/build/outputs/apk/release/inbox-release-unsigned.apk $W/aligned.apk
+          $B/apksigner sign --ks $W/new.ks --ks-key-alias redalert2 --ks-pass env:SIGNING_PASS --key-pass env:SIGNING_PASS \
+            --out tzofar-inbox.apk $W/aligned.apk
+          rm -rf $W
+          $B/apksigner verify tzofar-inbox.apk
+      - name: Publish
+        if: github.ref == 'refs/heads/inbox'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          R=${{ github.repository }}
+          if gh release view inbox --repo $R >/dev/null 2>&1; then
+            gh release upload inbox tzofar-inbox.apk --clobber --repo $R
+            gh release edit inbox --repo $R --title "$TITLE" --prerelease --draft=false
+          else
+            gh release create inbox tzofar-inbox.apk --repo $R --prerelease --latest=false --target ${{ github.sha }} \
+              --title "$TITLE" --notes "פניות צופר: הפניות מ\"יצירת קשר\" ותשובה לפונה"
+          fi

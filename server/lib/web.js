@@ -8,6 +8,7 @@
 // /api/state   מצב השרת והמקורות
 // /api/devices המכשירים והקריסות
 // /api/message שליחת הודעה לטלפונים (לכולם או למכשיר אחד)
+// /api/inbox   אפליקציית "פניות צופר": הפניות מ"יצירת קשר" ותשובה לפונה
 // /api/server  יומן, גרסה, עדכון עצמי;  /api/restart הפעלה מחדש
 // /app/        ה-PWA - נפרד לגמרי מהאתר: מסך זהה לאפליקציה (web/m), manifest ו-sw משלו, רק הוא ניתן להתקנה.
 //              האתר (/) לא ניתן להתקנה ולא מוביל ל-PWA
@@ -153,6 +154,7 @@ function handle(req, res, u, state) {
   if (p.startsWith('/api/review')) { require('./review').handle(req, res, u); return true; }
   // אפליקציית "עריכת צופר": שינויי נראות לשליחה
   if (p === '/api/design') { require('./design').handle(req, res); return true; }
+  if (p === '/api/inbox') { devices.inbox(req, res); return true; }
   if (p === '/api/devices') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(devices.list())); return true; }
   if (p === '/api/logout') {
     res.writeHead(302, { Location: u.searchParams.get('to') === 'app' ? '/app/' : '/', 'Set-Cookie': 'tz=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict' }); res.end(); return true;
