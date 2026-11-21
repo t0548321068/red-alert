@@ -166,7 +166,6 @@ private fun MainActivity.displayPage(colors: Boolean, onClose: (() -> Unit)? = n
             on = Prefs.showGreeting(this), open = { showGreetingName { rebuild() } }) {
             Prefs.setShowGreeting(this, !Prefs.showGreeting(this)); updateClock(); rebuild() }
         addCard(gr)
-        note("הברכה מוצגת בראש הכרטיס העליון – עכשיו " + if (Prefs.mainLayout(this) == 1) "כרטיס השעון" else "כרטיס ההגנה")
         // שורת החיוויים במסך הראשי (ההסבר - בעמוד שלה)
         val ind = card()
         val sm = Prefs.statusMode(this)
@@ -321,7 +320,9 @@ internal fun MainActivity.showGreetingName(done: () -> Unit) {
             20f, C.TEXT).apply { gravity = Gravity.CENTER; setPadding(0, dp(10), 0, dp(4)) }
         field.tag = prev
         body.addView(prev)
-        ouiNote(body, "כך תופיע הברכה בכרטיס השעון. בלי שם – רק הברכה")
+        // באיזה כרטיס - לפי המיקום שנבחר (הכרטיס העליון)
+        ouiNote(body, "כך תופיע הברכה בראש הכרטיס העליון – עכשיו " +
+            (if (Prefs.mainLayout(this) == 1) "כרטיס השעון" else "כרטיס ההגנה") + ". בלי שם – רק הברכה")
     }
 }
 
