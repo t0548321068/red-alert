@@ -175,7 +175,7 @@ private fun AlertService.postUpdateNotice(v: String, auto: Boolean) {
         .setSmallIcon(R.drawable.ic_stat_siren)
         .setLargeIcon(android.graphics.drawable.Icon.createWithResource(this, R.drawable.notif_large))   // אייקון האפליקציה בצבע, בתוך ההתראה
         .setColor(0xFFD50000.toInt())   // צבע האפליקציה בהתראה
-        .setContentTitle("🆕 גרסה חדשה זמינה – $v")
+        .setContentTitle("גרסה חדשה זמינה – $v")
         .setContentText(if (auto) "מותקנת אוטומטית" else "לחץ כדי להתקין")
         .setCategory(Notification.CATEGORY_RECOMMENDATION)
         .setContentIntent(openApp())
