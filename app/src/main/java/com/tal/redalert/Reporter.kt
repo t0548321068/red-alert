@@ -61,7 +61,7 @@ object Reporter {
     /** דיווח על בעיה ממסך "יצירת קשר" - להריץ מחוץ ל-UI thread. true = הגיע לשרת */
     fun sendReport(c: Context, text: String, info: String): Boolean = try {
         val j = JSONObject().put("d", Prefs.deviceCode(c)).put("v", version(c)).put("m", Build.MODEL ?: "")
-            .put("text", text).put("info", info)
+            .put("text", text.take(1500)).put("info", info.take(3000))   // השרת לא מקבל בקשה גדולה מדי
         call("/report", j.toString(), 8000, "application/json; charset=utf-8") in 200..299
     } catch (_: Exception) { false }
 
