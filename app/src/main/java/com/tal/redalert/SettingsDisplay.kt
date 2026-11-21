@@ -39,7 +39,24 @@ internal fun MainActivity.applyThemeNow(d: android.app.Dialog, rebuild: () -> Un
 }
 
 /** עמוד "תצוגה" בסגנון One UI (כמו בהגדרות של סמסונג) */
-internal fun MainActivity.showDisplay() {
+internal fun MainActivity.showDisplay() = displayPage(colors = false)
+
+/** עמוד "רקע וצבעים": חשוך / בהיר, לפי המערכת / לפי זמן, וערכות נושא (מעמוד התצוגה - שהעמוד לא יהיה ארוך) */
+internal fun MainActivity.showColors(done: () -> Unit) = displayPage(colors = true, onClose = done)
+
+/** תקציר בשורה "רקע וצבעים": המצב + הערכה */
+internal fun MainActivity.colorsSummary(): String {
+    val dk = Palettes.dark(this).name; val lt = Palettes.light(this).name
+    return when (Prefs.themeMode(this)) {
+        0 -> "חשוך · $dk"
+        1 -> "בהיר · $lt"
+        2 -> "לפי המערכת · $dk / $lt"
+        else -> "לפי זמן · $dk / $lt"
+    }
+}
+
+/** בונה את עמוד התצוגה, או (colors) את עמוד רקע וצבעים - אותו מבנה, וצבעי העמוד מתחלפים מיד */
+private fun MainActivity.displayPage(colors: Boolean, onClose: (() -> Unit)? = null) {
     val d = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar)
     val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(30)) }
     val page = ScrollView(this).apply {
@@ -83,21 +100,27 @@ internal fun MainActivity.showDisplay() {
     fun rebuild() {
         body.removeAllViews()
         // כותרת עם חזרה
-        top.removeAllViews(); top.addView(pageHeader("תצוגה"))
+        top.removeAllViews(); top.addView(pageHeader(if (colors) "רקע וצבעים" else "תצוגה"))
+        if (!colors) {
+            // רקע וצבעים - בעמוד משלו
+            val col = card()
+            row(col, "רקע וצבעים", colorsSummary(), sep = false) { showColors { applyThemeNow(d) { rebuild() } } }
+            addCard(col)
+        } else {
         // ערכת צבעים: תצוגה מקדימה חשוך / בהיר + "לפי המערכת"
         val mode = Prefs.themeMode(this)
         val theme = card()
         val pick = LinearLayout(this).apply { gravity = Gravity.CENTER; setPadding(dp(10), dp(20), dp(10), dp(16)) }
         fun preview(light: Boolean, label: String, sel: Boolean, value: Int) = LinearLayout(this).apply {
-            val p = if (light) Palettes.light(this@showDisplay) else Palettes.dark(this@showDisplay)   // התצוגה המקדימה בפלטה שנבחרה
+            val p = if (light) Palettes.light(this@displayPage) else Palettes.dark(this@displayPage)   // התצוגה המקדימה בפלטה שנבחרה
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            val box = LinearLayout(this@showDisplay).apply {
+            val box = LinearLayout(this@displayPage).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(6), dp(6), dp(6), dp(6))
                 background = GradientDrawable().apply { setColor(p.c(if (light) p.chip else p.bg).let { if (!light && p.id == "black") Color.parseColor("#2B2B2E") else it }); cornerRadius = dp(12).toFloat() }
                 listOf(12, 26, 40, 26).forEach { h ->
-                    addView(View(this@showDisplay).apply {
+                    addView(View(this@displayPage).apply {
                         background = GradientDrawable().apply { setColor(p.c(if (light) p.sepv else p.chip)); cornerRadius = dp(6).toFloat() }
                     }, LinearLayout.LayoutParams(-1, dp(h)).apply { bottomMargin = dp(5) })
                 }
@@ -123,6 +146,8 @@ internal fun MainActivity.showDisplay() {
         row(pal, "ערכות נושא", "חשוך: ${Palettes.dark(this).name} · בהיר: ${Palettes.light(this).name}", sep = false) {
             choosePalette { applyThemeNow(d) { rebuild() } } }
         addCard(pal)
+        return
+        }
         // כרטיס ההגנה: רקע ומסגרת
         val prot = card()
         row(prot, "כרטיס ההגנה", "${PROT_BG[Prefs.protBg(this)]} · ${PROT_FRAME[Prefs.protFrame(this)]} · ${PROT_ICON_NAMES[Prefs.protIcon(this)]} · ${Prefs.protLabel(this)}", sep = false) {
@@ -147,12 +172,14 @@ internal fun MainActivity.showDisplay() {
             Prefs.setFeedAlways(this, !Prefs.feedAlways(this)); updateFeed(); rebuild() }
         addCard(feed)
     }
-    themeAtOpen = Prefs.themeMode(this)
+    if (!colors) themeAtOpen = Prefs.themeMode(this)
     val darkAtOpen = Prefs.darkTheme(this)
     val palAtOpen = Prefs.darkPalette(this) + "|" + Prefs.lightPalette(this)
     rebuild()
-    // יציאה מהעמוד: אם ערכת הצבעים השתנתה - טוענים מחדש וחוזרים להגדרות
-    track(d) { if (Prefs.themeMode(this) != themeAtOpen || Prefs.darkTheme(this) != darkAtOpen || Prefs.darkPalette(this) + "|" + Prefs.lightPalette(this) != palAtOpen) { MainActivity.reopenDisplay = true; recreate() } }
+    // עמוד רקע וצבעים: בחזרה - עמוד התצוגה מתחלף לצבעים החדשים (הטעינה מחדש - ביציאה מעמוד התצוגה)
+    if (colors) track(d, onClose)
+    // יציאה מעמוד התצוגה: אם ערכת הצבעים השתנתה - טוענים מחדש וחוזרים להגדרות
+    else track(d) { if (Prefs.themeMode(this) != themeAtOpen || Prefs.darkTheme(this) != darkAtOpen || Prefs.darkPalette(this) + "|" + Prefs.lightPalette(this) != palAtOpen) { MainActivity.reopenDisplay = true; recreate() } }
     body.setPadding(0, 0, 0, dp(30))
     d.setContentView(fixedHeaderPage(top, page))
     d.window?.setLayout(-1, -1)
