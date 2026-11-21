@@ -23,11 +23,8 @@ internal fun MainActivity.showSettings() {
         layoutDirection = View.LAYOUT_DIRECTION_RTL
         addView(body)
     }
-    page.setOnApplyWindowInsetsListener { v, insets ->
-        @Suppress("DEPRECATION")
-        v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
-        insets
-    }
+    // הכותרת קבועה למעלה ולא נגללת
+    val top = LinearLayout(this).apply { addView(pageHeader("הגדרות")) }
     val cats = listOf(
         // הפעלה / כיבוי של האפליקציה - כמו הכפתור בשורת החיווי
         "צופר חירום" to { listOf(Row("⏻", "הגנה",
@@ -43,8 +40,6 @@ internal fun MainActivity.showSettings() {
     )
     fun rebuild() {
         body.removeAllViews()
-        // כותרת כמו בשאר מסכי ההגדרות
-        body.addView(pageHeader("הגדרות"))
         cats.forEach { (_, rows) ->
             // בלי כותרת מעל כל כרטיס - רק רווח בין הכרטיסים
             val card = LinearLayout(this).apply {
@@ -87,7 +82,7 @@ internal fun MainActivity.showSettings() {
         body.addView(View(this), LinearLayout.LayoutParams(-1, dp(30)))
     }
     rebuild()
-    d.setContentView(page)
+    d.setContentView(fixedHeaderPage(top, page))
     d.window?.setLayout(-1, -1)
     @Suppress("DEPRECATION")
     d.window?.statusBarColor = C.BG

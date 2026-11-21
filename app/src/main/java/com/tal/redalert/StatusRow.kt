@@ -438,6 +438,8 @@ internal fun MainActivity.chooseStatusMode(done: () -> Unit) = chooseShowMode("�
     { Prefs.setStatusMode(this, it) }, { Prefs.statusSeconds(this) }, { Prefs.setStatusSeconds(this, it) }, ::applyStatusRow,
     "\"לפי זמן\" – השורה מוצגת כשפותחים את האפליקציה או נוגעים במסך, ונעלמת אחרי הזמן שבוחרים", female = true, done = done,
     extra = { body, rebuild ->
+        // מעריכת צופר: השורה עברה לכאן מעמוד התצוגה
+        ouiNote(body, "שורת החיוויים – בתחתית המסך הראשי, או למעלה")
         // מיקום השורה: למטה (כמו תפריט ניווט) או למעלה (מתחת לכותרת)
         val p = ouiCard()
         // מעריכת צופר: "למעלה" בשורה העליונה, "למטה" בתחתונה

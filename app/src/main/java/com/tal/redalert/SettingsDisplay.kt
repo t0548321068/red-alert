@@ -27,6 +27,7 @@ internal fun MainActivity.applyThemeNow(d: android.app.Dialog, rebuild: () -> Un
     // עמוד התצוגה מתחלף מיד לצבעים החדשים; שאר האפליקציה - ביציאה מהעמוד
     C.apply(Prefs.darkTheme(this), Palettes.current(this, Prefs.darkTheme(this)))
     (d.window?.decorView?.findViewWithTag<View>("displayPage"))?.setBackgroundColor(C.BG)
+    (d.window?.decorView?.findViewWithTag<View>("displayTop"))?.let { it.setBackgroundColor(C.BG); (it.parent as? View)?.setBackgroundColor(C.BG) }
     @Suppress("DEPRECATION")
     d.window?.statusBarColor = C.BG
     if (Build.VERSION.SDK_INT >= 30) {
@@ -46,12 +47,9 @@ internal fun MainActivity.showDisplay() {
         setBackgroundColor(C.BG)
         layoutDirection = View.LAYOUT_DIRECTION_RTL
         addView(body)
-        setOnApplyWindowInsetsListener { v, insets ->
-            @Suppress("DEPRECATION")
-            v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
-            insets
-        }
     }
+    // הכותרת קבועה למעלה ולא נגללת
+    val top = LinearLayout(this).apply { tag = "displayTop" }
     val blue = Color.parseColor("#5AA9FF")
     fun card() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = graphite(26); clipToOutline = true }
     fun addCard(c: View) = body.addView(c, LinearLayout.LayoutParams(-1, -2).apply { setMargins(dp(PAGE_SIDE), 0, dp(PAGE_SIDE), dp(12)) })
@@ -85,7 +83,7 @@ internal fun MainActivity.showDisplay() {
     fun rebuild() {
         body.removeAllViews()
         // כותרת עם חזרה
-        body.addView(pageHeader("תצוגה"))
+        top.removeAllViews(); top.addView(pageHeader("תצוגה"))
         // ערכת צבעים: תצוגה מקדימה חשוך / בהיר + "לפי המערכת"
         val mode = Prefs.themeMode(this)
         val theme = card()
@@ -130,7 +128,11 @@ internal fun MainActivity.showDisplay() {
         row(prot, "כרטיס ההגנה", "${PROT_BG[Prefs.protBg(this)]} · ${PROT_FRAME[Prefs.protFrame(this)]} · ${PROT_ICON_NAMES[Prefs.protIcon(this)]} · ${Prefs.protLabel(this)}", sep = false) {
             chooseProtCard { rebuild() } }
         addCard(prot)
-        // שורת החיוויים במסך הראשי
+        // כרטיס השעון: שעון, תאריך, מזג אוויר וברכה - בעמוד משלו (מעריכת צופר: הוחלף במקום עם שורת החיוויים)
+        val more = card()
+        row(more, "כרטיס השעון", clockCardSummary(), sep = false) { chooseClockCard { rebuild() } }
+        addCard(more)
+        // שורת החיוויים במסך הראשי (ההסבר - בעמוד שלה)
         val ind = card()
         val sm = Prefs.statusMode(this)
         row(ind, "שורת חיוויים", statusModeLabel(), on = sm != Prefs.STATUS_HIDDEN, sep = false,
@@ -138,18 +140,12 @@ internal fun MainActivity.showDisplay() {
             Prefs.setStatusMode(this, if (sm == Prefs.STATUS_HIDDEN) Prefs.STATUS_ALWAYS else Prefs.STATUS_HIDDEN)
             applyStatusRow(); rebuild() }
         addCard(ind)
-        note("מוגן · צלילים · רשת · מיקום · חיבור · גרסה – בתחתית המסך הראשי, או למעלה")
-        // כרטיס השעון: שעון, תאריך, מזג אוויר וברכה - בעמוד משלו
-        val more = card()
-        row(more, "כרטיס השעון", clockCardSummary(), sep = false) { chooseClockCard { rebuild() } }
-        addCard(more)
         // פיד ארצי - כמה זמן אחורה להציג
         val feed = card()
         row(feed, "פיד ארצי", FeedText.windowLabel(Prefs.feedMinutes(this)), on = Prefs.feedAlways(this),
             open = { chooseFeedWindow { rebuild() } }) {
             Prefs.setFeedAlways(this, !Prefs.feedAlways(this)); updateFeed(); rebuild() }
         addCard(feed)
-        note("ההתרעות בכל הארץ בתחתית המסך הראשי. כשהמתג מופעל - הפיד מוצג תמיד, גם כשאין התרעות")
     }
     themeAtOpen = Prefs.themeMode(this)
     val darkAtOpen = Prefs.darkTheme(this)
@@ -158,7 +154,7 @@ internal fun MainActivity.showDisplay() {
     // יציאה מהעמוד: אם ערכת הצבעים השתנתה - טוענים מחדש וחוזרים להגדרות
     track(d) { if (Prefs.themeMode(this) != themeAtOpen || Prefs.darkTheme(this) != darkAtOpen || Prefs.darkPalette(this) + "|" + Prefs.lightPalette(this) != palAtOpen) { MainActivity.reopenDisplay = true; recreate() } }
     body.setPadding(0, 0, 0, dp(30))
-    d.setContentView(page)
+    d.setContentView(fixedHeaderPage(top, page))
     d.window?.setLayout(-1, -1)
     @Suppress("DEPRECATION")
     d.window?.statusBarColor = C.BG
@@ -222,6 +218,8 @@ internal fun MainActivity.chooseFeedWindow(done: () -> Unit) = ouiPage("פיד �
     }
     ouiAdd(body, opts)
     ouiNote(body, "ההתרעות מתחלפות אחת אחרי השנייה בגלילה כלפי מעלה")
+    // מעריכת צופר: המלל עבר לכאן מעמוד התצוגה
+    ouiNote(body, "ההתרעות בכל הארץ בתחתית המסך הראשי. כשהמתג מופעל - הפיד מוצג תמיד, גם כשאין התרעות")
 }
 
 internal fun MainActivity.chooseWeatherInterval(done: () -> Unit) = ouiPage("מזג אוויר", onClose = done) { body, rebuild ->
@@ -532,9 +530,9 @@ private fun MainActivity.protLayoutCard(body: LinearLayout, rebuild: () -> Unit)
             addLabelRadio(this, label, Prefs.mainLayout(this@protLayoutCard) == v)
             setOnClickListener { Prefs.setMainLayout(this@protLayoutCard, v); applyMainLayout(); rebuild() }
         }
-        // כרטיס ההגנה "למעלה" מימין, "מתחת לשעון" משמאל
-        pickL.addView(layoutPreview(false, "למעלה"), LinearLayout.LayoutParams(0, -2, 1f))
+        // מעריכת צופר: הוחלף המיקום - "מתחת לשעון" מימין, "למעלה" משמאל
         pickL.addView(layoutPreview(true, "מתחת לשעון"), LinearLayout.LayoutParams(0, -2, 1f))
+        pickL.addView(layoutPreview(false, "למעלה"), LinearLayout.LayoutParams(0, -2, 1f))
         lay.addView(pickL)
         ouiAdd(body, lay)
         ouiNote(body, "הברכה מוצגת בראש הכרטיס העליון")

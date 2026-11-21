@@ -43,6 +43,31 @@ internal fun MainActivity.headerIcon(res: Int, click: () -> Unit) = android.widg
     setOnClickListener { click() }
 }
 
+/**
+ * כותרת קבועה (מעריכת צופר): הכותרת נשארת למעלה בכל המסכים ולא נגללת - רק התוכן מתחתיה נגלל.
+ * top - המקום של הכותרת (מקבל את הריווח של שורת המצב), page - התוכן הנגלל (מקבל את הריווח למטה)
+ */
+internal fun MainActivity.fixedHeaderPage(top: LinearLayout, page: ScrollView): LinearLayout {
+    val col = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL; layoutDirection = View.LAYOUT_DIRECTION_RTL; setBackgroundColor(C.BG) }
+    top.orientation = LinearLayout.VERTICAL
+    top.layoutDirection = View.LAYOUT_DIRECTION_RTL
+    top.setBackgroundColor(C.BG)
+    col.addView(top, LinearLayout.LayoutParams(-1, -2))
+    col.addView(page, LinearLayout.LayoutParams(-1, 0, 1f))
+    page.setOnApplyWindowInsetsListener { v, insets ->
+        @Suppress("DEPRECATION")
+        v.setPadding(insets.systemWindowInsetLeft, 0, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
+        insets
+    }
+    col.setOnApplyWindowInsetsListener { _, insets ->
+        @Suppress("DEPRECATION")
+        top.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, 0)
+        page.dispatchApplyWindowInsets(insets)
+    }
+    return col
+}
+
 /** שוליים מהצדדים לכרטיסים - כמו במסך הראשי */
 internal const val PAGE_SIDE = 16
 /** גובה שורה בכל מסכי ההגדרות - כמו במסך ההגדרות הראשי (אייקון 34 + 12 למעלה ולמטה) */
@@ -69,7 +94,7 @@ internal fun MainActivity.ouiPage(title: String, refreshOnFocus: Boolean = true,
             insets
         }
     }
-    // pin: הכותרת ועוד pin פריטים ראשונים נשארים קבועים למעלה, ורק השאר גולל (למשל תצוגה מקדימה)
+    // הכותרת (ועוד pin פריטים ראשונים, למשל תצוגה מקדימה) נשארת קבועה למעלה, ורק השאר גולל
     val fixed = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutDirection = View.LAYOUT_DIRECTION_RTL; setBackgroundColor(C.BG) }
     lateinit var rebuild: () -> Unit
     rebuild = {
@@ -77,15 +102,16 @@ internal fun MainActivity.ouiPage(title: String, refreshOnFocus: Boolean = true,
         body.removeAllViews(); fixed.removeAllViews()
         body.addView(pageHeader(title))
         build(body, rebuild)
-        if (pin > 0) repeat(minOf(pin + 1, body.childCount)) {
+        // הכותרת תמיד קבועה למעלה (לא נגללת), ועוד pin פריטים אם ביקשו
+        repeat(minOf(pin + 1, body.childCount)) {
             val v = body.getChildAt(0); val lp = v.layoutParams
             body.removeViewAt(0); fixed.addView(v, lp)
         }
-        if (pin > 0) page.post { page.scrollTo(0, y) }   // בחירה לא מקפיצה את הרשימה למעלה
+        page.post { page.scrollTo(0, y) }   // בחירה לא מקפיצה את הרשימה למעלה
     }
     rebuild()
     val frame = FrameLayout(this).apply { setBackgroundColor(C.BG) }
-    if (pin > 0) {
+    run {
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         col.addView(fixed, LinearLayout.LayoutParams(-1, -2))
         col.addView(page, LinearLayout.LayoutParams(-1, 0, 1f))
@@ -100,9 +126,6 @@ internal fun MainActivity.ouiPage(title: String, refreshOnFocus: Boolean = true,
             fixed.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, 0)
             page.dispatchApplyWindowInsets(insets)
         }
-    } else {
-        frame.addView(page, FrameLayout.LayoutParams(-1, -1))
-        frame.setOnApplyWindowInsetsListener { _, insets -> page.dispatchApplyWindowInsets(insets) }
     }
     body.setPadding(0, 0, 0, dp(if (button == null) 30 else 100))
     if (button == null) d.setContentView(frame)
@@ -249,13 +272,9 @@ internal fun MainActivity.onePage(title: String, action: Pair<Int, () -> Unit>? 
         layoutDirection = View.LAYOUT_DIRECTION_RTL
         addView(body)
     }
-    page.setOnApplyWindowInsetsListener { v, insets ->
-        @Suppress("DEPRECATION")
-        v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
-        insets
-    }
-    // כותרת כמו במסך הראשי, ואם יש - כפתור פעולה באותו מקום כמו האייקונים שם (למשל מפה)
-    body.addView(pageHeader(title).apply {
+    // כותרת כמו במסך הראשי, ואם יש - כפתור פעולה באותו מקום כמו האייקונים שם (למשל מפה). קבועה - לא נגללת
+    val top = LinearLayout(this)
+    top.addView(pageHeader(title).apply {
         action?.let { (icon, run) -> addView(headerIcon(icon, run), LinearLayout.LayoutParams(dp(46), dp(46))) }
     })
     // שורה ממורכזת מתחת לכותרת (למשל סינון הכול / שלי)
@@ -264,7 +283,7 @@ internal fun MainActivity.onePage(title: String, action: Pair<Int, () -> Unit>? 
     body.addView(content)
     body.addView(View(this), LinearLayout.LayoutParams(-1, dp(30)))
     build(content)
-    d.setContentView(page)
+    d.setContentView(fixedHeaderPage(top, page))
     d.window?.setLayout(-1, -1)
     @Suppress("DEPRECATION")
     d.window?.statusBarColor = C.BG
